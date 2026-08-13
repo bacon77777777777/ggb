@@ -15,9 +15,8 @@ import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import Image from 'next/image';
 import ProductBadge, { ProductType } from '@/components/ui/ProductBadge';
 import Link from 'next/link';
-import { Plus, Store, Repeat2, Tag } from 'lucide-react';
-import { useFeatureFlags, type FlagState } from '@/contexts/FeatureFlagsContext';
-import { useToast } from '@/components/ui/Toast';
+import { Plus } from 'lucide-react';
+import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { categoryState } from '@/lib/categoryFlags';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { filterBannersBySchedule } from '@/lib/schedule';
@@ -1990,109 +1989,49 @@ export default function Home() {
         </Link>
       )}
 
-      {/*
-        右下角的懸浮入口。
-        販售、交易所、卡牌交換原本要搶底部導航中央那唯一一格，所以只能二選一。
-        改成右下角的懸浮按鈕之後，開幾個就疊幾顆，彼此不再互斥。
-
-        只在手機顯示。桌機因此沒有交易所與卡牌交換的入口（導覽列上也沒有）——
-        這是老闆確認過可以接受的：站是手機優先，桌機不做這三個功能的入口。
-        之後若要補，改這裡的 md:hidden 或在導覽列加連結都可以。
-      */}
-      <div className="fixed right-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom)+var(--promo-notice-h,0px))] z-40 flex flex-col items-end gap-2 md:hidden">
-        {/*
-          一律「關閉才消失、維護中照樣顯示」。
-          維護中的入口點下去不換頁，改跳提示 —— 直接把圖標藏掉的話，
-          玩家會以為功能被拿掉了；留著才知道只是暫時停一下。
-
-          旗標還沒載完時四顆全部不顯示（`!isFlagsLoading`）。
-          入口的取捨跟商品頁相反：商品頁載入中要當作 'on'，寧可多顯示半秒
-          也不要閃一下「維護中」；入口則寧可晚半秒出現，也不能讓已經關閉的
-          功能先閃出來被點到。原本是靠「DEFAULT_FLAGS 全 false」碰巧達到
-          這個效果，寫成明的才不會有人改了預設值就默默破功。
-        */}
-        {!isFlagsLoading && flagStates.market !== 'off' && (
-          <FloatingEntry href="/market" label="交易所" state={flagStates.market}>
-            <Store className="w-5 h-5 stroke-[2]" />
-          </FloatingEntry>
-        )}
-        {!isFlagsLoading && flagStates.sell !== 'off' && (
-          <FloatingEntry href="/sell" label="販售" state={flagStates.sell}>
-            <Tag className="w-5 h-5 stroke-[2]" />
-          </FloatingEntry>
-        )}
-        {!isFlagsLoading && flagStates.exchange !== 'off' && (
-          <FloatingEntry href="/exchange" label="卡牌交換" state={flagStates.exchange}>
-            <Repeat2 className="w-5 h-5 stroke-[2]" />
-          </FloatingEntry>
-        )}
-        {/* 挑戰從底部導航搬上來，排行榜回到底部導航原本挑戰那一格 */}
-        {!isFlagsLoading && categoryState('slot', flagStates, false) !== 'off' && (
-          <FloatingEntry href="/challenge" label="挑戰" state={categoryState('slot', flagStates, false)}>
-            <Image src="/images/topbar/6b.png" alt="" width={36} height={36} className="drop-shadow-lg" />
-          </FloatingEntry>
-        )}
-      </div>
-
       <NoticeBar />
       {/*
-        扇形懸浮選單（原型）。主鈕與三顆子鈕都是老闆提供的正方形 PNG，
-        目前先用預設商品圖佔位 —— 換圖只要改下面四個 icon 路徑。
+        首頁右下角的扇形懸浮選單。
 
-        還沒接上真正的頁面：三個 href 先指 `#`，等老闆決定是哪三頁再換。
-        顯示／隱藏由後台「功能開關 → 類別 → 首頁懸浮選單」控制（旗標 `home_fab`，
-        migration 539，預設關）。旗標還沒載完不顯示，理由同上面那排 FloatingEntry：
-        寧可晚半秒出現，也不要讓關掉的東西先閃出來被點到。
+        四個入口寫死（老闆指定：目前就這四個功能，不做上傳圖與自訂路徑），
+        各自吃「類別」那一區原本的旗標 —— 不另外做一套開關，
+        兩邊各管一半只會互相蓋來蓋去。
 
-        ⚠️ 這顆與上面那排 FloatingEntry 目前共用右下角。四個旗標現在全是 off
-        所以看不到，等它們開了要二選一（見 DEVLOG）。
+        **整顆按鈕沒有自己的開關**（老闆指定）：四個入口只要還有一個不是「關閉」
+        就顯示，四個全關就整顆不出現 —— 它存在的意義就是通往這四個地方。
+        後台「類別」最下面那一列只是把這個結果顯示出來，不是開關。
+
+        入口在功能關閉時不出現（不該留一個點進去看到「商品關閉中」的入口）；
+        維護中照樣出現、點下去跳提示，跟站上其他入口一致 ——
+        直接藏掉會讓玩家以為功能被拿掉了。
+
+        排列由 `lib/fanLayout` 依實際顆數決定：3 顆以內同一圈、4 顆以上內外交錯。
+        旗標還沒載完不顯示：寧可晚半秒出現，也不要讓關掉的東西先閃出來被點到。
       */}
-      {!isFlagsLoading && flagStates.home_fab === 'on' && (
-      <FanMenu
-        mainIcon="/images/item_defaulet.webp"
-        items={[
-          { icon: '/images/item_defaulet.webp', label: '入口一', href: '#' },
-          { icon: '/images/item_defaulet.webp', label: '入口二', href: '#' },
-          { icon: '/images/item_defaulet.webp', label: '入口三', href: '#' },
-        ]}
-      />
-      )}
+      {!isFlagsLoading && (() => {
+        const entries = [
+          { feature: 'slot',     icon: '/images/topbar/6b.png', label: '機台',     href: '/challenge' },
+          { feature: 'sell',     icon: '/images/menu/2.webp',   label: '販售',     href: '/sell' },
+          { feature: 'exchange', icon: '/images/menu/3.webp',   label: '卡牌交換', href: '/exchange' },
+          { feature: 'market',   icon: '/images/menu/1.webp',   label: '交易所',   href: '/market' },
+        ] as const;
+        /*
+         * ⚠️ 直接讀 `flagStates[key]`，不要用 `categoryState()`。
+         * 那支只認六個「類別」key（ichiban/blindbox/gacha/card/custom/slot），
+         * sell / exchange / market 傳進去會拿不到對應而一律回 'on' ——
+         * 後台明明關掉了，前台四顆照樣全出現（2026-08-13 就是這樣壞的）。
+         */
+        const items = entries
+          .map(e => ({ ...e, st: flagStates[e.feature] ?? 'on' }))
+          .filter(e => e.st !== 'off')
+          .map(e => ({ icon: e.icon, label: e.label, href: e.href, state: e.st as 'on' | 'maintenance' }));
+        // 四個入口都關掉時整組不出現 —— 點開空空如也比沒有還怪
+        if (items.length === 0) return null;
+        return <FanMenu mainIcon="/images/btn.webp" items={items} />;
+      })()}
 
       <PromoPopup placement="home" />
     </div>
   );
 }
 
-/**
- * 右下角的懸浮入口。幾顆共用同一組樣式，疊起來像同一組東西。
- *
- * state 為 maintenance 時圖標照樣顯示、外觀不變，但點下去不換頁、改跳提示。
- * 不做淡化：看起來像壞掉的按鈕，玩家反而不會去按、也就看不到提示。
- */
-function FloatingEntry({ href, label, state = 'on', className = '', children }: {
-  href: string;
-  label: string;
-  state?: FlagState;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  const { showToast } = useToast();
-  const isMaintenance = state === 'maintenance';
-  const base = `flex flex-col items-center justify-center w-[42px] h-[42px] rounded-l-xl bg-black/60 dark:bg-white/10 backdrop-blur-sm shadow-xl active:scale-90 transition-transform origin-right border border-white/10 overflow-visible text-white ${className}`;
-
-  return (
-    <Link
-      href={href}
-      aria-label={label}
-      title={isMaintenance ? `${label}（維護中）` : label}
-      className={base}
-      onClick={e => {
-        if (!isMaintenance) return;
-        e.preventDefault();
-        showToast(`${label}維護中，敬請見諒`, 'info');
-      }}
-    >
-      {children}
-    </Link>
-  );
-}

@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus, RefreshCw, Search, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { useFeatureGate } from '@/lib/useFeatureGate';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -55,6 +56,13 @@ type SeriesOption = { id: string; name: string };
 type SortMode = 'latest' | 'value-desc' | 'value-asc';
 
 export default function ExchangeListPage() {
+  /*
+   * 這一頁原本**完全沒有擋** —— 功能在後台關掉之後，
+   * 首頁入口雖然不見了，直接打網址或用舊書籤還是進得來。
+   * 關閉與維護中都直接 404（見 lib/useFeatureGate）。
+   */
+  useFeatureGate('exchange');
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();

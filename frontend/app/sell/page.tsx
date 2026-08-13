@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshCw, Search, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { useFeatureGate } from '@/lib/useFeatureGate';
 import { cn } from '@/lib/utils';
 
 type UserDisplayRow = {
@@ -29,6 +30,13 @@ type SaleListing = {
 const formatTwd = (amount: number) => `NT$${Math.round(amount).toLocaleString()}`;
 
 export default function SellListPage() {
+  /*
+   * 這一頁原本**完全沒有擋** —— 功能在後台關掉之後，
+   * 首頁入口雖然不見了，直接打網址或用舊書籤還是進得來。
+   * 關閉與維護中都直接 404（見 lib/useFeatureGate）。
+   */
+  useFeatureGate('sell');
+
   const router = useRouter();
   const searchParams = useSearchParams();
 

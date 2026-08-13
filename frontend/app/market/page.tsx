@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
+import { useFeatureGate } from '@/lib/useFeatureGate';
 import { useToast } from '@/components/ui/Toast';
 import { useAlert } from '@/components/ui/AlertDialog';
 import { useRequireLogin } from '@/hooks/useRequireLogin';
@@ -91,11 +92,9 @@ export default function MarketPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // 功能關掉時不該停在這一頁
-  useEffect(() => {
-    if (isFlagsLoading) return;
-    if (!flags.market) router.replace('/');
-  }, [flags.market, isFlagsLoading, router]);
+  // 關閉或維護中直接 404（見 lib/useFeatureGate）。
+  // 原本是 router.replace('/')，頁面會先閃一下再彈回首頁，體感很差
+  useFeatureGate('market');
 
   const doBuy = async (item: Listing) => {
     setBuyingId(item.id);

@@ -10,7 +10,7 @@ import DateTimePicker from '@/components/DateTimePicker'
 import { useToast } from '@/contexts/ToastContext'
 import ThemePanel from './ThemePanel'
 
-type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'exchange' | 'market' | 'sell_escrow' | 'recharge' | 'home_fab'
+type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'exchange' | 'market' | 'sell_escrow' | 'recharge'
 
 type LinePushKey =
   | 'line_push_daily' | 'line_push_cfo' | 'line_push_cmo' | 'line_push_supply'
@@ -99,8 +99,6 @@ const DEFAULT_FLAGS: Record<FeatureKey, boolean> = {
   exchange: true,
   market: false,
   sell_escrow: false,
-  // 首頁懸浮選單預設關 —— 美術圖沒進來之前不該讓玩家看到空白按鈕
-  home_fab: false,
 }
 
 export default function FeatureFlagsPage() {
@@ -579,26 +577,6 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                         />
                       </Row>
                     ))}
-                    {/*
-                      首頁懸浮選單放在「類別」這一區，因為它就是上面那幾個入口的容器。
-                      只有顯示／隱藏兩態 —— 它沒有「暫時停一下」可講，
-                      真的要停某一個入口，該停的是那個入口自己那一列。
-                    */}
-                    <Row
-                      title="首頁懸浮選單"
-                      desc="首頁右下角那顆按鈕，點開會扇形展開幾個頁面入口。隱藏之後整組按鈕都不出現，玩家從底部導航一樣進得去各個頁面。"
-                      state={states?.home_fab === 'on' ? 'on' : 'off'}
-                    >
-                      <Segmented
-                        value={states?.home_fab === 'on' ? 'on' : 'off'}
-                        disabled={!ready || isSaving}
-                        options={[
-                          { v: 'on', label: '顯示', tone: 'on' },
-                          { v: 'off', label: '隱藏', tone: 'off' },
-                        ]}
-                        onChange={(v) => setState('home_fab', v as FlagState, '首頁懸浮選單')}
-                      />
-                    </Row>
                   </div>
                 </>
               )}
@@ -711,6 +689,7 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
               )}
 
               {section === 'theme' && <ThemePanel />}
+
             </div>
           </div>
         </PageCard>

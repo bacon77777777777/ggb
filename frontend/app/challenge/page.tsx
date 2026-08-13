@@ -12,6 +12,7 @@ import { X, Trophy } from 'lucide-react';
 import { scheduleState, inheritSchedule, untilText, filterBannersBySchedule } from '@/lib/schedule';
 import { useRouteTransition } from '@/components/ui/RouteTransition';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
+import { useFeatureGate } from '@/lib/useFeatureGate';
 import { categoryState } from '@/lib/categoryFlags';
 
 interface BetTier { label: string; coins: number }
@@ -474,13 +475,14 @@ export default function ChallengePage() {
   const { navigate } = useRouteTransition();
   const supabase = createClient();
 
-  // 機台類別的開關（migration 496）。關閉就導回首頁 —— 入口雖然已經藏起來，
-  // 但藏起來的入口擋不住直接打網址或舊書籤
+  /*
+   * 機台類別的開關（migration 496）。藏起來的入口擋不住直接打網址或舊書籤，
+   * 所以這裡再擋一次 —— 關閉**與維護中**都直接 404（老闆指定）。
+   * 原本只擋 'off' 而且是 router.replace('/')，會先閃一下再彈回首頁。
+   */
   const { states: flagStates, isLoading: isFlagsLoading } = useFeatureFlags();
   const slotState = categoryState('slot', flagStates, isFlagsLoading);
-  useEffect(() => {
-    if (slotState === 'off') router.replace('/');
-  }, [slotState, router]);
+  useFeatureGate('slot');
 
   const [machines, setMachines] = useState<SlotMachine[]>([]);
   // 維護中點機台的提示，3 秒後自動收

@@ -7,17 +7,9 @@
  * 所以這裡不畫圓形底、不放文字標籤 —— 外觀全由圖決定，程式只管位置與動作。
  *
  * ── 版面 ──
- * 右下角能用的是左上那一象限，所以走四分之一圓弧：
- *
- *        ●  270°（正上）
- *     ●     225°（斜上）
- *   ●       180°（正左）
- *              (主鈕)
- *
- * ⚠️ **超過 4 顆就不要用扇形**。半徑 100px 的四分之一弧總長約 157px，
- * 均分給 N 顆時每顆只有 157/(N-1) px 的間距，子鈕本身 52px ——
- * 5 顆就開始疊。真的要加到第五顆時改用直排（首頁原本那套 FloatingEntry 就是），
- * 不要硬把半徑撐大，那會頂到畫面左緣。
+ * 四分之一圓弧，位置由 `lib/fanLayout` 算（那支是純函式，驗證腳本直接 import 同一份，
+ * 不會出現「腳本自己抄一遍公式、抄錯還互相抵銷」那種事）。
+ * 顆數會影響排法：3 顆以內同一圈，4 顆以上內外交錯。
  *
  * ── 定位 ──
  * bottom 的算式與首頁既有的懸浮入口一致，三件事要一起避開：
@@ -29,37 +21,27 @@ import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { fanOffset, FAN_MAX } from '@/lib/fanLayout';
+import { useToast } from '@/components/ui/Toast';
 
-export interface FanItem {
-  /** 正方形 PNG 的路徑（public 底下） */
-  icon: string;
-  label: string;
-  href: string;
-}
-
-/** 主鈕尺寸（px） */
+/** 主鈕尺寸（px，老闆指定 1 主 5 副都 64） */
 const MAIN_SIZE = 64;
 /** 子鈕尺寸（px） */
-const ITEM_SIZE = 56;
-/** 圓弧半徑（px）：手指按得開，最左那顆在 375px 的機器上離左緣還有 250px 以上 */
-const RADIUS = 100;
+const ITEM_SIZE = 64;
 /** 一顆接一顆彈出來的間隔 */
 const STAGGER_MS = 60;
 
-/**
- * 第 i 顆在四分之一弧上的位移（CSS 座標，直接餵給 framer-motion 的 x / y）。
- *
- * ⚠️ 這裡**不要再對 y 取負號**。數學上的角度是 +y 朝上、CSS 是 +y 朝下，
- * 而 `sin(225°)`、`sin(270°)` 本來就是負的 —— 也就是說算出來的 y 已經是
- * 「CSS 的往上」。再翻一次就會整排往下噴，壓到警語列與底部導航
- * （2026-08-13 就是這樣壞的，而且驗證腳本自己也翻了一次座標把錯誤抵銷掉，
- *   量出來看起來完全正常）。
- */
-function offsetOf(index: number, total: number) {
-  // 只有一顆時擺在 225°（斜上），不要貼著邊
-  const deg = total <= 1 ? 225 : 180 + (90 / (total - 1)) * index;
-  const rad = (deg * Math.PI) / 180;
-  return { x: Math.cos(rad) * RADIUS, y: Math.sin(rad) * RADIUS };
+export interface FanItem {
+  /** 正方形去背圖的路徑（public 底下） */
+  icon: string;
+  label: string;
+  href: string;
+  /**
+   * 'maintenance' 時圖示照樣顯示，但點下去不換頁、改跳提示（老闆指定）。
+   * 直接藏掉會讓玩家以為功能被拿掉了；關閉（'off'）才是不顯示，
+   * 那個由呼叫端先濾掉，不會傳進來。
+   */
+  state?: 'on' | 'maintenance';
 }
 
 export default function FanMenu({ mainIcon, mainIconOpen, items }: {
@@ -74,6 +56,7 @@ export default function FanMenu({ mainIcon, mainIconOpen, items }: {
   /** 主鈕被按下時的「彈一下」；子鈕要等這一下做完才出場 */
   const [bounce, setBounce] = useState(false);
   const reduceMotion = useReducedMotion();
+  const { showToast } = useToast();
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -95,7 +78,7 @@ export default function FanMenu({ mainIcon, mainIconOpen, items }: {
     if (!reduceMotion) navigator.vibrate?.(8);
   };
 
-  const fan = items.slice(0, 4);   // 見檔頭：超過 4 顆這個版型會疊
+  const fan = items.slice(0, FAN_MAX);   // 見檔頭：超過這個數量扇形排不下
 
   return (
     <>
@@ -121,7 +104,7 @@ export default function FanMenu({ mainIcon, mainIconOpen, items }: {
         {/* 子鈕：絕對定位在主鈕中心，再用 x/y 位移到弧上 */}
         <AnimatePresence>
           {open && fan.map((item, i) => {
-            const { x, y } = offsetOf(i, fan.length);
+            const { x, y } = fanOffset(i);
             return (
               <motion.div
                 /* 用 index 當 key：這份清單是寫死的設定、不會重排也不會增刪。
@@ -145,8 +128,15 @@ export default function FanMenu({ mainIcon, mainIconOpen, items }: {
                 <Link
                   href={item.href}
                   aria-label={item.label}
-                  title={item.label}
-                  onClick={close}
+                  title={item.state === 'maintenance' ? `${item.label}（維護中）` : item.label}
+                  onClick={e => {
+                    if (item.state === 'maintenance') {
+                      e.preventDefault();
+                      showToast(`${item.label}維護中，敬請見諒`, 'info');
+                      return;
+                    }
+                    close();
+                  }}
                   className="block w-full h-full active:scale-90 transition-transform"
                 >
                   <Image
