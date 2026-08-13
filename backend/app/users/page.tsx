@@ -3,6 +3,7 @@
 import { Suspense } from 'react'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
+import UserEditModal from '@/components/UserEditModal'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { formatDateTime } from '@/utils/dateFormat'
 import { 
@@ -117,6 +118,14 @@ function UsersPage() {
   
   // 使用者狀態管理（用於開關切換）
   const [userStatuses, setUserStatuses] = useState<{ [key: string]: 'active' | 'inactive' }>({})
+
+  /** 編輯彈窗（原本是獨立頁，老闆指定照「編輯管理者」改成彈窗） */
+  const [editUserId, setEditUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fromUrl = searchParams?.get('edit')
+    if (fromUrl) setEditUserId(fromUrl)
+  }, [searchParams])
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true)
@@ -499,7 +508,7 @@ function UsersPage() {
             查看詳情
           </button>
           <button
-            onClick={() => router.push(`/users/${user.id}/edit`)}
+            onClick={() => setEditUserId(user.id)}
             className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap"
           >
             編輯
@@ -893,6 +902,16 @@ function UsersPage() {
           </div>
         </div>
       </Modal>
+
+      <UserEditModal
+        userId={editUserId}
+        onClose={() => {
+          setEditUserId(null)
+          // 把 ?edit= 吃掉，重新整理才不會又彈出來
+          if (searchParams?.get('edit')) router.replace('/users')
+        }}
+        onSaved={() => void fetchUsers()}
+      />
     </AdminLayout>
   )
 }

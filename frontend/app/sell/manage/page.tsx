@@ -168,7 +168,7 @@ export default function SellManagePage() {
         <div className="meid">
           <div className="meav">
             {avatar ? (
-              <Image src={avatar} alt={name} fill style={{ objectFit: 'cover' }} sizes="46px" />
+              <Image src={avatar} alt={name} fill style={{ objectFit: 'cover' }} sizes="46px" unoptimized />
             ) : (
               (name[0] || 'U').toUpperCase()
             )}
@@ -176,7 +176,10 @@ export default function SellManagePage() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <b>{name}</b>
             <div className="mebadges">
-              <span className="bdg gold">{dash?.tier.name || '新手'}賣家</span>
+              {/* 跟商品小卡同一顆等級章（.lvl）：金牌橘、銀牌綠(g2)、新手灰(g1)，文字只放等級名 */}
+              <span className={`lvl${(dash?.tier.k ?? 1) === 2 ? ' g2' : (dash?.tier.k ?? 1) === 1 ? ' g1' : ''}`}>
+                {dash?.tier.name || '新手'}
+              </span>
               <span className="bdg verify">實名認證</span>
               {dash?.is_pro && <span className="bdg gold">官方認證商家</span>}
               <span className="bdg">完成 {nt(dash?.done_count || 0)} 單</span>

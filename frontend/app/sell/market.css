@@ -1087,3 +1087,39 @@
   background: #fff4f5;
   font-weight: 700;
 }
+
+/* ── 商品彈層：店舖/聊聊（等級章移到名字旁後，右側的兩顆小按鈕） ── */
+.mk .shopacts { display: flex; gap: 6px; flex-shrink: 0; }
+.mk .shopacts button {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 15px;
+  border: 1px solid var(--line2);
+  background: #fff;
+  color: var(--ink);
+}
+.mk .shopacts button:active { transform: scale(0.95); }
+
+/* ── 個人店舖頁 ── */
+.mk .shophd {
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  padding: 14px 12px;
+}
+.mk .shophd .row { display: flex; align-items: center; gap: 10px; }
+.mk .shophd .av {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #eee;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: #999;
+}
+.mk .shophd b { font-size: 16px; }
+.mk .shophd .sub { font-size: 11.5px; color: var(--sub); margin-top: 2px; }

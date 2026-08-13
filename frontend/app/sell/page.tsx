@@ -211,6 +211,20 @@ export default function SellPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [detail, setDetail] = useState<FeedRow | null>(null);
+  /** 店舖頁點商品會帶 ?open=<id> 回來，這裡撈單筆直接開彈層（只開一次，關掉不重開） */
+  const openParam = searchParams?.get('open') || '';
+  const openedRef = useRef(false);
+
+  useEffect(() => {
+    const idNum = Number(openParam);
+    if (!openParam || !Number.isInteger(idNum) || idNum <= 0 || openedRef.current) return;
+    openedRef.current = true;
+    void (async () => {
+      const { data } = await createClient().rpc('sell_feed_one', { p_id: idNum });
+      const row = Array.isArray(data) ? (data[0] as FeedRow | undefined) : undefined;
+      if (row) setDetail(row);
+    })();
+  }, [openParam]);
   // 「更多 ›」開列表彈層（原型 moreSheet），不是換頁
   const [more, setMore] = useState<{ title: string; sub: string; list: FeedRow[]; label: string } | null>(null);
   const [isBuying, setIsBuying] = useState(false);
@@ -704,8 +718,20 @@ export default function SellPage() {
                     />
                   )}
                 </span>
-                <div style={{ flex: 1 }}>
-                  <b>{detail.seller_name}</b>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* 等級章貼著名字（老闆指定），右側空出來放店舖/聊聊 */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                    <b style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {detail.seller_name}
+                    </b>
+                    {!isOfficial && detail.tier_name && (
+                      <span
+                        className={`lvl${detail.tier_key === 2 ? ' g2' : detail.tier_key === 1 ? ' g1' : ''}`}
+                      >
+                        {detail.tier_name}
+                      </span>
+                    )}
+                  </div>
                   <div style={{ fontSize: '11.5px', color: 'var(--sub)', marginTop: 2 }}>
                     {isOfficial ? '平台自營 · 開立電子發票' : detail.phone_verified ? '已完成手機實名' : '尚未實名'}
                   </div>
@@ -713,13 +739,29 @@ export default function SellPage() {
                 {isOfficial ? (
                   <span className="tg tg--off">官方</span>
                 ) : (
-                  detail.tier_name && (
-                    <span
-                      className={`lvl${detail.tier_key === 2 ? ' g2' : detail.tier_key === 1 ? ' g1' : ''}`}
+                  <div className="shopacts">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDetail(null);
+                        router.push(`/sell/shop/${detail.seller_id}`);
+                      }}
                     >
-                      {detail.tier_name}
-                    </span>
-                  )
+                      店舖
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!user?.id) {
+                          router.push(`/login?next=${encodeURIComponent('/sell')}`);
+                          return;
+                        }
+                        router.push(`/messages/sell:${detail.id}--${detail.seller_id}`);
+                      }}
+                    >
+                      聊聊
+                    </button>
+                  </div>
                 )}
               </div>
 
