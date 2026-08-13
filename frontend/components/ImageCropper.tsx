@@ -29,9 +29,21 @@ export default function ImageCropper({ src, onConfirm, onCancel }: Props) {
   const drag = useRef<{ lx: number; ly: number; ls: number; touches: { clientX: number; clientY: number }[] } | null>(null)
 
   // ── helpers ──────────────────────────────────────────────────────────
+  /**
+   * 畫布的 **CSS 尺寸**（不是 backing store 的裝置像素）。
+   *
+   * ⚠️ 這裡一定要除以 dpr。canvas 的 `width/height` 屬性是裝置像素
+   * （CSS 尺寸 × dpr），而 context 掛載時已經 `scale(dpr, dpr)` ——
+   * 直接拿裝置像素當座標，等於再放大一次 dpr 倍：
+   * Retina Mac（dpr 2）與 iPhone（dpr 3）上裁切框與圖片會整個爆出可視範圍，
+   * 只有 dpr = 1 的螢幕看起來正常（2026-08-13 老闆回報）。
+   *
+   * 整份檔案的座標（tx / ty / cropBox / 拖曳量）統一用 CSS 像素。
+   */
   function canvasPx() {
     const c = canvasRef.current!
-    return { w: c.width, h: c.height }
+    const dpr = window.devicePixelRatio || 1
+    return { w: c.width / dpr, h: c.height / dpr }
   }
   function cropBox() {
     const { w, h } = canvasPx()
@@ -105,28 +117,55 @@ export default function ImageCropper({ src, onConfirm, onCancel }: Props) {
   }, [])
 
   // ── init canvas & image ───────────────────────────────────────────────
-  useEffect(() => {
-    const wrap = wrapRef.current!
+  /** 依外層容器目前的大小重設畫布，並把圖片重新置中鋪滿裁切框 */
+  const fitCanvas = useCallback(() => {
+    const wrap = wrapRef.current
+    const canvas = canvasRef.current
+    if (!wrap || !canvas) return
     const dpr  = window.devicePixelRatio || 1
     const rect = wrap.getBoundingClientRect()
-    const canvas = canvasRef.current!
+    if (rect.width === 0 || rect.height === 0) return
     canvas.width  = rect.width  * dpr
     canvas.height = rect.height * dpr
-    canvas.getContext('2d')!.scale(dpr, dpr)
+    const ctx = canvas.getContext('2d')!
+    ctx.setTransform(1, 0, 0, 1, 0, 0)   // 改過 width/height 之後 transform 會被重設，但保險起見先歸零
+    ctx.scale(dpr, dpr)
 
+    const img = imgRef.current
+    if (!img) return
+    const crop  = cropBox()
+    tsc.current = Math.max(crop.size / img.naturalWidth, crop.size / img.naturalHeight)
+    tx.current  = crop.x + crop.size / 2
+    ty.current  = crop.y + crop.size / 2
+    draw()
+  }, [draw])
+
+  useEffect(() => {
+    fitCanvas()
     const img = new Image()
     img.src = src
     img.onload = () => {
       imgRef.current = img
-      const crop  = cropBox()
-      const minSc = Math.max(crop.size / img.naturalWidth, crop.size / img.naturalHeight)
-      tsc.current = minSc
-      tx.current  = crop.x + crop.size / 2
-      ty.current  = crop.y + crop.size / 2
+      fitCanvas()
       setReady(true)
-      draw()
     }
-  }, [src])
+  }, [src, fitCanvas])
+
+  /*
+   * 容器大小變了要重算。
+   *
+   * 原本只在掛載時量一次 —— 開關 DevTools、旋轉手機、Safari 的網址列收合，
+   * 畫布都還停在舊尺寸，裁切框跟著跑掉。
+   * 重新 fit 會把圖片重新置中（使用者拖過的位置會歸位），
+   * 但尺寸變了本來就得重新框，比留著一個對不上的框好。
+   */
+  useEffect(() => {
+    const wrap = wrapRef.current
+    if (!wrap || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => fitCanvas())
+    ro.observe(wrap)
+    return () => ro.disconnect()
+  }, [fitCanvas])
 
   useEffect(() => { if (ready) draw() }, [ready, draw])
 
@@ -137,11 +176,8 @@ export default function ImageCropper({ src, onConfirm, onCancel }: Props) {
   function getPos(e: MouseEvent | Touch) {
     const canvas = canvasRef.current!
     const rect   = canvas.getBoundingClientRect()
-    const dpr    = window.devicePixelRatio || 1
-    return {
-      x: (e.clientX - rect.left) * dpr,
-      y: (e.clientY - rect.top)  * dpr,
-    }
+    // 不乘 dpr：內部座標是 CSS 像素（見 canvasPx 的說明）
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
   }
 
   function onPointerDown(e: React.PointerEvent) {
@@ -172,12 +208,11 @@ export default function ImageCropper({ src, onConfirm, onCancel }: Props) {
   function onTouchMove(e: React.TouchEvent) {
     e.preventDefault()
     if (!drag.current) return
-    const dpr = window.devicePixelRatio || 1
 
     if (e.touches.length === 1) {
-      // pan
-      const dx = (e.touches[0].clientX - drag.current.lx) * dpr
-      const dy = (e.touches[0].clientY - drag.current.ly) * dpr
+      // pan（位移量同樣是 CSS 像素，不乘 dpr）
+      const dx = e.touches[0].clientX - drag.current.lx
+      const dy = e.touches[0].clientY - drag.current.ly
       tx.current += dx; ty.current += dy
       drag.current.lx = e.touches[0].clientX
       drag.current.ly = e.touches[0].clientY
