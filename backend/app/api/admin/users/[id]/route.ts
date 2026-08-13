@@ -148,6 +148,18 @@ export async function PUT(
     let updatedUser: any = null
     let tempPassword: string | null = null
 
+    /*
+     * 改代幣要先記下原本的餘額 —— 下面要用 (新 − 舊) 補一筆 token_adjustments。
+     * 只 update `users.tokens` 而不進分類帳的話，帳面會憑空多出一筆錢，
+     * 財務對帳（expected = recharge + manual − draw − refund）永遠對不平。
+     * 實際踩過：一個帳號在建立時被塞了 100 萬，對帳就短少 100 萬（2026-08-13 查出）。
+     */
+    let tokensBefore: number | null = null
+    if (profileUpdates.tokens !== undefined) {
+      const { data: prev } = await supabaseAdmin.from('users').select('tokens').eq('id', id).single()
+      tokensBefore = Number(prev?.tokens ?? 0)
+    }
+
     if (hasProfile || hasStatus) {
       const fieldsToUpdate: Record<string, any> = { ...profileUpdates }
       if (hasStatus) fieldsToUpdate.status = body.status
@@ -155,6 +167,19 @@ export async function PUT(
         .from('users').update(fieldsToUpdate).eq('id', id).select('*').single()
       if (error) throw error
       updatedUser = data
+    }
+
+    // 代幣有變動就補分類帳。差額為 0（送了同樣的數字）不寫，免得留下一堆 delta=0 的雜訊
+    if (tokensBefore !== null) {
+      const delta = Number(profileUpdates.tokens ?? 0) - tokensBefore
+      if (delta !== 0) {
+        await supabaseAdmin.from('token_adjustments').insert({
+          user_id: id,
+          delta,
+          reason: '後台編輯會員直接調整代幣',
+          created_by: 'admin',
+        })
+      }
     }
 
     if (hasProfile) {
@@ -169,9 +194,12 @@ export async function PUT(
 
       // 即時通知：手動調整代幣
       if (profileUpdates.tokens !== undefined) {
-        const before = updatedUser?.tokens ?? '?'
+        // 原本只推「新餘額」，看不出改了多少 —— 補上原餘額與差額
         pushSensitiveAlert(
-          `🔧 管理員敏感操作\n操作：手動調整代幣\n管理員ID：${session.adminId}\n用戶ID：${id}\n新餘額：${profileUpdates.tokens} G`
+          `🔧 管理員敏感操作\n操作：手動調整代幣\n管理員ID：${session.adminId}\n用戶ID：${id}\n`
+          + `原餘額：${tokensBefore ?? '?'} G → 新餘額：${profileUpdates.tokens} G`
+          + `（${Number(profileUpdates.tokens ?? 0) - Number(tokensBefore ?? 0) >= 0 ? '+' : ''}`
+          + `${Number(profileUpdates.tokens ?? 0) - Number(tokensBefore ?? 0)} G）`
         )
       }
     }

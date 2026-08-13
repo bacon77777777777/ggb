@@ -209,12 +209,30 @@ export async function POST(request: Request) {
       throw upsertError
     }
 
+    /*
+     * 建立時就給代幣的話，要補一筆 token_adjustments。
+     *
+     * 原本只 update `users.tokens`，那筆錢完全不在 token_ledger 裡 ——
+     * 帳面憑空多出來，財務對帳（expected = recharge + manual − draw − refund）
+     * 就永遠對不平。2026-08-13 實際查到一個帳號在建立時被塞了 100 萬，
+     * 對帳短少剛好 100 萬，而且稽核紀錄只寫了姓名與 email，看不出這回事。
+     */
+    if (tokens > 0) {
+      await supabaseAdmin.from('token_adjustments').insert({
+        user_id: createdUser.id,
+        delta: tokens,
+        reason: '新增會員時給的初始代幣',
+        created_by: 'admin',
+      })
+    }
+
     await logAdminAction({
       adminId: session.adminId,
       action: '新增會員',
       targetType: 'user',
       targetId: String(createdUser.id),
-      detail: { name: createdUser.name, email: createdUser.email },
+      // tokens 一定要記：給了多少錢是這個操作最該留下的資訊
+      detail: { name: createdUser.name, email: createdUser.email, tokens },
       ip: getClientIp(request),
     })
 
