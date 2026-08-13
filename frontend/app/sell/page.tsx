@@ -5,7 +5,7 @@ import './market.css';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import MarketTabBar, { type MarketTab } from '@/components/sell/MarketTabBar';
@@ -257,11 +257,18 @@ export default function SellPage() {
   // C2C 則整條龍都在彈層裡完成（照原型）
   const officialHref = (r: FeedRow) => `/official/${r.id}`;
 
-  const topicItems = useMemo(
-    () => rows.filter((r) => (r.category || '').includes('一番賞') || r.category === '公仔模型').slice(0, 8),
+  /*
+   * 專題位與分類首排是**廣告版位**，不是「照分類挑商品」——
+   * 誰買了 topic / cat 才會出現在那一列。先前寫成用 category 篩，
+   * 結果沒有一番賞商品時整條專題列就消失，跟原型對不起來。
+   */
+  const adOf = useCallback(
+    (slot: string) => rows.filter((r) => (r.ad_slots || []).includes(slot)),
     [rows]
   );
-  const segItems = useMemo(() => (seg ? rows.slice(0, 4) : []), [rows, seg]);
+  const topicItems = useMemo(() => adOf('topic').slice(0, 8), [adOf]);
+  const catItems = useMemo(() => adOf('cat').slice(0, 8), [adOf]);
+  const doneItems = useMemo(() => adOf('done').slice(0, 8), [adOf]);
 
   const buyC2C = async () => {
     if (!detail) return;
@@ -440,25 +447,28 @@ export default function SellPage() {
       )}
 
       {/* ── 分類首排（選了分類才出現）── */}
-      {seg && segItems.length > 0 && (
+      {!isOfficial && catItems.length > 0 && (
         <div className="strip">
-          <span className="adtag">廣告</span>
+          <span className="adtag">廣告 · 分類首排</span>
           <div className="striphd">
-            <b>{CATS.find((c) => c.key === seg)?.label} 分類首排</b>
+            <b>{seg ? `${CATS.find((c) => c.key === seg)?.label} 分類首排` : '分類首排'}</b>
           </div>
-          <div className="srow">{scards(segItems, '推廣')}</div>
+          <div className="srow">{scards(catItems, '推廣')}</div>
         </div>
       )}
 
       {/* ── 專題 ── */}
       {!isOfficial && topicItems.length > 0 && (
         <div className="strip">
+          <span className="adtag">廣告 · 專題位</span>
           <div className="striphd">
-            <b>本週精選</b>
+            <b>本週一番賞精選</b>
             <button
               type="button"
               className="more"
-              onClick={() => setMore({ title: '本週精選', sub: '編輯策展 · 專題位', list: topicItems, label: '專題' })}
+              onClick={() =>
+                setMore({ title: '本週一番賞精選', sub: '編輯策展 · 專題位', list: topicItems, label: '專題' })
+              }
             >
               更多 ›
             </button>
@@ -554,6 +564,16 @@ export default function SellPage() {
               </div>
             </button>
           ))}
+        </div>
+      )}
+
+      {!isOfficial && doneItems.length > 0 && (
+        <div className="strip">
+          <span className="adtag">廣告 · 完成頁推薦</span>
+          <div className="striphd">
+            <b>猜你喜歡</b>
+          </div>
+          <div className="srow">{scards(doneItems, '推薦')}</div>
         </div>
       )}
 
