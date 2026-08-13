@@ -157,8 +157,19 @@ export default async function RootLayout({
           }}
         />
 
+        {/*
+          suppressHydrationWarning：有些瀏覽器擴充套件（例如網頁檢視類的工具）
+          會在 React 載入前把這顆 script 整個換掉 —— 把 type 改成 text/javascript、
+          內容清空、再塞一個 src="chrome-extension://…/inspector.js" 進來。
+          React 一比對就報 hydration mismatch，每次進站都噴一則 console error。
+
+          那是使用者端的環境問題，我們改不了；但 JSON-LD 是給爬蟲看的靜態內容，
+          本來就不需要 React 去對帳。標上這個屬性讓它跳過比對，
+          擴充套件裝了也不會再洗版。
+        */}
         <script
           type="application/ld+json"
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
         {themeCss && <style dangerouslySetInnerHTML={{ __html: themeCss }} />}
