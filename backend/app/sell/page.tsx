@@ -217,10 +217,15 @@ export default function SellAdminPage() {
               res = await fetch('/api/admin/sell/seed', { method: 'POST', credentials: 'include' })
             }
             if (!res.ok) {
-              console.error('建立假資料失敗')
+              // 原本這裡只 console.error 一句沒有內容的字串，畫面完全不說話，
+              // 連「route 不存在」這種一眼可知的原因都要翻 devtools 才看得到
+              const failed = await res.json().catch(() => null)
+              toast(failed?.error || data?.error || `建立假資料失敗（${res.status}）`, 'error')
               return
             }
           }
+          const result = await res.json().catch(() => null)
+          toast(`已建立 ${result?.created ?? 0} 筆商城假資料`)
           await fetchListings()
         } catch (e) {
           console.error('Unexpected error seeding sell listings:', e)

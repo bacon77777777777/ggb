@@ -510,38 +510,59 @@ export default function SearchPage() {
                 e.preventDefault();
                 handleSearchSubmit();
               }}
-              className="flex-1 flex items-center gap-2"
+              className="flex-1"
             >
-              <div className="relative flex-1">
+              {/*
+                送出鈕與清除鈕都收進輸入框裡（老闆指定的版型）：
+                右側疊一組 absolute 的按鈕，叉叉在左、搜尋在右。
+                輸入框的 pr 要留得比這組按鈕寬，不然打字會鑽到按鈕底下。
+              */}
+              <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 stroke-[2.5]" />
                 <input
                   ref={inputRef}
                   value={query}
                   autoFocus={!!focusParam}
                   onFocus={() => setIsInputFocused(true)}
+                  // 沒有 onBlur 的話 isInputFocused 只會在送出／按叉叉時才變 false，
+                  // 點到別處仍算「聚焦中」—— 叉叉會一直留著
+                  onBlur={() => setIsInputFocused(false)}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="曾經搜尋平凡的商品"
-                  className="w-full h-10 bg-neutral-100 dark:bg-neutral-800 rounded-full pl-9 pr-8 text-[16px] font-black text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  className="w-full h-10 bg-neutral-100 dark:bg-neutral-800 rounded-full pl-9 pr-[86px] text-[16px] font-black text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                   inputMode="search"
                 />
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleSearchSubmit('');
-                    setIsInputFocused(false);
-                    inputRef.current?.blur();
-                  }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
-                >
-                  <X className="w-3.5 h-3.5 stroke-[2.5]" />
-                </button>
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                  {/*
+                    顯示條件（老闆指定）：有輸入**或**聚焦中。
+                    · 有字 → 要能清掉，即使沒聚焦（例如帶 ?q= 進來）
+                    · 沒字但聚焦 → 面板開著，這顆同時是「收起面板」的出口
+                    · 沒字又沒聚焦 → 藏起來，空框不擺一個沒作用的叉叉
+                  */}
+                  {(isInputFocused || !!query) && (
+                    <button
+                      type="button"
+                      // 不擋的話 mousedown 會先讓輸入框失焦，這顆按鈕在 click 送到前就消失了
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        handleSearchSubmit('');
+                        setIsInputFocused(false);
+                        inputRef.current?.blur();
+                      }}
+                      className="p-1.5 rounded-full text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                      aria-label="清除搜尋"
+                    >
+                      <X className="w-3.5 h-3.5 stroke-[2.5]" />
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    className="px-3.5 h-8 rounded-full bg-primary text-white text-[12px] font-black whitespace-nowrap active:scale-95 transition-transform"
+                  >
+                    搜尋
+                  </button>
+                </div>
               </div>
-              <button
-                type="submit"
-                className="px-3 h-9 rounded-full bg-primary text-white text-[12px] font-black whitespace-nowrap active:scale-95 transition-transform"
-              >
-                搜尋
-              </button>
             </form>
           </div>
 
@@ -584,7 +605,15 @@ export default function SearchPage() {
           )}
 
           {showSuggestionPanel && (
-            <div className="absolute left-0 right-0 top-[57px] bottom-[-100vh] z-50 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800">
+            /*
+              onMouseDown preventDefault：輸入框現在有 onBlur 會關掉 isInputFocused，
+              而這層面板的顯示條件就是 isInputFocused。少了這行，點面板裡任何一顆按鈕
+              都會先觸發 blur → 面板在 click 送到之前就被卸載 → 點了沒反應。
+            */
+            <div
+              onMouseDown={(e) => e.preventDefault()}
+              className="absolute left-0 right-0 top-[57px] bottom-[-100vh] z-50 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800"
+            >
               <div className="h-[calc(100vh-57px)] overflow-y-auto pb-24">
                 <div className="divide-y divide-neutral-100 dark:divide-neutral-800 px-4">
                   {visibleHistory.map((term) => (
@@ -837,33 +866,37 @@ export default function SearchPage() {
           <div className="mt-1">
             <form
               onSubmit={(e) => { e.preventDefault(); handleSearchSubmit(); }}
-              className="flex items-center gap-3 mb-5"
+              className="mb-5"
             >
-              <div className="relative flex-1 max-w-xl">
+              {/* 同手機版：送出鈕與清除鈕都收進輸入框內側，叉叉在左、搜尋在右 */}
+              <div className="relative max-w-xl">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 stroke-[2.5]" />
                 <input
                   ref={inputRef}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="搜尋商品名稱、系列..."
-                  className="w-full h-11 bg-neutral-100 dark:bg-neutral-800 rounded-full pl-9 pr-8 text-[15px] font-black text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  className="w-full h-11 bg-neutral-100 dark:bg-neutral-800 rounded-full pl-9 pr-[104px] text-[15px] font-black text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 />
-                {query && (
+                <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                  {query && (
+                    <button
+                      type="button"
+                      onClick={() => handleSearchSubmit('')}
+                      className="p-1.5 rounded-full text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                      aria-label="清除搜尋"
+                    >
+                      <X className="w-3.5 h-3.5 stroke-[2.5]" />
+                    </button>
+                  )}
                   <button
-                    type="button"
-                    onClick={() => handleSearchSubmit('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                    type="submit"
+                    className="px-4 h-8 rounded-full bg-primary text-white text-[13px] font-black whitespace-nowrap hover:bg-primary/90 transition-colors"
                   >
-                    <X className="w-3.5 h-3.5 stroke-[2.5]" />
+                    搜尋
                   </button>
-                )}
+                </div>
               </div>
-              <button
-                type="submit"
-                className="px-5 h-11 rounded-full bg-primary text-white text-[13px] font-black whitespace-nowrap hover:bg-primary/90 transition-colors"
-              >
-                搜尋
-              </button>
             </form>
             <h1 className="text-xl font-black text-neutral-900 dark:text-white tracking-tight px-0.5 mb-1">
               {mobileTitle}

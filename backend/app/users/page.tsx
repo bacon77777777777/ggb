@@ -69,7 +69,7 @@ function UsersPage() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
-  const [sortField, setSortField] = useState<string>(() => searchParams.get('sort') || 'userId')
+  const [sortField, setSortField] = useState<string>(() => searchParams.get('sort') || 'registerDate')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(() => (searchParams.get('dir') as 'asc' | 'desc') || 'desc')
   const [displayCount, setDisplayCount] = useState(20)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -93,7 +93,7 @@ function UsersPage() {
     if (selectedUserType !== 'real') params.set('type', selectedUserType)
     if (filterStartDate) params.set('startDate', filterStartDate)
     if (filterEndDate) params.set('endDate', filterEndDate)
-    if (sortField !== 'userId') params.set('sort', sortField)
+    if (sortField !== 'registerDate') params.set('sort', sortField)
     if (sortDirection !== 'desc') params.set('dir', sortDirection)
     const qs = params.toString()
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
@@ -247,7 +247,7 @@ function UsersPage() {
         case 'registerDate': aValue = new Date(a.registerDate).getTime(); bValue = new Date(b.registerDate).getTime(); break
         case 'lastLoginDate': aValue = new Date(a.lastLoginDate).getTime(); bValue = new Date(b.lastLoginDate).getTime(); break
         case 'lastLoginIp': aValue = new Date(a.lastLoginDate).getTime(); bValue = new Date(b.lastLoginDate).getTime(); break
-        default: aValue = a.userId; bValue = b.userId
+        default: aValue = new Date(a.registerDate).getTime(); bValue = new Date(b.registerDate).getTime()
       }
 
       if (typeof aValue === 'string') {

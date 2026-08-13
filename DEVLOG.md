@@ -4,6 +4,55 @@
 
 ---
 
+## v2026.08.13j｜2026-08-13｜搜尋框按鈕內收；會員排序修正；商城假資料 route 補回
+
+**① 前台搜尋框改版**（手機＋桌機）
+
+送出鈕與清除鈕都收進輸入框內側，叉叉在左、搜尋鈕在右。原本 `form` 是
+`flex gap-2`、輸入框與搜尋鈕並排，改成右側疊一組 absolute 按鈕；搜尋鈕高度
+縮成 h-8 才有內縮效果，輸入框右內距加大到 `pr-[86px]`／`pr-[104px]`，
+不然打長字會鑽到按鈕底下。
+
+叉叉顯示條件改成 **`isInputFocused || query`**（沒字又沒聚焦就不出現）。
+配套兩件事，少一件這條件都不會生效或會弄壞既有功能：
+
+- 輸入框補 `onBlur` —— 原本 `isInputFocused` 只在送出／按叉叉時才變 false，
+  點到別處仍算聚焦中，叉叉會一直留著
+- 搜尋紀錄面板外層補 `onMouseDown` preventDefault —— 面板顯示條件同樣是
+  `isInputFocused`，點面板裡的按鈕會先觸發 blur，面板在 click 送達前就被卸載，
+  變成「點了沒反應」。叉叉本身也加了同一道防護
+
+**② 後台會員管理預設排序修正**
+
+預設排序欄位是 `userId`，但那欄其實是 UUID（API 直接 `userId: u.id`），
+`localeCompare` 倒序等於照亂碼排、跟時間無關。API 本來有
+`order('created_at', desc)`，一進頁面就被前端重排掉。改成預設 `registerDate`
+（最新在最上），URL 同步判斷與 switch 的 default fallback 一併改掉。
+
+**③ 商城「建立假資料」修好**
+
+`/api/admin/sell/seed` 在 2026-07-22「清除全站垃圾檔案」被當成開發用 route 刪掉，
+但後台按鈕留著沒拆 → 按下去必定 404。
+
+沒有直接還原舊版：舊版寫死 `/images/other/card/nft_image*.jpg`，那批圖在**同一個
+commit 也被刪了**，照原樣復原只會建出一整排破圖。改成從站上真實商品／品項取材，
+圖片必定存在、兩個環境都能跑。類別對照 `products.type` 並驗證落在
+`sell_category_whitelist` 內（白名單外的值前台篩不到），賣家只挑真人，補上
+`logAdminAction()`。實測確認 service_role 走 `sell_is_privileged()` 會被 trigger
+放行，可直接寫 `active`。
+
+按鈕的失敗處理原本只 `console.error('建立假資料失敗')`，畫面完全不說話 ——
+改成 toast 顯示真正的錯誤與 HTTP 狀態碼，成功回報建立筆數。
+
+**④ 首頁懸浮選單四顆類別圖換新**
+
+`public/images/menu/1~4.webp` 換圖並轉 WebP（200×200 含 alpha，
+quality 90／alphaQuality 100），單張 60KB png → 14~18KB。新圖把文字燒在圖上，
+確認 `FanMenu` 的 `label` 只餵給 aria-label／title／alt／維護中 toast，
+不會在畫面上重複出字。
+
+---
+
 ## v2026.08.13i｜2026-08-13｜商城賣家操作補齊；管理者密碼欄明文回填
 
 **① 商城賣家操作（補測試時發現的兩個缺口）**
