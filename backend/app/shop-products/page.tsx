@@ -259,7 +259,6 @@ export default function ShopProductsPage() {
                       <tr key={p.id} className="border-b border-neutral-100 hover:bg-neutral-50">
                         <td className="px-3 py-2">
                           {img ? (
-                            // eslint-disable-next-line @next/next/no-img-element
                             <img src={img} alt="" className="w-10 h-10 rounded object-cover" />
                           ) : (
                             <span className="text-xs text-neutral-400">—</span>

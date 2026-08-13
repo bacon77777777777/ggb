@@ -146,7 +146,15 @@ export async function POST(request: Request) {
       }
     }
 
-    const cost = Math.max(0, Math.floor(Number(body?.cost) ?? slot.price_per_day * days))
+    /*
+     * ⚠️ 不能寫成 `Number(body?.cost) ?? 定價`：Number(undefined) 回傳 NaN 而不是
+     * null／undefined，?? 永遠不會生效，沒填金額時 cost 會變成 NaN 寫進 DB。
+     * 要先判斷有沒有帶這個欄位，再決定用定價還是自訂值。
+     */
+    const rawCost = Number(body?.cost)
+    const cost = Number.isFinite(rawCost)
+      ? Math.max(0, Math.floor(rawCost))
+      : Math.max(0, Math.floor(slot.price_per_day * days))
 
     const { data, error } = await supabaseAdmin
       .from('sell_ad_bookings')
