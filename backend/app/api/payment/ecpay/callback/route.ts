@@ -72,6 +72,38 @@ export async function POST(req: Request) {
     const paymentFee = amt > 0 ? calcEcpayFee(paymentType, amt) : null
     const ecpayTradeNo = params.TradeNo || null
 
+    // ⚠️ 前綴分派的順序與精確度很重要：
+    //    TP=儲值、SH=官方商城、SO=玩家商城。
+    //    官方商城若用單一個 'S' 判斷會連 'SO...' 一起吃掉（見 migration 564）
+    if (tradeNo.startsWith('SH')) {
+      const { data: shopOrder } = await supabase
+        .from('shop_orders')
+        .select('id')
+        .eq('order_number', tradeNo)
+        .maybeSingle()
+
+      if (!shopOrder?.id) {
+        console.error('ECPay callback: 找不到官方商城訂單', tradeNo)
+        await logWebhookEvent({ source: 'ecpay_payment', idempotencyKey, orderNumber: tradeNo, rawPayload: params, result: 'failed', errorMessage: 'shop order not found' })
+        return new NextResponse('0|Order Not Found', { status: 200 })
+      }
+
+      const { error } = await supabase.rpc('shop_order_mark_paid', {
+        p_order_id: shopOrder.id,
+        p_trade_no: ecpayTradeNo,
+        p_payment_type: paymentType || null,
+        p_raw: params,
+      })
+      if (error) {
+        console.error('shop_order_mark_paid Error:', error)
+        await logWebhookEvent({ source: 'ecpay_payment', idempotencyKey, orderNumber: tradeNo, rawPayload: params, result: 'failed', errorMessage: error.message })
+        return new NextResponse('0|Internal Error', { status: 200 })
+      }
+
+      await logWebhookEvent({ source: 'ecpay_payment', idempotencyKey, orderNumber: tradeNo, rawPayload: params, result: 'processed' })
+      return new NextResponse('1|OK', { status: 200 })
+    }
+
     if (tradeNo.startsWith('TP')) {
       const { error } = await supabase.rpc('confirm_topup_order', {
         p_order_number: tradeNo,

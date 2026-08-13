@@ -226,7 +226,7 @@ export default function SellPage() {
               {heroItems.map((it) => (
                 <Link
                   key={it.id}
-                  href={`/sell/${it.id}`}
+                  href={tab === 'official' ? `/official/${it.id}` : `/sell/${it.id}`}
                   className="snap-start shrink-0 w-full flex items-stretch h-[100px]"
                 >
                   <span className="relative w-[100px] shrink-0 bg-neutral-100 dark:bg-neutral-800">
@@ -273,7 +273,7 @@ export default function SellPage() {
               return (
                 <Link
                   key={r.id}
-                  href={`/sell/${r.id}`}
+                  href={tab === 'official' ? `/official/${r.id}` : `/sell/${r.id}`}
                   className="bg-white dark:bg-neutral-900 rounded-xl overflow-hidden flex flex-col active:opacity-85"
                 >
                   {/* overflow-hidden 是必要的：圖片 404 時瀏覽器會改顯示 alt 文字，

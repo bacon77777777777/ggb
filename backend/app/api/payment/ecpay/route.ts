@@ -110,6 +110,34 @@ export async function POST(req: Request) {
       amt = amount
       itemName = `吉吉比代幣 ${amount}點`
       clientBackUrl = `${FrontendUrl}/topup`
+    } else if (kind === 'shop') {
+      // 官方商城（B2C）。跟 sell_escrow 不同：這筆錢是收進平台的，
+      // 訂單在 shop_orders，付款成功由 callback 呼叫 shop_order_mark_paid 入帳
+      const orderId = Math.max(0, Math.floor(Number(orderIdRaw) || 0))
+      if (!orderId) return NextResponse.json({ error: 'Invalid orderId' }, { status: 400 })
+
+      const { data: order, error: orderErr } = await supabase
+        .from('shop_orders')
+        .select('id, buyer_id, total_amount, payment_status, order_number')
+        .eq('id', orderId)
+        .single()
+      if (orderErr) throw orderErr
+
+      // 只能替自己的訂單產生付款表單
+      if (String((order as any)?.buyer_id || '') !== user.id)
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+      if (String((order as any)?.payment_status || '') === 'paid')
+        return NextResponse.json({ error: '這筆訂單已經付款了' }, { status: 400 })
+
+      orderNumber = String((order as any)?.order_number || '')
+      if (!orderNumber) return NextResponse.json({ error: 'Order number missing' }, { status: 400 })
+
+      amt = Math.max(0, Math.floor(Number((order as any)?.total_amount) || 0))
+      if (!amt) return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
+
+      itemName = `吉吉比官方商城 ${orderNumber}`
+      clientBackUrl = `${FrontendUrl}/shop-orders/${orderId}`
     } else if (kind === 'sell_escrow') {
       const orderId = Math.max(0, Math.floor(Number(orderIdRaw) || 0))
       if (!orderId) return NextResponse.json({ error: 'Invalid orderId' }, { status: 400 })
