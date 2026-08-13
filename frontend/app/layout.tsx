@@ -139,9 +139,10 @@ export default async function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@200..900&family=Tilt+Warp&display=swap"
         />
 
-        {/* 只有特定頁面用得到的三套，改成不擋渲染：
+        {/* 只有特定頁面用得到的四套，改成不擋渲染：
             先以 media="print" 下載（瀏覽器不會為了它延後繪製），載完再切回 all。
-            Inter／Noto Sans JP 只有排行榜、Noto Serif HK 只有抽卡對戰特效在用，
+            Inter／Noto Sans JP 只有排行榜、Noto Serif HK 只有抽卡對戰特效、
+            Oswald 只有商城的金額數字在用，
             為了它們讓每一頁都慢下來不划算。（Noto Sans SC 全站沒用到，已移除）
 
             這個 <link> 刻意用 script 建，不放進 React 的樹裡：
@@ -152,7 +153,7 @@ export default async function RootLayout({
             元素不由 React 管，就沒有這個比對。 */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var l=document.createElement('link');l.rel='stylesheet';l.media='print';l.href='https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,700;1,700&family=Noto+Sans+JP:wght@400;500;700;800;900&family=Noto+Serif+HK:wght@200..900&display=swap';l.onload=function(){l.media='all'};document.head.appendChild(l)})()`,
+            __html: `(function(){var l=document.createElement('link');l.rel='stylesheet';l.media='print';l.href='https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,700;1,700&family=Noto+Sans+JP:wght@400;500;700;800;900&family=Noto+Serif+HK:wght@200..900&family=Oswald:wght@500;600&display=swap';l.onload=function(){l.media='all'};document.head.appendChild(l)})()`,
           }}
         />
 

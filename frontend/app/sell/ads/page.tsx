@@ -1,5 +1,7 @@
 'use client';
 
+import '../market.css';
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
@@ -7,17 +9,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { useFeatureGate } from '@/lib/useFeatureGate';
-import { cn } from '@/lib/utils';
+import MarketTabBar from '@/components/sell/MarketTabBar';
 
 /*
- * 廣告中心 —— 賣家花 G幣買曝光。
+ * 廣告中心 —— 版型照原型（docs/prototypes/ggb-market-taobao_1.html 的
+ * adCenter() / adBuy()），class 名稱與結構照抄，樣式在 ../market.css。
  *
  * 只列 self_serve 的版位。供應商版位（官方頁那幾個）不會出現在這裡，
- * 而且就算有人自己打 RPC 也會被 DB 的 sell_ad_purchase() 擋掉 ——
+ * 就算有人自己打 RPC 也會被 DB 的 sell_ad_purchase() 擋掉 ——
  * 那是公司對公司的生意，價格要談，不能自助下單。
  *
- * 席次與報價一律問 DB：sell_ad_availability / sell_ad_quote。
- * 折扣規則放在 platform_settings，前台自己算會跟後端對不起來。
+ * 席次與報價一律問 DB（sell_ad_availability / sell_ad_quote）：
+ * 折扣規則在 platform_settings，前台自己算會跟後端對不起來。
  */
 
 type Slot = {
@@ -32,6 +35,19 @@ type Slot = {
 type MyListing = { id: number; title: string };
 
 const DAY_OPTIONS = [1, 3, 7];
+
+// 版位圖示：照原型 SLOT_TYPES 的 ic 路徑
+const SLOT_ICON: Record<string, string> = {
+  feat: 'M12 3l2.4 5 5.6.8-4 3.9 1 5.5L12 15.6 6.9 18.2l1-5.5-4-3.9 5.6-.8z',
+  hero: 'M3 6h18v12H3zM7 18v2h10v-2',
+  kw: 'M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4-4',
+  cat: 'M4 5h7v7H4zM13 5h7v7h-7zM4 14h7v6H4zM13 14h7v6h-7z',
+  topic: 'M5 4h14v16l-7-3-7 3z',
+  done: 'M4 12l5 5L20 6',
+};
+
+const nt = (n: number) => Math.round(n || 0).toLocaleString('zh-TW');
+const mmdd = (iso: string) => iso.slice(5).replace('-', '/');
 
 export default function SellAdsPage() {
   useFeatureGate('sell');
@@ -60,7 +76,6 @@ export default function SellAdsPage() {
     if (!isLoading && !user?.id) router.replace('/login');
   }, [isLoading, router, user?.id]);
 
-  // 版位型錄 + 我的上架中商品 + G幣餘額
   useEffect(() => {
     if (!user?.id) return;
     let cancelled = false;
@@ -92,8 +107,8 @@ export default function SellAdsPage() {
       if (l[0]) setListingId(l[0].id);
       if ((dash as any)?.success) setTokens(Number((dash as any).tokens) || 0);
 
-      // 關鍵字選單借用類別白名單 —— 玩家搜的多半就是這幾個詞，
-      // 另外維護一份清單只會忘記更新
+      // 關鍵字借用類別白名單 —— 玩家搜的多半就是這幾個詞，
+      // 另外維護一份只會忘記更新
       try {
         const parsed = JSON.parse(String((kwRow as any)?.value || '[]'));
         if (Array.isArray(parsed)) setKeywords(parsed.map(String).filter(Boolean));
@@ -106,7 +121,6 @@ export default function SellAdsPage() {
     };
   }, [user?.id]);
 
-  // 席次表
   const loadAvailability = useCallback(async () => {
     if (!slotId) return;
     const { data } = await createClient().rpc('sell_ad_availability', { p_slot_id: slotId, p_days: 7 });
@@ -115,7 +129,7 @@ export default function SellAdsPage() {
       seats_left: Number(r.seats_left) || 0,
     }));
     setAvailability(rows);
-    // 預設挑第一個還有席次的日子，不要停在已額滿的那天
+    // 預設挑第一個還有席次的日子，不要停在已額滿那天
     const first = rows.find((r) => r.seats_left > 0);
     setStartDate((prev) => (prev && rows.some((r) => r.d === prev && r.seats_left > 0) ? prev : first?.d || ''));
   }, [slotId]);
@@ -124,7 +138,6 @@ export default function SellAdsPage() {
     void loadAvailability();
   }, [loadAvailability]);
 
-  // 報價
   useEffect(() => {
     if (!slotId) return;
     let cancelled = false;
@@ -154,7 +167,7 @@ export default function SellAdsPage() {
         showToast(r?.message || '購買失敗', 'plain');
         return;
       }
-      showToast(`已買下 ${slot?.name}，花費 ${Number(r.cost).toLocaleString('zh-TW')}G`, 'plain');
+      showToast(`已買下 ${slot?.name}，花費 ${nt(Number(r.cost))}G`, 'plain');
       setTokens((t) => t - Number(r.cost || 0));
       await loadAvailability();
     } catch (e: any) {
@@ -164,146 +177,114 @@ export default function SellAdsPage() {
     }
   };
 
+  const canBuy =
+    !isBuying && !!slotId && !!listingId && !!startDate && !(slot?.needs_keyword && !keyword) && quote !== null;
+
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-28">
-      <div className="sticky top-0 z-40 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
-        <div className="max-w-3xl mx-auto px-2 h-[57px] flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="p-2 rounded-full text-neutral-700 dark:text-neutral-200"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <h1 className="text-[16px] font-black text-neutral-900 dark:text-white">廣告中心</h1>
-          <span className="ml-auto text-[13px] font-black text-primary">
-            {tokens.toLocaleString('zh-TW')} G
-          </span>
-        </div>
+    <div className="mk min-h-screen pb-[calc(64px+env(safe-area-inset-bottom))]">
+      <div className="hdr plain sticky top-0 z-40 flex items-center gap-2">
+        <button type="button" onClick={() => router.back()} aria-label="返回">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <h1 className="flex-1">廣告中心</h1>
+        <span style={{ fontFamily: 'Oswald, sans-serif', fontWeight: 600, color: '#FF0036', fontSize: 15 }}>
+          {nt(tokens)} G
+        </span>
       </div>
 
-      <div className="max-w-3xl mx-auto px-3 pt-3 space-y-3">
-        {listings.length === 0 && (
-          <div className="rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-4 py-3 text-[12.5px] font-black text-amber-700 dark:text-amber-300 leading-relaxed">
-            你目前沒有上架中的商品。商品要先通過審核並上架，才能買廣告推廣。
+      {listings.length === 0 && (
+        <div className="blk first">
+          <div className="admin">
+            <b>還沒有可以推廣的商品</b>
+            商品要先通過審核並上架，才能買廣告。上架後回到這裡就能選。
           </div>
-        )}
+        </div>
+      )}
 
-        {/* 版位 */}
-        <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 overflow-hidden">
-          <div className="px-4 py-3 text-[14px] font-black text-neutral-900 dark:text-white">選擇版位</div>
-          {slots.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => setSlotId(s.id)}
-              className={cn(
-                'w-full px-4 py-3 flex items-center gap-3 text-left border-t border-neutral-100 dark:border-neutral-800',
-                slotId === s.id && 'bg-primary/5'
-              )}
-            >
-              <span className="flex-1 min-w-0">
-                <span className="block text-[13.5px] font-black text-neutral-900 dark:text-white">{s.name}</span>
-                <span className="block text-[11px] font-black text-neutral-400">{s.description}</span>
-              </span>
-              <span className="text-right shrink-0">
-                <span className="block text-[15px] font-black text-primary">{s.price_per_day}G</span>
-                <span className="block text-[10.5px] font-black text-neutral-400">
-                  ／天 · 每日 {s.seats_per_day} 席
-                </span>
-              </span>
+      {/* ── 版位 ── */}
+      <div className="blk first">
+        <div className="secttl">可購買版位</div>
+        {slots.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            className="slotrow"
+            aria-pressed={slotId === s.id}
+            onClick={() => setSlotId(s.id)}
+            style={slotId === s.id ? { background: '#FFF8F3' } : undefined}
+          >
+            <span className="ic">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#FF6A00" strokeWidth="1.8" strokeLinecap="round">
+                <path d={SLOT_ICON[s.id] || SLOT_ICON.feat} />
+              </svg>
+            </span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <b>{s.name}</b>
+              <small>{s.description}</small>
+            </span>
+            <span className="pr">
+              <span className="n">{nt(s.price_per_day)}G</span>
+              <span className="s">／天 · 每日 {s.seats_per_day} 席</span>
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── 推廣哪一件 ── */}
+      {listings.length > 0 && (
+        <div className="blk">
+          <div className="secttl">推廣哪一件</div>
+          <select
+            className="fin"
+            value={String(listingId ?? '')}
+            onChange={(e) => setListingId(Number(e.target.value) || null)}
+          >
+            {listings.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* ── 檔期 ── */}
+      <div className="blk">
+        <div className="secttl">選擇檔期</div>
+        <div className="days">
+          {availability.map((a) => {
+            const full = a.seats_left <= 0;
+            return (
+              <button
+                key={a.d}
+                type="button"
+                className="day"
+                disabled={full}
+                aria-pressed={startDate === a.d}
+                onClick={() => setStartDate(a.d)}
+              >
+                <div className="dd">{mmdd(a.d)}</div>
+                <div className="ds">{full ? '已額滿' : `剩 ${a.seats_left} 席`}</div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="two" style={{ marginTop: 10 }}>
+          {DAY_OPTIONS.map((n) => (
+            <button key={n} type="button" className="pick" aria-pressed={days === n} onClick={() => setDays(n)}>
+              <span className="ck" />
+              {n} 天{n > 1 && <small>{n === 3 ? '9 折' : '8 折'}</small>}
             </button>
           ))}
         </div>
 
-        {/* 商品 */}
-        {listings.length > 0 && (
-          <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 px-4 py-3">
-            <div className="text-[14px] font-black text-neutral-900 dark:text-white mb-2">推廣哪一件</div>
-            <select
-              value={String(listingId ?? '')}
-              onChange={(e) => setListingId(Number(e.target.value) || null)}
-              className="w-full h-10 bg-neutral-50 dark:bg-neutral-800/60 rounded-xl px-3 text-[13.5px] font-black text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              {listings.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.title}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* 檔期 */}
-        <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 px-4 py-3">
-          <div className="text-[14px] font-black text-neutral-900 dark:text-white mb-2">選擇檔期</div>
-          <div className="grid grid-cols-7 gap-1.5">
-            {availability.map((a) => {
-              const full = a.seats_left <= 0;
-              const active = startDate === a.d;
-              return (
-                <button
-                  key={a.d}
-                  type="button"
-                  disabled={full}
-                  onClick={() => setStartDate(a.d)}
-                  className={cn(
-                    'rounded-xl py-2 text-center transition-colors',
-                    full
-                      ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600'
-                      : active
-                        ? 'bg-primary/10 ring-2 ring-primary text-primary'
-                        : 'bg-neutral-50 dark:bg-neutral-800/60 text-neutral-600 dark:text-neutral-300'
-                  )}
-                >
-                  <span className="block text-[11.5px] font-black">{a.d.slice(5).replace('-', '/')}</span>
-                  <span className="block text-[9px] font-black opacity-70">
-                    {full ? '額滿' : `剩 ${a.seats_left}`}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {DAY_OPTIONS.map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => setDays(n)}
-                className={cn(
-                  'rounded-xl py-2 text-center transition-colors',
-                  days === n
-                    ? 'bg-primary/10 ring-2 ring-primary text-primary'
-                    : 'bg-neutral-50 dark:bg-neutral-800/60 text-neutral-600 dark:text-neutral-300'
-                )}
-              >
-                <span className="block text-[13px] font-black">{n} 天</span>
-                {n > 1 && (
-                  <span className="block text-[10px] font-black opacity-70">{n === 3 ? '9 折' : '8 折'}</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 關鍵字（只有搜尋置頂需要） */}
         {slot?.needs_keyword && (
-          <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 px-4 py-3">
-            <div className="text-[14px] font-black text-neutral-900 dark:text-white mb-2">綁定關鍵字</div>
-            <div className="flex flex-wrap gap-2">
+          <div style={{ marginTop: 14 }}>
+            <div className="secttl">綁定關鍵字</div>
+            <div className="kwchips">
               {keywords.map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setKeyword(k)}
-                  className={cn(
-                    'px-3 py-1.5 rounded-full text-[12.5px] font-black border transition-colors',
-                    keyword === k
-                      ? 'border-primary text-primary bg-primary/5'
-                      : 'border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300'
-                  )}
-                >
+                <button key={k} type="button" className="kw" aria-pressed={keyword === k} onClick={() => setKeyword(k)}>
                   {k}
                 </button>
               ))}
@@ -311,39 +292,24 @@ export default function SellAdsPage() {
           </div>
         )}
 
-        <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 px-4 py-4">
-          <div className="flex items-baseline justify-between">
-            <span className="text-[13px] font-black text-neutral-500">應付</span>
-            <span className="text-[24px] font-black text-primary">
-              {quote === null ? '—' : `${quote.toLocaleString('zh-TW')} G`}
-            </span>
-          </div>
-          <p className="mt-1 text-[11.5px] font-black text-neutral-400">
-            {startDate ? `${startDate.slice(5).replace('-', '/')} 起連續 ${days} 天` : '請先選檔期'}
+        <div className="calcbox">
+          <div className="l">應付</div>
+          <div className="v">{quote === null ? '—' : `${nt(quote)} G`}</div>
+          <div className="s">
+            {startDate ? `${mmdd(startDate)} 起連續 ${days} 天` : '請先選檔期'}
             {slot?.needs_keyword && keyword ? `　關鍵字「${keyword}」` : ''}
-          </p>
+          </div>
         </div>
+
+        <button type="button" className="btn" disabled={!canBuy} onClick={buy}>
+          {isBuying ? '購買中…' : '確認購買'}
+        </button>
+        <button type="button" className="btn2" onClick={() => router.push('/sell/manage')}>
+          回我的賣場
+        </button>
       </div>
 
-      <div className="fixed left-0 right-0 bottom-0 z-40 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        <div className="max-w-3xl mx-auto">
-          <button
-            type="button"
-            disabled={
-              isBuying ||
-              !slotId ||
-              !listingId ||
-              !startDate ||
-              (slot?.needs_keyword && !keyword) ||
-              quote === null
-            }
-            onClick={buy}
-            className="w-full h-12 rounded-2xl bg-primary text-white text-[15px] font-black disabled:opacity-50 active:scale-[0.99] transition-transform"
-          >
-            {isBuying ? '購買中…' : '確認購買'}
-          </button>
-        </div>
-      </div>
+      <MarketTabBar active="me" />
     </div>
   );
 }

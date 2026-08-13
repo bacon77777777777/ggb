@@ -45,13 +45,36 @@ const INNER_SLOTS = [180, 225, 270]      // 內圈：正左 → 斜上 → 正�
 const OUTER_SLOTS = [202.5, 247.5]       // 外圈：補在內圈兩兩之間
 
 /**
+ * 一、兩顆時的例外（老闆指定：「只有兩個或一個的時候也要扇形，要對稱居中」）。
+ *
+ * 固定槽位是為了「開關某個入口時其他顆不要跟著位移」，那個顧慮在三顆以上才成立。
+ * 只剩一顆時擺在正左（180°）會整個貼著畫面左緣、看起來像掉出來；
+ * 兩顆時用 180°+225° 則是偏向一邊，不對稱。
+ *
+ * 所以一、兩顆改成以 225°（正左與正上的中線）為軸對稱展開：
+ *   1 顆 → 225° 正中
+ *   2 顆 → 202.5° / 247.5°，彼此 45°，與三顆時的間距相同（R=84 時 64.3px 不重疊）
+ */
+const SLOTS_BY_COUNT: Record<number, number[]> = {
+  1: [225],
+  2: [202.5, 247.5],
+}
+
+/**
  * 第 index 顆相對主鈕中心的位移。
  *
  * 回傳的是**CSS 座標**（+y 朝下），可以直接餵給 framer-motion 的 x / y。
  * ⚠️ 不要再對 y 取負號：數學角度是 +y 朝上，而 `sin(225°)`、`sin(270°)`
  * 本來就是負的，也就是算出來的 y 已經是「CSS 的往上」。多翻一次就會整排往下噴。
  */
-export function fanOffset(index: number): { x: number; y: number } {
+export function fanOffset(index: number, total?: number): { x: number; y: number } {
+  // 一、兩顆走對稱版位；沒帶 total 時維持舊行為（固定槽位）
+  const special = total !== undefined ? SLOTS_BY_COUNT[total] : undefined
+  if (special) {
+    const rad = (special[index] * Math.PI) / 180
+    return { x: Math.cos(rad) * RADIUS_INNER, y: Math.sin(rad) * RADIUS_INNER }
+  }
+
   const inner = index < INNER_SLOTS.length
   const deg = inner ? INNER_SLOTS[index] : OUTER_SLOTS[index - INNER_SLOTS.length]
   const r = inner ? RADIUS_INNER : RADIUS_OUTER

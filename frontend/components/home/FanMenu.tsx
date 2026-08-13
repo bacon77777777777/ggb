@@ -42,6 +42,14 @@ export interface FanItem {
    * 那個由呼叫端先濾掉，不會傳進來。
    */
   state?: 'on' | 'maintenance';
+  /**
+   * 單顆圖示的垂直微調（px，正數往下）。
+   *
+   * 扇形的座標是幾何算出來的，每一格都在該在的位置；但四張圖的「畫面重心」
+   * 不一樣 —— 商城那張店鋪的主體偏上，擺在同一格會看起來比鄰居高。
+   * 與其去動 fanLayout 的角度（那會連帶影響其他顆），不如只把這張圖往下推。
+   */
+  nudgeY?: number;
 }
 
 export default function FanMenu({ mainIcon, mainIconOpen, items }: {
@@ -104,7 +112,7 @@ export default function FanMenu({ mainIcon, mainIconOpen, items }: {
         {/* 子鈕：絕對定位在主鈕中心，再用 x/y 位移到弧上 */}
         <AnimatePresence>
           {open && fan.map((item, i) => {
-            const { x, y } = fanOffset(i);
+            const { x, y } = fanOffset(i, items.length);
             return (
               <motion.div
                 /* 用 index 當 key：這份清單是寫死的設定、不會重排也不會增刪。
@@ -145,6 +153,7 @@ export default function FanMenu({ mainIcon, mainIconOpen, items }: {
                     width={ITEM_SIZE}
                     height={ITEM_SIZE}
                     className="w-full h-full object-contain drop-shadow-lg select-none"
+                    style={item.nudgeY ? { transform: `translateY(${item.nudgeY}px)` } : undefined}
                     unoptimized
                   />
                 </Link>

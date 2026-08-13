@@ -545,9 +545,18 @@ function NavbarInner() {
   if (/^\/challenge\/[^/]+$/.test(pathname)) return null;
   // 邀請頁用文章內頁式浮動導航（返回＋分享蓋在 hero 上），隱藏全域 Navbar
   if (pathname === '/invite') return null;
-  // 商城首頁自帶橘色 header（logo + 搜尋列，照原型），
-  // 再疊一條全域 Navbar 會變成上下兩個搜尋入口
-  if (pathname === '/sell') return null;
+  /*
+   * 商城整區自成一個 app（老闆指定：「把商城當作新的頁面」）——
+   * 自帶橘色 header 與四格底部導航，照原型移植。
+   * 疊上全域 Navbar 會變成兩個搜尋入口、兩排導航。
+   * 只有 /sell/new（上架表單）例外：那是從商城跳出去的填寫流程，
+   * 需要全域 Navbar 的返回鍵。
+   */
+  if (
+    (pathname === '/sell' || pathname.startsWith('/sell/') || pathname.startsWith('/official/')) &&
+    pathname !== '/sell/new'
+  )
+    return null;
 
   const handleBack = () => {
     // 1. Handle special paths

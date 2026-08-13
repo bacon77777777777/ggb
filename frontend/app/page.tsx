@@ -2011,7 +2011,8 @@ export default function Home() {
       {!isFlagsLoading && (() => {
         const entries = [
           { feature: 'slot',     icon: '/images/menu/4.webp',   label: '機台',     href: '/challenge' },
-          { feature: 'sell',     icon: '/images/menu/2.webp',   label: '商城',     href: '/sell' },
+          // nudgeY: 店鋪那張圖的主體偏上，跟鄰居擺同一格會看起來高一截，往下推 4px
+          { feature: 'sell',     icon: '/images/menu/2.webp',   label: '商城',     href: '/sell', nudgeY: 4 },
           { feature: 'exchange', icon: '/images/menu/3.webp',   label: '卡牌交換', href: '/exchange' },
           { feature: 'market',   icon: '/images/menu/1.webp',   label: '交易所',   href: '/market' },
         ] as const;
@@ -2024,7 +2025,14 @@ export default function Home() {
         const items = entries
           .map(e => ({ ...e, st: flagStates[e.feature] ?? 'on' }))
           .filter(e => e.st !== 'off')
-          .map(e => ({ icon: e.icon, label: e.label, href: e.href, state: e.st as 'on' | 'maintenance' }));
+          .map(e => ({
+            icon: e.icon,
+            label: e.label,
+            href: e.href,
+            state: e.st as 'on' | 'maintenance',
+            // 這個 map 是逐欄挑的，漏掉就等於改了沒效果
+            nudgeY: (e as { nudgeY?: number }).nudgeY,
+          }));
         // 四個入口都關掉時整組不出現 —— 點開空空如也比沒有還怪
         if (items.length === 0) return null;
         return <FanMenu mainIcon="/images/btn.webp" mainIconOpen="/images/btn_close.webp" items={items} />;

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus, Settings, ChevronRight, Package, ClipboardList } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import MarketTabBar from '@/components/sell/MarketTabBar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
@@ -257,7 +258,7 @@ export default function SellManagePage() {
   const formatDate = (raw: string | null) => (raw ? raw.slice(0, 10) : '');
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24 pt-14">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-[calc(64px+env(safe-area-inset-bottom))] pt-14">
       <div className="max-w-7xl mx-auto px-2">
         {dash && (
           <div className="mb-3 rounded-2xl bg-gradient-to-r from-primary to-primary-dark text-white p-4">
@@ -496,6 +497,7 @@ export default function SellManagePage() {
           )}
         </div>
       </div>
-    </div>
+      <MarketTabBar active="me" />
+      </div>
   );
 }

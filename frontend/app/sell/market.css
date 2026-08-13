@@ -168,6 +168,7 @@
 .mk .hslide p { margin: 0; font-size: 10.5px; color: var(--sub); }
 .mk .hprice {
   color: var(--red);
+  font-family: 'Oswald', sans-serif;
   font-weight: 600;
   font-size: 18px;
   margin-top: 3px;
@@ -247,7 +248,7 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.mk .scard .sp { color: var(--red); font-weight: 600; font-size: 14px; margin-top: 2px; }
+.mk .scard .sp { color: var(--red); font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 14px; margin-top: 2px; }
 .mk .mini {
   position: absolute;
   left: 0;
@@ -344,7 +345,7 @@
 }
 .mk .pprice { color: var(--red); display: flex; align-items: baseline; gap: 1px; }
 .mk .pprice i { font-style: normal; font-size: 12px; font-weight: 700; }
-.mk .pprice b { font-weight: 600; font-size: 19px; line-height: 1; }
+.mk .pprice b { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 19px; line-height: 1; }
 .mk .dep {
   margin-left: auto;
   font-size: 10px;
@@ -429,3 +430,210 @@
   border-radius: 50%;
   background: #ff0036;
 }
+
+/* ══════════════════════════════════════════════════════════
+ * 以下為原型的表單／版位／彈層樣式，同樣逐條照抄
+ * （原型行號 105-117、155-187、245-265）
+ * ══════════════════════════════════════════════════════════ */
+
+/* ── 區塊與標題 ── */
+.mk .blk { background: var(--card); padding: 14px 16px; margin-bottom: 8px; }
+.mk .blk.first { margin-top: 0; }
+.mk .secttl {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mk .secttl::before {
+  content: '';
+  width: 3px;
+  height: 13px;
+  border-radius: 2px;
+  background: linear-gradient(var(--tao1), var(--tao2));
+}
+.mk .hint { font-size: 12px; color: var(--sub); line-height: 1.6; margin: 8px 0 0; }
+.mk .hint b { color: var(--red); font-weight: 700; }
+.mk .sumline { font-size: 13px; color: var(--txt); font-weight: 500; margin: 10px 0 0; }
+
+/* ── 版位列 ── */
+.mk .slotrow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.mk .slotrow:last-child { border-bottom: 0; }
+.mk .slotrow .ic {
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  background: #fff4ec;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.mk .slotrow b { font-size: 13.5px; display: block; }
+.mk .slotrow small { font-size: 11px; color: var(--sub); }
+.mk .slotrow .pr { margin-left: auto; text-align: right; flex-shrink: 0; }
+.mk .slotrow .pr .n {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600;
+  color: var(--red);
+  font-size: 15px;
+}
+.mk .slotrow .pr .s { font-size: 10.5px; color: var(--sub); }
+
+/* ── 後台代客開單說明框 ── */
+.mk .admin {
+  background: #f3eee6;
+  border: 1px solid #e3d7c4;
+  border-radius: 8px;
+  padding: 11px 12px;
+  font-size: 11.5px;
+  color: #7a6242;
+  line-height: 1.6;
+}
+.mk .admin b { display: block; color: #4a3524; font-size: 12.5px; margin-bottom: 2px; }
+
+/* ── 關鍵字 ── */
+.mk .kwchips { display: flex; gap: 6px; flex-wrap: wrap; }
+.mk .kw {
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  padding: 6px 11px;
+  font-size: 12.5px;
+  background: #fff;
+}
+.mk .kw[aria-pressed='true'] {
+  border-color: var(--red);
+  color: var(--red);
+  background: #fff4f5;
+  font-weight: 700;
+}
+
+/* ── 表單 ── */
+.mk .f { display: block; font-size: 12.5px; color: var(--sub); margin: 0 0 6px; }
+.mk .fin {
+  width: 100%;
+  background: #f7f7f7;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  padding: 11px;
+  font-size: 14px;
+  color: var(--txt);
+}
+.mk .two { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.mk .pick {
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  padding: 11px;
+  text-align: left;
+  background: #f7f7f7;
+  font-size: 13.5px;
+  font-weight: 500;
+  position: relative;
+}
+.mk .pick[aria-pressed='true'] {
+  border-color: var(--red);
+  background: #fff4f5;
+  color: var(--red);
+  font-weight: 700;
+}
+.mk .pick small {
+  display: block;
+  font-weight: 400;
+  color: var(--sub);
+  font-size: 10.5px;
+  margin-top: 2px;
+}
+.mk .pick .ck {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  border: 1px solid var(--line2);
+  background: #fff;
+}
+.mk .pick[aria-pressed='true'] .ck { background: var(--red); border-color: var(--red); }
+.mk .pick[aria-pressed='true'] .ck::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(42deg);
+}
+
+/* ── 金額試算框 ── */
+.mk .calcbox {
+  background: #fff8f3;
+  border: 1px solid #ffe0cc;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 14px;
+}
+.mk .calcbox .l { font-size: 11.5px; color: #b4884a; }
+.mk .calcbox .v { font-size: 17px; font-weight: 900; color: var(--orange); margin: 2px 0 3px; }
+.mk .calcbox .s { font-size: 11.5px; color: var(--sub); }
+
+/* ── 檔期 ── */
+.mk .days { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin: 0 -2px; }
+.mk .days::-webkit-scrollbar { height: 0; }
+.mk .day {
+  flex: 0 0 72px;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  padding: 8px 4px;
+  text-align: center;
+  background: #fff;
+}
+.mk .day .dd { font-size: 12px; font-weight: 700; }
+.mk .day .ds { font-size: 10.5px; color: #3fa34d; margin-top: 3px; }
+.mk .day[aria-pressed='true'] { border-color: var(--red); background: #fff4f5; color: var(--red); }
+.mk .day[disabled] { opacity: 0.4; }
+.mk .day[disabled] .ds { color: var(--sub); }
+
+/* ── 按鈕 ── */
+.mk .btn {
+  width: 100%;
+  padding: 13px;
+  border-radius: 22px;
+  background: linear-gradient(100deg, var(--tao1), var(--tao2));
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  margin-top: 12px;
+}
+.mk .btn.gold { background: linear-gradient(100deg, #f5c24b, #d89b2c); color: #3a2604; }
+.mk .btn:disabled { opacity: 0.5; }
+.mk .btn2 {
+  width: 100%;
+  padding: 12px;
+  border-radius: 22px;
+  border: 1px solid var(--line2);
+  color: var(--sub);
+  font-weight: 500;
+  font-size: 13.5px;
+  margin-top: 8px;
+  background: #fff;
+}
+
+/* ── 內頁 header（原型的 .hdr.plain）── */
+.mk .hdr.plain {
+  background: var(--card);
+  color: var(--txt);
+  border-bottom: 1px solid var(--line);
+  padding: 14px 16px;
+}
+.mk .hdr.plain h1 { font-size: 17px; font-weight: 700; margin: 0; text-align: center; }
