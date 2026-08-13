@@ -2027,7 +2027,7 @@ export default function Home() {
           .map(e => ({ icon: e.icon, label: e.label, href: e.href, state: e.st as 'on' | 'maintenance' }));
         // 四個入口都關掉時整組不出現 —— 點開空空如也比沒有還怪
         if (items.length === 0) return null;
-        return <FanMenu mainIcon="/images/btn.webp" items={items} />;
+        return <FanMenu mainIcon="/images/btn.webp" mainIconOpen="/images/btn_close.webp" items={items} />;
       })()}
 
       <PromoPopup placement="home" />
