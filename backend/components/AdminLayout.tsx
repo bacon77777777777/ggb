@@ -618,6 +618,10 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     // 商城設定與檢舉沿用 sell 權限：能管商品的人就能處理糾紛與改規則，不另外開權限碼
     '/sell/settings': 'sell',
     '/sell/reports': 'sell',
+    // 官方商品／廣告版位／保證金同理，都是商城這條線的管理動作
+    '/shop-products': 'sell',
+    '/sell/ads': 'sell',
+    '/sell/deposits': 'sell',
     // 交換
     '/exchange': 'exchange',
     '/exchange-orders': 'exchange_orders',
@@ -756,7 +760,10 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         title: '商城',
         items: [
           { name: '商城商品', path: '/sell', icon: IconStorefront },
+          { name: '官方商品', path: '/shop-products', icon: IconStorefront },
           { name: '商城訂單', path: '/sell-orders', icon: IconClipboard },
+          { name: '廣告版位', path: '/sell/ads', icon: IconSliders },
+          { name: '保證金', path: '/sell/deposits', icon: IconClipboard },
           { name: '商城檢舉', path: '/sell/reports', icon: IconAlert },
           { name: '商城設定', path: '/sell/settings', icon: IconSliders },
         ],

@@ -276,7 +276,9 @@ export default function SellPage() {
                   href={`/sell/${r.id}`}
                   className="bg-white dark:bg-neutral-900 rounded-xl overflow-hidden flex flex-col active:opacity-85"
                 >
-                  <div className="relative aspect-square bg-neutral-100 dark:bg-neutral-800">
+                  {/* overflow-hidden 是必要的：圖片 404 時瀏覽器會改顯示 alt 文字，
+                      沒有裁切就會撐破整張卡片的版面 */}
+                  <div className="relative aspect-square overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                     <Image src={firstImage(r)} alt={r.title} fill className="object-cover" />
                     <span
                       className={cn(
