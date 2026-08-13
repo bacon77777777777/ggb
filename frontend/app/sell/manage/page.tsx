@@ -48,14 +48,6 @@ type MyListing = {
   view_count: number;
 };
 
-const ST: Record<string, [string, string]> = {
-  active: ['上架中', '#3FA34D'],
-  pending: ['待審核', '#E08B2C'],
-  rejected: ['已退回', '#FF0036'],
-  sold: ['已售出', '#8C8C8C'],
-  removed: ['已下架', '#8C8C8C'],
-};
-
 const nt = (n: number) => Math.round(n || 0).toLocaleString('zh-TW');
 
 const pickImage = (l: MyListing) => {
@@ -280,7 +272,6 @@ export default function SellManagePage() {
           </p>
         ) : (
           rows.map((l) => {
-            const st = ST[l.status] || ['處理中', '#8C8C8C'];
             const deposit = Math.ceil((l.price * (dash?.tier.ratio ?? 100)) / 100);
             return (
               <div key={l.id} className="mrowi">
@@ -288,12 +279,13 @@ export default function SellManagePage() {
                   <Image src={pickImage(l)} alt={l.title} fill style={{ objectFit: 'cover' }} sizes="52px" />
                 </div>
                 <div className="mmeta">
-                  <div className="mt">
-                    {l.title}
-                    <span className="stpill" style={{ color: st[1] }}>
-                      {st[0]}
-                    </span>
-                  </div>
+                  {/*
+                    原本標題後面接一個狀態徽章（.stpill，原型也有），但 .mt 是
+                    line-clamp:1 —— 站上的商品名比原型的假資料長得多，徽章一律被切成
+                    「上…」。狀態本來就看得出來（右側按鈕：下架/推廣=上架中、
+                    審核中=待審、下方會顯示退回原因），拿掉不會少資訊。
+                  */}
+                  <div className="mt">{l.title}</div>
                   <div className="mp">NT${nt(l.price)}</div>
                   <div className="ms">
                     {l.shipping_fee ? `運費 ${nt(l.shipping_fee)}` : '免運費'} · 庫存 {stockOf(l)} · 瀏覽{' '}

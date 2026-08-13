@@ -213,6 +213,14 @@ export default function OrderSheet({
                         <span>應付金額</span>
                         <span style={{ color: 'var(--red)', fontWeight: 700 }}>NT${nt(order.amount)}</span>
                       </div>
+                      <button
+                        type="button"
+                        className="btn"
+                        disabled={busy}
+                        onClick={() => call('sell_order_mark_paid', '已回報匯款，等賣家確認')}
+                      >
+                        我已完成匯款
+                      </button>
                     </div>
                   )}
                 </>
@@ -223,7 +231,11 @@ export default function OrderSheet({
                   <div className="kv">
                     <span>賣家保證金</span>
                     <span style={{ color: order.step >= 5 ? '#3FA34D' : 'var(--red)' }}>
-                      {order.step >= 5 ? '已退還' : `鎖定中 ${nt(order.depositAmount!)}G`}
+                      {order.step >= 5
+                        ? '已退還'
+                        : order.step === 1
+                          ? `已收 ${nt(order.depositAmount!)}G`
+                          : `鎖定中 ${nt(order.depositAmount!)}G`}
                     </span>
                   </div>
                   {order.step === 3 && (
@@ -289,11 +301,6 @@ export default function OrderSheet({
             </>
           )}
 
-          <div className="blk">
-            <a className="btn2" href={`/sell-orders/${order.id}`} style={{ display: 'block', textAlign: 'center' }}>
-              查看完整訂單頁 ›
-            </a>
-          </div>
         </>
       )}
     </MarketSheet>
