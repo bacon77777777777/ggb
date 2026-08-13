@@ -2010,7 +2010,7 @@ export default function Home() {
       */}
       {!isFlagsLoading && (() => {
         const entries = [
-          { feature: 'slot',     icon: '/images/topbar/6b.png', label: '機台',     href: '/challenge' },
+          { feature: 'slot',     icon: '/images/menu/4.webp',   label: '機台',     href: '/challenge' },
           { feature: 'sell',     icon: '/images/menu/2.webp',   label: '販售',     href: '/sell' },
           { feature: 'exchange', icon: '/images/menu/3.webp',   label: '卡牌交換', href: '/exchange' },
           { feature: 'market',   icon: '/images/menu/1.webp',   label: '交易所',   href: '/market' },

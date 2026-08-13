@@ -225,6 +225,12 @@ STG 停在舊版，壞掉時不出聲。migration 551 補齊，實測已寫得�
 只有上架開關。用 `ListTableCard` 的 `summaryRow`（置頂且排序時不會被打亂），
 並加了 `summaryRowWhenEmpty` —— 清單空的時候也要在，不然唯一的開關會跟著消失。
 
+### ⑦ 挑戰入口換成專屬圖
+
+原本沿用挑戰頁自己的 `/images/topbar/6b.png`（那是為別的版位做的），
+換成老闆給的 `menu/4.webp`（「挑戰機台」，200×200 去背，68KB → 17KB）。
+四顆子鈕的圖到此到齊：交易所／商城（販售）／交換／挑戰機台。
+
 ### ⚠️ migration 編號撞號
 
 540～542 我原本編的號碼，跟另一台電腦已經推上來的 `540_achievement_wording_unify`
