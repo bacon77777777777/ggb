@@ -1,350 +1,380 @@
 'use client';
 
 import Image from 'next/image';
-import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { RefreshCw, Search, X } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import { cn } from '@/lib/utils';
 
-type UserDisplayRow = {
-  id: string;
-  name: string | null;
-  avatar_url: string | null;
-};
+/*
+ * 商城首頁 —— 玩家商城（C2C）與官方商城（B2C）兩個分頁。
+ *
+ * 資料一律走 `sell_feed` RPC，不在這裡自己拼查詢：一張卡片要顯示
+ * 賣家暱稱、等級、保證金、是否為廣告，各自查會變成 4 趟往返，
+ * 而保證金要照賣家等級比例算，那個規則放在 DB 才不會跟前台算出兩種答案。
+ *
+ * 分頁切換不寫進 URL：這頁是逛街動線，切分頁就是換一批貨，
+ * 不是「可分享的狀態」，塞進網址只會讓返回鍵變得難以預期。
+ */
 
-type SaleListing = {
-  id: string;
-  seller: { id: string; name: string; avatar: string };
-  createdAt: string;
+type FeedRow = {
+  id: number;
+  title: string;
   price: number;
-  product: {
-    name: string;
-    series: string;
-    grade: string;
-    image: string;
-  };
+  shipping_fee: number;
+  category: string | null;
+  images: string[] | null;
+  items: unknown;
+  created_at: string;
+  sold_count: number;
+  seller_id: string;
+  seller_name: string;
+  seller_avatar: string | null;
+  tier_name: string | null;
+  tier_key: number | null;
+  success_rate: number | null;
+  deposit: number;
+  is_pro: boolean;
+  ad_slots: string[] | null;
 };
 
-const formatTwd = (amount: number) => `NT$${Math.round(amount).toLocaleString()}`;
+const PAGE_SIZE = 20;
 
-export default function SellListPage() {
-  /*
-   * 這一頁原本**完全沒有擋** —— 功能在後台關掉之後，
-   * 首頁入口雖然不見了，直接打網址或用舊書籤還是進得來。
-   * 關閉與維護中都直接 404（見 lib/useFeatureGate）。
-   */
+// 與 platform_settings.sell_category_whitelist 一致；
+// 前台多一個「全部」，值為空字串代表不篩
+const CATEGORIES = [
+  { key: '', label: '全部' },
+  { key: '一番賞', label: '一番賞' },
+  { key: '盒玩', label: '盒玩' },
+  { key: '轉蛋', label: '轉蛋' },
+  { key: '卡牌', label: '卡牌' },
+  { key: '公仔模型', label: '公仔' },
+  { key: '周邊商品', label: '周邊' },
+];
+
+const firstImage = (row: FeedRow) => {
+  const imgs = Array.isArray(row.images) ? row.images.filter(Boolean) : [];
+  if (imgs[0]) return imgs[0];
+  const items = Array.isArray(row.items) ? (row.items as Record<string, unknown>[]) : [];
+  const fromItem = items.map((x) => String(x?.image || '').trim()).filter(Boolean)[0];
+  return fromItem || '/images/item_defaulet.webp';
+};
+
+const nt = (n: number) => Math.round(n || 0).toLocaleString('zh-TW');
+
+export default function SellPage() {
   useFeatureGate('sell');
 
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const queryFromUrl = useMemo(() => (searchParams?.get('search') || '').trim(), [searchParams]);
-  const [query, setQuery] = useState(queryFromUrl);
-
-  const [listings, setListings] = useState<SaleListing[]>([]);
+  const [tab, setTab] = useState<'market' | 'official'>('market');
+  const [category, setCategory] = useState('');
+  const [rows, setRows] = useState<FeedRow[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
+  // 換分頁或換分類 = 換一批貨，已載入的要整批丟掉重來
   useEffect(() => {
-    setQuery(queryFromUrl);
-  }, [queryFromUrl]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const t = window.setTimeout(() => {
-      const trimmed = query.trim();
-      const next = new URLSearchParams(searchParams?.toString());
-      if (trimmed) next.set('search', trimmed);
-      else next.delete('search');
-      const qs = next.toString();
-      router.replace(qs ? `/sell?${qs}` : '/sell');
-    }, 500);
-    return () => window.clearTimeout(t);
-  }, [query, router, searchParams]);
+    setRows([]);
+    setPage(0);
+    setHasMore(true);
+    setIsLoading(true);
+  }, [tab, category]);
 
   useEffect(() => {
     let cancelled = false;
-    const run = async () => {
-      if (page === 0) setIsLoading(true);
-      else setIsFetchingMore(true);
+    (async () => {
+      if (page > 0) setIsFetchingMore(true);
       try {
-        const pageSize = 20;
-        const from = page * pageSize;
-        const to = from + pageSize - 1;
         const supabase = createClient();
-        const { data: rows, error } = await supabase
-          .from('sell_listings')
-          .select(
-            `
-              id,
-              seller_id,
-              price,
-              status,
-              created_at,
-              title,
-              images,
-              items
-            `
-          )
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-          .range(from, to);
-
+        const { data, error } = await supabase.rpc('sell_feed', {
+          p_official: tab === 'official',
+          p_category: category || null,
+          p_search: null,
+          p_limit: PAGE_SIZE,
+          p_offset: page * PAGE_SIZE,
+        });
+        if (cancelled) return;
         if (error) throw error;
 
-        const sellerIds = Array.from(
-          new Set((rows || []).map((r: any) => String(r?.seller_id || '')).filter(Boolean))
-        );
-
-        const displayById = new Map<string, { name: string; avatar: string }>();
-        if (sellerIds.length > 0) {
-          const { data: displays, error: displayError } = await supabase.rpc('get_user_displays', { p_ids: sellerIds });
-          if (!displayError && Array.isArray(displays)) {
-            for (const d of displays as unknown as UserDisplayRow[]) {
-              const id = String(d?.id || '');
-              if (!id) continue;
-              displayById.set(id, {
-                name: (d.name || 'user').toString(),
-                avatar: (d.avatar_url || '/images/avatar.webp').toString(),
-              });
-            }
-          }
+        const list = (data || []) as FeedRow[];
+        setRows((prev) => (page === 0 ? list : [...prev, ...list]));
+        setHasMore(list.length === PAGE_SIZE);
+      } catch (err) {
+        if (!cancelled) {
+          console.error('sell_feed failed:', err);
+          setHasMore(false);
         }
-
-        const mapped = (rows || []).map((r: any): SaleListing => {
-          const sellerId = String(r?.seller_id || '');
-          const d = displayById.get(sellerId);
-          const title = String(r?.title || '').trim();
-          const rawImages = r?.images ?? r?.image_urls ?? r?.imageUrls ?? null;
-          const imageCandidates: string[] = Array.isArray(rawImages)
-            ? rawImages.map((x: any) => String(x || '').trim()).filter(Boolean)
-            : [];
-          const rawItems = r?.items ?? [];
-          const items = Array.isArray(rawItems)
-            ? rawItems.map((x: any) => ({
-                name: String(x?.name || '').trim(),
-                series: String(x?.series || '').trim(),
-                grade: String(x?.grade || '').trim(),
-                image: String(x?.image || '').trim(),
-                price: Number(x?.price || 0),
-              }))
-            : [];
-          const firstItemImage = items.map((x: any) => x.image).filter(Boolean)[0] || '';
-          const mainImage = (imageCandidates[0] || firstItemImage || '/images/item_defaulet.webp') as string;
-          const itemPrices = items.map((x: any) => Number(x?.price || 0)).filter((n: number) => Number.isFinite(n) && n > 0);
-          const minPrice = itemPrices.length > 0 ? Math.min(...itemPrices) : Number(r?.price || 0);
-          return {
-            id: String(r?.id || ''),
-            seller: {
-              id: sellerId,
-              name: d?.name || 'user',
-              avatar: d?.avatar || '/images/avatar.webp',
-            },
-            createdAt: String(r?.created_at || ''),
-            price: minPrice,
-            product: {
-              name: title || (items[0]?.name ? String(items[0].name) : '商城商品'),
-              grade: items[0]?.grade ? String(items[0].grade) : '',
-              series: items[0]?.series ? String(items[0].series) : '',
-              image: mainImage,
-            },
-          };
-        });
-
-        const nextHasMore = mapped.length === pageSize;
-        if (cancelled) return;
-        setHasMore(nextHasMore);
-        setListings((prev) => (page === 0 ? mapped : [...prev, ...mapped]));
-      } catch (e) {
-        console.error('Failed to load sell listings:', e);
-        if (!cancelled && page === 0) setListings([]);
-        if (!cancelled) setHasMore(false);
       } finally {
-        if (cancelled) return;
-        setIsLoading(false);
-        setIsFetchingMore(false);
+        if (!cancelled) {
+          setIsLoading(false);
+          setIsFetchingMore(false);
+        }
       }
-    };
-    run();
+    })();
     return () => {
       cancelled = true;
     };
-  }, [page, reloadKey]);
+  }, [tab, category, page]);
 
   useEffect(() => {
-    if (!hasMore) return;
-    if (isLoading) return;
-    if (isFetchingMore) return;
-    const node = sentinelRef.current;
-    if (!node) return;
+    const el = sentinelRef.current;
+    if (!el || !hasMore || isLoading || isFetchingMore) return;
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries.some((e) => e.isIntersecting)) setPage((p) => p + 1);
+        if (entries[0]?.isIntersecting) setPage((p) => p + 1);
       },
-      { rootMargin: '600px 0px' }
+      { rootMargin: '400px' }
     );
-    io.observe(node);
+    io.observe(el);
     return () => io.disconnect();
-  }, [hasMore, isFetchingMore, isLoading]);
+  }, [hasMore, isLoading, isFetchingMore]);
 
-  const filteredListings = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return listings;
-    return listings.filter((l) => {
-      if (l.seller.name.toLowerCase().includes(q)) return true;
-      if (l.product.name.toLowerCase().includes(q)) return true;
-      if (l.product.series.toLowerCase().includes(q)) return true;
-      return false;
-    });
-  }, [listings, query]);
+  // 輪播吃 hero / b_hero 版位。沒人買廣告就整塊不出現 ——
+  // 拿「最新商品」硬湊會讓賣廣告這件事失去意義
+  const heroSlot = tab === 'official' ? 'b_hero' : 'hero';
+  const heroItems = useMemo(
+    () => rows.filter((r) => (r.ad_slots || []).includes(heroSlot)).slice(0, 5),
+    [rows, heroSlot]
+  );
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24 transition-colors">
-      <div className="fixed top-0 left-0 right-0 z-[100] bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 md:hidden">
-        <div className="max-w-7xl mx-auto px-2 relative">
-          <div className="flex items-center gap-3 h-[57px]">
-            <div className="text-[18px] font-black text-neutral-900 dark:text-white">商城</div>
-            <form
-              className="flex-1 flex items-center gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-              }}
-            >
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="搜尋商城"
-                  className={cn(
-                    "w-full h-9 rounded-full pl-9 pr-9 text-[13px] font-black",
-                    "bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-white",
-                    "border border-neutral-100 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  )}
-                />
-                {!!query.trim() && (
-                  <button
-                    type="button"
-                    onClick={() => setQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
+    <div className="min-h-screen bg-neutral-100 dark:bg-neutral-950 pb-24">
+      {/* ── 頂部：搜尋 + 分頁 ── */}
+      <div className="sticky top-0 z-40 bg-gradient-to-r from-primary to-primary-dark">
+        <div className="max-w-7xl mx-auto px-3 pt-3">
+          <button
+            type="button"
+            onClick={() => router.push('/search?focus=1')}
+            className="w-full h-9 rounded-full bg-white dark:bg-neutral-900 flex items-center gap-2 pl-3 pr-1"
+          >
+            <Search className="w-4 h-4 text-neutral-400 shrink-0" />
+            <span className="flex-1 text-left text-[13px] font-black text-neutral-400 truncate">
+              {tab === 'official' ? '搜尋官方商城商品' : '搜尋一番賞、盒玩、卡牌'}
+            </span>
+            <span className="shrink-0 h-7 px-3 grid place-items-center rounded-full bg-primary text-white text-[12px] font-black">
+              搜尋
+            </span>
+          </button>
+
+          <div className="flex items-center gap-5 mt-2.5">
+            {(
+              [
+                ['market', '玩家商城'],
+                ['official', '官方商城'],
+              ] as const
+            ).map(([key, label]) => (
               <button
+                key={key}
                 type="button"
-                onClick={() => {
-                  setPage(0);
-                  setHasMore(true);
-                  setListings([]);
-                  setReloadKey((k) => k + 1);
-                }}
-                className="w-9 h-9 rounded-full grid place-items-center bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700 text-neutral-500 active:scale-95 transition-transform"
+                onClick={() => setTab(key)}
+                className={cn(
+                  'relative pb-2 text-[15px] font-black transition-colors',
+                  tab === key ? 'text-white' : 'text-white/60'
+                )}
               >
-                <RefreshCw className="w-4 h-4" />
+                {label}
+                {tab === key && (
+                  <span className="absolute left-1/2 -translate-x-1/2 bottom-0 w-6 h-[3px] rounded-full bg-white" />
+                )}
               </button>
-            </form>
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="pt-[57px] md:pt-6 max-w-7xl mx-auto px-2">
-        <div className="hidden md:flex items-center gap-3 mb-4">
-          <div className="text-[22px] font-black text-neutral-900 dark:text-white">商城</div>
-          <form className="flex-1 flex items-center gap-2" onSubmit={(e) => e.preventDefault()}>
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="搜尋商城"
-                className={cn(
-                  "w-full h-10 rounded-full pl-10 pr-10 text-[13px] font-black",
-                  "bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white",
-                  "border border-neutral-200 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                )}
-              />
-              {!!query.trim() && (
-                <button
-                  type="button"
-                  onClick={() => setQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+      <div className="max-w-7xl mx-auto">
+        {/* ── 分類 ── */}
+        <div className="bg-white dark:bg-neutral-900 px-1 py-3 flex overflow-x-auto">
+          {CATEGORIES.map((c) => (
             <button
+              key={c.key || 'all'}
               type="button"
-              onClick={() => {
-                setPage(0);
-                setHasMore(true);
-                setListings([]);
-                setReloadKey((k) => k + 1);
-              }}
-              className="h-10 px-3 rounded-full grid place-items-center bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 active:scale-95 transition-transform"
+              onClick={() => setCategory(c.key)}
+              className={cn(
+                'flex-1 min-w-[62px] text-[11.5px] font-black transition-colors',
+                category === c.key ? 'text-primary' : 'text-neutral-600 dark:text-neutral-300'
+              )}
             >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          </form>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-4">
-          {isLoading && listings.length === 0 ? (
-            <div className="py-20 text-center text-[13px] font-black text-neutral-400">載入中</div>
-          ) : filteredListings.length > 0 ? (
-            filteredListings.map((l) => (
-              <div
-                key={l.id}
-                className="text-left bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm hover:shadow-md transition-shadow active:scale-[0.99]"
+              <span
+                className={cn(
+                  'mx-auto mb-1.5 w-10 h-10 rounded-full grid place-items-center text-[15px]',
+                  category === c.key
+                    ? 'bg-primary/10 ring-2 ring-primary'
+                    : 'bg-neutral-100 dark:bg-neutral-800'
+                )}
               >
-                <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-neutral-100 dark:border-neutral-800">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="relative w-8 h-8 rounded-full overflow-hidden bg-neutral-100 dark:bg-neutral-800 shrink-0">
-                      <Image src={l.seller.avatar} alt={l.seller.name} fill className="object-cover" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-[13px] font-black text-neutral-900 dark:text-white truncate">@{l.seller.name}</div>
-                    </div>
-                  </div>
-                  <div className="text-[12px] font-black text-neutral-400 dark:text-neutral-500">
-                    {l.createdAt ? new Date(l.createdAt).toLocaleDateString('zh-TW') : ''}
-                  </div>
-                </div>
-
-                <div className="px-4 py-3 flex items-center gap-3">
-                  <div className="relative w-[64px] shrink-0 aspect-[5/7] rounded-2xl overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                    <Image src={l.product.image} alt={l.product.name} fill className="object-contain" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[14px] font-black text-neutral-900 dark:text-white truncate">{l.product.name}</div>
-                    <div className="text-[12px] font-black text-neutral-400 dark:text-neutral-500 truncate">
-                      {[l.product.series, l.product.grade].filter(Boolean).join(' · ')}
-                    </div>
-                    <div className="mt-2 text-[15px] font-black text-primary">{formatTwd(l.price)}</div>
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="py-20 text-center text-[13px] font-black text-neutral-400">目前沒有商品</div>
-          )}
+                {c.label.slice(0, 1)}
+              </span>
+              {c.label}
+            </button>
+          ))}
         </div>
 
-        {hasMore && (
+        {/* ── 廣告輪播 ── */}
+        {heroItems.length > 0 && (
+          <div className="mx-2.5 mt-2 rounded-xl overflow-hidden bg-white dark:bg-neutral-900 relative">
+            <span className="absolute left-0 top-0 z-10 bg-black/40 text-white text-[8.5px] px-1.5 py-0.5 rounded-br-md">
+              廣告
+            </span>
+            <div className="flex overflow-x-auto snap-x snap-mandatory">
+              {heroItems.map((it) => (
+                <Link
+                  key={it.id}
+                  href={`/sell/${it.id}`}
+                  className="snap-start shrink-0 w-full flex items-stretch h-[100px]"
+                >
+                  <span className="relative w-[100px] shrink-0 bg-neutral-100 dark:bg-neutral-800">
+                    <Image src={firstImage(it)} alt={it.title} fill className="object-cover" />
+                  </span>
+                  <span className="flex-1 min-w-0 p-3">
+                    <span className="block text-[13px] font-black line-clamp-2 text-neutral-900 dark:text-white">
+                      {it.title}
+                    </span>
+                    <span className="block mt-1 text-[10.5px] font-black text-neutral-400">
+                      {it.seller_name} · 已售 {it.sold_count}
+                    </span>
+                    <span className="block mt-0.5 text-[17px] font-black text-primary">
+                      NT${nt(it.price)}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── 瀑布流 ── */}
+        {isLoading ? (
+          <div className="py-24 text-center text-[13px] font-black text-neutral-400">載入中</div>
+        ) : rows.length === 0 ? (
+          <div className="py-24 text-center">
+            <p className="text-[13px] font-black text-neutral-400">
+              {tab === 'official' ? '官方商城還沒有商品' : '目前沒有商品'}
+            </p>
+            {tab === 'market' && (
+              <Link
+                href="/sell/new"
+                className="inline-block mt-3 px-4 py-2 rounded-full bg-primary text-white text-[13px] font-black"
+              >
+                來當第一個賣家
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 px-2.5 pt-2">
+            {rows.map((r) => {
+              const isAd = (r.ad_slots || []).length > 0;
+              return (
+                <Link
+                  key={r.id}
+                  href={`/sell/${r.id}`}
+                  className="bg-white dark:bg-neutral-900 rounded-xl overflow-hidden flex flex-col active:opacity-85"
+                >
+                  <div className="relative aspect-square bg-neutral-100 dark:bg-neutral-800">
+                    <Image src={firstImage(r)} alt={r.title} fill className="object-cover" />
+                    <span
+                      className={cn(
+                        'absolute left-0 top-0 text-white text-[10px] font-black px-1.5 py-0.5 rounded-br-lg',
+                        tab === 'official' ? 'bg-neutral-900' : 'bg-primary'
+                      )}
+                    >
+                      {tab === 'official' ? '官方' : '玩家'}
+                    </span>
+                    {isAd && (
+                      <span className="absolute right-0 top-0 bg-black/40 text-white text-[8.5px] px-1.5 py-0.5 rounded-bl-md">
+                        廣告
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="p-2">
+                    <p className="text-[12.5px] font-black leading-snug line-clamp-2 text-neutral-900 dark:text-white">
+                      {r.title}
+                    </p>
+
+                    <div className="mt-1.5 flex items-baseline gap-1">
+                      <span className="text-[10px] font-black text-primary">NT$</span>
+                      <span className="text-[17px] font-black text-primary leading-none">
+                        {nt(r.price)}
+                      </span>
+                      <span className="ml-auto text-[10px] font-black text-neutral-400">
+                        {r.shipping_fee ? `運費 ${r.shipping_fee}` : '免運'}
+                      </span>
+                    </div>
+
+                    {tab === 'official' ? (
+                      <p className="mt-1.5 text-[10.5px] font-black text-neutral-400">
+                        官方出貨 · 已售 {r.sold_count}
+                      </p>
+                    ) : (
+                      <>
+                        <div className="mt-1.5 flex items-center gap-1 min-w-0">
+                          <span className="relative w-4 h-4 rounded-full overflow-hidden bg-neutral-200 dark:bg-neutral-700 shrink-0">
+                            <Image
+                              src={r.seller_avatar || '/images/avatar.webp'}
+                              alt={r.seller_name}
+                              fill
+                              className="object-cover"
+                            />
+                          </span>
+                          <span className="text-[10.5px] font-black text-neutral-500 truncate">
+                            {r.seller_name}
+                          </span>
+                          {r.tier_name && (
+                            <span
+                              className={cn(
+                                'shrink-0 text-[9px] font-black px-1 py-px rounded',
+                                r.tier_key === 3
+                                  ? 'bg-amber-100 text-amber-700'
+                                  : r.tier_key === 2
+                                    ? 'bg-neutral-200 text-neutral-600'
+                                    : 'bg-orange-100 text-orange-600'
+                              )}
+                            >
+                              {r.tier_name}
+                            </span>
+                          )}
+                        </div>
+                        {/* 買家最在意「賣家跑了我拿得回什麼」，所以保證金放在卡片上 */}
+                        <p className="mt-1 text-[9.5px] font-black text-primary/80">
+                          保證金 {nt(r.deposit)}G
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+
+        {hasMore && !isLoading && (
           <div ref={sentinelRef} className="py-8 text-center text-[12px] font-black text-neutral-400">
             {isFetchingMore ? '載入中' : '載入更多'}
           </div>
         )}
       </div>
 
+      {/*
+        上架入口。原本只長在首頁的「商城」分頁上，而懸浮選單的商城圖示是連到
+        這一頁，於是從那顆點進來的人永遠找不到地方上架（2026-08-13 發現）。
+        官方分頁不放 —— 那是平台自己的貨。
+      */}
+      {tab === 'market' && (
+        <Link
+          href="/sell/new"
+          aria-label="上架商品"
+          className="fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-40 w-12 h-12 rounded-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 grid place-items-center active:scale-95 transition-transform shadow-lg"
+        >
+          <Plus className="w-6 h-6 stroke-[2]" />
+        </Link>
+      )}
     </div>
   );
 }
