@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import MarketTabBar, { type MarketTab } from '@/components/sell/MarketTabBar';
@@ -318,7 +319,19 @@ export default function SellPage() {
       {/* ── header ── */}
       <div className="hdr sticky top-0 z-40">
         <div className="srch">
-          <span className="logo">吉吉比</span>
+          {/*
+            返回鍵回首頁而不是 router.back()：商城是從首頁的懸浮選單進來的一區，
+            back() 會把人丟回上一個瀏覽紀錄（可能是商品詳情、也可能是外站）。
+          */}
+          <button
+            type="button"
+            onClick={() => router.push('/')}
+            aria-label="返回首頁"
+            className="shrink-0 -ml-1 p-1 text-white"
+          >
+            <ArrowLeft className="w-5 h-5" strokeWidth={2.2} />
+          </button>
+          <span className="logo">商城</span>
           <button type="button" className="sbox" onClick={() => router.push('/search?focus=1')}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BFBFBF" strokeWidth="2.4">
               <circle cx="11" cy="11" r="7" />
