@@ -44,6 +44,42 @@ const toNum = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 export default function SellManagePage() {
   const router = useRouter();
+
+  /*
+   * 賣家儀表：等級、成交率、保證金鎖定金額。
+   * 走 sell_my_dashboard RPC 一次拿完 —— 等級規則與保證金比例都在 DB，
+   * 前台只負責顯示，不重算。
+   */
+  const [dash, setDash] = useState<{
+    tier: { name: string; ratio: number; max_price: number };
+    done_count: number;
+    success_rate: number;
+    locked_deposit: number;
+    is_pro: boolean;
+    tokens: number;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { data } = await createClient().rpc('sell_my_dashboard');
+      if (cancelled || !data || !(data as any).success) return;
+      const d = data as any;
+      setDash({
+        tier: {
+          name: String(d.tier?.name || '新手'),
+          ratio: Number(d.tier?.ratio) || 100,
+          max_price: Number(d.tier?.max_price) || 3000,
+        },
+        done_count: Number(d.done_count) || 0,
+        success_rate: Number(d.success_rate) || 100,
+        locked_deposit: Number(d.locked_deposit) || 0,
+        is_pro: !!d.is_pro,
+        tokens: Number(d.tokens) || 0,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const searchParams = useSearchParams();
   const { user, isLoading } = useAuth();
   const { showToast } = useToast();
@@ -223,6 +259,37 @@ export default function SellManagePage() {
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24 pt-14">
       <div className="max-w-7xl mx-auto px-2">
+        {dash && (
+          <div className="mb-3 rounded-2xl bg-gradient-to-r from-primary to-primary-dark text-white p-4">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-full bg-white/20 text-[11px] font-black">
+                {dash.tier.name}賣家
+              </span>
+              {dash.is_pro && (
+                <span className="px-2 py-0.5 rounded-full bg-amber-300 text-amber-900 text-[11px] font-black">
+                  官方認證商家
+                </span>
+              )}
+              <span className="ml-auto text-[11.5px] font-black text-white/80">
+                保證金 售價 {dash.tier.ratio}%
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+              {[
+                ['完成單數', dash.done_count.toLocaleString('zh-TW')],
+                ['成交率', `${dash.success_rate}%`],
+                ['保證金鎖定', `${dash.locked_deposit.toLocaleString('zh-TW')}G`],
+                ['單件上限', dash.tier.max_price.toLocaleString('zh-TW')],
+              ].map(([label, val]) => (
+                <div key={label}>
+                  <div className="text-[15px] font-black">{val}</div>
+                  <div className="text-[10.5px] font-black text-white/70">{label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center gap-2 mb-3">
           <button
             type="button"
@@ -239,6 +306,13 @@ export default function SellManagePage() {
           >
             <Settings className="w-4 h-4" />
             收款設定
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push('/sell/ads')}
+            className="h-10 px-3 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 text-[13px] font-black text-neutral-700 dark:text-neutral-200 flex items-center gap-2 active:scale-95 transition-transform"
+          >
+            廣告中心
           </button>
         </div>
 

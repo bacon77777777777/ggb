@@ -58,6 +58,10 @@ export default function SellNewPage() {
    * DB trigger `sell_guard_listing()` 會擋掉不在白名單內的類別 —— 前台一定要用同一份清單，
    * 不然玩家填完整頁才被拒絕，而且看不出是哪裡錯。
    */
+  const [shippingFee, setShippingFee] = useState<number>(60);
+  // 賣家等級決定保證金比例與單件售價上限。算法留在 DB（sell_my_dashboard），
+  // 前台複製一份遲早會跟後端算出兩種答案
+  const [tier, setTier] = useState<{ name: string; ratio: number; max_price: number } | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [category, setCategory] = useState('');
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
@@ -81,6 +85,24 @@ export default function SellNewPage() {
     return () => { cancelled = true; };
   }, []);
 
+  // 賣家等級：決定保證金比例與單件售價上限，兩者都要在送出前先告訴賣家，
+  // 不然會在 DB trigger 那裡被擋下來，只看到一句錯誤訊息
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    void (async () => {
+      const { data } = await createClient().rpc('sell_my_dashboard');
+      if (cancelled || !data || !(data as any).success) return;
+      const t = (data as any).tier || {};
+      setTier({
+        name: String(t.name || '新手'),
+        ratio: Number(t.ratio) || 100,
+        max_price: Number(t.max_price) || 3000,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
   useEffect(() => {
     if (isLoading) return;
     if (!user?.id) {
@@ -101,6 +123,7 @@ export default function SellNewPage() {
       setOriginalStatus(String(parsed?.originalStatus || ''));
       setTitle(String(parsed?.title || ''));
       setPrice(String(parsed?.price || ''));
+      if (parsed?.shippingFee !== undefined) setShippingFee(Number(parsed.shippingFee) || 0);
       setNote(String(parsed?.note || ''));
       setCategory(String(parsed?.category || ''));
       setImages(Array.isArray(parsed?.images) ? parsed.images.map((x: any) => String(x || '')) : ['', '', '']);
@@ -128,6 +151,7 @@ export default function SellNewPage() {
           originalStatus,
           title,
           price,
+          shippingFee,
           note,
           category,
           images,
@@ -135,7 +159,7 @@ export default function SellNewPage() {
         })
       );
     } catch {}
-  }, [category, editId, images, listingItems, note, originalStatus, price, title]);
+  }, [category, editId, images, listingItems, note, originalStatus, price, shippingFee, title]);
 
   useEffect(() => {
     if (!editId || !user?.id) return;
@@ -147,7 +171,7 @@ export default function SellNewPage() {
     void (async () => {
       const { data } = await createClient()
         .from('sell_listings')
-        .select('title, price, note, category, status, images, items')
+        .select('title, price, shipping_fee, note, category, status, images, items')
         .eq('id', editId)
         .eq('seller_id', user.id)
         .maybeSingle();
@@ -159,6 +183,7 @@ export default function SellNewPage() {
       }
       setTitle(String((data as any).title || ''));
       setPrice(String((data as any).price ?? ''));
+      setShippingFee(Number((data as any).shipping_fee ?? 60));
       setNote(String((data as any).note || ''));
       setCategory(String((data as any).category || ''));
       setOriginalStatus(String((data as any).status || ''));
@@ -202,6 +227,8 @@ export default function SellNewPage() {
     const t = title.trim();
     if (!t) return false;
     if (!category.trim()) return false;
+    // 超過等級售價上限就別讓他送出：DB trigger 會擋，但填完整頁才被拒絕很傷
+    if (tier && p > tier.max_price) return false;
     const cleanCount = listingItems.filter((it) => String(it.name || '').trim()).length;
     if (cleanCount <= 0) return false;
     const allQtyOk = listingItems
@@ -212,7 +239,7 @@ export default function SellNewPage() {
       });
     if (!allQtyOk) return false;
     return true;
-  }, [category, listingItems, price, title, user?.id]);
+  }, [category, listingItems, price, tier, title, user?.id]);
 
   const totalQuantity = useMemo(() => {
     return listingItems
@@ -287,6 +314,7 @@ export default function SellNewPage() {
       if (editId) {
         const patch: Record<string, unknown> = {
           price: p,
+          shipping_fee: shippingFee,
           title: title.trim(),
           note: note.trim(),
           category: category.trim(),
@@ -316,6 +344,7 @@ export default function SellNewPage() {
         .insert({
           seller_id: user.id,
           price: p,
+          shipping_fee: shippingFee,
           status: 'active',
           title: title.trim(),
           note: note.trim(),
@@ -498,6 +527,81 @@ export default function SellNewPage() {
             </div>
           </div>
         </div>
+
+        {/* 運費：買家結帳金額 = 售價 + 運費。0 代表賣家自己吸收 */}
+        <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-4 py-3">
+          <div className="text-[14px] font-black text-neutral-900 dark:text-white">運費</div>
+          <div className="mt-2 grid grid-cols-4 gap-2">
+            {[
+              { v: 60, label: '交貨便', sub: '60' },
+              { v: 80, label: '宅配', sub: '80' },
+              { v: 0, label: '免運費', sub: '你吸收' },
+              { v: -1, label: '自訂', sub: '下方填' },
+            ].map((o) => {
+              const isCustom = o.v === -1;
+              const active = isCustom
+                ? shippingFee !== 0 && shippingFee !== 60 && shippingFee !== 80
+                : shippingFee === o.v;
+              return (
+                <button
+                  key={o.v}
+                  type="button"
+                  onClick={() => setShippingFee(isCustom ? 100 : o.v)}
+                  className={`rounded-xl px-2 py-2 text-center transition-colors ${
+                    active
+                      ? 'bg-primary/10 ring-2 ring-primary text-primary'
+                      : 'bg-neutral-50 dark:bg-neutral-800/60 text-neutral-600 dark:text-neutral-300'
+                  }`}
+                >
+                  <span className="block text-[12.5px] font-black">{o.label}</span>
+                  <span className="block text-[10px] font-black opacity-70">{o.sub}</span>
+                </button>
+              );
+            })}
+          </div>
+          {shippingFee !== 0 && shippingFee !== 60 && shippingFee !== 80 && (
+            <input
+              inputMode="numeric"
+              value={String(shippingFee)}
+              onChange={(e) => setShippingFee(Number(e.target.value.replace(/[^\d]/g, '')) || 0)}
+              placeholder="自訂運費金額"
+              className="mt-2 w-full h-10 bg-neutral-50 dark:bg-neutral-800/60 rounded-xl px-3 text-[14px] font-black text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          )}
+          <p className="mt-2 text-[11.5px] font-black text-neutral-400">
+            {Number(price) > 0
+              ? `買家結帳 NT$${(Number(price) + shippingFee).toLocaleString('zh-TW')}（售價 ${Number(price).toLocaleString('zh-TW')}${shippingFee ? ` + 運費 ${shippingFee}` : '，免運費'}）`
+              : '買家結帳金額 = 售價 + 運費'}
+          </p>
+        </div>
+
+        {/* 保證金：上架不收，賣出才鎖。這裡先講清楚，不要等下單才發現被扣 G幣 */}
+        {tier && (
+          <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-4 py-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[14px] font-black text-neutral-900 dark:text-white">保證金</span>
+              <span className="text-[11.5px] font-black text-neutral-400">
+                你是「{tier.name}」賣家 · 售價 {tier.ratio}%
+              </span>
+            </div>
+            {Number(price) > tier.max_price ? (
+              <p className="mt-2 text-[12.5px] font-black text-red-500">
+                超過可賣價格：「{tier.name}」單件最高 {tier.max_price.toLocaleString('zh-TW')} 元。
+                多完成幾筆交易升級後就能解鎖
+              </p>
+            ) : (
+              <p className="mt-2 text-[17px] font-black text-primary">
+                {Number(price) > 0
+                  ? `${Math.ceil((Number(price) * tier.ratio) / 100).toLocaleString('zh-TW')} G`
+                  : '填售價後顯示'}
+              </p>
+            )}
+            <p className="mt-1 text-[11.5px] font-black text-neutral-400 leading-relaxed">
+              上架不扣。有人下單時才從你的 G幣鎖起來，買家確認收貨後全額退還；
+              運費不計入。若你沒出貨，這筆會賠給買家。
+            </p>
+          </div>
+        )}
 
         <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-4">
           <div className="h-12 flex items-center justify-between gap-3">
