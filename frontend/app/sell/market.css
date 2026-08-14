@@ -1161,7 +1161,7 @@
 .mk .num{font-family:"Oswald",sans-serif;font-weight:600}
 .mk :focus-visible{outline:2px solid var(--orange);outline-offset:2px;border-radius:6px}
 .mk /* header */
-.hdr{flex-shrink:0;background:linear-gradient(100deg,var(--tao1),var(--tao2));padding:12px 12px 12px 4px;color:#fff;overflow:hidden}
+.mk .hdr{flex-shrink:0;background:linear-gradient(100deg,var(--tao1),var(--tao2));padding:12px 12px 12px 4px;color:#fff;overflow:hidden}
 .mk .hdr.plain{background:var(--card);color:var(--txt);border-bottom:1px solid var(--line);padding:14px 16px}
 .mk .hdr.plain h1{font-size:17px;font-weight:700;margin:0;text-align:center}
 .mk .hdr.none{display:none}
@@ -1173,23 +1173,23 @@
 .mk .sbox svg{flex-shrink:0}
 .mk .sboxt{flex:1 1 0;min-width:0;color:var(--mute);font-size:12.5px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mk /* scroll */
-.screen{flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:16px}
+.mk .screen{flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:16px}
 .mk .screen::-webkit-scrollbar{width:0}
 .mk /* category icons */
-.cats{background:var(--card);display:flex;padding:14px 4px 12px;margin-bottom:8px}
+.mk .cats{background:var(--card);display:flex;padding:14px 4px 12px;margin-bottom:8px}
 .mk .cats button{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11px;color:var(--txt)}
 .mk .cats .ci{width:42px;height:42px;border-radius:50%;display:grid;place-items:center}
 .mk .cats .ci svg{width:23px;height:23px}
 .mk .cats button[aria-pressed="true"]{color:var(--red);font-weight:700}
 .mk .cats button[aria-pressed="true"] .ci{box-shadow:0 0 0 2px var(--red)}
 .mk /* banner */
-.bcard{flex:0 0 108px;background:#FFF7F2;border:1px solid #FFE3D2;border-radius:10px;padding:12px 10px;display:flex;flex-direction:column;align-items:center;gap:5px}
+.mk .bcard{flex:0 0 108px;background:#FFF7F2;border:1px solid #FFE3D2;border-radius:10px;padding:12px 10px;display:flex;flex-direction:column;align-items:center;gap:5px}
 .mk .bmark{width:38px;height:38px;border-radius:50%;background:linear-gradient(100deg,var(--tao1),var(--tao2));color:#fff;font-weight:900;font-size:17px;display:grid;place-items:center}
 .mk .bn{font-size:12px;font-weight:700}
 .mk .bd{font-size:10px;color:var(--sub)}
 .mk .mini.rank{background:linear-gradient(100deg,#F5C24B,#D89B2C);color:#3A2604;font-weight:900;padding:1px 6px}
 .mk /* waterfall grid */
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 10px 0}
+.mk .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 10px 0}
 .mk .pcard{background:var(--card);border-radius:10px;overflow:hidden;text-align:left;display:flex;flex-direction:column}
 .mk .pcard:active{opacity:.85}
 .mk .pimg{aspect-ratio:1/1;display:grid;place-items:center;position:relative}
@@ -1474,7 +1474,7 @@
 .mk .secttl{font-size:13px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px}
 .mk .secttl::before{content:"";width:3px;height:13px;border-radius:2px;background:linear-gradient(var(--tao1),var(--tao2))}
 .mk /* bottom action bar in sheet */
-.abar{background:var(--card);border-top:1px solid var(--line);padding:9px 12px;display:flex;gap:9px;align-items:center;position:sticky;bottom:0}
+.mk .abar{background:var(--card);border-top:1px solid var(--line);padding:9px 12px;display:flex;gap:9px;align-items:center;position:sticky;bottom:0}
 .mk .buy{flex:1;padding:13px;border-radius:22px;background:linear-gradient(100deg,var(--tao1),var(--tao2));color:#fff;font-weight:700;font-size:15px}
 .mk .buy:active{filter:brightness(.94)}
 .mk .buy.dark{background:linear-gradient(100deg,#333,#111)}
@@ -1519,7 +1519,7 @@
 .mk .btn{width:100%;padding:13px;border-radius:22px;background:linear-gradient(100deg,var(--tao1),var(--tao2));color:#fff;font-weight:700;font-size:15px;margin-top:12px}
 .mk .btn2{width:100%;padding:12px;border-radius:22px;border:1px solid var(--line2);color:var(--sub);font-weight:500;font-size:13.5px;margin-top:8px;background:#fff}
 .mk /* order */
-.steps{display:flex;padding:4px 0 2px}
+.mk .steps{display:flex;padding:4px 0 2px}
 .mk .stp{flex:1;text-align:center;position:relative;font-size:10px;color:var(--mute);padding-top:20px}
 .mk .stp::before{content:"";position:absolute;top:4px;left:50%;transform:translateX(-50%);width:10px;height:10px;border-radius:50%;background:#DDD;z-index:2}
 .mk .stp::after{content:"";position:absolute;top:8px;left:-50%;width:100%;height:2px;background:#E6E6E6}
@@ -1571,7 +1571,7 @@
 .mk .ocard{background:var(--card);border-radius:10px;padding:12px;margin-bottom:8px;width:100%}
 .mk .ohd{display:flex;align-items:center;font-size:11.5px;color:var(--sub);margin-bottom:9px}
 .mk /* me */
-.mehd{background:linear-gradient(100deg,var(--tao1),var(--tao2));padding:12px 12px 12px;color:#fff}
+.mk .mehd{background:linear-gradient(100deg,var(--tao1),var(--tao2));padding:12px 12px 12px;color:#fff}
 .mk .metopbar{display:flex;justify-content:flex-end;gap:4px;height:34px;align-items:center;margin-bottom:-28px}
 .mk .mehd .meid{padding:0 4px;margin-top:0}
 .mk .mic{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.2);display:grid;place-items:center;position:relative;color:#fff}
@@ -1640,7 +1640,7 @@
 .mk .mineitem{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}
 .mk .mineitem:last-child{border-bottom:0}
 .mk /* form */
-.f{display:block;font-size:12.5px;color:var(--sub);margin:0 0 6px}
+.mk .f{display:block;font-size:12.5px;color:var(--sub);margin:0 0 6px}
 .mk .fin{width:100%;background:#F7F7F7;border:1px solid var(--line2);border-radius:8px;padding:11px;font-size:14px;color:var(--txt)}
 .mk .two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .mk .pick{border:1px solid var(--line2);border-radius:8px;padding:11px;text-align:left;background:#F7F7F7;font-size:13.5px;font-weight:500;position:relative}
@@ -1673,7 +1673,7 @@
 .mk table.t td:first-child{font-weight:700}
 .mk table.t .me{background:#FFF8F3}
 .mk /* tabbar */
-.tabbar{flex-shrink:0;display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.mk .tabbar{flex-shrink:0;display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
 .mk .tabbar button{flex:1;padding:7px 0 9px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;color:var(--sub);position:relative}
 .mk .tabbar button[aria-selected="true"]{color:var(--red)}
 .mk .tabbar .nd{position:absolute;top:5px;right:50%;margin-right:-16px;width:7px;height:7px;border-radius:50%;background:var(--red)}
@@ -1683,7 +1683,21 @@
 /* ════════ 宿主適配層：外框內 absolute → viewport fixed，其餘不動原型值 ════════ */
 .mk.mallroot { position: relative; min-height: 100dvh; background: var(--bg); }
 .mk.mallroot .hdr { position: sticky; top: 0; z-index: 30; }
-.mk.mallroot .screen { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+/*
+ * 原型的 .screen 是「手機外框裡的捲動區」：flex:1 撐開固定高度，自己 overflow-y:auto。
+ * 移植到整頁之後外框沒了 —— .screen 變成高度隨內容成長，**自己捲不動**，
+ * 但 overscroll-behavior:contain 又擋住捲動傳遞給頁面，
+ * 於是觸控（手機／DevTools 裝置模式）整個滑不動；滑鼠滾輪因為不走捲動鏈所以照常。
+ *
+ * 宿主版改成由「頁面」捲：.screen 不再是捲動容器。
+ * v3 樣式區那條原封不動，差異只留在這層。
+ */
+.mk.mallroot .screen {
+  flex: none;
+  overflow: visible;
+  overscroll-behavior: auto;
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
+}
 .mk.mallroot .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 35;
   background: #fff; border-top: 1px solid var(--line);
