@@ -2,8 +2,10 @@
 
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import MarketSheet from './MarketSheet';
 
 /*
@@ -51,6 +53,8 @@ export default function OrderSheet({
   onChanged: () => void;
 }) {
   const { showToast } = useToast();
+  const router = useRouter();
+  const { user } = useAuth();
   const [busy, setBusy] = useState(false);
   const [left, setLeft] = useState('');
   const [payInfo, setPayInfo] = useState<Record<string, string> | null>(null);
@@ -129,8 +133,32 @@ export default function OrderSheet({
     }
   };
 
+  const payFooter =
+    order && order.type === 'c2c' && order.isBuyer && order.step === 1 && !order.cancelled ? (
+      <div className="abar" style={{ display: 'flex', gap: 8 }}>
+        <button
+          type="button"
+          className="btn2"
+          style={{ margin: 0, flex: 1 }}
+          disabled={busy}
+          onClick={() => call('cancel_sell_order', '已取消訂單')}
+        >
+          取消訂單
+        </button>
+        <button
+          type="button"
+          className="buy"
+          style={{ flex: 2 }}
+          disabled={busy}
+          onClick={() => call('sell_order_mark_paid', '已回報匯款，等賣家確認')}
+        >
+          我已完成匯款
+        </button>
+      </div>
+    ) : undefined;
+
   return (
-    <MarketSheet open={!!order} title="訂單詳情" onClose={onClose}>
+    <MarketSheet open={!!order} title="訂單詳情" onClose={onClose} footer={payFooter}>
       {order && (
         <>
           <div className="blk first">
@@ -213,14 +241,42 @@ export default function OrderSheet({
                         <span>應付金額</span>
                         <span style={{ color: 'var(--red)', fontWeight: 700 }}>NT${nt(order.amount)}</span>
                       </div>
-                      <button
-                        type="button"
-                        className="btn"
-                        disabled={busy}
-                        onClick={() => call('sell_order_mark_paid', '已回報匯款，等賣家確認')}
-                      >
-                        我已完成匯款
-                      </button>
+                    </div>
+                  )}
+
+                  {/* 收件資訊：預設帶「個人設定」填的收件人（老闆指定）。
+                      賣家要照這裡出貨，下單後付款前就要讓買家確認 */}
+                  {order.isBuyer && (
+                    <div className="blk">
+                      <div className="secttl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        收件資訊
+                        <button
+                          type="button"
+                          onClick={() => router.push('/profile?tab=settings')}
+                          style={{ fontSize: 12, fontWeight: 700, color: 'var(--sub)', border: '1px solid var(--line2)', borderRadius: 8, padding: '4px 10px', background: '#fff' }}
+                        >
+                          更改
+                        </button>
+                      </div>
+                      {(user as any)?.recipient_name || (user as any)?.recipient_phone || (user as any)?.recipient_address ? (
+                        <>
+                          <div className="kv">
+                            <span>收件人</span>
+                            <span>
+                              {String((user as any)?.recipient_name || '—')}
+                              {(user as any)?.recipient_phone ? ` · ${(user as any).recipient_phone}` : ''}
+                            </span>
+                          </div>
+                          <div className="kv">
+                            <span>地址</span>
+                            <span style={{ textAlign: 'right' }}>{String((user as any)?.recipient_address || '—')}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="kv">
+                          <span style={{ color: 'var(--sub)' }}>尚未設定收件資訊，點「更改」到個人設定填寫</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </>

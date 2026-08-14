@@ -384,7 +384,8 @@ export default function SellPage() {
       showToast('下單成功', 'plain');
       setSpecOpen(false);
       setDetail(null);
-      router.push(`/sell-orders/${r.order_id}`);
+      // 訂單詳情只有一份：我的訂單頁的 OrderSheet 彈層（?open= 會自動開那筆）
+      router.push(`/sell/orders?open=${r.order_id}`);
     } catch (e: any) {
       showToast(e?.message || '下單失敗', 'plain');
     } finally {

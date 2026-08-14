@@ -3,10 +3,11 @@
 import '../market.css';
 
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import OrderSheet, { type OrderLite } from '@/components/sell/OrderSheet';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import MarketTabBar from '@/components/sell/MarketTabBar';
 
@@ -55,11 +56,13 @@ export default function SellOrdersPage() {
   useFeatureGate('sell');
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  // 訂單詳情原本走 OrderSheet 彈層，跟 /sell-orders/[id] 是同一件事的兩份 UI。
-  // 2026-08-14 老闆指定收斂成一份：這裡只當列表，點了就進 /sell-orders/[id]。
+  // 訂單詳情走 OrderSheet 彈層（老闆指定的唯一版本；/sell-orders/[id] 已改成轉址殼）
+  const [opened, setOpened] = useState<OrderLite | null>(null);
+  const [payHours, setPayHours] = useState(48);
 
   useEffect(() => {
     if (!authLoading && !user?.id) router.replace('/login');
@@ -153,6 +156,13 @@ export default function SellOrdersPage() {
         }),
       ].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 
+      const { data: setting } = await supabase
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'sell_pay_deadline_hours')
+        .maybeSingle();
+      if (!cancelled) setPayHours(Number((setting as any)?.value) || 48);
+
       setRows(mapped);
       setIsLoading(false);
     })();
@@ -160,6 +170,19 @@ export default function SellOrdersPage() {
       cancelled = true;
     };
   }, [user?.id]);
+
+  /** 下單成功（或舊網址 /sell-orders/<id> 轉進來）帶 ?open=<id>，載完直接開那筆的彈層 */
+  const openParam = searchParams?.get('open') || '';
+  const openedOnceRef = useRef(false);
+  useEffect(() => {
+    const idNum = Number(openParam);
+    if (!openParam || !Number.isInteger(idNum) || idNum <= 0 || openedOnceRef.current) return;
+    if (isLoading) return;
+    const row = rows.find((r) => r.id === idNum);
+    if (!row) return;
+    openedOnceRef.current = true;
+    setOpened({ ...row, payDeadlineHours: payHours });
+  }, [openParam, isLoading, rows, payHours]);
 
   return (
     <div className="mk min-h-screen pb-[calc(64px+env(safe-area-inset-bottom))]">
@@ -178,7 +201,7 @@ export default function SellOrdersPage() {
               key={r.key}
               type="button"
               className="ocard"
-              onClick={() => router.push(`/sell-orders/${r.id}`)}
+              onClick={() => setOpened({ ...r, payDeadlineHours: payHours })}
             >
               <div className="ohd">
                 <span>{r.shop}</span>
@@ -208,6 +231,8 @@ export default function SellOrdersPage() {
 
 
       <MarketTabBar active="orders" />
+
+      <OrderSheet order={opened} onClose={() => setOpened(null)} onChanged={() => window.location.reload()} />
     </div>
   );
 }
