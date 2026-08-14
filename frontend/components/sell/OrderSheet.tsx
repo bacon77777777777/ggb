@@ -133,29 +133,20 @@ export default function OrderSheet({
     }
   };
 
-  const payFooter =
-    order && order.type === 'c2c' && order.isBuyer && order.step === 1 && !order.cancelled ? (
-      <div className="abar" style={{ display: 'flex', gap: 8 }}>
-        <button
-          type="button"
-          className="btn2"
-          style={{ margin: 0, flex: 1 }}
-          disabled={busy}
-          onClick={() => call('cancel_sell_order', '已取消訂單')}
-        >
-          取消訂單
-        </button>
-        <button
-          type="button"
-          className="buy"
-          style={{ flex: 2 }}
-          disabled={busy}
-          onClick={() => call('sell_order_mark_paid', '已回報匯款，等賣家確認')}
-        >
-          我已完成匯款
-        </button>
-      </div>
-    ) : undefined;
+  const canPay = !!order && order.type === 'c2c' && order.isBuyer && order.step === 1 && !order.cancelled;
+
+  const payFooter = canPay ? (
+    <div className="abar">
+      <button
+        type="button"
+        className="buy"
+        disabled={busy}
+        onClick={() => call('sell_order_mark_paid', '已回報匯款，等賣家確認')}
+      >
+        我已完成匯款
+      </button>
+    </div>
+  ) : undefined;
 
   return (
     <MarketSheet open={!!order} title="訂單詳情" onClose={onClose} footer={payFooter}>
@@ -248,12 +239,12 @@ export default function OrderSheet({
                       賣家要照這裡出貨，下單後付款前就要讓買家確認 */}
                   {order.isBuyer && (
                     <div className="blk">
-                      <div className="secttl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div className="secttl">
                         收件資訊
                         <button
                           type="button"
                           onClick={() => router.push('/profile?tab=settings')}
-                          style={{ fontSize: 12, fontWeight: 700, color: 'var(--sub)', border: '1px solid var(--line2)', borderRadius: 8, padding: '4px 10px', background: '#fff' }}
+                          style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: 'var(--sub)', border: '1px solid var(--line2)', borderRadius: 8, padding: '4px 10px', background: '#fff' }}
                         >
                           更改
                         </button>
@@ -262,10 +253,11 @@ export default function OrderSheet({
                         <>
                           <div className="kv">
                             <span>收件人</span>
-                            <span>
-                              {String((user as any)?.recipient_name || '—')}
-                              {(user as any)?.recipient_phone ? ` · ${(user as any).recipient_phone}` : ''}
-                            </span>
+                            <span>{String((user as any)?.recipient_name || '—')}</span>
+                          </div>
+                          <div className="kv">
+                            <span>收件電話</span>
+                            <span>{String((user as any)?.recipient_phone || '—')}</span>
                           </div>
                           <div className="kv">
                             <span>地址</span>
@@ -352,6 +344,21 @@ export default function OrderSheet({
                     <span>賣家保證金</span>
                     <span>已退還</span>
                   </div>
+                </div>
+              )}
+
+              {/* 取消訂單放內容最底（老闆指定）：次要且帶風險的動作不跟主要動作擠同一排 */}
+              {canPay && (
+                <div className="blk">
+                  <button
+                    type="button"
+                    className="btn2"
+                    style={{ margin: 0, width: '100%' }}
+                    disabled={busy}
+                    onClick={() => call('cancel_sell_order', '已取消訂單')}
+                  >
+                    取消訂單
+                  </button>
                 </div>
               )}
             </>
