@@ -498,6 +498,7 @@ function specPicker(i){
 }
 function askCancel(no){
   const o=sellOrders.find(x=>x.no===no);
+  if(!o){toast("這筆訂單已經結束了");return}
   $("dlg").innerHTML=`<div class="dlgbox" style="text-align:left">
     <div class="dlgt" style="text-align:center">確定沒收到這筆款項？</div>
     <div class="dlgs" style="text-align:left;margin-top:12px">
@@ -564,7 +565,9 @@ $("dlg").addEventListener("click",e=>{
   if(!b){if(e.target.id==="dlg")$("dlg").classList.remove("on");return}
   const d=b.dataset;
   if(d.dlgyes!==undefined){cart.splice(+d.dlgyes,1);toast("已刪除");cartSheet()}
-  else if(d.socancelyes){const o=sellOrders.find(x=>x.no===d.socancelyes);o.st=5;o.holdLeft=72;
+  else if(d.socancelyes){const o=sellOrders.find(x=>x.no===d.socancelyes);
+    if(!o){$("dlg").classList.remove("on");toast("這筆訂單已經結束了");close();render();return}
+    o.st=5;o.holdLeft=72;
     toast("已取消，保證金進入 72 小時申訴保留期");sellOrderDetail(o.no);render()}
   else if(d.dlgchat){const p=d.dlgchat.split("|");$("dlg").classList.remove("on");
     chatSheet(p[0],Object.assign({kind:"order"},sellOrders.find(x=>x.no===p[1])||{}));return}
@@ -627,6 +630,7 @@ function addrSheet(){
 /* ── 申訴 ── */
 function appealForm(no){
   const o=orders.find(x=>x.no===no);
+  if(!o){toast("這筆訂單已經結束了");close();render();return}
   sheet("已匯款申訴",`
   <div class="blk first"><div class="secttl">訂單資訊</div>
     <div class="kv"><span>訂單編號</span><span>${o.no}</span></div>
@@ -726,7 +730,11 @@ function sellOrdersSheet(){
 const SHIPWAYS=["7-11 交貨便","全家店到店","黑貓宅配","面交自取"];
 let soWay=0;
 function sellOrderDetail(no){
-  const o=sellOrders.find(x=>x.no===no),a=art(o.k,o.cid);
+  const o=sellOrders.find(x=>x.no===no);
+  // 付款倒數歸零時整筆從 sellOrders 移除（見 startCD 的 callback），
+  // 但畫面上那顆 data-sod 還在 —— 再點就會對 undefined 取值而整頁當掉
+  if(!o){toast("這筆訂單已經結束了");close();render();return}
+  const a=art(o.k,o.cid);
   const paid=o.st>=2&&o.st<=4;
   const steps=o.st===5?"":`<div class="blk first"><div class="steps">${SO_ST.slice(0,5).map((n,i)=>`<div class="stp ${i<o.st?"dn":i===o.st?"nw":""}">${n}</div>`).join("")}</div></div>`;
   const banner=o.st===2?`<div class="blk okban"><span class="okic"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5.2 5.2L19.5 7.5"/></svg></span>

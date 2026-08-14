@@ -1710,3 +1710,30 @@
 .mk.mallroot .dlg { position: fixed; inset: 0; z-index: 1100; }
 .mk.mallroot .dlg.on { display: grid; }
 .mk.mallroot .toast { position: fixed; z-index: 1200; }
+
+/*
+ * 「我的」頁的購物車／聊聊要跟「找物」「商城」停在同一個座標 ——
+ * 切分頁時圖標不該跳位（老闆：體感才好）。
+ *
+ * 找物／商城的圖標在 sticky 的 .hdr 裡（padding 12），我的那組在內容區的
+ * .mehd 裡。market.css 目前有兩條 .mk .mehd（舊版 16px 與 v3 的 12px）
+ * 疊在一起，實測算出來是 16 —— 與其去猜哪一條贏，直接在適配層釘死：
+ * 這一段在檔案最後、選擇器又多一個 .mallroot，勝負沒有懸念。
+ */
+.mk.mallroot .mehd { padding: 12px; }
+
+/*
+ * 彈層內容要自己捲，操作列（.abar）才停得住在底部。
+ *
+ * .sheet 是 flex column、.sbd 是 overflow-y:auto，看起來沒問題 ——
+ * 但 flex 項目預設 min-height:auto，內容一高就把 .sbd 撐破而不是內部捲動，
+ * 於是 .abar 被推到畫面外（實測 top 1076 / 視窗高 568），
+ * 底部只剩固定導航，看起來就像「按鈕變成底部導航」（老闆回報）。
+ * 原型有固定高度的手機外框撐著，所以在原型裡看不出來。
+ */
+.mk.mallroot .sheet .sbd { flex: 1 1 auto; min-height: 0; }
+/* 操作列要黏在彈層底部。v3 寫的是 position:sticky，但實測算出來是 static
+   （market.css 舊區有同名規則在打架），所以在適配層釘死 */
+.mk.mallroot .sheet .abar { position: sticky; bottom: 0; z-index: 2; }
+
+
