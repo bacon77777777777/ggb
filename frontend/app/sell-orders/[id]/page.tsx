@@ -468,7 +468,7 @@ export default function SellOrderDetailPage() {
     if (isBuyer && order.step === 1) {
       return {
         left: { label: '取消訂單', onClick: cancelOrder, disabled: isCancelling },
-        right: { label: '我已付款', onClick: markPaid, disabled: isActing },
+        right: { label: '我已完成匯款', onClick: markPaid, disabled: isActing },
       };
     }
 
@@ -547,9 +547,10 @@ export default function SellOrderDetailPage() {
   };
 
   const orderNoText = order.orderNumber ? order.orderNumber : `#${order.id}`;
-  const recipientName = '王小明';
-  const recipientPhone = '0912-345-678';
-  const recipientAddress = '台北市中正區仁愛路一段 1 號 10 樓';
+  // 收件資訊預設帶「個人設定」裡填的（老闆指定）。沒填過就提示去設定，不放假資料
+  const recipientName = String((user as any)?.recipient_name || '');
+  const recipientPhone = String((user as any)?.recipient_phone || '');
+  const recipientAddress = String((user as any)?.recipient_address || '');
   const createdAtText = (() => {
     const d = new Date(order.createdAt);
     if (!order.createdAt || Number.isNaN(d.getTime())) return '—';
@@ -650,13 +651,21 @@ export default function SellOrderDetailPage() {
               </button>
             </div>
             <div className="mt-3 space-y-1.5 text-[13px] font-bold text-neutral-700 dark:text-neutral-200">
-              <div className="flex items-start gap-2">
-                <div className="font-black">{recipientName || '—'}</div>
-                <div className="text-neutral-400 dark:text-neutral-500 font-black">{recipientPhone || '—'}</div>
-              </div>
-              <div className="text-[13px] font-bold text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                {recipientAddress || '—'}
-              </div>
+              {recipientName || recipientPhone || recipientAddress ? (
+                <>
+                  <div className="flex items-start gap-2">
+                    <div className="font-black">{recipientName || '—'}</div>
+                    <div className="text-neutral-400 dark:text-neutral-500 font-black">{recipientPhone || '—'}</div>
+                  </div>
+                  <div className="text-[13px] font-bold text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                    {recipientAddress || '—'}
+                  </div>
+                </>
+              ) : (
+                <div className="text-[13px] font-bold text-neutral-400 leading-relaxed">
+                  尚未設定收件資訊，點「更改」到個人設定填寫
+                </div>
+              )}
             </div>
           </div>
         </div>

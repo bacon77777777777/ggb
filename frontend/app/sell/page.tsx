@@ -112,6 +112,26 @@ const BRANDS = [
 
 const nt = (n: number) => Math.round(n || 0).toLocaleString('zh-TW');
 
+/**
+ * 規格價格區間。規格可各自訂價（下單時 DB 是 COALESCE(item.price, listing.price)），
+ * 小卡顯示最低價、彈層顯示最低～最高。沒另外訂價的規格以商品價計。
+ */
+const priceRange = (r: FeedRow) => {
+  const items = Array.isArray(r.items) ? (r.items as any[]) : [];
+  const ps = items
+    .filter((x) => String(x?.name || '').trim())
+    .map((x) => (Number(x?.price) > 0 ? Math.round(Number(x.price)) : r.price));
+  if (ps.length === 0) return { min: r.price, max: r.price };
+  return { min: Math.min(...ps), max: Math.max(...ps) };
+};
+
+/** 某一個規格的實際單價 */
+const specPrice = (r: FeedRow, idx: number) => {
+  const items = Array.isArray(r.items) ? (r.items as any[]) : [];
+  const v = Number(items[idx]?.price);
+  return v > 0 ? Math.round(v) : r.price;
+};
+
 const imgOf = (row: FeedRow) => {
   const imgs = Array.isArray(row.images) ? row.images.filter(Boolean) : [];
   if (imgs[0]) return imgs[0];
@@ -211,6 +231,10 @@ export default function SellPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [detail, setDetail] = useState<FeedRow | null>(null);
+  /** 規格選擇彈窗（立即購買一律先選規格再下單，老闆指定） */
+  const [specOpen, setSpecOpen] = useState(false);
+  const [specIdx, setSpecIdx] = useState(0);
+  const [specQty, setSpecQty] = useState(1);
   /** 店舖頁點商品會帶 ?open=<id> 回來，這裡撈單筆直接開彈層（只開一次，關掉不重開） */
   const openParam = searchParams?.get('open') || '';
   const openedRef = useRef(false);
@@ -346,13 +370,10 @@ export default function SellPage() {
     }
     setIsBuying(true);
     try {
-      // 買第一個還有庫存的規格 —— 原型的商品卡就是單一規格的概念
-      const items = Array.isArray(detail.items) ? (detail.items as any[]) : [];
-      const idx = items.findIndex((x) => (Number(x?.quantity) || 0) > 0);
       const { data, error } = await createClient().rpc('create_sell_order', {
         p_listing_id: detail.id,
-        p_item_index: idx < 0 ? 0 : idx,
-        p_quantity: 1,
+        p_item_index: specIdx,
+        p_quantity: Math.max(1, specQty),
       });
       if (error) throw error;
       const r = data as any;
@@ -361,6 +382,8 @@ export default function SellPage() {
         return;
       }
       showToast('下單成功', 'plain');
+      setSpecOpen(false);
+      setDetail(null);
       router.push(`/sell-orders/${r.order_id}`);
     } catch (e: any) {
       showToast(e?.message || '下單失敗', 'plain');
@@ -377,7 +400,10 @@ export default function SellPage() {
           <span className="mini">{label}</span>
         </div>
         <div className="st">{it.title}</div>
-        <div className="sp">NT${nt(it.price)}</div>
+        <div className="sp">
+          NT${nt(priceRange(it).min)}
+          {priceRange(it).max > priceRange(it).min ? ' 起' : ''}
+        </div>
       </button>
     ));
 
@@ -515,7 +541,10 @@ export default function SellPage() {
                       <span className="mini rank">{i + 1}</span>
                     </div>
                     <div className="st">{it.title}</div>
-                    <div className="sp">NT${nt(it.price)}</div>
+                    <div className="sp">
+                      NT${nt(priceRange(it).min)}
+                      {priceRange(it).max > priceRange(it).min ? ' 起' : ''}
+                    </div>
                   </button>
                 ))}
             </div>
@@ -595,7 +624,7 @@ export default function SellPage() {
 
                 <div className="pprice">
                   <i>NT$</i>
-                  <b>{nt(r.price)}</b>
+                  <b>{nt(priceRange(r).min)}{priceRange(r).max > priceRange(r).min ? ' 起' : ''}</b>
                   {isOfficial ? (
                     <span className="dep off">官方出貨</span>
                   ) : (
@@ -677,8 +706,26 @@ export default function SellPage() {
                   刷卡結帳 · NT${nt(detail.price + detail.shipping_fee)}
                 </button>
               ) : (
-                <button type="button" className="buy" disabled={isBuying} onClick={buyC2C}>
-                  {isBuying ? '處理中…' : `立即購買 · NT$${nt(detail.price + detail.shipping_fee)}`}
+                <button
+                  type="button"
+                  className="buy"
+                  disabled={isBuying}
+                  onClick={() => {
+                    if (!user?.id) {
+                      router.push('/login');
+                      return;
+                    }
+                    // 先選規格再下單（老闆指定），預設挑第一個有庫存的
+                    const items = Array.isArray(detail.items) ? (detail.items as any[]) : [];
+                    const first = items.findIndex((x) => (Number(x?.quantity) || 0) > 0);
+                    setSpecIdx(first < 0 ? 0 : first);
+                    setSpecQty(1);
+                    setSpecOpen(true);
+                  }}
+                >
+                  {`立即購買 · NT$${nt(priceRange(detail).min + detail.shipping_fee)}${
+                    priceRange(detail).max > priceRange(detail).min ? ' 起' : ''
+                  }`}
                 </button>
               )}
             </div>
@@ -693,7 +740,10 @@ export default function SellPage() {
 
             <div className={`pricebar${isOfficial ? ' dark' : ''}`}>
               <span className="s">NT$</span>
-              <span className="n">{nt(detail.price)}</span>
+              <span className="n">
+                {nt(priceRange(detail).min)}
+                {priceRange(detail).max > priceRange(detail).min ? ` ~ ${nt(priceRange(detail).max)}` : ''}
+              </span>
               <span className="r">
                 {detail.shipping_fee ? `運費 ${nt(detail.shipping_fee)}` : '免運費'}
                 <br />
@@ -822,6 +872,103 @@ export default function SellPage() {
                 </p>
               </div>
             )}
+          </>
+        )}
+      </MarketSheet>
+
+      {/* ── 規格選擇彈層：立即購買一律先經過這裡（老闆指定），確認才下單 ── */}
+      <MarketSheet open={specOpen && !!detail} title="選擇規格" onClose={() => setSpecOpen(false)}>
+        {detail && (
+          <>
+            <div className="blk first">
+              {(Array.isArray(detail.items) ? (detail.items as any[]) : [])
+                .map((x, i) => ({ x, i }))
+                .filter(({ x }) => String(x?.name || '').trim())
+                .map(({ x, i }) => {
+                  const stock = Math.max(0, Number(x?.quantity) || 0);
+                  const out = stock <= 0;
+                  const active = specIdx === i;
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      disabled={out}
+                      onClick={() => {
+                        setSpecIdx(i);
+                        setSpecQty(1);
+                      }}
+                      className="kv"
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        opacity: out ? 0.4 : 1,
+                        border: active ? '1.5px solid var(--red)' : '1px solid var(--line2)',
+                        borderRadius: 10,
+                        padding: '10px 12px',
+                        marginBottom: 8,
+                        background: active ? '#fff4f5' : '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                      }}
+                    >
+                      {String(x?.image || '').trim() && (
+                        <span style={{ position: 'relative', width: 36, height: 36, borderRadius: 6, overflow: 'hidden', flexShrink: 0, background: '#F5F5F5' }}>
+                          <Image src={String(x.image)} alt="" fill style={{ objectFit: 'cover' }} sizes="36px" unoptimized />
+                        </span>
+                      )}
+                      <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {String(x?.name || '')}
+                      </span>
+                      <span style={{ fontSize: 12, color: 'var(--sub)', flexShrink: 0 }}>
+                        {out ? '已售完' : `剩 ${stock}`}
+                      </span>
+                      <span style={{ fontWeight: 800, color: 'var(--red)', flexShrink: 0 }}>
+                        NT${nt(specPrice(detail, i))}
+                      </span>
+                    </button>
+                  );
+                })}
+            </div>
+
+            <div className="blk">
+              <div className="kv">
+                <span>數量</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <button
+                    type="button"
+                    onClick={() => setSpecQty((q) => Math.max(1, q - 1))}
+                    style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--line2)', fontWeight: 800 }}
+                  >
+                    −
+                  </button>
+                  <b style={{ minWidth: 20, textAlign: 'center' }}>{specQty}</b>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const items = Array.isArray(detail.items) ? (detail.items as any[]) : [];
+                      const max = Math.max(1, Number(items[specIdx]?.quantity) || 1);
+                      setSpecQty((q) => Math.min(max, q + 1));
+                    }}
+                    style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--line2)', fontWeight: 800 }}
+                  >
+                    ＋
+                  </button>
+                </span>
+              </div>
+              <div className="kv">
+                <span>小計（含運費 {nt(detail.shipping_fee)}）</span>
+                <b style={{ color: 'var(--red)' }}>
+                  NT${nt(specPrice(detail, specIdx) * specQty + detail.shipping_fee)}
+                </b>
+              </div>
+            </div>
+
+            <div className="abar" style={{ position: 'sticky', bottom: 0 }}>
+              <button type="button" className="buy" disabled={isBuying} onClick={buyC2C}>
+                {isBuying ? '處理中…' : '確認下單'}
+              </button>
+            </div>
           </>
         )}
       </MarketSheet>

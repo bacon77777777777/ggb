@@ -25,7 +25,8 @@ import { createClient } from '@/lib/supabase/client';
  * 編輯模式（`?edit=<id>`）沿用：商城管理的「修改後重新送審」會帶這個參數進來。
  */
 
-type ListingItem = { name: string; series: string; grade: string; image: string; quantity: string };
+/** price 選填：留空表示用商品價格（DB 下單時 COALESCE(item.price, listing.price)） */
+type ListingItem = { name: string; series: string; grade: string; image: string; quantity: string; price: string };
 
 const DRAFT_KEY = 'sell:new:draft:v2';
 
@@ -52,7 +53,7 @@ export default function SellFormContent({ editId: propEditId, onDone }: { editId
   const [shippingFee, setShippingFee] = useState(60);
   const [images, setImages] = useState<string[]>([]);
   const [items, setItems] = useState<ListingItem[]>([
-    { name: '', series: '', grade: '', image: '', quantity: '1' },
+    { name: '', series: '', grade: '', image: '', quantity: '1', price: '' },
   ]);
   const [category, setCategory] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
@@ -184,8 +185,12 @@ export default function SellFormContent({ editId: propEditId, onDone }: { editId
               grade: String(x?.grade || ''),
               image: String(x?.image || ''),
               quantity: String(x?.quantity ?? '1'),
+              price:
+                Number(x?.price) > 0 && Number(x?.price) !== Number(d.price)
+                  ? String(x?.price)
+                  : '',
             }))
-          : [{ name: '', series: '', grade: '', image: '', quantity: '1' }]
+          : [{ name: '', series: '', grade: '', image: '', quantity: '1', price: '' }]
       );
     })();
     return () => {
@@ -233,7 +238,8 @@ export default function SellFormContent({ editId: propEditId, onDone }: { editId
 
   const p = Number(price) || 0;
   const deposit = tier ? Math.ceil((p * tier.ratio) / 100) : 0;
-  const overCap = !!tier && p > tier.max_price;
+  const maxItemPrice = Math.max(p, ...items.map((it) => Number(it.price) || 0));
+  const overCap = !!tier && maxItemPrice > tier.max_price;
 
   const canSubmit = useMemo(() => {
     if (!user?.id || isSaving) return false;
@@ -254,7 +260,7 @@ export default function SellFormContent({ editId: propEditId, onDone }: { editId
           grade: it.grade.trim(),
           image: it.image.trim(),
           quantity: Math.max(1, Math.round(Number(it.quantity) || 1)),
-          price: Math.round(p),
+          price: Number(it.price) > 0 ? Math.round(Number(it.price)) : Math.round(p),
         }))
         .filter((it) => it.name);
 
@@ -442,6 +448,17 @@ export default function SellFormContent({ editId: propEditId, onDone }: { editId
                 }
                 placeholder="數量"
               />
+              <input
+                className="fin"
+                inputMode="numeric"
+                value={it.price}
+                onChange={(e) =>
+                  setItems((prev) =>
+                    prev.map((x, xi) => (xi === i ? { ...x, price: e.target.value.replace(/[^\d]/g, '') } : x))
+                  )
+                }
+                placeholder="價格（留空同商品）"
+              />
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
               <button
@@ -475,7 +492,7 @@ export default function SellFormContent({ editId: propEditId, onDone }: { editId
         <button
           type="button"
           className="btn2"
-          onClick={() => setItems((prev) => [...prev, { name: '', series: '', grade: '', image: '', quantity: '1' }])}
+          onClick={() => setItems((prev) => [...prev, { name: '', series: '', grade: '', image: '', quantity: '1', price: '' }])}
         >
           + 加一個規格
         </button>

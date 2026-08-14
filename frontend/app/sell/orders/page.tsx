@@ -9,7 +9,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import MarketTabBar from '@/components/sell/MarketTabBar';
-import OrderSheet, { type OrderLite } from '@/components/sell/OrderSheet';
 
 /*
  * 商城訂單 —— 照原型 vOrders() 的 .olist / .ocard / .ohd / .orow 結構。
@@ -59,9 +58,8 @@ export default function SellOrdersPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  // 訂單詳情走彈層（照原型 openOrder），不換頁
-  const [opened, setOpened] = useState<OrderLite | null>(null);
-  const [payHours, setPayHours] = useState(48);
+  // 訂單詳情原本走 OrderSheet 彈層，跟 /sell-orders/[id] 是同一件事的兩份 UI。
+  // 2026-08-14 老闆指定收斂成一份：這裡只當列表，點了就進 /sell-orders/[id]。
 
   useEffect(() => {
     if (!authLoading && !user?.id) router.replace('/login');
@@ -155,13 +153,6 @@ export default function SellOrdersPage() {
         }),
       ].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 
-      const { data: setting } = await supabase
-        .from('platform_settings')
-        .select('value')
-        .eq('key', 'sell_pay_deadline_hours')
-        .maybeSingle();
-      setPayHours(Number((setting as any)?.value) || 48);
-
       setRows(mapped);
       setIsLoading(false);
     })();
@@ -187,7 +178,7 @@ export default function SellOrdersPage() {
               key={r.key}
               type="button"
               className="ocard"
-              onClick={() => setOpened({ ...r, payDeadlineHours: payHours })}
+              onClick={() => router.push(`/sell-orders/${r.id}`)}
             >
               <div className="ohd">
                 <span>{r.shop}</span>
@@ -215,7 +206,6 @@ export default function SellOrdersPage() {
         </div>
       )}
 
-      <OrderSheet order={opened} onClose={() => setOpened(null)} onChanged={() => window.location.reload()} />
 
       <MarketTabBar active="orders" />
     </div>
