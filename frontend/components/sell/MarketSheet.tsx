@@ -15,7 +15,7 @@ import { X } from 'lucide-react';
  * 下一個影格再加 .on 才會滑上來；關閉則要等動畫跑完才卸載。
  */
 
-const ANIM_MS = 280; // 與 market.css 的 transition 0.28s 對齊
+const ANIM_MS = 260; // 收起動畫 0.24s，多留一點餘裕才卸載（比動畫短會被截尾）
 
 export default function MarketSheet({
   open,
@@ -37,8 +37,19 @@ export default function MarketSheet({
   useEffect(() => {
     if (open) {
       setMounted(true);
-      const t = requestAnimationFrame(() => setShown(true));
-      return () => cancelAnimationFrame(t);
+      /*
+       * 兩層 rAF：第一層等 React 真的把「停在畫面外」那一格畫出來，
+       * 第二層才加 .on 觸發 transition。只用一層的話，class 常跟掛載
+       * 落在同一個影格，transition 沒有起點，面板會用跳的出現。
+       */
+      let t2 = 0;
+      const t1 = requestAnimationFrame(() => {
+        t2 = requestAnimationFrame(() => setShown(true));
+      });
+      return () => {
+        cancelAnimationFrame(t1);
+        cancelAnimationFrame(t2);
+      };
     }
     setShown(false);
     const t = setTimeout(() => setMounted(false), ANIM_MS);
