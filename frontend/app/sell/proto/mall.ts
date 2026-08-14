@@ -288,7 +288,20 @@ function feed(list,build,pool){
   list.forEach(it=>{
     if(pool.length&&(out.length===1||(out.length>1&&(out.length-1)%8===0))){
       const ad=pickAd();
-      if(ad){out.push(build(ad,true));seen.push(ad)}
+      if(ad){
+        // 兩欄 grid，索引奇偶就是左右欄。第一格維持原位，之後每次穿插左右交替出現：
+        // 先放一般商品再放廣告，就把廣告推到另一欄。
+        // 用商品 id 當種子而不是 Math.random() —— 每個動作都會 render 一次，
+        // 真隨機會讓版位每次重畫都跳位置，看起來像畫面在閃。
+        // 取 id 的高位元而不是 id%2：實測商品 id 常常整批同奇偶（種子資料連號），
+        // 直接看最低位會變成「全部都在同一欄」。
+        if(out.length>1&&((((ad.id*2654435761)>>>13)&1)===1)){
+          out.push(build(it,false));prev=it;
+          out.push(build(ad,true));seen.push(ad);
+          return;
+        }
+        out.push(build(ad,true));seen.push(ad);
+      }
     }
     out.push(build(it,false));prev=it;
   });
