@@ -341,8 +341,7 @@ function vMarket(){
   const list=C2C.filter(x=>seg==="all"||x.k===seg);
   const pool=C2C.filter(x=>x.feat);
   const hl=pool.slice(0,3);hero=0;
-  const heroHTML=`<div class="heroC"><span class="adtag">廣告 · 首頁輪播</span>
-    ${hl.map((it,i)=>{const a=art(it.k,it.id,it.img);return `<button class="hslide ${i===0?"on":""}" data-c2c="${it.id}">
+  const heroHTML=`<div class="heroC">${hl.map((it,i)=>{const a=art(it.k,it.id,it.img);return `<button class="hslide ${i===0?"on":""}" data-c2c="${it.id}">
       <span class="hart" style="background:${a.bg}">${a.s}</span>
       <span class="htx"><h3>${esc(it.t)}</h3><p>${esc(it.s)} · 已售 ${it.sold}</p>
       <span class="hprice">NT$${nt(it.p)}</span></span></button>`}).join("")}
@@ -350,8 +349,7 @@ function vMarket(){
   const catRow=`<div class="cats">${cats.map((c,i)=>`<button data-seg="${c[0]}" aria-pressed="${seg===c[0]}">
       <span class="ci" style="background:${["#FFF0E6","#FFE9EC","#EAF4FF","#EAF8F1","#F3EDFF","#FFF6E0"][i]}">
       <svg viewBox="0 0 24 24" fill="none" stroke="#FF6A00" stroke-width="1.7" stroke-linecap="round">${ICONS[c[0]]}</svg></span>${c[1]}</button>`).join("")}</div>`;
-  const catStrip=seg!=="all"?`<div class="strip"><span class="adtag">廣告</span>
-    <div class="striphd"><b>${cats.find(c=>c[0]===seg)[1]} 分類首排</b></div>
+  const catStrip=seg!=="all"?`<div class="strip"><div class="striphd"><b>${cats.find(c=>c[0]===seg)[1]} 分類首排</b></div>
     <div class="srow">${scards(C2C.filter(x=>x.k===seg).concat(pool).slice(0,4),"推廣")}</div></div>`:"";
   const topic=`<div class="strip">
     <div class="striphd"><b>本週一番賞精選</b><button class="more" data-more="topic">更多 ›</button></div>
@@ -363,19 +361,16 @@ function vOfficial(){
   const pool=B2C.filter(x=>x.feat);
   const hot=B2C.slice().sort((a,b)=>b.sold-a.sold).slice(0,4);
   const hl=B2C.slice(0,3);hero=0;
-  const heroHTML=`<div class="heroC"><span class="adtag">廣告 · 官方頁輪播</span>
-    ${hl.map((it,i)=>{const a=art(it.k,it.id,it.img);return `<button class="hslide ${i===0?"on":""}" data-b2c="${it.id}">
+  const heroHTML=`<div class="heroC">${hl.map((it,i)=>{const a=art(it.k,it.id,it.img);return `<button class="hslide ${i===0?"on":""}" data-b2c="${it.id}">
       <span class="hart" style="background:${a.bg}">${a.s}</span>
       <span class="htx"><h3>${esc(it.t)}</h3><p>官方直送 · 48 小時出貨</p>
       <span class="hprice">NT$${nt(it.p)}</span></span></button>`}).join("")}
     <span class="hdots">${hl.map((_,i)=>`<i class="${i===0?"on":""}"></i>`).join("")}</span></div>`;
-  const newIn=`<div class="strip"><span class="adtag">廣告 · 新品首發</span>
-    <div class="striphd"><b>新品首發</b><button class="more" data-more="new">更多 ›</button></div>
+  const newIn=`<div class="strip"><div class="striphd"><b>新品首發</b><button class="more" data-more="new">更多 ›</button></div>
     <div class="srow">${B2C.slice(0,4).map(it=>{const a=art(it.k,it.id,it.img);
       return `<button class="scard" data-b2c="${it.id}"><div class="si" style="background:${a.bg}">${a.s}<span class="mini">首發</span></div>
       <div class="st">${esc(it.t)}</div><div class="sp">NT$${nt(it.p)}</div></button>`}).join("")}</div></div>`;
-  const brand=`<div class="strip"><span class="adtag">廣告 · 品牌專區</span>
-    <div class="striphd"><b>品牌專區</b></div>
+  const brand=`<div class="strip"><div class="striphd"><b>品牌專區</b></div>
     <div class="srow">${BRANDS.map((b,i)=>`<button class="bcard"><span class="bmark">${esc(b.n[0])}</span>
       <span class="bn">${esc(b.n)}</span><span class="bd">${esc(b.d)}</span></button>`).join("")}</div></div>`;
   const rank=`<div class="strip"><div class="striphd"><b>熱賣排行</b><button class="more" data-more="hot">更多 ›</button></div>
@@ -1019,8 +1014,7 @@ function goPro(){
     <button class="btn2" data-x="1">再想想</button></div>`);
 }
 function recoStrip(){
-  return `<div class="strip" style="margin:0 0 8px"><span class="adtag">廣告</span>
-    <div class="striphd"><b>猜你喜歡</b></div>
+  return `<div class="strip" style="margin:0 0 8px"><div class="striphd"><b>猜你喜歡</b></div>
     <div class="srow">${scards(C2C.filter(x=>x.feat).slice(0,4),"推薦")}</div></div>`;
 }
 function itemC2C(id){

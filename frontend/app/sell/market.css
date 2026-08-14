@@ -439,6 +439,7 @@
 .mk .hdots{position:absolute;right:9px;bottom:7px;display:flex;gap:4px}
 .mk .hdots i{width:5px;height:5px;border-radius:3px;background:#DDD;display:block}
 .mk .hdots i.on{background:var(--red);width:12px}
+/* 老闆要求移除左上角的廣告標籤：模板已不輸出 .adtag（保留樣式，日後若需標示廣告可直接復用） */
 .mk .adtag{position:absolute;left:0;top:0;background:rgba(0,0,0,.38);color:#fff;font-size:8.5px;padding:2px 6px;border-radius:0 0 6px 0;z-index:2}
 .mk .strip{background:#fff;margin-top:8px;padding:12px 0 12px 10px;position:relative}
 .mk .striphd{display:flex;align-items:center;gap:7px;padding-right:10px;margin-bottom:10px}
