@@ -2,7 +2,7 @@
  * 商城引擎的資料轉接層（接線第二批）。
  *
  * ⚠️ 這裡**只做取數與形狀對映**，不碰任何渲染邏輯 ——
- * mall.ts 要能繼續跟 public/ggb-market-taobao_3.html diff 得起來（見 ROADMAP）。
+ * mall.ts 要能繼續跟 docs/prototypes/ggb-market-taobao_3.html diff 得起來（見 ROADMAP）。
  *
  * 引擎吃的商品形狀（原型 C2C/B2C 陣列的元素）：
  *   { id, t, specs?, p, ship, k, cond, s, v, pays, rate, rel, done, q, sold, feat }
@@ -129,6 +129,9 @@ export function makeMallDb() {
       call('sell_order_mark_shipped', { p_order_id: oid, p_tracking_number: tracking }),
     confirmReceived: (oid: number) => call('sell_order_confirm_received', { p_order_id: oid }),
     cancelOrder: (oid: number) => call('cancel_sell_order', { p_order_id: oid }),
+    claimCompensation: (oid: number) => call('sell_order_claim_compensation', { p_order_id: oid }),
+    review: (oid: number, good: boolean, comment: string) =>
+      call('sell_order_review', { p_order_id: oid, p_is_good: good, p_comment: comment || null }),
 
     // 上下架／刪除走表：狀態由 sell_guard_listing trigger 把關（交易中不給動）
     setListingStatus: async (id: number, status: string) => {

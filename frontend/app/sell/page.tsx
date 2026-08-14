@@ -5,7 +5,7 @@ import './market.css';
 /**
  * 商城 —— 原型 UI 先行版
  *
- * 老闆定案的順序：先把 `public/ggb-market-taobao_3.html` 的 UI／交互 1:1 搬進站內
+ * 老闆定案的順序：先把 `docs/prototypes/ggb-market-taobao_3.html` 的 UI／交互 1:1 搬進站內
  * （跑在假資料上，整套可以點完），驗收手感之後再把資料層逐段換成真接口。
  *
  * 這頁只是宿主：React 渲染一個**空 div**，殼與所有互動都在 effect 裡由引擎接手

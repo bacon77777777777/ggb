@@ -1,7 +1,7 @@
 /* eslint-disable */
 // @ts-nocheck
 /*
- * 商城原型引擎 —— 自 public/ggb-market-taobao_3.html 逐字移植（老闆的定版原型）。
+ * 商城原型引擎 —— 自 docs/prototypes/ggb-market-taobao_3.html 逐字移植（老闆的定版原型）。
  *
  * ⚠️ 這一階段刻意「先 UI 後接口」（老闆指定）：整套跑在本檔內的假資料上，
  * 交互與原型 1:1。之後接後端時，逐段把資料存取換成 supabase 呼叫、
@@ -1837,7 +1837,11 @@ $("sheets").addEventListener("click",e=>{
     else if(d.sord2)ctx=Object.assign({kind:"order"},sellOrders.find(x=>x.no===d.sord2)||{});
     chatSheet(d.chat,ctx&&ctx.t?ctx:null);return}
   else if(d.say){const nm=$$("h3").textContent;say(nm,d.say);return}
-  else if(d.send){say(d.send,$("chatIn").value);return}
+  else if(d.send){
+    // 聊聊的訊息還沒寫進 sell_messages（第四批）。本機顯示得出來但對方收不到，
+    // 這種「以為講過了」比不能聊更糟。
+    if(DB){toast("聊聊即將開放，急件請先用客服");return}
+    say(d.send,$("chatIn").value);return}
   else if(d.c2c)itemC2C(+d.c2c);
   else if(d.b2c)itemB2C(+d.b2c);
   else if(d.q)searchSheet(d.q);
@@ -1848,6 +1852,9 @@ $("sheets").addEventListener("click",e=>{
   else if(d.kw){adKw=d.kw;root.querySelectorAll("#kwPick .kw").forEach(x=>x.setAttribute("aria-pressed",x.dataset.kw===adKw));adUpd()}
   else if(d.adbuy){
     const t=slotOf(d.adbuy),cost=adCost(),sup=d.adbuy.indexOf("b_")===0;
+    // 廣告版位會扣 G 幣。sell_ad_purchase 有了但購買流程（檔期／關鍵字）還沒接完，
+    // 先擋住 —— 扣了錢卻沒有真的排到版位是最不能發生的事。
+    if(DB){toast("廣告版位購買整理中，稍後開放");return}
     if(!sup&&cost>gbal-locked){toast("G幣不足");return}
     for(let n=0;n<adDays&&adStart+n<DATES.length;n++)used[d.adbuy][adStart+n]=Math.min(t.seats,used[d.adbuy][adStart+n]+1);
     if(sup){
@@ -1872,7 +1879,11 @@ $("sheets").addEventListener("click",e=>{
   else if(d.go==="notis"){notiSheet();return}
   else if(d.go==="sorders"){sellOrdersSheet();return}
   else if(d.go==="pro"){goPro();return}
-  else if(d.ecpay){const sp=d.spec,q=+d.qty||1,tt=+d.tot||0;close();setTimeout(()=>buyB2C(+d.ecpay,sp,q,tt),260)}
+  else if(d.ecpay){
+    // 官方商城的金流（綠界）還沒接。先前這裡直接跳「付款成功」並開一張假訂單，
+    // 玩家會以為錢付掉了 —— 寧可明說還沒開放。
+    if(DB){toast("官方商城結帳即將開放，目前請先逛玩家商城");return}
+    const sp=d.spec,q=+d.qty||1,tt=+d.tot||0;close();setTimeout(()=>buyB2C(+d.ecpay,sp,q,tt),260)}
   else if(d.pay){const cur=orders.find(x=>x.st===0&&x.pays&&x.pays.includes(d.pay));if(cur){cur.pay=d.pay;openOrder(cur.no)}}
   else if(d.paid){
     if(DB&&o.oid){push(()=>DB.markPaid(o.oid),"已回報匯款，等待賣家確認",()=>openOrder(o.no));return}
@@ -1880,10 +1891,16 @@ $("sheets").addEventListener("click",e=>{
   else if(d.sconfirm){const x=orders.find(y=>y.no===d.sconfirm);x.st=2;toast("賣家已確認收款");openOrder(x.no)}
   else if(d.star){const p=d.star.split("|");const o=orders.find(x=>x.no===p[0]);o.stars=+p[1];SFX.tap();openOrder(o.no);return}
   else if(d.rate){const o=orders.find(x=>x.no===d.rate);
-    o.stars=o.stars||4;o.review=($$("#revIn")&&$$("#revIn").value)||"";o.rated=true;
+    const stars=o.stars||4, txt=($$("#revIn")&&$$("#revIn").value)||"";
+    if(DB&&o.oid){SFX.done();closeAll();tab="market";syncTabs();
+      push(()=>DB.review(o.oid,stars>=4,txt),"評價已送出");return}
+    o.stars=stars;o.review=txt;o.rated=true;
     SFX.done();closeAll();tab="market";syncTabs();render();toast("評價已送出");return}
   else if(d.appeal){appealForm(d.appeal);return}
   else if(d.apsend){
+    // 申訴的資料表與後台判定流程還沒做（第三批）。送出後沒有人收得到，
+    // 不能顯示「後台審核中」讓買家乾等。
+    if(DB){toast("申訴功能整理中，請先透過客服聯繫我們");return}
     const o=orders.find(x=>x.no===d.apsend);
     appeals.unshift({no:o.no,buyer:ME.name,seller:o.s,amt:o.p,dep:o.dep,last5:($("apLast5")&&$("apLast5").value)||"—",holdLeft:o.holdLeft||72});
     toast("申訴已送出，後台審核中");close();render();return}
@@ -1891,13 +1908,17 @@ $("sheets").addEventListener("click",e=>{
   else if(d.adreject!==undefined){const ap=appeals.splice(+d.adreject,1)[0];toast("已解鎖保證金，申訴結案");adminPanel();return}
   else if(d.ship){o.st=3;o.late=false;o.track="F"+String(Math.random()).slice(2,11);toast("已出貨");openOrder(o.no)}
   else if(d.late){o.late=true;toast("賣家逾時，可申訴");openOrder(o.no)}
-  else if(d.claim){o.st=4;gbal+=o.dep;toast(`已補償 ${nt(o.dep)}G`);openOrder(o.no)}
+  else if(d.claim){
+    if(DB&&o.oid){push(()=>DB.claimCompensation(o.oid),`已補償 ${nt(o.dep)}G`,()=>openOrder(o.no));return}
+    o.st=4;gbal+=o.dep;toast(`已補償 ${nt(o.dep)}G`);openOrder(o.no)}
   else if(d.recv){
     if(DB&&o.oid){push(()=>DB.confirmReceived(o.oid),"交易完成",()=>openOrder(o.no));return}
     o.st=o.type==="b2c"?3:4;toast("交易完成");openOrder(o.no)}
   else if(d.pack){o.st=1;toast("備貨完成");openOrder(o.no)}
   else if(d.oship){o.st=2;o.track="F"+String(Math.random()).slice(2,11);toast("官方已出貨");openOrder(o.no)}
-  else if(d.refund){o.st=3;toast("退款已送出");openOrder(o.no)}
+  else if(d.refund){
+    if(DB){toast("退款申請即將開放，請先聯繫客服");return}
+    o.st=3;toast("退款已送出");openOrder(o.no)}
   else if(d.p||d.p2){
     const v=d.p||d.p2,i=myPays.indexOf(v);
     if(i>-1){if(myPays.length===1){toast("至少保留一種收款方式");return}myPays.splice(i,1)}else myPays.push(v);
