@@ -90,3 +90,91 @@ export async function loadMallData(): Promise<MallData | null> {
     return null;
   }
 }
+
+/* ────────────────────────────────────────────────────────────
+ * DB 動作橋接（接線第二批）
+ *
+ * 引擎的 handler 只呼叫這裡的方法，不認識 supabase。
+ * 每個方法回傳的形狀統一成 { success } 或 { error }，
+ * 引擎那邊就能用同一套「失敗顯示訊息、成功重拉狀態」處理完。
+ * ──────────────────────────────────────────────────────────── */
+
+export function makeMallDb() {
+  const sb = createClient();
+
+  const call = async (fn: string, args: Record<string, unknown> = {}) => {
+    const { data, error } = await sb.rpc(fn, args);
+    if (error) return { error: error.message };
+    return (data ?? { success: true }) as any;
+  };
+
+  return {
+    myState: () => call('sell_my_state'),
+
+    cartAdd: (id: number, g: number, i: number, q: number) =>
+      call('sell_cart_add', { p_listing_id: id, p_group: g, p_item: i, p_qty: q }),
+    cartSetQty: (id: number, g: number, i: number, q: number) =>
+      call('sell_cart_set_qty', { p_listing_id: id, p_group: g, p_item: i, p_qty: q }),
+
+    // p_items: [{listing_id,g,i,qty}]；pay 是 bank/linepay
+    createOrder: (items: any[], pay: string, note: string) =>
+      call('sell_create_order', { p_items: items, p_pay_method: pay, p_note: note || null }),
+
+    markPaid: (oid: number) => call('sell_order_mark_paid', { p_order_id: oid, p_proof_urls: [] }),
+    confirmPayment: (oid: number) => call('sell_order_confirm_payment', { p_order_id: oid }),
+    markShipped: (oid: number, tracking: string) =>
+      call('sell_order_mark_shipped', { p_order_id: oid, p_tracking_number: tracking }),
+    confirmReceived: (oid: number) => call('sell_order_confirm_received', { p_order_id: oid }),
+    cancelOrder: (oid: number) => call('cancel_sell_order', { p_order_id: oid }),
+
+    // 上下架／刪除走表：狀態由 sell_guard_listing trigger 把關（交易中不給動）
+    setListingStatus: async (id: number, status: string) => {
+      const { error } = await sb.from('sell_listings').update({ status }).eq('id', id);
+      return error ? { error: error.message } : { success: true };
+    },
+    deleteListing: async (id: number) => {
+      const { error } = await sb.from('sell_listings').delete().eq('id', id);
+      return error ? { error: error.message } : { success: true };
+    },
+
+    /**
+     * 新增／編輯商品。
+     * 一律寫 status='pending' —— 玩家商城的上架要審核（規則 7），
+     * 前台自己寫 active 會被 trigger 擋掉，不如一開始就照規矩來。
+     */
+    saveListing: async (payload: any, id?: number) => {
+      const { data: auth } = await sb.auth.getUser();
+      if (!auth?.user) return { error: '請先登入' };
+      const row = {
+        title: payload.t,
+        price: payload.p,
+        shipping_fee: payload.ship ?? 0,
+        category: payload.category || '盒玩',
+        specs: payload.specs ?? null,
+        condition: payload.cond || '未拆',
+        images: payload.images || [],
+      };
+      if (id) {
+        const { error } = await sb.from('sell_listings').update(row).eq('id', id);
+        return error ? { error: error.message } : { success: true };
+      }
+      const { error } = await sb
+        .from('sell_listings')
+        .insert({ ...row, seller_id: auth.user.id, status: 'pending', is_official: false });
+      return error ? { error: error.message } : { success: true };
+    },
+  };
+}
+
+/** 目前登入者（引擎用來認出「我的賣場」，避免自己的商品在列表出現兩次） */
+export async function loadMe() {
+  try {
+    const sb = createClient();
+    const { data: auth } = await sb.auth.getUser();
+    if (!auth?.user) return null;
+    const { data } = await sb.from('users').select('name').eq('id', auth.user.id).single();
+    return { id: auth.user.id, name: data?.name || '我的賣場' };
+  } catch {
+    return null;
+  }
+}

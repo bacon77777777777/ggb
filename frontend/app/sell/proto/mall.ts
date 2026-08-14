@@ -82,6 +82,34 @@ function syncMine(){
 }
 const S_B2C=["已付款","備貨中","已出貨","完成"];
 const ME={done:346,rate:99.2,good:98.6,rel:9,name:"bacon",shop:"我的賣場"};
+/* ── DB 接線（第二批）──────────────────────────────────────
+   opts.db 有給就走真資料。**不做樂觀更新**：保證金、庫存、步驟都在 DB 決定，
+   本機自己先改會讓老闆看到「成功了」但其實 RPC 擋下來。一律送出→重拉→重畫。*/
+const DB=opts.db||null;
+if(opts.me&&opts.me.name){ME.name=opts.me.name;ME.shop=opts.me.name}
+async function pull(){
+  if(!DB)return;
+  const s=await DB.myState();
+  if(!s||s.error||s.success===false)return;
+  orders=s.orders||[];sellOrders=s.sellOrders||[];myList=s.myList||[];
+  cart=s.cart||[];gbal=s.gbal||0;locked=s.locked||0;
+  if(s.myPays&&s.myPays.length)myPays=s.myPays;
+  syncMine();render();
+}
+/* 送一個 DB 動作。失敗就把 RPC 的訊息原字顯示（那些訊息本來就是寫給人看的），
+   回 false 讓呼叫端別再往下走。*/
+async function push(fn,okMsg,after){
+  if(!DB)return true;
+  const r=await fn();
+  if(!r||r.error||r.success===false){toast((r&&(r.error||r.message))||"操作失敗");await pull();return false}
+  await pull();
+  if(okMsg)toast(okMsg);
+  if(after)after();
+  return true;
+}
+/* 引擎的購物車列是用索引定位的，換成 DB 需要 listing/群組/品項 */
+const cartKey=c=>[c.id,c.oi,c.ii];
+const payCode=n=>n==="LINE Pay"?"linepay":"bank";
 const ST={active:["上架中","#3FA34D"],pending:["待審核","#E08B2C"],off:["已下架","#8C8C8C"],sold:["已售出","#8C8C8C"]};
 const SO_ST=["待買家付款","待確認收款","待出貨","待收貨","已完成","已取消"];
 let appeals=[];
@@ -1239,6 +1267,25 @@ function placeOrder(){
     sub+=sk.p*c.qty;
     if(c.kind==="c2c")dep+=Math.ceil(sk.p*c.qty*tierOf(it).ratio);
   });
+  // 真資料模式：金額、保證金、庫存全部由 sell_create_order 決定，
+  // 本機只負責把「買哪幾個規格」送過去。官方 B2C 還沒接綠界，維持原型行為。
+  if(DB&&first.kind==="c2c"){
+    const payload=sel.map(c=>({listing_id:c.id,g:c.oi,i:c.ii,qty:c.qty}));
+    const pay=payCode(coPay[gkey]||it0.pays[0]);
+    const note=coNote[gkey]||"";
+    closeAll();
+    push(async()=>{
+      const r=await DB.createOrder(payload,pay,note);
+      // 建單成功才清購物車：失敗時東西要留著，不然買家得重挑一次
+      if(r&&r.success)for(const c of sel){if(c.fromCart)await DB.cartSetQty(c.id,c.oi,c.ii,0)}
+      return r;
+    },"訂單已成立，請於 15 分鐘內付款",()=>{
+      coItems=[];coCoupon={n:"",amt:0};coShip={};coShopCpn={};coNote={};
+      ordTab=0;render();
+      if(orders[0])setTimeout(()=>openOrder(orders[0].no),200);
+    });
+    return;
+  }
   const off=((coShopCpn[gkey]&&coShopCpn[gkey].amt)||0)+coCoupon.amt;
   const tot=Math.max(0,sub+fee-off);
   if(first.kind==="c2c"&&it0.gfree!==undefined&&dep>it0.gfree){toast(`${it0.s} 目前無法接單`);return}
@@ -1625,7 +1672,9 @@ $("screen").addEventListener("click",e=>{
   else if(d.more){moreSheet(d.more);return}
   else if(d.c2c)itemC2C(+d.c2c);
   else if(d.b2c)itemB2C(+d.b2c);
-  else if(d.recv){const o=orders.find(x=>x.no===d.recv);o.st=o.type==="b2c"?3:4;toast("已確認收貨");render();return}
+  else if(d.recv){const o=orders.find(x=>x.no===d.recv);
+    if(DB&&o&&o.oid){push(()=>DB.confirmReceived(o.oid),"已確認收貨");return}
+    o.st=o.type==="b2c"?3:4;toast("已確認收貨");render();return}
   else if(d.chat){const o=d.ord2?orders.find(x=>x.no===d.ord2):null;chatSheet(d.chat,o);return}
   else if(d.ord)openOrder(d.ord);
   else if(d.go==="sell"){editIdx=null;useSpec=false;specTree=[{v:"",items:[{n:"",p:0,q:1}]}];sellForm();return}
@@ -1688,6 +1737,7 @@ $("sheets").addEventListener("click",e=>{
     cartSheet();return}
   else if(d.cq){const p=d.cq.split(":").map(Number);
     if(cart[p[0]].qty+p[1]<=0){askDel(p[0]);return}
+    if(DB){const c=cart[p[0]];push(()=>DB.cartSetQty(...cartKey(c),c.qty+p[1]),"",()=>cartSheet());return}
     cart[p[0]].qty=cart[p[0]].qty+p[1];cartSheet();return}
   else if(d.cgrp){const idx=d.cgrp.split(",").map(Number);const all=idx.every(i=>cart[i].sel);
     if(all)idx.forEach(i=>cart[i].sel=false);
@@ -1698,7 +1748,9 @@ $("sheets").addEventListener("click",e=>{
     cartSheet();return}
   else if(d.cspec){specPicker(+d.cspec);return}
   else if(d.cpick){const p=d.cpick.split(":").map(Number);cart[p[0]].oi=p[1];cart[p[0]].ii=p[2];toast("已更換品項");cartSheet();return}
-  else if(d.cdel!==undefined){cart.splice(+d.cdel,1);toast("已移除");cartSheet();return}
+  else if(d.cdel!==undefined){
+    if(DB){const c=cart[+d.cdel];push(()=>DB.cartSetQty(...cartKey(c),0),"已移除",()=>cartSheet());return}
+    cart.splice(+d.cdel,1);toast("已移除");cartSheet();return}
   else if(d.checkout){checkout();return}
   else if(d.placeorder){placeOrder();return}
   else if(d.copay){const p=d.copay.split("|");coPay[p[0]]=p[1];close();checkoutSheet(coItems);return}
@@ -1720,6 +1772,7 @@ $("sheets").addEventListener("click",e=>{
   else if(d.addr){addrSheet();return}
   else if(d.addcart){
     const c=buyCtx;
+    if(DB){SFX.add();close();push(()=>DB.cartAdd(c.id,c.oi,c.ii,c.qty),"已加入購物車");return}
     const ex=cart.find(x=>x.kind===c.kind&&x.id===c.id&&x.oi===c.oi&&x.ii===c.ii);
     if(ex)ex.qty+=c.qty;else cart.push({kind:c.kind,id:c.id,oi:c.oi,ii:c.ii,qty:c.qty,sel:true});
     SFX.add();toast("已加入購物車");close();render();return}
@@ -1728,24 +1781,35 @@ $("sheets").addEventListener("click",e=>{
   else if(d.del!==undefined){
     const m=myList[+d.del];
     if(m.locked){toast("交易進行中，無法刪除");return}
+    if(DB){close();push(()=>DB.deleteListing(m.id),"已刪除");return}
     myList.splice(+d.del,1);syncMine();toast("已刪除");close();render();return}
   else if(d.off!==undefined){
     const m=myList[+d.off];
     if(m.locked){toast("交易進行中，無法下架");return}
+    if(DB){close();push(()=>DB.setListingStatus(m.id,"off"),"已下架");return}
     m.st="off";syncMine();toast("已下架");close();render();return}
-  else if(d.relist!==undefined){myList[+d.relist].st="active";syncMine();toast("已重新上架");close();render();return}
+  else if(d.relist!==undefined){const m=myList[+d.relist];
+    // 重新上架一樣要重審（規則 7），所以回 pending 不是 active
+    if(DB){close();push(()=>DB.setListingStatus(m.id,"pending"),"已送出重新上架，待審核");return}
+    m.st="active";syncMine();toast("已重新上架");close();render();return}
   else if(d.noti!==undefined){const n=NOTIS[+d.noti];if(n.go==="sorders")sellOrdersSheet();else if(n.go==="orders"){ordTab=0;ordersSheet()}else if(n.go==="ads")adCenter();return}
   else if(d.shop){shopSheet(d.shop);return}
   else if(d.sot!==undefined){soTab=+d.sot;sellOrdersSheet();return}
   else if(d.sod){sellOrderDetail(d.sod);return}
   else if(d.socancel){askCancel(d.socancel);return}
-  else if(d.socancelyes){const o=sellOrders.find(x=>x.no===d.socancelyes);o.st=5;o.holdLeft=72;
+  else if(d.socancelyes){const o=sellOrders.find(x=>x.no===d.socancelyes);
     $("dlg").classList.remove("on");
+    if(DB&&o&&o.oid){push(()=>DB.cancelOrder(o.oid),"已取消，保證金進入 72 小時申訴保留期",()=>sellOrderDetail(o.no));return}
+    o.st=5;o.holdLeft=72;
     toast("已取消，保證金進入 72 小時申訴保留期");sellOrderDetail(o.no);render();return}
-  else if(d.sopaid){const o=sellOrders.find(x=>x.no===d.sopaid);o.st=2;toast("已確認收款，請於 72 小時內出貨");sellOrderDetail(o.no);render();return}
+  else if(d.sopaid){const o=sellOrders.find(x=>x.no===d.sopaid);
+    if(DB&&o&&o.oid){push(()=>DB.confirmPayment(o.oid),"已確認收款，請於 72 小時內出貨",()=>sellOrderDetail(o.no));return}
+    o.st=2;toast("已確認收款，請於 72 小時內出貨");sellOrderDetail(o.no);render();return}
   else if(d.soway!==undefined){soWay=+d.soway;root.querySelectorAll("#soWay .pick").forEach(x=>x.setAttribute("aria-pressed",+x.dataset.soway===soWay));return}
-  else if(d.soship){const o=sellOrders.find(x=>x.no===d.soship);o.st=3;o.late=false;
-    o.track=($("soTrack")&&$("soTrack").value.trim())||"F"+String(Math.random()).slice(2,11);
+  else if(d.soship){const o=sellOrders.find(x=>x.no===d.soship);
+    const tk=($("soTrack")&&$("soTrack").value.trim())||"F"+String(Math.random()).slice(2,11);
+    if(DB&&o&&o.oid){push(()=>DB.markShipped(o.oid,tk),"已出貨，單號 "+tk,()=>sellOrderDetail(o.no));return}
+    o.st=3;o.late=false;o.track=tk;
     toast("已出貨，單號 "+o.track);sellOrderDetail(o.no);render();return}
   else if(d.sorecv){const o=sellOrders.find(x=>x.no===d.sorecv);o.st=4;toast(`保證金 ${nt(o.dep)}G 已退還`);sellOrderDetail(o.no);render();return}
   else if(d.chat){
@@ -1792,7 +1856,9 @@ $("sheets").addEventListener("click",e=>{
   else if(d.go==="pro"){goPro();return}
   else if(d.ecpay){const sp=d.spec,q=+d.qty||1,tt=+d.tot||0;close();setTimeout(()=>buyB2C(+d.ecpay,sp,q,tt),260)}
   else if(d.pay){const cur=orders.find(x=>x.st===0&&x.pays&&x.pays.includes(d.pay));if(cur){cur.pay=d.pay;openOrder(cur.no)}}
-  else if(d.paid){o.st=1;toast("已回報匯款，等待賣家確認");openOrder(o.no)}
+  else if(d.paid){
+    if(DB&&o.oid){push(()=>DB.markPaid(o.oid),"已回報匯款，等待賣家確認",()=>openOrder(o.no));return}
+    o.st=1;toast("已回報匯款，等待賣家確認");openOrder(o.no)}
   else if(d.sconfirm){const x=orders.find(y=>y.no===d.sconfirm);x.st=2;toast("賣家已確認收款");openOrder(x.no)}
   else if(d.star){const p=d.star.split("|");const o=orders.find(x=>x.no===p[0]);o.stars=+p[1];SFX.tap();openOrder(o.no);return}
   else if(d.rate){const o=orders.find(x=>x.no===d.rate);
@@ -1808,7 +1874,9 @@ $("sheets").addEventListener("click",e=>{
   else if(d.ship){o.st=3;o.late=false;o.track="F"+String(Math.random()).slice(2,11);toast("已出貨");openOrder(o.no)}
   else if(d.late){o.late=true;toast("賣家逾時，可申訴");openOrder(o.no)}
   else if(d.claim){o.st=4;gbal+=o.dep;toast(`已補償 ${nt(o.dep)}G`);openOrder(o.no)}
-  else if(d.recv){o.st=o.type==="b2c"?3:4;toast("交易完成");openOrder(o.no)}
+  else if(d.recv){
+    if(DB&&o.oid){push(()=>DB.confirmReceived(o.oid),"交易完成",()=>openOrder(o.no));return}
+    o.st=o.type==="b2c"?3:4;toast("交易完成");openOrder(o.no)}
   else if(d.pack){o.st=1;toast("備貨完成");openOrder(o.no)}
   else if(d.oship){o.st=2;o.track="F"+String(Math.random()).slice(2,11);toast("官方已出貨");openOrder(o.no)}
   else if(d.refund){o.st=3;toast("退款已送出");openOrder(o.no)}
@@ -1834,6 +1902,14 @@ $("sheets").addEventListener("click",e=>{
       const items=pack(specTree[0]);
       if(items.length){sp={n:"品項",o:[{v:"",items}]};tq=items.reduce((a,m)=>a+m.q,0);}
     }
+    if(DB){
+      const m=editIdx!==null?myList[editIdx]:null;
+      const wasEdit=editIdx!==null;editIdx=null;
+      close();tab="me";syncTabs();
+      push(()=>DB.saveListing({t:ti,p,ship:sh,specs:sp},m?m.id:undefined),
+           wasEdit?"已儲存變更":"已送出審核");
+      return;
+    }
     if(editIdx!==null){
       const m=myList[editIdx];
       Object.assign(m,{t:ti,p,q:tq,need,ship:sh,specs:sp});
@@ -1851,6 +1927,8 @@ function syncTabs(){root.querySelectorAll(".tabbar button").forEach(x=>x.setAttr
 
 if(opts.initialTab==="official"||opts.initialTab==="me"||opts.initialTab==="notis")tab=opts.initialTab;
 syncMine();render();
+// 先畫再拉：殼與列表已經有真資料了，訂單/購物車慢一步進來不影響第一眼
+if(DB)pull();
 
 return {
   destroy(){
