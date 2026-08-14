@@ -51,7 +51,12 @@ const A={
  plush:(a,b)=>`<svg viewBox="0 0 100 100"><circle cx="26" cy="36" r="12" fill="${a}"/><circle cx="74" cy="36" r="12" fill="${a}"/><circle cx="50" cy="52" r="32" fill="${b}"/><circle cx="38" cy="46" r="4.5" fill="#2B2B2B"/><circle cx="62" cy="46" r="4.5" fill="#2B2B2B"/><ellipse cx="50" cy="58" rx="6" ry="4" fill="${a}"/></svg>`
 };
 const PAL=[["#FF8A5B","#FFD9C2"],["#7FD1B9","#DDF3EC"],["#A99BE8","#E6E1FA"],["#FFC24B","#FFEDC7"],["#FF8FB1","#FFE0EA"],["#6FB7E8","#DCEDFA"]];
-const art=(k,i)=>{const p=PAL[i%PAL.length];return{s:A[k](p[0],p[1]),bg:p[1]}};
+/* 真商品有圖就放圖；沒有（新上架、規格沒單獨附圖）才畫原型的 SVG 佔位。
+   回傳形狀不變（{s,bg}），所以二十幾個呼叫端的模板都不用動。*/
+const art=(k,i,img)=>{const p=PAL[i%PAL.length];
+  return img
+    ?{s:`<img src="${esc(img)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">`,bg:p[1]}
+    :{s:A[k](p[0],p[1]),bg:p[1]}};
 
 let C2C=(opts.data&&opts.data.c2c&&opts.data.c2c.length)?opts.data.c2c:[
  {id:1,t:"航海王 一番賞 A賞 索隆 三刀流 造型公仔",specs:{n:"賞等",o:[{v:"A賞",items:[{n:"索隆 三刀流 造型公仔",p:2680,q:1,k:"fig"},{n:"魯夫 五檔 造型公仔",p:2980,q:1,k:"fig"}]},{v:"B賞",items:[{n:"香吉士 壓克力立牌",p:880,q:3,k:"card"},{n:"娜美 壓克力立牌",p:820,q:2,k:"card"}]},{v:"最後一賞",items:[{n:"艾斯 特典公仔",p:3600,q:1,k:"fig"}]}]},p:2680,ship:60,k:"fig",cond:"未拆",s:"阿凱の抽物間",v:1,pays:["銀行轉帳","LINE Pay"],rate:99.1,rel:8,done:412,q:1,sold:86},
@@ -135,21 +140,21 @@ const NIC={
  ad:   ['#F3EDFF','#8A6ADF','M4 9h4l7-4v14l-7-4H4z M18 9v6'],
  coin: ['#FFF6E0','#D89B2C','M12 3a9 9 0 100 18 9 9 0 000-18z M12 7v10 M9.5 9.5h5 M9.5 14h5']
 };
-let sellOrders=[
+let sellOrders=opts.data?[]:[
  {no:"P70241702",t:"史努比 復古盒玩 全 6 入 未拆",spec:"",qty:1,p:960,k:"box",cid:9002,buyer:"阿宏",st:0,dep:288,track:null,late:false,payAt:"—",last5:"—",way:"銀行轉帳",due:Date.now()+15*60000},
  {no:"P70241560",t:"間諜家家酒 一番賞 B賞 安妮亞 造型抱枕",spec:"款式：站姿",qty:1,p:1460,k:"plush",cid:9001,buyer:"豆漿",st:1,dep:384,track:null,late:false,payAt:"今天 09:41",last5:"48213",way:"銀行轉帳"},
  {no:"P70241188",t:"史努比 復古盒玩 全 6 入 未拆",spec:"",qty:1,p:960,k:"box",cid:9002,buyer:"小海豹",st:2,dep:288,track:null,late:true,payAt:"8/11 20:03",last5:"90117",way:"銀行轉帳"},
  {no:"P70240915",t:"間諜家家酒 一番賞 B賞 安妮亞 造型抱枕",spec:"款式：坐姿",qty:1,p:1340,k:"plush",cid:9001,buyer:"阿May",st:3,dep:384,track:"F238104772",late:false,payAt:"8/12 14:22",last5:"33907",way:"LINE Pay"},
  {no:"P70238640",t:"寶可夢 朱紫 補充包 未拆 3 包",spec:"",qty:2,p:1100,k:"card",cid:9003,buyer:"卡卡",st:4,dep:0,track:"F238100091",late:false,payAt:"8/09 11:05",last5:"77120",way:"銀行轉帳"}
 ];
-let cart=[{kind:"c2c",id:1,oi:1,ii:0,qty:1,sel:true},{kind:"c2c",id:1,oi:1,ii:1,qty:1,sel:true},{kind:"b2c",id:102,oi:0,ii:0,qty:2,sel:false}];
-let tab="market",seg="all",ordTab=0,orders=[
+let cart=opts.data?[]:[{kind:"c2c",id:1,oi:1,ii:0,qty:1,sel:true},{kind:"c2c",id:1,oi:1,ii:1,qty:1,sel:true},{kind:"b2c",id:102,oi:0,ii:0,qty:2,sel:false}];
+let tab="market",seg="all",ordTab=0,orders=opts.data?[]:[
  {no:"P70251180",type:"c2c",dep:804,items:[{t:"航海王 一番賞 A賞 索隆 三刀流 造型公仔",spec:"A賞 / 索隆 三刀流",qty:1,p:2680,k:"fig",cid:1}],sub:2680,fee:60,off:0,p:2740,k:"fig",cid:1,s:"阿凱の抽物間",note:"麻煩包厚一點，謝謝",ship:{n:"7-11 交貨便",brand:"7-ELEVEN",kind:"store",d:"取貨門市"},pays:["銀行轉帳","LINE Pay"],pay:"銀行轉帳",st:0,due:Date.now()+15*60000,late:false,track:null},
  {no:"P70250042",type:"c2c",dep:1620,items:[{t:"寶可夢 黑炎的支配者 皮卡丘 SAR 中文版",spec:"",qty:1,p:5400,k:"card",cid:2}],sub:5400,fee:60,off:0,p:5460,k:"card",cid:2,s:"卡神小林",ship:{n:"7-11 交貨便",brand:"7-ELEVEN",kind:"store",d:"取貨門市"},pays:["銀行轉帳"],pay:"銀行轉帳",st:3,due:0,late:false,track:"F238104110"},
  {no:"P70249815",type:"c2c",dep:960,items:[{t:"史努比 復古盒玩 全 6 入 未拆",spec:"",qty:1,p:960,k:"box",cid:9002}],sub:960,fee:0,off:0,p:960,k:"box",cid:9002,s:"小布丁玩具舖",ship:{n:"7-11 交貨便",brand:"7-ELEVEN",kind:"store",d:"取貨門市"},pays:["LINE Pay"],pay:"LINE Pay",st:9,holdLeft:68,due:0,late:false,track:null},
  {no:"O70247731",type:"b2c",items:[{t:"官方福袋 盒玩隨機 5 入 保證不重複",spec:"",qty:1,p:990,k:"box",cid:102}],sub:990,fee:0,off:0,p:990,k:"box",cid:102,pay:"信用卡",ship:{n:"7-11 交貨便",brand:"7-ELEVEN",kind:"store",d:"取貨門市"},st:3,track:"F238100882"}
 ],gbal=12400,locked=0,myPays=["銀行轉帳"],myShip=60,tick=null;
-let myList=[
+let myList=opts.data?[]:[
  {id:9001,t:"間諜家家酒 一番賞 B賞 安妮亞 造型抱枕",p:1280,ship:60,k:"plush",q:2,need:384,st:"active",locked:false,ads:[{id:"feat",n:"精選商品格",left:3},{id:"cat",n:"分類首排",left:4}],views:214},
  {id:9002,t:"史努比 復古盒玩 全 6 入 未拆",p:960,ship:0,k:"box",q:2,need:288,st:"active",locked:true,ad:"",views:88},
  {id:9003,t:"寶可夢 朱紫 補充包 未拆 3 包",p:520,ship:60,k:"card",q:3,need:156,st:"pending",locked:false,ad:"",views:0}
@@ -291,7 +296,7 @@ function feed(list,build,pool){
   return out.join("");
 }
 function cardC2C(it,ad){
-  const a=art(it.k,it.id),g=guard(it);
+  const a=art(it.k,it.id,it.img),g=guard(it);
   return pcard({kind:"c2c",id:it.id,t:it.t,p:minP(it),from:!!it.specs,bg:a.bg,svg:a.s,shop:it.s,shopColor:hue(it.s),ad,
     badge:ad?'<span class="badge ft">精選</span><span class="adlbl">廣告</span>':'<span class="badge">玩家</span>',
     lvl:`<span class="lvl g${g.tier.k}">${g.tier.n}</span>`,
@@ -299,14 +304,14 @@ function cardC2C(it,ad){
     tags:`${it.ship?"":'<span class="tg tg--dep">免運</span>'}${it.pays.map(p=>`<span class="tg tg--pay">${esc(p)}</span>`).join("")}`});
 }
 function cardB2C(it,ad){
-  const a=art(it.k,it.id);
+  const a=art(it.k,it.id,it.img);
   return pcard({kind:"b2c",id:it.id,t:it.t,p:minP(it),from:!!it.specs,bg:a.bg,svg:a.s,shop:"吉吉比官方",shopColor:"#111",ad,
     badge:ad?'<span class="badge ft">精選</span><span class="adlbl">廣告</span>':'<span class="badge off">官方</span>',lvl:"",
     right:`<span class="dep off">官方出貨</span>`,
     tags:`${it.ship?"":'<span class="tg tg--off">免運</span>'}<span class="tg tg--off">刷卡分期</span><span class="tg tg--off">可退款</span>`});
 }
 function scards(list,label){
-  return list.map(it=>{const a=art(it.k,it.id);
+  return list.map(it=>{const a=art(it.k,it.id,it.img);
     return `<button class="scard" data-c2c="${it.id}"><div class="si" style="background:${a.bg}">${a.s}<span class="mini">${label}</span></div>
     <div class="st">${esc(it.t)}</div><div class="sp">NT$${nt(it.p)}</div></button>`}).join("");
 }
@@ -324,7 +329,7 @@ function vMarket(){
   const pool=C2C.filter(x=>x.feat);
   const hl=pool.slice(0,3);hero=0;
   const heroHTML=`<div class="heroC"><span class="adtag">廣告 · 首頁輪播</span>
-    ${hl.map((it,i)=>{const a=art(it.k,it.id);return `<button class="hslide ${i===0?"on":""}" data-c2c="${it.id}">
+    ${hl.map((it,i)=>{const a=art(it.k,it.id,it.img);return `<button class="hslide ${i===0?"on":""}" data-c2c="${it.id}">
       <span class="hart" style="background:${a.bg}">${a.s}</span>
       <span class="htx"><h3>${esc(it.t)}</h3><p>${esc(it.s)} · 已售 ${it.sold}</p>
       <span class="hprice">NT$${nt(it.p)}</span></span></button>`}).join("")}
@@ -346,14 +351,14 @@ function vOfficial(){
   const hot=B2C.slice().sort((a,b)=>b.sold-a.sold).slice(0,4);
   const hl=B2C.slice(0,3);hero=0;
   const heroHTML=`<div class="heroC"><span class="adtag">廣告 · 官方頁輪播</span>
-    ${hl.map((it,i)=>{const a=art(it.k,it.id);return `<button class="hslide ${i===0?"on":""}" data-b2c="${it.id}">
+    ${hl.map((it,i)=>{const a=art(it.k,it.id,it.img);return `<button class="hslide ${i===0?"on":""}" data-b2c="${it.id}">
       <span class="hart" style="background:${a.bg}">${a.s}</span>
       <span class="htx"><h3>${esc(it.t)}</h3><p>官方直送 · 48 小時出貨</p>
       <span class="hprice">NT$${nt(it.p)}</span></span></button>`}).join("")}
     <span class="hdots">${hl.map((_,i)=>`<i class="${i===0?"on":""}"></i>`).join("")}</span></div>`;
   const newIn=`<div class="strip"><span class="adtag">廣告 · 新品首發</span>
     <div class="striphd"><b>新品首發</b><button class="more" data-more="new">更多 ›</button></div>
-    <div class="srow">${B2C.slice(0,4).map(it=>{const a=art(it.k,it.id);
+    <div class="srow">${B2C.slice(0,4).map(it=>{const a=art(it.k,it.id,it.img);
       return `<button class="scard" data-b2c="${it.id}"><div class="si" style="background:${a.bg}">${a.s}<span class="mini">首發</span></div>
       <div class="st">${esc(it.t)}</div><div class="sp">NT$${nt(it.p)}</div></button>`}).join("")}</div></div>`;
   const brand=`<div class="strip"><span class="adtag">廣告 · 品牌專區</span>
@@ -361,7 +366,7 @@ function vOfficial(){
     <div class="srow">${BRANDS.map((b,i)=>`<button class="bcard"><span class="bmark">${esc(b.n[0])}</span>
       <span class="bn">${esc(b.n)}</span><span class="bd">${esc(b.d)}</span></button>`).join("")}</div></div>`;
   const rank=`<div class="strip"><div class="striphd"><b>熱賣排行</b><button class="more" data-more="hot">更多 ›</button></div>
-    <div class="srow">${hot.map((it,i)=>{const a=art(it.k,it.id);
+    <div class="srow">${hot.map((it,i)=>{const a=art(it.k,it.id,it.img);
       return `<button class="scard" data-b2c="${it.id}"><div class="si" style="background:${a.bg}">${a.s}<span class="mini rank">${i+1}</span></div>
       <div class="st">${esc(it.t)}</div><div class="sp">NT$${nt(it.p)}</div></button>`}).join("")}</div></div>`;
   return heroHTML+newIn+brand+rank+`<div class="grid">${feed(B2C,cardB2C,pool)}</div>`;
@@ -375,7 +380,7 @@ function vOrders(){
   return `<div class="blk first tabbar2">
     <div class="swch">${F.map((f,i)=>{const n=orders.filter(f[1]).length;
       return `<button data-ordt="${i}" aria-pressed="${ordTab===i}">${f[0]}${n?` ${n}`:""}</button>`}).join("")}</div></div>
-  ${list.length?`<div class="olist">${list.map(o=>{const a=art(o.k,o.cid),S=stepsOf(o);
+  ${list.length?`<div class="olist">${list.map(o=>{const a=art(o.k,o.cid,o.img),S=stepsOf(o);
     return `<div class="ocard">
       <div class="ohd"><span>${o.type==="b2c"?"吉吉比官方旗艦店":esc(o.s)}</span>
         <span style="margin-left:auto" class="ost">${stName(o)}${o.late?" · 逾時":""}</span></div>
@@ -427,7 +432,7 @@ function vMe(){
   </div>
   ${myList.length?`<div class="mine">
     <div class="minehd"><b>我的商品</b><span class="ar">${myList.filter(m=>m.st==="active").length} 上架中 · ${myList.filter(m=>m.st==="pending").length} 待審${myList.filter(m=>m.st==="off").length?` · ${myList.filter(m=>m.st==="off").length} 已下架`:""}</span></div>
-    ${myList.map((m,i)=>({m,i})).sort((a,b)=>(a.m.st==="off"?1:0)-(b.m.st==="off"?1:0)).map(({m,i})=>{const a=art(m.k,m.id);
+    ${myList.map((m,i)=>({m,i})).sort((a,b)=>(a.m.st==="off"?1:0)-(b.m.st==="off"?1:0)).map(({m,i})=>{const a=art(m.k,m.id,m.img);
       return `<div class="mrowi${m.st==="off"||m.st==="pending"?" dim":""}">
       <div class="mth" style="background:${a.bg}">${a.s}</div>
       <div class="mmeta"><div class="mt">${esc(m.t)}</div>
@@ -491,7 +496,7 @@ function vCart(){
       <button class="cbox${allsel?" on":""}" style="margin:0 8px 0 0" data-cgrp="${idx.join(",")}"></button>
       <span style="font-weight:700;color:var(--txt)">${esc(g)}</span></div>
     ${groups[g].map(({c,i,it})=>{const sk=it.specs?it.specs.o[c.oi].items[c.ii]:{n:"",p:it.p,q:it.q,k:it.k};
-      const a=art(sk.k||it.k,it.id+c.oi+c.ii);
+      const a=art(sk.k||it.k,it.id+c.oi+c.ii,sk.img||it.img);
       return `<div class="cartrow" data-csel="${i}">
         <span class="cbox${c.sel?" on":""}"></span>
         <div class="th" style="background:${a.bg}">${a.s}</div>
@@ -518,7 +523,7 @@ function specPicker(i){
   const rows=[];
   it.specs.o.forEach((o,oi)=>o.items.forEach((m,ii)=>rows.push({oi,ii,o,m})));
   sheet("更換品項",`<div class="blk first">
-    ${rows.map(r=>{const a=art(r.m.k||it.k,it.id+r.oi+r.ii);
+    ${rows.map(r=>{const a=art(r.m.k||it.k,it.id+r.oi+r.ii,r.m.img||it.img);
       return `<button class="skurow" data-cpick="${i}:${r.oi}:${r.ii}" ${r.m.q<=0?"disabled":""} aria-pressed="${r.oi===c.oi&&r.ii===c.ii}">
         <span class="sth" style="background:${a.bg}">${a.s}</span>
         <span class="stx"><b>${esc(r.o.v?r.o.v+" · ":"")}${esc(r.m.n)}</b><span>庫存 ${r.m.q}${r.m.q<=0?" · 售完":""}</span></span>
@@ -606,7 +611,7 @@ function searchSheet(q){
   const hits=kw?C2C.filter(x=>x.t.includes(kw)||x.s.includes(kw)):[];
   const top=kw?C2C.filter(x=>x.feat&&!hits.includes(x)).concat(C2C.filter(x=>x.feat))[0]:null;
   const row=it=>`<div class="orow" data-c2c="${it.id}" style="padding:10px 0;border-bottom:1px solid var(--line)">
-      <div class="th" style="background:${art(it.k,it.id).bg}">${art(it.k,it.id).s}</div>
+      <div class="th" style="background:${art(it.k,it.id,it.img).bg}">${art(it.k,it.id,it.img).s}</div>
       <div style="flex:1;min-width:0"><div class="ptitle">${esc(it.t)}</div>
       <div class="pprice" style="margin-top:4px"><i>NT$</i><b style="font-size:17px">${nt(it.p)}</b></div></div></div>`;
   sheet("搜尋",`
@@ -625,7 +630,7 @@ function moreSheet(kind){
     new:{t:"新品首發",sub:"供應商推廣 · 廣告",list:B2C.slice(),kindAttr:"b2c",lbl:"首發"}
   }[kind];
   sheet(CFG.t,`<div class="blk first"><div class="secttl">${CFG.sub}</div>
-    ${CFG.list.map((it,i)=>{const a=art(it.k,it.id);
+    ${CFG.list.map((it,i)=>{const a=art(it.k,it.id,it.img);
       return `<div class="orow" data-${CFG.kindAttr}="${it.id}" style="padding:11px 0;border-bottom:1px solid var(--line)">
       <div class="th" style="background:${a.bg};position:relative">${a.s}<span class="mini ${kind==="hot"?"rank":""}">${kind==="hot"?i+1:CFG.lbl}</span></div>
       <div style="flex:1;min-width:0"><div class="ptitle">${esc(it.t)}</div>
@@ -694,7 +699,7 @@ function listMenu(i){
   sheet("商品操作",`
   <div class="blk first" style="padding:6px 16px 10px">
     <div class="mrowi" style="border-bottom:1px solid var(--line);padding-bottom:12px">
-      <div class="mth" style="background:${art(m.k,m.id).bg}">${art(m.k,m.id).s}</div>
+      <div class="mth" style="background:${art(m.k,m.id,m.img).bg}">${art(m.k,m.id,m.img).s}</div>
       <div class="mmeta"><div class="mt">${esc(m.t)}</div><div class="mp">NT$${nt(m.p)}</div></div></div>
     <button class="menurow" data-edit="${i}"><span class="mi">編輯商品</span><span class="ms2">修改名稱、價格、規格</span></button>
     ${m.st==="off"
@@ -741,7 +746,7 @@ function sellOrdersSheet(){
   <div class="blk first tabbar2">
     <div class="swch scrollx">${F.map((f,i)=>{const n=sellOrders.filter(f[1]).length;
       return `<button data-sot="${i}" aria-pressed="${soTab===i}">${f[0]}${n?` ${n}`:""}</button>`}).join("")}</div></div>
-  ${list.length?`<div class="olist">${list.map(o=>{const a=art(o.k,o.cid);
+  ${list.length?`<div class="olist">${list.map(o=>{const a=art(o.k,o.cid,o.img);
     return `<div class="ocard">
       <div class="ohd"><span>買家 ${esc(o.buyer)}</span>
         <span style="margin-left:auto" class="ost">${SO_ST[o.st]}${o.late?" · 逾時":""}</span></div>
@@ -762,7 +767,7 @@ function sellOrderDetail(no){
   // 付款倒數歸零時整筆從 sellOrders 移除（見 startCD 的 callback），
   // 但畫面上那顆 data-sod 還在 —— 再點就會對 undefined 取值而整頁當掉
   if(!o){toast("這筆訂單已經結束了");close();render();return}
-  const a=art(o.k,o.cid);
+  const a=art(o.k,o.cid,o.img);
   const paid=o.st>=2&&o.st<=4;
   const steps=o.st===5?"":`<div class="blk first"><div class="steps">${SO_ST.slice(0,5).map((n,i)=>`<div class="stp ${i<o.st?"dn":i===o.st?"nw":""}">${n}</div>`).join("")}</div></div>`;
   const banner=o.st===2?`<div class="blk okban"><span class="okic"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5.2 5.2L19.5 7.5"/></svg></span>
@@ -898,7 +903,7 @@ function chatSheet(name,ctx){
   drawChat(name,ctx&&ctx.kind==="item");
 }
 function chatCard(c){
-  const a=art(c.k,c.cid||c.id);
+  const a=art(c.k,c.cid||c.id,c.img);
   return c.kind==="item"
     ? `<div class="chatctx item"><div class="cchd">商品諮詢</div>
         <div class="orow"><div class="th" style="background:${a.bg}">${a.s}</div>
@@ -940,7 +945,7 @@ function adCenter(){
   const cur=fromPromo?myList[promoFor]:null;
   sheet("廣告中心",`
   ${cur?`<div class="blk first" style="padding:12px 16px"><div class="orow">
-    <div class="th" style="background:${art(cur.k,cur.id).bg};width:44px;height:44px">${art(cur.k,cur.id).s}</div>
+    <div class="th" style="background:${art(cur.k,cur.id,cur.img).bg};width:44px;height:44px">${art(cur.k,cur.id,cur.img).s}</div>
     <div style="flex:1;min-width:0"><div class="ptitle" style="height:auto">${esc(cur.t)}</div>
       ${cur.ads&&cur.ads.length?`<div class="promoline">${cur.ads.map(x=>`<span class="promoing">${esc(x.n)}，剩 ${x.left} 天</span>`).join("")}</div>`:""}</div></div></div>`:""}
   <div class="blk${cur?"":" first"}"><div class="secttl">可購買版位</div>
@@ -1006,7 +1011,7 @@ function recoStrip(){
     <div class="srow">${scards(C2C.filter(x=>x.feat).slice(0,4),"推薦")}</div></div>`;
 }
 function itemC2C(id){
-  const it=C2C.find(x=>x.id===id),a=art(it.k,it.id),g=guard(it);
+  const it=C2C.find(x=>x.id===id),a=art(it.k,it.id,it.img),g=guard(it);
   sheet("商品詳情",`<button class="floatback" data-x="1" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
   <div class="hero" style="background:${a.bg}">${a.s}</div>
   <div class="pricebar"><span class="s">NT$</span><span class="n">${nt(minP(it))}</span>${it.specs?'<span class="s">起</span>':""}
@@ -1030,7 +1035,7 @@ function itemC2C(id){
   <div class="abar"><button class="aicon" data-chat="${esc(it.s)}" data-itm2="${it.id}"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M20 12a7.5 7.5 0 01-11 6.6L4 20l1.4-4.2A7.5 7.5 0 1120 12z"/></svg></span><span>私聊</span></button><button class="aicon" data-cart="${it.id}"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M3 4h2.2l2.3 11h10l2.2-8H6"/><circle cx="9.5" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg></span><span>購物車</span></button><button class="buy" data-buy="${it.id}">直接購買 · NT$${nt(g.total)}</button></div>`,{full:true});
 }
 function itemB2C(id){
-  const it=B2C.find(x=>x.id===id),a=art(it.k,it.id);
+  const it=B2C.find(x=>x.id===id),a=art(it.k,it.id,it.img);
   sheet("商品詳情",`<button class="floatback" data-x="1" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
   <div class="hero" style="background:${a.bg}">${a.s}</div>
   <div class="pricebar" style="background:linear-gradient(100deg,#333,#111)"><span class="s">NT$</span><span class="n">${nt(minP(it))}</span>${it.specs?'<span class="s">起</span>':""}
@@ -1167,7 +1172,7 @@ function checkoutSheet(items){
       <div class="cogrp"><span class="uav sm">${avatar(g)}</span><b>${esc(g)}</b>
         <button class="ghostbtn" style="margin-left:auto;padding:5px 12px;font-size:12px" data-chat="${esc(g==="吉吉比官方旗艦店"?"吉吉比官方客服":g)}">聊聊</button></div>
       ${groups[g].map(({c,it})=>{const sk=it.specs?it.specs.o[c.oi].items[c.ii]:{n:"",p:it.p,k:it.k};
-        const a=art(sk.k||it.k,it.id+c.oi+c.ii);
+        const a=art(sk.k||it.k,it.id+c.oi+c.ii,sk.img||it.img);
         return `<div class="coitem">
           <div class="th" style="background:${a.bg}">${a.s}</div>
           <div style="flex:1;min-width:0"><div class="ptitle" style="height:auto">${esc(it.t)}</div>
@@ -1359,7 +1364,7 @@ function openOrder(no){
   const goods=`<div class="blk${o.st===9&&!pay?" first":""}">
     <div class="cogrp"><span class="uav sm">${avatar(who)}</span><b>${esc(who)}</b>
       <button class="ghostbtn" style="margin-left:auto;padding:5px 12px;font-size:12px" data-chat="${esc(o.type==="b2c"?"吉吉比官方客服":o.s)}" data-ord2="${o.no}">聊聊</button></div>
-    ${its.map(m=>{const a=art(m.k,m.cid);
+    ${its.map(m=>{const a=art(m.k,m.cid,m.img);
       return `<div class="coitem">
         <div class="th" style="background:${a.bg}">${a.s}</div>
         <div style="flex:1;min-width:0"><div class="ptitle" style="height:auto">${esc(m.t)}</div>

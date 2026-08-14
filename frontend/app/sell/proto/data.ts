@@ -44,6 +44,8 @@ function toItem(r: FeedRow) {
     id: Number(r.id),
     t: String(r.title || ''),
     ...(specs ? { specs } : {}),
+    // 主圖；沒有的話讓引擎畫原型的 SVG 佔位
+    img: (Array.isArray(r.images) && r.images[0]) || '',
     p: Number(r.price) || 0,
     ship: Number(r.shipping_fee) || 0,
     k: KIND_BY_CATEGORY[String(r.category || '')] || 'box',
