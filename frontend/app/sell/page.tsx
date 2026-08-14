@@ -22,6 +22,7 @@ import { useSearchParams } from 'next/navigation';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import { MALL_SHELL } from './proto/shell';
 import { initMall } from './proto/mall';
+import { loadMallData } from './proto/data';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,9 +37,20 @@ export default function MallPage() {
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
+    let engine: { destroy?: () => void } | null = null;
+    let dead = false;
+
+    // 先把殼掛上，取到資料再啟動引擎。取數失敗回 null，
+    // 這時引擎跑內建示範資料 —— DB 掛掉就整頁空白更糟。
     root.innerHTML = MALL_SHELL;
-    const engine = initMall(root, { initialTab: initialTabRef.current });
+    loadMallData().then((data) => {
+      // 資料回來前就換頁了：不要再往已經清空的 root 裡塞引擎
+      if (dead) return;
+      engine = initMall(root, { initialTab: initialTabRef.current, data });
+    });
+
     return () => {
+      dead = true;
       engine?.destroy?.();
       root.innerHTML = '';
     };

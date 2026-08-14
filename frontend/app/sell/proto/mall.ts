@@ -53,7 +53,7 @@ const A={
 const PAL=[["#FF8A5B","#FFD9C2"],["#7FD1B9","#DDF3EC"],["#A99BE8","#E6E1FA"],["#FFC24B","#FFEDC7"],["#FF8FB1","#FFE0EA"],["#6FB7E8","#DCEDFA"]];
 const art=(k,i)=>{const p=PAL[i%PAL.length];return{s:A[k](p[0],p[1]),bg:p[1]}};
 
-let C2C=[
+let C2C=(opts.data&&opts.data.c2c&&opts.data.c2c.length)?opts.data.c2c:[
  {id:1,t:"航海王 一番賞 A賞 索隆 三刀流 造型公仔",specs:{n:"賞等",o:[{v:"A賞",items:[{n:"索隆 三刀流 造型公仔",p:2680,q:1,k:"fig"},{n:"魯夫 五檔 造型公仔",p:2980,q:1,k:"fig"}]},{v:"B賞",items:[{n:"香吉士 壓克力立牌",p:880,q:3,k:"card"},{n:"娜美 壓克力立牌",p:820,q:2,k:"card"}]},{v:"最後一賞",items:[{n:"艾斯 特典公仔",p:3600,q:1,k:"fig"}]}]},p:2680,ship:60,k:"fig",cond:"未拆",s:"阿凱の抽物間",v:1,pays:["銀行轉帳","LINE Pay"],rate:99.1,rel:8,done:412,q:1,sold:86},
  {id:2,t:"寶可夢 黑炎的支配者 皮卡丘 SAR 中文版",feat:1,p:5400,ship:60,k:"card",cond:"近全新",s:"卡神小林",v:1,pays:["銀行轉帳"],rate:98.4,rel:14,done:1280,q:1,sold:214},
  {id:3,t:"三麗鷗 大耳狗 星空系列 盒玩 全 8 入",p:1180,ship:0,k:"box",cond:"未拆",s:"小布丁玩具舖",v:1,pays:["LINE Pay"],rate:96.7,rel:22,done:188,q:3,sold:47},
@@ -65,7 +65,7 @@ let C2C=[
  {id:9,t:"Chiikawa 小可愛盒玩 第三彈 整箱",p:2340,ship:0,k:"box",cond:"未拆",s:"潮流倉庫 TW",v:1,pays:["銀行轉帳"],rate:99.6,rel:6,done:733,q:2,sold:28},
  {id:10,t:"咒術迴戰 五條悟 造型扭蛋 全 6 種",p:640,ship:60,k:"cap",cond:"未拆",s:"轉蛋控 Ken",v:0,pays:["LINE Pay"],rate:88.2,rel:56,done:37,q:4,sold:15}
 ];
-const B2C=[
+const B2C=(opts.data&&opts.data.b2c&&opts.data.b2c.length)?opts.data.b2c:[
  {id:101,t:"吉吉比自製賞 台味系列 特賞 珍奶軟膠公仔",specs:{n:"口味",o:[{v:"珍奶系列",items:[{n:"珍奶 原味",p:1580,q:28,k:"fig"},{n:"珍奶 芋頭",p:1580,q:20,k:"fig"}]},{v:"茶飲系列",items:[{n:"青茶 檸檬",p:1480,q:15,k:"fig"}]}]},feat:1,p:1580,ship:60,k:"fig",q:48,sold:326},
  {id:102,t:"官方福袋 盒玩隨機 5 入 保證不重複",feat:1,p:990,ship:0,k:"box",q:120,sold:1204},
  {id:103,t:"吉吉比 × 廟口夜市 扭蛋機台紀念款",p:460,ship:0,k:"cap",q:300,sold:887},
