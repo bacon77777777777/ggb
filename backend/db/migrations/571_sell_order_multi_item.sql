@@ -190,13 +190,22 @@ BEGIN
   END IF;
 
   -- ── 建單 ──
+  -- 舊欄位 unit_price/quantity 仍有非零約束，也還有查詢在讀它們：
+  -- 填第一筆明細的值當代表，真正的金額看 goods_amount / total_amount
+  SELECT COALESCE(NULLIF((SELECT l.specs #>> ARRAY['o', COALESCE(NULLIF(p_items->0->>'g','')::int,0)::text,
+                                                   'items', COALESCE(NULLIF(p_items->0->>'i','')::int,0)::text, 'p']
+                          FROM public.sell_listings l
+                          WHERE l.id = COALESCE(NULLIF(p_items->0->>'listing_id','')::bigint,0)), '')::int, 1)
+  INTO v_price;
+
   INSERT INTO public.sell_orders (
     listing_id, seller_id, buyer_id, item_index, quantity,
     unit_price, shipping_fee, goods_amount, total_amount,
     payment_method, payment_status, step, cancelled
   ) VALUES (
-    COALESCE(NULLIF(p_items->0->>'listing_id','')::bigint, 0), v_seller, v_buyer, 0, 1,
-    0, v_ship, v_goods, v_goods + v_ship,
+    COALESCE(NULLIF(p_items->0->>'listing_id','')::bigint, 0), v_seller, v_buyer, 0,
+    GREATEST(1, COALESCE(NULLIF(p_items->0->>'qty','')::int, 1)),
+    v_price, v_ship, v_goods, v_goods + v_ship,
     v_method, 'unpaid', 1, false
   ) RETURNING id INTO v_order_id;
 
