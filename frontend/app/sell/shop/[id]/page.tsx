@@ -120,7 +120,7 @@ export default function SellerShopPage() {
       <div className="shophd">
         <div className="row">
           <button type="button" aria-label="返回" onClick={() => router.back()} style={{ marginRight: 2 }}>
-            <ChevronLeft className="w-5 h-5" style={{ color: 'var(--ink)' }} />
+            <ChevronLeft className="w-7 h-7 stroke-[2.5]" style={{ color: 'var(--ink)' }} />
           </button>
           <div className="av">
             {header?.seller_avatar ? (

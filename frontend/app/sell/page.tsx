@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import MarketTabBar, { type MarketTab } from '@/components/sell/MarketTabBar';
@@ -423,7 +423,7 @@ export default function SellPage() {
             aria-label="返回首頁"
             className="shrink-0 -ml-1 p-1 text-white"
           >
-            <ArrowLeft className="w-5 h-5" strokeWidth={2.2} />
+            <ChevronLeft className="w-7 h-7 stroke-[2.5]" />
           </button>
           <span className="logo">商城</span>
           <button type="button" className="sbox" onClick={() => router.push('/search?focus=1')}>

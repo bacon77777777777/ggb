@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
@@ -197,7 +197,7 @@ export default function OfficialProductPage() {
       <div className="sticky top-0 z-40 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
         <div className="max-w-3xl mx-auto px-2 h-[57px] flex items-center gap-2">
           <button type="button" onClick={() => router.back()} className="p-2 rounded-full text-neutral-700 dark:text-neutral-200">
-            <ArrowLeft className="w-5 h-5" />
+            <ChevronLeft className="w-7 h-7 stroke-[2.5]" />
           </button>
           <h1 className="text-[16px] font-black text-neutral-900 dark:text-white">官方商城</h1>
         </div>

@@ -3,7 +3,7 @@
 import '../market.css';
 
 import { useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import SellFormContent from '@/components/sell/SellFormContent';
 
@@ -25,7 +25,7 @@ export default function Page() {
     <div className="mk min-h-screen pb-6">
       <div className="hdr plain sticky top-0 z-40 flex items-center gap-2">
         <button type="button" onClick={() => router.back()} aria-label="返回">
-          <ArrowLeft className="w-5 h-5" />
+          <ChevronLeft className="w-7 h-7 stroke-[2.5]" />
         </button>
         <h1 className="flex-1">我要上架</h1>
       </div>
