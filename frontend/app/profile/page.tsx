@@ -6598,60 +6598,11 @@ function ProfileContent() {
                 </div>
             </div>
 
-            {flags.sell && (
-              <div className="mx-2 mt-2 bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
-                <div className="flex items-center justify-between px-3 py-3">
-                  <div className="text-[16px] font-black text-neutral-900 dark:text-white">購買清單</div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isGuest) {
-                        router.push(loginHref);
-                        return;
-                      }
-                      router.push('/purchases');
-                    }}
-                    className="text-[12px] font-black text-neutral-600 dark:text-neutral-300 flex items-center gap-1"
-                  >
-                    查看全部
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <div className="grid grid-cols-4 gap-1.5 px-2.5 pb-3">
-                  {[
-                    { key: 'to_pay', label: '待付款', icon: Wallet, count: purchaseCounts.toPay },
-                    { key: 'to_ship', label: '待出貨', icon: Box, count: purchaseCounts.toShip },
-                    { key: 'to_receive', label: '待收貨', icon: Truck, count: purchaseCounts.toReceive },
-                    { key: 'review', label: '評價', icon: Star, count: purchaseCounts.review },
-                  ].map((it) => (
-                    <button
-                      key={it.key}
-                      type="button"
-                      onClick={() => {
-                        if (isGuest) {
-                          router.push(loginHref);
-                          return;
-                        }
-                        router.push(`/purchases?tab=${it.key}`);
-                      }}
-                      className="relative py-1.5 rounded-xl bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700"
-                    >
-                      <div className="flex flex-col items-center gap-1.5">
-                        <div className="relative">
-                          <it.icon className="w-6 h-6 text-neutral-900 dark:text-white stroke-[1.5]" />
-                          {it.count > 0 && (
-                            <div className="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black grid place-items-center">
-                              {it.count > 99 ? '99+' : it.count}
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-[12px] font-black text-neutral-700 dark:text-neutral-200">{it.label}</div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/*
+              這裡原本有「購買清單」區塊（待付款/待出貨/待收貨/評價 → /purchases）。
+              2026-08-14 老闆指定隱藏：商城訂單的唯一入口是商城的「我的訂單」
+              （/sell/orders 的 OrderSheet 彈層），這裡的捷徑跟 /purchases 都是舊的重複 UI。
+            */}
 
             {/* Main Menu List */}
             <div className="mx-2 bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden divide-y divide-neutral-50 dark:divide-neutral-800">
