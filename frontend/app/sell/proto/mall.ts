@@ -325,7 +325,7 @@ function cardB2C(it,ad){
 }
 function scards(list,label){
   return list.map(it=>{const a=art(it.k,it.id,it.img);
-    return `<button class="scard" data-c2c="${it.id}"><div class="si" style="background:${a.bg}">${a.s}<span class="mini">${label}</span></div>
+    return `<button class="scard" data-c2c="${it.id}"><div class="si" style="background:${a.bg}">${a.s}</div>
     <div class="st">${esc(it.t)}</div><div class="sp">NT$${nt(it.p)}</div></button>`}).join("");
 }
 function startHero(){
@@ -368,7 +368,7 @@ function vOfficial(){
     <span class="hdots">${hl.map((_,i)=>`<i class="${i===0?"on":""}"></i>`).join("")}</span></div>`;
   const newIn=`<div class="strip"><div class="striphd"><b>新品首發</b><button class="more" data-more="new">更多 ›</button></div>
     <div class="srow">${B2C.slice(0,4).map(it=>{const a=art(it.k,it.id,it.img);
-      return `<button class="scard" data-b2c="${it.id}"><div class="si" style="background:${a.bg}">${a.s}<span class="mini">首發</span></div>
+      return `<button class="scard" data-b2c="${it.id}"><div class="si" style="background:${a.bg}">${a.s}</div>
       <div class="st">${esc(it.t)}</div><div class="sp">NT$${nt(it.p)}</div></button>`}).join("")}</div></div>`;
   const brand=`<div class="strip"><div class="striphd"><b>品牌專區</b></div>
     <div class="srow">${BRANDS.map((b,i)=>`<button class="bcard"><span class="bmark">${esc(b.n[0])}</span>
@@ -640,7 +640,7 @@ function moreSheet(kind){
   sheet(CFG.t,`<div class="blk first"><div class="secttl">${CFG.sub}</div>
     ${CFG.list.map((it,i)=>{const a=art(it.k,it.id,it.img);
       return `<div class="orow" data-${CFG.kindAttr}="${it.id}" style="padding:11px 0;border-bottom:1px solid var(--line)">
-      <div class="th" style="background:${a.bg};position:relative">${a.s}<span class="mini ${kind==="hot"?"rank":""}">${kind==="hot"?i+1:CFG.lbl}</span></div>
+      <div class="th" style="background:${a.bg};position:relative">${a.s}${kind==="hot"?`<span class="mini rank">${i+1}</span>`:""}</div>
       <div style="flex:1;min-width:0"><div class="ptitle">${esc(it.t)}</div>
       <div class="pprice" style="margin-top:4px"><i>NT$</i><b style="font-size:17px">${nt(it.p)}</b>
         <span class="dep${CFG.kindAttr==="b2c"?" off":""}">${CFG.kindAttr==="b2c"?"官方出貨":"保證金 "+nt(guard(it).need)+"G"}</span></div>
