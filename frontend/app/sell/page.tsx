@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import MarketTabBar, { type MarketTab } from '@/components/sell/MarketTabBar';
 import MarketSheet from '@/components/sell/MarketSheet';
+import { useOrderSheetParts, type OrderLite } from '@/components/sell/OrderSheet';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 
@@ -231,10 +232,14 @@ export default function SellPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [detail, setDetail] = useState<FeedRow | null>(null);
-  /** 規格選擇彈窗（立即購買一律先選規格再下單，老闆指定） */
-  const [specOpen, setSpecOpen] = useState(false);
+  /**
+   * 同一片彈層的三段內容（照原型 sheet() 直接換內容，不關不疊）：
+   * 商品詳情 → 選擇規格 → 訂單詳情
+   */
+  const [sheetView, setSheetView] = useState<'detail' | 'spec' | 'order'>('detail');
   const [specIdx, setSpecIdx] = useState(0);
   const [specQty, setSpecQty] = useState(1);
+  const [orderLite, setOrderLite] = useState<OrderLite | null>(null);
   /** 店舖頁點商品會帶 ?open=<id> 回來，這裡撈單筆直接開彈層（只開一次，關掉不重開） */
   const openParam = searchParams?.get('open') || '';
   const openedRef = useRef(false);
@@ -362,6 +367,23 @@ export default function SellPage() {
   const catItems = useMemo(() => adOf('cat').slice(0, 8), [adOf]);
   const doneItems = useMemo(() => adOf('done').slice(0, 8), [adOf]);
 
+  useEffect(() => {
+    if (detail) setSheetView('detail');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail?.id]);
+
+  const closeSheet = () => {
+    setDetail(null);
+    setOrderLite(null);
+    setSheetView('detail');
+  };
+
+  const orderParts = useOrderSheetParts({
+    order: orderLite,
+    onClose: closeSheet,
+    onChanged: () => {},
+  });
+
   const buyC2C = async () => {
     if (!detail) return;
     if (!user?.id) {
@@ -381,11 +403,36 @@ export default function SellPage() {
         showToast(r?.message || '下單失敗', 'plain');
         return;
       }
+      // 照原型 confirmBuy()：toast 後同一片彈層直接換成訂單詳情，不換頁
+      const oid = Number(r.order_id);
+      const supabase = createClient();
+      const [{ data: row }, { data: setting }] = await Promise.all([
+        supabase.from('sell_orders').select('order_number, deposit_amount, created_at').eq('id', oid).maybeSingle(),
+        supabase.from('platform_settings').select('value').eq('key', 'sell_pay_deadline_hours').maybeSingle(),
+      ]);
+      const specName = String(
+        ((Array.isArray(detail.items) ? (detail.items as any[]) : [])[specIdx] || {})?.name || ''
+      ).trim();
+      setOrderLite({
+        id: oid,
+        type: 'c2c',
+        orderNo: String((row as any)?.order_number || `#${oid}`),
+        shop: detail.seller_name,
+        title: detail.title,
+        image: imgOf(detail),
+        amount: specPrice(detail, specIdx) * Math.max(1, specQty) + detail.shipping_fee,
+        step: 1,
+        cancelled: false,
+        depositAmount: Number((row as any)?.deposit_amount) || 0,
+        trackingNumber: null,
+        spec: specName || undefined,
+        qty: Math.max(1, specQty),
+        isBuyer: true,
+        createdAt: String((row as any)?.created_at || ''),
+        payDeadlineHours: Number((setting as any)?.value) || 48,
+      });
+      setSheetView('order');
       showToast('下單成功', 'plain');
-      setSpecOpen(false);
-      setDetail(null);
-      // 訂單詳情只有一份：我的訂單頁的 OrderSheet 彈層（?open= 會自動開那筆）
-      router.push(`/sell/orders?open=${r.order_id}`);
     } catch (e: any) {
       showToast(e?.message || '下單失敗', 'plain');
     } finally {
@@ -692,11 +739,19 @@ export default function SellPage() {
 
       {/* ── 商品詳情彈層（照原型 itemC2C / itemB2C）── */}
       <MarketSheet
-        open={!!detail}
-        title="商品詳情"
-        onClose={() => setDetail(null)}
+        open={!!detail || !!orderLite}
+        title={sheetView === 'spec' ? '選擇規格' : sheetView === 'order' ? '訂單詳情' : '商品詳情'}
+        onClose={closeSheet}
         footer={
-          detail && (
+          sheetView === 'order' ? (
+            orderParts.footer
+          ) : sheetView === 'spec' && detail ? (
+            <div className="abar">
+              <button type="button" className={`buy${isOfficial ? ' dark' : ''}`} disabled={isBuying} onClick={buyC2C}>
+                {isBuying ? '處理中…' : '確認下單'}
+              </button>
+            </div>
+          ) : detail ? (
             <div className="abar">
               {isOfficial ? (
                 <button
@@ -716,12 +771,12 @@ export default function SellPage() {
                       router.push('/login');
                       return;
                     }
-                    // 先選規格再下單（老闆指定），預設挑第一個有庫存的
+                    // 照原型 specSheet()：同一片彈層換成選擇規格，預設挑第一個有庫存的
                     const items = Array.isArray(detail.items) ? (detail.items as any[]) : [];
                     const first = items.findIndex((x) => (Number(x?.quantity) || 0) > 0);
                     setSpecIdx(first < 0 ? 0 : first);
                     setSpecQty(1);
-                    setSpecOpen(true);
+                    setSheetView('spec');
                   }}
                 >
                   {`立即購買 · NT$${nt(priceRange(detail).min + detail.shipping_fee)}${
@@ -730,10 +785,10 @@ export default function SellPage() {
                 </button>
               )}
             </div>
-          )
+          ) : undefined
         }
       >
-        {detail && (
+        {detail && sheetView === 'detail' && (
           <>
             <div className="hero">
               <Image src={imgOf(detail)} alt={detail.title} fill style={{ objectFit: 'cover' }} sizes="100vw" />
@@ -875,103 +930,100 @@ export default function SellPage() {
             )}
           </>
         )}
-      </MarketSheet>
-
-      {/* ── 規格選擇彈層：立即購買一律先經過這裡（老闆指定），確認才下單 ── */}
-      <MarketSheet open={specOpen && !!detail} title="選擇規格" onClose={() => setSpecOpen(false)}>
-        {detail && (
-          <>
-            <div className="blk first">
-              {(Array.isArray(detail.items) ? (detail.items as any[]) : [])
-                .map((x, i) => ({ x, i }))
-                .filter(({ x }) => String(x?.name || '').trim())
-                .map(({ x, i }) => {
-                  const stock = Math.max(0, Number(x?.quantity) || 0);
-                  const out = stock <= 0;
-                  const active = specIdx === i;
-                  return (
-                    <button
-                      key={i}
-                      type="button"
-                      disabled={out}
-                      onClick={() => {
-                        setSpecIdx(i);
-                        setSpecQty(1);
-                      }}
-                      className="kv"
-                      style={{
-                        width: '100%',
-                        textAlign: 'left',
-                        opacity: out ? 0.4 : 1,
-                        border: active ? '1.5px solid var(--red)' : '1px solid var(--line2)',
-                        borderRadius: 10,
-                        padding: '10px 12px',
-                        marginBottom: 8,
-                        background: active ? '#fff4f5' : '#fff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                      }}
-                    >
-                      {String(x?.image || '').trim() && (
-                        <span style={{ position: 'relative', width: 36, height: 36, borderRadius: 6, overflow: 'hidden', flexShrink: 0, background: '#F5F5F5' }}>
-                          <Image src={String(x.image)} alt="" fill style={{ objectFit: 'cover' }} sizes="36px" unoptimized />
-                        </span>
-                      )}
-                      <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {String(x?.name || '')}
-                      </span>
-                      <span style={{ fontSize: 12, color: 'var(--sub)', flexShrink: 0 }}>
-                        {out ? '已售完' : `剩 ${stock}`}
-                      </span>
-                      <span style={{ fontWeight: 800, color: 'var(--red)', flexShrink: 0 }}>
-                        NT${nt(specPrice(detail, i))}
-                      </span>
-                    </button>
-                  );
-                })}
-            </div>
-
-            <div className="blk">
-              <div className="kv">
-                <span>數量</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <button
-                    type="button"
-                    onClick={() => setSpecQty((q) => Math.max(1, q - 1))}
-                    style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--line2)', fontWeight: 800 }}
-                  >
-                    −
-                  </button>
-                  <b style={{ minWidth: 20, textAlign: 'center' }}>{specQty}</b>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const items = Array.isArray(detail.items) ? (detail.items as any[]) : [];
-                      const max = Math.max(1, Number(items[specIdx]?.quantity) || 1);
-                      setSpecQty((q) => Math.min(max, q + 1));
-                    }}
-                    style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--line2)', fontWeight: 800 }}
-                  >
-                    ＋
-                  </button>
-                </span>
+      {/* ── 選擇規格段（照原型 specSheet 的版型）── */}
+        {detail && sheetView === 'spec' && (() => {
+          const all = Array.isArray(detail.items) ? (detail.items as any[]) : [];
+          const specItems = all.map((x, i) => ({ x, i })).filter(({ x }) => String(x?.name || '').trim());
+          const cur = all[specIdx] || {};
+          const stock = Math.max(0, Number(cur?.quantity) || 0);
+          const unit = specPrice(detail, specIdx);
+          const sub = unit * specQty;
+          // 依這件商品的基準保證金比例換算（實際金額仍以下單時 DB 計算為準）
+          const ratio = detail.price > 0 ? detail.deposit / detail.price : 0;
+          const dep = Math.ceil(sub * ratio);
+          return (
+            <>
+              <div className="blk first">
+                <div className="orow">
+                  <div className="th" style={{ background: '#F5F5F5', width: 76, height: 76 }}>
+                    <Image src={imgOf(detail)} alt={detail.title} fill style={{ objectFit: 'cover' }} sizes="76px" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="pprice">
+                      <i>NT$</i>
+                      <b>{nt(unit)}</b>
+                    </div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--sub)', marginTop: 4 }}>庫存 {stock}</div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--sub)', marginTop: 2 }}>
+                      {detail.shipping_fee ? `運費 ${nt(detail.shipping_fee)}` : '免運費'}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="kv">
-                <span>小計（含運費 {nt(detail.shipping_fee)}）</span>
-                <b style={{ color: 'var(--red)' }}>
-                  NT${nt(specPrice(detail, specIdx) * specQty + detail.shipping_fee)}
-                </b>
-              </div>
-            </div>
 
-            <div className="abar" style={{ position: 'sticky', bottom: 0 }}>
-              <button type="button" className="buy" disabled={isBuying} onClick={buyC2C}>
-                {isBuying ? '處理中…' : '確認下單'}
-              </button>
-            </div>
-          </>
-        )}
+              {specItems.length > 0 && (
+                <div className="blk">
+                  <div className="secttl">款式</div>
+                  <div className="opts">
+                    {specItems.map(({ x, i }) => {
+                      const out = (Number(x?.quantity) || 0) <= 0;
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          className="opt"
+                          disabled={out}
+                          aria-pressed={specIdx === i}
+                          onClick={() => {
+                            setSpecIdx(i);
+                            setSpecQty(1);
+                          }}
+                        >
+                          {String(x?.name || '')}
+                          {out ? '（售完）' : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="blk">
+                <div className="secttl">數量</div>
+                <div className="qty">
+                  <button type="button" onClick={() => setSpecQty((q) => Math.max(1, q - 1))}>－</button>
+                  <span>{specQty}</span>
+                  <button type="button" onClick={() => setSpecQty((q) => Math.min(Math.max(1, stock), q + 1))}>＋</button>
+                  <span className="qmax">最多 {stock}</span>
+                </div>
+              </div>
+
+              <div className="blk">
+                <div className="kv">
+                  <span>商品小計</span>
+                  <span>NT${nt(sub)}</span>
+                </div>
+                <div className="kv">
+                  <span>運費</span>
+                  <span>{detail.shipping_fee ? `NT$${nt(detail.shipping_fee)}` : '免運費'}</span>
+                </div>
+                <div className="kv">
+                  <span>合計</span>
+                  <span style={{ color: 'var(--red)', fontWeight: 700 }}>NT${nt(sub + detail.shipping_fee)}</span>
+                </div>
+                {!isOfficial && (
+                  <div className="kv">
+                    <span>賣家保證金</span>
+                    <span>{nt(dep)}G</span>
+                  </div>
+                )}
+              </div>
+            </>
+          );
+        })()}
+
+        {/* ── 訂單詳情段（下單成功後原地換內容，照原型 confirmBuy → openOrder）── */}
+        {sheetView === 'order' && orderParts.body}
       </MarketSheet>
 
       {/* ── 更多列表彈層（照原型 moreSheet）── */}

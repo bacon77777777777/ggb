@@ -1131,3 +1131,15 @@
 }
 .mk .shophd b { font-size: 16px; }
 .mk .shophd .sub { font-size: 11.5px; color: var(--sub); margin-top: 2px; }
+
+/* ── 選擇規格（照原型 specSheet 的 .opts/.qty）── */
+.mk .opts { display: flex; gap: 7px; flex-wrap: wrap; }
+.mk .opt { border: 1px solid var(--line2); border-radius: 8px; padding: 9px 13px; font-size: 13px; background: #F7F7F7; }
+.mk .opt[aria-pressed="true"] { border-color: var(--red); background: #FFF4F5; color: var(--red); font-weight: 700; }
+.mk .opt[disabled] { opacity: 0.45; text-decoration: line-through; }
+.mk .qty { display: flex; align-items: center; }
+.mk .qty button { width: 34px; height: 32px; border: 1px solid var(--line2); background: #F7F7F7; font-size: 15px; }
+.mk .qty button:first-of-type { border-radius: 7px 0 0 7px; }
+.mk .qty button:last-of-type { border-radius: 0 7px 7px 0; }
+.mk .qty span { min-width: 46px; height: 32px; line-height: 32px; text-align: center; border-top: 1px solid var(--line2); border-bottom: 1px solid var(--line2); font-size: 14px; font-weight: 700; }
+.mk .qty .qmax { border: 0; min-width: 0; margin-left: 10px; font-size: 11.5px; color: var(--sub); font-weight: 400; height: auto; line-height: 1; }

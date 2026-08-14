@@ -32,6 +32,9 @@ export type OrderLite = {
   depositAmount?: number;
   overdueNotified?: boolean;
   trackingNumber?: string | null;
+  /** 規格名（原型 orow 第二行：`規格 · 數量 N`），沒有就只顯示數量 */
+  spec?: string;
+  qty?: number;
   isBuyer: boolean;
   payMethod?: string | null;
   createdAt: string;
@@ -43,7 +46,14 @@ const B2C_STEPS = ['已付款', '備貨中', '已出貨', '完成'];
 
 const nt = (n: number) => Math.round(n || 0).toLocaleString('zh-TW');
 
-export default function OrderSheet({
+/**
+ * 訂單詳情的內容與底欄（不含 MarketSheet 外殼）。
+ *
+ * 拆出來是因為原型的交互是**同一個彈層換內容**：
+ * 商品詳情 → 選擇規格 → 訂單詳情都發生在同一片 sheet 裡（sheet() 直接換 innerHTML），
+ * /sell 頁要嵌這份內容，/sell/orders 的獨立彈層也用同一份 —— 訂單 UI 永遠只有一份。
+ */
+export function useOrderSheetParts({
   order,
   onClose,
   onChanged,
@@ -148,9 +158,7 @@ export default function OrderSheet({
     </div>
   ) : undefined;
 
-  return (
-    <MarketSheet open={!!order} title="訂單詳情" onClose={onClose} footer={payFooter}>
-      {order && (
+  const body = order ? (
         <>
           <div className="blk first">
             <div className="steps">
@@ -170,6 +178,9 @@ export default function OrderSheet({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="ptitle">{order.title}</div>
                 <div style={{ fontSize: '11.5px', color: 'var(--sub)', marginTop: 4 }}>
+                  {order.spec ? `${order.spec} · ` : ''}數量 {order.qty || 1}
+                </div>
+                <div style={{ fontSize: '11.5px', color: 'var(--sub)', marginTop: 2 }}>
                   {order.shop} · {order.orderNo}
                 </div>
               </div>
@@ -365,7 +376,24 @@ export default function OrderSheet({
           )}
 
         </>
-      )}
+  ) : null;
+
+  return { body, footer: payFooter };
+}
+
+export default function OrderSheet({
+  order,
+  onClose,
+  onChanged,
+}: {
+  order: OrderLite | null;
+  onClose: () => void;
+  onChanged: () => void;
+}) {
+  const { body, footer } = useOrderSheetParts({ order, onClose, onChanged });
+  return (
+    <MarketSheet open={!!order} title="訂單詳情" onClose={onClose} footer={footer}>
+      {body}
     </MarketSheet>
   );
 }
