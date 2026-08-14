@@ -46,6 +46,7 @@ function toItem(r: FeedRow) {
     ...(specs ? { specs } : {}),
     // 主圖；沒有的話讓引擎畫原型的 SVG 佔位
     img: (Array.isArray(r.images) && r.images[0]) || '',
+    avatar: r.seller_avatar || '',
     p: Number(r.price) || 0,
     ship: Number(r.shipping_fee) || 0,
     k: KIND_BY_CATEGORY[String(r.category || '')] || 'box',
@@ -174,8 +175,8 @@ export async function loadMe() {
     const sb = createClient();
     const { data: auth } = await sb.auth.getUser();
     if (!auth?.user) return null;
-    const { data } = await sb.from('users').select('name').eq('id', auth.user.id).single();
-    return { id: auth.user.id, name: data?.name || '我的賣場' };
+    const { data } = await sb.from('users').select('name, avatar_url').eq('id', auth.user.id).single();
+    return { id: auth.user.id, name: data?.name || '我的賣場', avatar: data?.avatar_url || '' };
   } catch {
     return null;
   }

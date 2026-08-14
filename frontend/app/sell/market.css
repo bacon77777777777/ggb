@@ -391,7 +391,9 @@
 .mk .num{font-family:"Oswald",sans-serif;font-weight:600}
 .mk :focus-visible{outline:2px solid var(--orange);outline-offset:2px;border-radius:6px}
 .mk /* header */
-.mk .hdr{flex-shrink:0;background:linear-gradient(100deg,var(--tao1),var(--tao2));padding:12px 12px 12px 4px;color:#fff;overflow:hidden}
+.mk .hdr{flex-shrink:0;background:linear-gradient(100deg,var(--tao1),var(--tao2));padding:12px 12px 12px 0;color:#fff;overflow:hidden}
+/* 返回鍵再靠左一點：只收第一顆 .hicon，右邊的購物車／聊聊維持原本間距 */
+.mk .hdr .srch>.hicon:first-child{margin-left:-2px}
 .mk .hdr.plain{background:var(--card);color:var(--txt);border-bottom:1px solid var(--line);padding:14px 16px}
 .mk .hdr.plain h1{font-size:17px;font-weight:700;margin:0;text-align:center}
 .mk .hdr.none{display:none}

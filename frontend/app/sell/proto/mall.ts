@@ -18,7 +18,11 @@ export function initMall(root, opts = {}) {
 const $=(id)=>root.querySelector("#"+id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const nt=n=>Number(n).toLocaleString("zh-TW");
+/* 賣家名 → 真實頭像網址。原型只有程式畫的臉，接上真資料後
+   有設頭像的就放圖，沒設的才退回原型那張臉（新用戶本來就沒頭像）。*/
+const AV={};
 const avatar=n=>{
+  if(AV[n])return `<img src="${esc(AV[n])}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`;
   const h=(n.charCodeAt(0)*37+n.length*61)%360;
   return `<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="24" fill="hsl(${h} 60% 92%)"/>
     <circle cx="14" cy="15" r="6" fill="hsl(${h} 55% 74%)"/><circle cx="34" cy="15" r="6" fill="hsl(${h} 55% 74%)"/>
@@ -91,7 +95,9 @@ const ME={done:346,rate:99.2,good:98.6,rel:9,name:"bacon",shop:"我的賣場"};
    opts.db 有給就走真資料。**不做樂觀更新**：保證金、庫存、步驟都在 DB 決定，
    本機自己先改會讓老闆看到「成功了」但其實 RPC 擋下來。一律送出→重拉→重畫。*/
 const DB=opts.db||null;
-if(opts.me&&opts.me.name){ME.name=opts.me.name;ME.shop=opts.me.name}
+if(opts.me&&opts.me.name){ME.name=opts.me.name;ME.shop=opts.me.name;ME.avatar=opts.me.avatar||""}
+[].concat(C2C,B2C).forEach(it=>{if(it&&it.avatar&&it.s)AV[it.s]=it.avatar});
+if(ME.avatar)AV[ME.name]=ME.avatar;
 async function pull(){
   if(!DB)return;
   const s=await DB.myState();
@@ -409,7 +415,7 @@ function vMe(){
       <button class="hicon" data-go="cart" aria-label="購物車"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M3 4h2.2l2.3 11h10l2.2-8H6"/><circle cx="9.5" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg>${cart.length?`<span class="hicn">${cart.length}</span>`:""}</button>
       <button class="hicon" data-go="chats" aria-label="聊聊"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M20 12a7.5 7.5 0 01-11 6.6L4 20l1.4-4.2A7.5 7.5 0 1120 12z"/></svg>${Object.keys(UNREAD).length?`<span class="hicn">${Object.values(UNREAD).reduce((a,b)=>a+b,0)}</span>`:""}</button>
     </div>
-    <div class="meid"><div class="meav">${ME.name[0].toUpperCase()}</div>
+    <div class="meid"><div class="meav">${ME.avatar?`<img src="${esc(ME.avatar)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`:ME.name[0].toUpperCase()}</div>
       <div style="flex:1;min-width:0"><b>${ME.name}</b>
       <div class="mebadges"><button class="bdg gold" data-go="rep">${t.n}賣家 ›</button><span class="bdg verify">實名認證</span>
       ${pro?'<span class="bdg gold">官方認證商家</span>':""}<span class="bdg">完成 ${nt(ME.done)} 單</span></div></div>
