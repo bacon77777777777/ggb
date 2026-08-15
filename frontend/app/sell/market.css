@@ -971,3 +971,29 @@
 .mk.mallroot .sheet .abar { position: sticky; bottom: 0; z-index: 2; }
 
 
+
+/* ════════ 追加：首頁一級 tab 同款分頁列（買家訂單/賣家訂單/通知） ════════ */
+.mk .ptabs { display: flex; overflow-x: auto; scrollbar-width: none; }
+.mk .ptabs::-webkit-scrollbar { display: none; }
+.mk .ptabs button {
+  position: relative; padding: 8px 12px 11px; font-size: 15px; font-weight: 900;
+  color: var(--sub); white-space: nowrap; flex-shrink: 0; background: none; border: 0;
+}
+.mk .ptabs button[aria-pressed="true"] { color: var(--red); }
+.mk .ptabs button[aria-pressed="true"]::after {
+  content: ""; position: absolute; left: 10px; right: 10px; bottom: 3px;
+  height: 3px; border-radius: 3px 3px 0 0; background: var(--red);
+}
+.mk .ptabs .cnt { font-size: 11px; margin-left: 2px; font-weight: 800; }
+
+/* ════════ 追加：搜尋頁（照抽獎搜尋頁版型） ════════ */
+.mk .msrchbar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #fff; border-bottom: 1px solid var(--line); }
+.mk .msrch { flex: 1; display: flex; align-items: center; gap: 7px; background: #F2F2F2; border-radius: 999px; height: 40px; padding: 0 6px 0 12px; }
+.mk .msrch input { flex: 1; border: 0; background: transparent; font-size: 15px; font-weight: 700; outline: none; min-width: 0; }
+.mk .msrch .sgo2 { flex-shrink: 0; background: linear-gradient(100deg, var(--tao1), var(--tao2)); color: #fff; font-size: 12.5px; font-weight: 800; padding: 7px 14px; border-radius: 999px; border: 0; }
+.mk .mhist { display: flex; align-items: center; justify-content: space-between; padding: 10px 2px; border-bottom: 1px solid var(--line); }
+.mk .mhist .w { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; flex: 1; text-align: left; background: none; border: 0; color: var(--txt); }
+.mk .mhist .w svg { flex-shrink: 0; }
+.mk .mhist .del { font-size: 11px; font-weight: 800; color: var(--mute); background: none; border: 0; }
+.mk .kwsec { padding: 14px 2px 4px; font-size: 11px; font-weight: 900; color: var(--mute); letter-spacing: 2px; }
+.mk .kwrow { display: block; width: 100%; text-align: left; padding: 11px 2px; font-size: 13px; font-weight: 800; color: var(--red); border: 0; border-bottom: 1px solid var(--line); background: none; }

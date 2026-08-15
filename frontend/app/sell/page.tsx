@@ -22,7 +22,7 @@ import { useSearchParams } from 'next/navigation';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import { MALL_SHELL } from './proto/shell';
 import { initMall } from './proto/mall';
-import { loadMallData, makeMallDb, loadMe } from './proto/data';
+import { loadMallData, makeMallDb, loadMe, loadCategories } from './proto/data';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +43,7 @@ export default function MallPage() {
     // 先把殼掛上，取到資料再啟動引擎。取數失敗回 null，
     // 這時引擎跑內建示範資料 —— DB 掛掉就整頁空白更糟。
     root.innerHTML = MALL_SHELL;
-    Promise.all([loadMallData(), loadMe()]).then(([data, me]) => {
+    Promise.all([loadMallData(), loadMe(), loadCategories()]).then(([data, me, categories]) => {
       // 資料回來前就換頁了：不要再往已經清空的 root 裡塞引擎
       if (dead) return;
       // 沒登入就不給 db：引擎會退回示範資料，而不是每個動作都跳「請先登入」
@@ -51,6 +51,8 @@ export default function MallPage() {
         initialTab: initialTabRef.current,
         data,
         me,
+        // 上架類別白名單（後台商城設定），空陣列時引擎用內建預設
+        categories,
         db: me ? makeMallDb() : null,
       });
     });

@@ -155,7 +155,8 @@ export function makeMallDb() {
         title: payload.t,
         price: payload.p,
         shipping_fee: payload.ship ?? 0,
-        category: payload.category || '盒玩',
+        // 類別由表單白名單必選帶進來（DB trigger 也會擋不在白名單的值）
+        category: payload.category,
         specs: payload.specs ?? null,
         condition: payload.cond || '未拆',
         images: payload.images || [],
@@ -173,6 +174,21 @@ export function makeMallDb() {
 }
 
 /** 目前登入者（引擎用來認出「我的賣場」，避免自己的商品在列表出現兩次） */
+/** 上架類別白名單（後台「商城設定」維護；RLS 已開放 sell_% 公開讀） */
+export async function loadCategories(): Promise<string[]> {
+  try {
+    const { data } = await createClient()
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'sell_category_whitelist')
+      .maybeSingle();
+    const parsed = JSON.parse(String((data as any)?.value || '[]'));
+    return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function loadMe() {
   try {
     const sb = createClient();
