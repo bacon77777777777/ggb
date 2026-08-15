@@ -398,9 +398,13 @@ function vMarket(){
         :`<svg viewBox="0 0 24 24" fill="none" stroke="#FF6A00" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICONS[c[0]==="all"?"all":(CAT_ICON[c[0]]||"tag")]}</svg>`}</span>${esc(c[1])}</button>`).join("")}</div>`;
   const catStrip=seg!=="all"?`<div class="strip"><div class="striphd"><b>${esc(seg)} 分類首排</b></div>
     <div class="srow">${scards(C2C.filter(x=>x.category?x.category===seg:(CAT_KINDS[seg]||[]).includes(x.k)).concat(pool).slice(0,4),"推廣")}</div></div>`:"";
-  const topic=`<div class="strip">
-    <div class="striphd"><b>本週一番賞精選</b><button class="more" data-more="topic">更多 ›</button></div>
-    <div class="srow">${scards([C2C[0],C2C[7],C2C[5],C2C[1]].filter(Boolean),"專題")}</div></div>`;
+  /* 專題位（廣告版位 topic，賣家買了才會出現在這排）。原型寫死「本週一番賞精選」＋固定四張示範卡，
+     老闆 2026-08-15 問「全部類別下為何顯示一番賞精選」—— 改成通用標題，卡片吃真的買了專題位的商品，
+     沒人買就退回精選／最新，不再硬塞 */
+  const topicList=topicItems();
+  const topic=topicList.length?`<div class="strip">
+    <div class="striphd"><b>本週專題</b><button class="more" data-more="topic">更多 ›</button></div>
+    <div class="srow">${scards(topicList.slice(0,4),"專題")}</div></div>`:"";
   // 「抽到不想要的獎品？去上架」橫幅老闆 2026-08-15 指定隱藏（從抽獎紀錄一鍵上架還沒做，先別掛餌）；
   // 標記留著，接好再放回 return
   const draw=`<div class="dban"><div><b>抽到不想要的獎品？</b><small>從抽獎紀錄一鍵上架，賣給需要的人</small></div><span class="go">去上架</span></div>`;
@@ -643,7 +647,7 @@ const ROUTES={
   "後台 · 檢舉判定":()=>({v:"admin"}),
   "我要上架":()=>({v:"new"}),
   "結帳":()=>({v:"checkout"}),
-  "本週一番賞精選":()=>({v:"more",k:"topic"}),
+  "本週專題":()=>({v:"more",k:"topic"}),
   "熱賣排行":()=>({v:"more",k:"hot"}),
   "新品首發":()=>({v:"more",k:"new"}),
 };
@@ -844,9 +848,16 @@ function searchSheet(q){
   </div>`}`,{tall:true,route:{v:"search",q:kw||undefined}});
   const el=$("qIn");el.addEventListener("keydown",e=>{if(e.key==="Enter")searchSheet(el.value.trim())});
 }
+/* 專題位商品：買了 topic 版位的優先；一個都沒有就用精選（feat），再沒有就最新幾件 */
+function topicItems(){
+  const bought=C2C.filter(x=>Array.isArray(x.adSlots)&&x.adSlots.includes("topic"));
+  if(bought.length)return bought;
+  const feat=C2C.filter(x=>x.feat);
+  return feat.length?feat:C2C.slice(0,8);
+}
 function moreSheet(kind){
   const CFG={
-    topic:{t:"本週一番賞精選",sub:"編輯策展 · 專題位",list:C2C.filter(x=>x.t.includes("一番賞")||x.k==="fig"),kindAttr:"c2c",lbl:"專題"},
+    topic:{t:"本週專題",sub:"編輯策展 · 專題位",list:topicItems(),kindAttr:"c2c",lbl:"專題"},
     hot:{t:"熱賣排行",sub:"官方旗艦店",list:B2C.slice().sort((a,b)=>b.sold-a.sold),kindAttr:"b2c",lbl:"熱賣"},
     new:{t:"新品首發",sub:"供應商推廣 · 廣告",list:B2C.slice(),kindAttr:"b2c",lbl:"首發"}
   }[kind];
