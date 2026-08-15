@@ -992,7 +992,13 @@
   content: ""; position: absolute; left: 4px; right: 4px; bottom: 0;
   height: 3px; border-radius: 2px 2px 0 0; background: rgb(var(--primary, 238 77 45));
 }
-.mk .ptabs .cnt { font-size: 11px; margin-left: 2px; font-weight: 800; }
+/* 未讀／筆數：橘圓圈白字（老闆 2026-08-15），選中與未選中都一樣 */
+.mk .ptabs .cnt {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 17px; height: 17px; padding: 0 5px; margin-left: 4px; border-radius: 999px;
+  background: rgb(var(--primary, 238 77 45)); color: #fff;
+  font-size: 10.5px; font-weight: 800; line-height: 1; vertical-align: 2px;
+}
 
 /* ════════ 分類列：類別數跟著上架白名單走（十類＋全部）════════
    一排放不下就橫向捲，每格同寬、露半格提示還有 */
