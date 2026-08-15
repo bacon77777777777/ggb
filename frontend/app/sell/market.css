@@ -1016,7 +1016,10 @@
    一排放不下就橫向捲，每格同寬、露半格提示還有 */
 .mk.mallroot .cats { overflow-x: auto; scrollbar-width: none; padding-left: 6px; padding-right: 6px; scroll-snap-type: x proximity; }
 .mk.mallroot .cats::-webkit-scrollbar { display: none; }
-.mk.mallroot .cats button { flex: 0 0 66px; scroll-snap-align: start; white-space: nowrap; }
+/* 每格寬用比例（18.5% → 一屏 5.4 格）：不管 iPhone 哪個尺寸，第六格一定被切一半，
+   使用者才看得出可以橫滑（老闆 2026-08-15：iPhone 剛好整格露出，看不出來能滑）。
+   桌機封頂 96px 免得圓圈散得太開 */
+.mk.mallroot .cats button { flex: 0 0 clamp(66px, 18.5%, 96px); scroll-snap-align: start; white-space: nowrap; }
 /* 類別插畫：透明底 PNG 轉的 webp，放在原本的圓底上；圓放大一點插畫才看得清 */
 .mk.mallroot .cats .ci { width: 48px; height: 48px; }
 .mk.mallroot .cats .ci img { width: 44px; height: 44px; object-fit: contain; display: block; }
