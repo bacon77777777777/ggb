@@ -2237,7 +2237,11 @@ if(ITEM_MODE)$("screen").addEventListener("click",e=>{
   else if(d.buy)specSheet("c2c",+d.buy,"buy");
   else if(d.cbuy)specSheet("b2c",+d.cbuy,"buy");
 });
-root.querySelectorAll(".tabbar button").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;syncTabs();render()});
+root.querySelectorAll(".tabbar button").forEach(b=>b.onclick=()=>{
+  const t=b.dataset.tab;
+  // 短影音不是分頁，是獨立路由（docs/06_商城短影音開發文件.md）
+  if(t==="reels"){if(opts.nav)opts.nav("/sell/reels");else location.href="/sell/reels";return}
+  tab=t;syncTabs();render()});
 function syncTabs(){root.querySelectorAll(".tabbar button").forEach(x=>x.setAttribute("aria-selected",x.dataset.tab===tab));syncUrl()}
 
 if(opts.initialTab==="official"||opts.initialTab==="me"||opts.initialTab==="notis")tab=opts.initialTab;
