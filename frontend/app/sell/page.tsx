@@ -15,10 +15,15 @@ import './market.css';
  * 之後任何一次重渲染的調和都可能把引擎畫進去的 DOM 洗回空殼
  * （實測就發生了——引擎渲染完，畫面隨後被清空）。
  * React 只擁有外層空 div、永遠不更新它，引擎的 DOM 才動不了。
+ *
+ * 網址：引擎自己讀寫 ?tab= / ?c= / ?v=（見 mall.ts「網址同步」），這裡不需要傳；
+ * 引擎推／換網址時 useSearchParams 會跟著變、這個元件重渲染，但 JSX 沒有子節點，
+ * React 不會碰引擎畫進去的 DOM。
+ * 商品詳情是獨立頁 /sell/<id>，舊的 /sell?open=<id>（後台預覽、舊分享連結）在這裡轉過去。
  */
 
 import { useEffect, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import { MALL_SHELL } from './proto/shell';
 import { initMall } from './proto/mall';
@@ -28,13 +33,18 @@ export const dynamic = 'force-dynamic';
 
 export default function MallPage() {
   useFeatureGate('sell');
+  const router = useRouter();
   const searchParams = useSearchParams();
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  // 首次掛載才讀 tab 參數：引擎自己管理分頁狀態，React 重渲染不該重開引擎
-  const initialTabRef = useRef(searchParams?.get('tab') || '');
+  // 舊網址相容：/sell?open=<id> → /sell/<id>
+  const legacyOpen = searchParams?.get('open') || '';
 
   useEffect(() => {
+    if (legacyOpen) {
+      router.replace(`/sell/${encodeURIComponent(legacyOpen)}`);
+      return;
+    }
     const root = rootRef.current;
     if (!root) return;
     let engine: { destroy?: () => void } | null = null;
@@ -48,12 +58,13 @@ export default function MallPage() {
       if (dead) return;
       // 沒登入就不給 db：引擎會退回示範資料，而不是每個動作都跳「請先登入」
       engine = initMall(root, {
-        initialTab: initialTabRef.current,
         data,
         me,
         // 上架類別白名單（後台商城設定），空陣列時引擎用內建預設
         categories,
         db: me ? makeMallDb() : null,
+        // 點商品卡 → 獨立商品頁
+        nav: (url: string) => router.push(url),
       });
     });
 
@@ -62,7 +73,8 @@ export default function MallPage() {
       engine?.destroy?.();
       root.innerHTML = '';
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [legacyOpen]);
 
   return <div ref={rootRef} className="mk mallroot" />;
 }

@@ -972,19 +972,44 @@
 
 
 
-/* ════════ 追加：首頁一級 tab 同款分頁列（買家訂單/賣家訂單/通知） ════════ */
-.mk .ptabs { display: flex; overflow-x: auto; scrollbar-width: none; }
+/* ════════ 追加：首頁一級 tab 同款分頁列（買家訂單/賣家訂單/通知） ════════
+   照 components/ui/Tabs.tsx（抽獎首頁「綜合／商城／一番賞…」那排）逐項對齊：
+   15px/900、主題色 #EE4D2D（rgb(var(--primary))）、未選 #737373（neutral-500）、
+   按鈕 padding 8/12、按鈕間距 8、指示器 3px 左右內縮 4px 貼在底線上。
+   容器 .tabbar2 原型有 12/14 的內距，這裡用負邊距吃回來，底線才會像首頁那樣緊貼分頁。 */
+.mk .tabbar2 .ptabs { margin: -12px -14px; }
+.mk .ptabs { display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; }
 .mk .ptabs::-webkit-scrollbar { display: none; }
 .mk .ptabs button {
-  position: relative; padding: 8px 12px 11px; font-size: 15px; font-weight: 900;
-  color: var(--sub); white-space: nowrap; flex-shrink: 0; background: none; border: 0;
+  position: relative; padding: 8px 12px; font-size: 15px; font-weight: 900; line-height: 1.5;
+  color: #737373; white-space: nowrap; flex-shrink: 0; background: none; border: 0;
 }
-.mk .ptabs button[aria-pressed="true"] { color: var(--red); }
+.mk .ptabs button[aria-pressed="true"] { color: rgb(var(--primary, 238 77 45)); }
 .mk .ptabs button[aria-pressed="true"]::after {
-  content: ""; position: absolute; left: 10px; right: 10px; bottom: 3px;
-  height: 3px; border-radius: 3px 3px 0 0; background: var(--red);
+  content: ""; position: absolute; left: 4px; right: 4px; bottom: 0;
+  height: 3px; border-radius: 2px 2px 0 0; background: rgb(var(--primary, 238 77 45));
 }
 .mk .ptabs .cnt { font-size: 11px; margin-left: 2px; font-weight: 800; }
+
+/* ════════ 分類列：類別數跟著上架白名單走（十類＋全部）════════
+   一排放不下就橫向捲，每格同寬、露半格提示還有 */
+.mk.mallroot .cats { overflow-x: auto; scrollbar-width: none; padding-left: 6px; padding-right: 6px; scroll-snap-type: x proximity; }
+.mk.mallroot .cats::-webkit-scrollbar { display: none; }
+.mk.mallroot .cats button { flex: 0 0 66px; scroll-snap-align: start; white-space: nowrap; }
+/* 類別插畫：透明底 PNG 轉的 webp，放在原本的圓底上；圓放大一點插畫才看得清 */
+.mk.mallroot .cats .ci { width: 48px; height: 48px; }
+.mk.mallroot .cats .ci img { width: 44px; height: 44px; object-fit: contain; display: block; }
+
+/* ════════ 商品詳情獨立頁（/sell/<id>）════════
+   沒有分頁列與頂欄，#screen 就是那件商品；返回／分享浮在主圖上（同情報內頁），
+   操作列（私聊／購物車／直接購買）固定在視窗底部。 */
+.mk.mallroot.mk--item .tabbar, .mk.mallroot.mk--item .hdr { display: none; }
+.mk.mallroot.mk--item .screen { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+.mk.mallroot.mk--item .floatnav { position: fixed; top: 0; left: 0; right: 0; height: 0; z-index: 36; padding-top: env(safe-area-inset-top); pointer-events: none; }
+.mk.mallroot.mk--item .floatnav .floatback, .mk.mallroot.mk--item .floatnav .floatshare { pointer-events: auto; }
+.mk .floatshare { position: absolute; top: 12px; right: 12px; z-index: 6; width: 34px; height: 34px; border-radius: 50%; background: rgba(0,0,0,.42); display: grid; place-items: center; color: #fff; }
+.mk .floatshare svg { width: 16px; height: 16px; }
+.mk.mallroot.mk--item .screen .abar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 35; padding-bottom: calc(9px + env(safe-area-inset-bottom)); }
 
 /* ════════ 追加：搜尋頁（照抽獎搜尋頁版型） ════════ */
 .mk .msrchbar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #fff; border-bottom: 1px solid var(--line); }

@@ -8,14 +8,20 @@
  * 其餘渲染邏輯不動 —— 所以請不要在這裡「順手重構」，
  * 檔案結構跟原型檔對齊，兩邊 diff 得起來才改得安全。
  *
- * 宿主適配只有三類（不碰行為）：
+ * 宿主適配（不碰行為）：
  *   1. `$`／querySelectorAll 以 root 為範圍（原型是整頁 document）
- *   2. 結尾回傳 destroy()：清計時器與 AudioContext，給 React unmount 用
- *   3. opts.initialTab：支援 /sell?tab= 深連結
+ *   2. 結尾回傳 destroy()：清計時器與 AudioContext、popstate 監聽，給 React unmount 用
+ *   3. opts.initialTab：支援 /sell?tab= 深連結（現在引擎自己讀網址，這個只是相容）
+ *   4. opts.item／opts.itemData：商品詳情獨立頁模式（/sell/<id>）—— 沒有分頁列，#screen 就是那件商品
+ *   5. opts.nav(url)／opts.onBack()：宿主給的換頁與返回（next/navigation）
+ *   6. 網址同步：分頁 ?tab=、頁面級彈層 ?v=…，見「宿主適配：網址同步」那一段
  */
 export function initMall(root, opts = {}) {
 
 const $=(id)=>root.querySelector("#"+id);
+/* 商品詳情獨立頁模式：/sell/<id>。BASE 是這個宿主的路徑，網址同步只在這條路徑上動作 */
+const ITEM_MODE=!!opts.item;
+const BASE=ITEM_MODE?"/sell/"+opts.item:"/sell";
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const nt=n=>Number(n).toLocaleString("zh-TW");
 /* 賣家名 → 真實頭像網址。原型只有程式畫的臉，接上真資料後
@@ -85,8 +91,9 @@ const S_C2C=["待付款","待確認收款","待出貨","待收貨","完成"];
 const isDone=o=>o.st===(o.type==="b2c"?3:4);
 const stName=o=>o.st===9?"已取消":stepsOf(o)[o.st];
 function syncMine(){
-  C2C=C2C.filter(x=>x.s!==ME.shop);
-  myList.filter(m=>m.st==="active").forEach(m=>C2C.unshift({id:m.id,t:m.t,p:m.p,ship:m.ship,k:m.k,cond:"未拆",s:ME.shop,v:1,specs:m.specs||null,
+  // 商品頁那件若是自己的商品也得留在池子裡（詳情頁靠 id 找），其餘照原型：自己的商品從 myList 重灌
+  C2C=C2C.filter(x=>x.s!==ME.shop||(ITEM_MODE&&x.id===+opts.item));
+  myList.filter(m=>m.st==="active").forEach(m=>C2C.unshift({id:m.id,t:m.t,p:m.p,ship:m.ship,k:m.k,category:m.category||"",cond:"未拆",s:ME.shop,v:1,specs:m.specs||null,
     pays:myPays.slice(),rate:ME.rate,rel:ME.rel,done:ME.done,q:m.q,sold:0,feat:(m.ads&&m.ads.length)?1:0}));
 }
 const S_B2C=["已付款","備貨中","已出貨","完成"];
@@ -96,9 +103,24 @@ const ME={done:346,rate:99.2,good:98.6,rel:9,name:"bacon",shop:"我的賣場"};
    本機自己先改會讓老闆看到「成功了」但其實 RPC 擋下來。一律送出→重拉→重畫。*/
 const DB=opts.db||null;
 /* 上架類別白名單：宿主從後台「商城設定」載入注入；沒注入時用預設 */
-let CATS=(opts.categories&&opts.categories.length)?opts.categories.slice():["一番賞","盒玩","轉蛋","卡牌","公仔模型","周邊商品"];
+let CATS=(opts.categories&&opts.categories.length)?opts.categories.slice():["公仔模型","盲盒盲袋","卡牌收藏","積木拼裝","娃娃玩偶","遙控玩具","益智桌遊","兒童玩具","限定收藏","玩具配件"];
 let sCat="";
+/* 類別 → 分類列圖片（老闆 2026-08-15 給的十張插畫，public/images/sell/category/*.webp）。
+   白名單多了沒圖的類別退回線條圖示（CAT_ICON → ICONS） */
+const CAT_IMG={"公仔模型":"figure","盲盒盲袋":"blindbox","卡牌收藏":"card","積木拼裝":"brick","娃娃玩偶":"plush","遙控玩具":"rc","益智桌遊":"boardgame","兒童玩具":"kids","限定收藏":"limited","玩具配件":"accessory"};
+/* 類別 → 分類列線條圖示（ICONS 的 key）／示範資料的畫風／圓底色 */
+const CAT_ICON={"公仔模型":"fig","盲盒盲袋":"box","卡牌收藏":"card","積木拼裝":"brick","娃娃玩偶":"plush","遙控玩具":"car","益智桌遊":"dice","兒童玩具":"balloon","限定收藏":"gem","玩具配件":"wrench",
+  "一番賞":"fig","盒玩":"box","轉蛋":"cap","卡牌":"card","周邊商品":"plush"};
+const CAT_KINDS={"公仔模型":["fig"],"盲盒盲袋":["box","cap"],"卡牌收藏":["card"],"積木拼裝":["box"],"娃娃玩偶":["plush"],"遙控玩具":["box"],"益智桌遊":["box"],"兒童玩具":["plush"],"限定收藏":["fig"],"玩具配件":["card"],
+  "一番賞":["fig"],"盒玩":["box"],"轉蛋":["cap"],"卡牌":["card"],"周邊商品":["plush"]};
+const CAT_BG=["#FFF0E6","#FFE9EC","#EAF4FF","#EAF8F1","#F3EDFF","#FFF6E0","#E8F7F5","#FFEFE0","#EEF1FF","#F6F0E8","#E9F3E0"];
 if(opts.me&&opts.me.name){ME.name=opts.me.name;ME.shop=opts.me.name;ME.avatar=opts.me.avatar||""}
+/* 商品詳情獨立頁：宿主單獨載好這件商品塞進池子（首頁 feed 只有前 60 筆，分享連結／舊商品不一定在裡面）*/
+if(ITEM_MODE&&opts.itemData&&opts.itemData.item){
+  const it=opts.itemData.item,pool=opts.itemData.official?B2C:C2C;
+  const i=pool.findIndex(x=>x.id===it.id);
+  if(i>=0)pool[i]=it;else pool.unshift(it);
+}
 [].concat(C2C,B2C).forEach(it=>{if(it&&it.avatar&&it.s)AV[it.s]=it.avatar});
 if(ME.avatar)AV[ME.name]=ME.avatar;
 async function pull(){
@@ -109,6 +131,10 @@ async function pull(){
   cart=s.cart||[];gbal=s.gbal||0;locked=s.locked||0;
   if(s.myPays&&s.myPays.length)myPays=s.myPays;
   syncMine();render();
+  // 清單彈層開著就順手重畫（重新整理時先開空的，資料到了才有內容）；等資料的 ?v= 這時補開
+  const T=topL();const f=T&&REFRESH[T.key];if(f)f();
+  if(pendingRoute){const q=pendingRoute;pendingRoute=null;restoring=true;try{openRoute(q)}finally{restoring=false}}
+  syncUrl();
 }
 /* 送一個 DB 動作。失敗就把 RPC 的訊息原字顯示（那些訊息本來就是寫給人看的），
    回 false 讓呼叫端別再往下走。*/
@@ -243,6 +269,13 @@ const stepsOf=o=>o.type==="b2c"?S_B2C:S_C2C;
 
 const ICONS={
  all:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+ brick:'<rect x="4" y="9.5" width="16" height="9.5" rx="1.6"/><path d="M7 9.5V6.8h3.2v2.7M13.8 9.5V6.8H17v2.7"/>',
+ car:'<path d="M4.5 15.5l1.4-4.2A2 2 0 017.8 10h8.4a2 2 0 011.9 1.3l1.4 4.2V18H4.5z"/><circle cx="8" cy="18.5" r="1.6"/><circle cx="16" cy="18.5" r="1.6"/><path d="M12 10V6.5M10 6.5h4"/>',
+ dice:'<rect x="4" y="4" width="16" height="16" rx="3.5"/><circle cx="8.5" cy="8.5" r="1.1" fill="#FF6A00" stroke="none"/><circle cx="15.5" cy="8.5" r="1.1" fill="#FF6A00" stroke="none"/><circle cx="12" cy="12" r="1.1" fill="#FF6A00" stroke="none"/><circle cx="8.5" cy="15.5" r="1.1" fill="#FF6A00" stroke="none"/><circle cx="15.5" cy="15.5" r="1.1" fill="#FF6A00" stroke="none"/>',
+ balloon:'<path d="M12 4a5.2 5.2 0 00-5.2 5.4c0 3.3 2.9 6.1 5.2 6.1s5.2-2.8 5.2-6.1A5.2 5.2 0 0012 4z"/><path d="M11 15.5h2l-1 1.6z"/><path d="M12 17.1c-1.4 1.2 1.4 2.2 0 3.4"/>',
+ gem:'<path d="M7 3.5h10l4 5.5-9 11.5L3 9z"/><path d="M3 9h18M10 3.5L8.5 9l3.5 11.5L15.5 9 14 3.5"/>',
+ wrench:'<path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>',
+ tag:'<path d="M3 3h8l10 10-8 8L3 11z"/><circle cx="7.5" cy="7.5" r="1.2"/>',
  fig:'<circle cx="12" cy="7" r="3.4"/><path d="M6 21c0-4 2.7-6.5 6-6.5s6 2.5 6 6.5"/>',
  card:'<rect x="6" y="3.5" width="12" height="17" rx="2"/><path d="M9 8h6M9 12h4"/>',
  box:'<path d="M12 3l8 3.5v11L12 21l-8-3.5v-11z"/><path d="M4 6.5l8 3.5 8-3.5M12 10v11"/>',
@@ -268,9 +301,10 @@ function header(){
   }
 }
 function render(){
+  if(ITEM_MODE)tab="item";           // 商品頁沒有分頁：任何流程想切分頁都留在這一頁
   const s=$("screen");s.scrollTop=0;header();
   if(heroT){clearInterval(heroT);heroT=null}
-  s.innerHTML={market:vMarket,official:vOfficial,notis:vNoti,me:vMe}[tab]();
+  s.innerHTML={market:vMarket,official:vOfficial,notis:vNoti,me:vMe,item:vItem}[tab]();
   $("ordDot").style.display=NOTIS.filter(n=>n.un).length?"block":"none";
   if(tab==="market"||tab==="official")startHero();
 }
@@ -346,8 +380,11 @@ function startHero(){
   },3600);
 }
 function vMarket(){
-  const cats=[["all","全部"],["fig","公仔"],["card","卡牌"],["box","盒玩"],["cap","轉蛋"],["plush","絨毛"]];
-  const list=C2C.filter(x=>seg==="all"||x.k===seg);
+  /* 分類列 = 上架白名單那幾類（老闆：兩邊要一致），不再寫死五種畫風；
+     過濾看商品的類別本身，只有內建示範資料沒類別才退回用畫風對照 */
+  const cats=[["all","全部"]].concat(CATS.map(c=>[c,c]));
+  const inCat=x=>seg==="all"||(x.category?x.category===seg:(CAT_KINDS[seg]||[]).includes(x.k));
+  const list=C2C.filter(inCat);
   const pool=C2C.filter(x=>x.feat);
   const hl=pool.slice(0,3);hero=0;
   const heroHTML=`<div class="heroC">${hl.map((it,i)=>{const a=art(it.k,it.id,it.img);return `<button class="hslide ${i===0?"on":""}" data-c2c="${it.id}">
@@ -355,11 +392,12 @@ function vMarket(){
       <span class="htx"><h3>${esc(it.t)}</h3><p>${esc(it.s)} · 已售 ${it.sold}</p>
       <span class="hprice">NT$${nt(it.p)}</span></span></button>`}).join("")}
     <span class="hdots">${hl.map((_,i)=>`<i class="${i===0?"on":""}"></i>`).join("")}</span></div>`;
-  const catRow=`<div class="cats">${cats.map((c,i)=>`<button data-seg="${c[0]}" aria-pressed="${seg===c[0]}">
-      <span class="ci" style="background:${["#FFF0E6","#FFE9EC","#EAF4FF","#EAF8F1","#F3EDFF","#FFF6E0"][i]}">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#FF6A00" stroke-width="1.7" stroke-linecap="round">${ICONS[c[0]]}</svg></span>${c[1]}</button>`).join("")}</div>`;
-  const catStrip=seg!=="all"?`<div class="strip"><div class="striphd"><b>${cats.find(c=>c[0]===seg)[1]} 分類首排</b></div>
-    <div class="srow">${scards(C2C.filter(x=>x.k===seg).concat(pool).slice(0,4),"推廣")}</div></div>`:"";
+  const catRow=`<div class="cats">${cats.map((c,i)=>`<button data-seg="${esc(c[0])}" aria-pressed="${seg===c[0]}">
+      <span class="ci" style="background:${CAT_BG[i%CAT_BG.length]}">${CAT_IMG[c[0]]
+        ?`<img src="/images/sell/category/${CAT_IMG[c[0]]}.webp" alt="" width="42" height="42" loading="lazy">`
+        :`<svg viewBox="0 0 24 24" fill="none" stroke="#FF6A00" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICONS[c[0]==="all"?"all":(CAT_ICON[c[0]]||"tag")]}</svg>`}</span>${esc(c[1])}</button>`).join("")}</div>`;
+  const catStrip=seg!=="all"?`<div class="strip"><div class="striphd"><b>${esc(seg)} 分類首排</b></div>
+    <div class="srow">${scards(C2C.filter(x=>x.category?x.category===seg:(CAT_KINDS[seg]||[]).includes(x.k)).concat(pool).slice(0,4),"推廣")}</div></div>`:"";
   const topic=`<div class="strip">
     <div class="striphd"><b>本週一番賞精選</b><button class="more" data-more="topic">更多 ›</button></div>
     <div class="srow">${scards([C2C[0],C2C[7],C2C[5],C2C[1]].filter(Boolean),"專題")}</div></div>`;
@@ -571,9 +609,137 @@ function askDel(i){
     <div class="dlgb"><button data-dlgno="1">取消</button><button class="warn" data-dlgyes="${i}">刪除</button></div></div>`;
   $("dlg").classList.add("on");
 }
-let layers=[];
+let layers=[],uidSeq=0;
 const topL=()=>layers[layers.length-1];
 const $$=sel=>{const L=topL();return L?L.el.querySelector(sel):null};
+
+/* ═══ 宿主適配：網址同步 ═══
+   老闆（2026-08-15）：商城每個頁面連結後面都要帶字串，重新整理／分享要能回到同一頁。
+   - 分頁：/sell?tab=official|notis|me（找物就是首頁 /sell；找物的分類篩選帶 ?c=類別）
+   - 頁面級彈層：?v=<名稱>[&參數]，對照見 ROUTES／openRoute
+   - 商品詳情：獨立路徑 /sell/<id>（不是彈層），子彈層一樣接在後面（/sell/<id>?v=cart）
+   歷史堆疊：頁面級彈層「點開」推一格（pushState），瀏覽器返回鍵就能關掉；
+   程式自己關（送出成功、切分頁）同樣把那一格 pop 掉（history.back），DOM 先同步收、
+   popstate 到了只對齊網址（expectPop）。子對話框（選規格、優惠券、備註…）不進網址、不推格。
+   history.state 記 {mkL:最上層有網址的彈層 uid, mkP:這一格是不是我們推的}，換頁再回來還讀得到，
+   所以從商品頁返回商城時重開的彈層，知道自己能不能用返回鍵關。 */
+const TABS=["market","official","notis","me"];
+/* 彈層標題（= layers 的 key）→ 網址參數。動態的（訂單號、店名、搜尋詞）由呼叫端 opt.route 帶 */
+const ROUTES={
+  "購買清單":()=>({v:"orders",t:ordTab||undefined}),
+  "賣家訂單":()=>({v:"sorders",t:soTab||undefined}),
+  "購物車":()=>({v:"cart"}),
+  "聊聊":()=>({v:"chats"}),
+  "設定":()=>({v:"settings"}),
+  "收貨地址":()=>({v:"addr"}),
+  "廣告中心":()=>({v:"ads"}),
+  "官方認證商家":()=>({v:"pro"}),
+  "保證金規則":()=>({v:"deposit"}),
+  "收款設定":()=>({v:"paycfg"}),
+  "賣家信譽":()=>({v:"rep"}),
+  "後台 · 檢舉判定":()=>({v:"admin"}),
+  "我要上架":()=>({v:"new"}),
+  "結帳":()=>({v:"checkout"}),
+  "本週一番賞精選":()=>({v:"more",k:"topic"}),
+  "熱賣排行":()=>({v:"more",k:"hot"}),
+  "新品首發":()=>({v:"more",k:"new"}),
+};
+/* 從別的彈層退回來時要重畫的清單頁（底下那層的狀態可能已經變了） */
+const REFRESH={"購買清單":()=>ordersSheet(),"賣家訂單":()=>sellOrdersSheet()};
+let popping=false,restoring=false,pendingRoute=null,expectPop=0,expectT=0;
+const hstate=()=>history.state||{};
+const topRouted=()=>{for(let i=layers.length-1;i>=0;i--)if(layers[i].route)return layers[i];return null};
+const routeFor=(t,opt)=>opt.route||(ROUTES[t]?ROUTES[t]():null);
+const hereUrl=()=>location.pathname+location.search;
+function urlNow(){
+  const q=new URLSearchParams();
+  if(!ITEM_MODE){if(tab!=="market")q.set("tab",tab);else if(seg!=="all")q.set("c",seg)}
+  const R=topRouted();
+  if(R)Object.keys(R.route).forEach(k=>{const v=R.route[k];if(v!==undefined&&v!==null&&v!=="")q.set(k,String(v))});
+  const s=q.toString();return BASE+(s?"?"+s:"");
+}
+const stateOf=pushed=>({mkL:(topRouted()||{}).uid||0,mkP:pushed!==undefined?(pushed?1:0):(hstate().mkP?1:0)});
+/* 對齊網址（replace）：網址沒變只更新 state */
+function syncUrl(){
+  if(popping||location.pathname!==BASE)return;
+  const u=urlNow();
+  if(u===hereUrl())history.replaceState(stateOf(),"");else history.replaceState(stateOf(),"",u);
+}
+/* 新開了一個有網址的彈層 */
+function openedRoute(L){
+  if(location.pathname!==BASE)return;
+  if(popping){L.pushed=true;history.replaceState(stateOf(),"",urlNow());return}            // 往前回到這一格：那一格本來就在
+  if(restoring){L.pushed=!!hstate().mkP;history.replaceState(stateOf(),"",urlNow());return} // 重新整理／換頁回來：這格若是我們推的，返回鍵一樣能關
+  const u=urlNow();
+  if(u!==hereUrl()){L.pushed=true;history.pushState(stateOf(true),"",u)}
+  else history.replaceState(stateOf(),"");                                                    // 同網址再疊一層（回廣告中心之類）：不推格
+}
+const armExpect=()=>{clearTimeout(expectT);expectT=setTimeout(()=>{expectPop=0},800)};
+const routeMatch=(r,q)=>Object.keys(r).every(k=>String(r[k]===undefined||r[k]===null?"":r[k])===(q.get(k)||""));
+/* 瀏覽器返回／前進：把引擎狀態對齊到網址 */
+function onPop(){
+  if(location.pathname!==BASE)return;   // 離開商城了，Next 自己處理
+  if(expectPop>0){expectPop--;if(!expectPop)clearTimeout(expectT);syncUrl();return}   // 我們自己 pop 的：DOM 早收好了，只對齊
+  const q=new URLSearchParams(location.search);
+  popping=true;
+  try{
+    let keep=-1;
+    if(q.get("v"))for(let i=layers.length-1;i>=0;i--){const r=layers[i].route;if(r&&routeMatch(r,q)){keep=i;break}}
+    let closed=false;
+    while(layers.length>keep+1){closeRaw();closed=true}
+    if(!ITEM_MODE){
+      const t=q.get("tab")||"market",c=q.get("c")||"all",segOk=c==="all"||CATS.includes(c);
+      if(TABS.includes(t)&&(t!==tab||(t==="market"&&segOk&&c!==seg))){tab=t;if(t==="market"&&segOk)seg=c;syncTabs();render()}
+    }
+    if(q.get("v")&&keep<0)openRoute(q);
+    else if(closed){const T=topL();const f=T&&REFRESH[T.key];if(f)f()}
+  }finally{popping=false}
+  syncUrl();
+}
+/* 網址上的 ?v= → 開對應彈層；開不起來（要靠記憶體狀態的結帳、還沒載到的訂單）回 false */
+function openRoute(q){
+  const v=q.get("v"),s=q.get("s")||"",no=q.get("no")||"",t=Math.max(0,+(q.get("t")||0)||0);
+  switch(v){
+    case "orders":ordTab=Math.min(t,4);ordersSheet();return true;
+    case "sorders":soTab=Math.min(t,6);sellOrdersSheet();return true;
+    case "order":if(!orders.find(x=>x.no===no))return false;openOrder(no);return true;
+    case "sorder":if(!sellOrders.find(x=>x.no===no))return false;sellOrderDetail(no);return true;
+    case "cart":cartSheet();return true;
+    case "shop":if(!s)return false;shopSheet(s);return true;
+    case "chats":chatList();return true;
+    case "chat":if(!s)return false;chatSheet(s,null);return true;
+    case "search":searchSheet(q.get("q")||"");return true;
+    case "more":{const k=q.get("k");if(k!=="topic"&&k!=="hot"&&k!=="new")return false;moreSheet(k);return true}
+    case "settings":settingsSheet();return true;
+    case "addr":addrSheet();return true;
+    case "ads":fromPromo=false;adCenter();return true;
+    case "pro":goPro();return true;
+    case "deposit":depInfo();return true;
+    case "paycfg":payCfg();return true;
+    case "rep":repSheet();return true;
+    case "admin":adminPanel();return true;
+    case "new":editIdx=null;useSpec=false;sCat="";specTree=[{v:"",items:[{n:"",p:0,q:1}]}];sellForm();return true;
+    default:return false;
+  }
+}
+/* 進站：先讀分頁／分類，殼畫好之後再開 ?v= 的彈層。
+   進站的網址要先抄一份 —— syncTabs()/render() 中途會 replace 網址（把 ?v= 洗掉），
+   restoreLayers 讀的是這份抄本，不是當下的 location */
+const INIT_Q=new URLSearchParams(location.search);
+function readUrl(){
+  if(ITEM_MODE)return;
+  const q=INIT_Q;
+  const t=q.get("tab");if(TABS.includes(t))tab=t;
+  const c=q.get("c");if(c&&CATS.includes(c))seg=c;
+}
+function restoreLayers(){
+  const q=INIT_Q,v=q.get("v");
+  if(!v)return;
+  restoring=true;
+  try{if(!openRoute(q))pendingRoute=((v==="order"||v==="sorder")&&DB)?q:null}   // 訂單要等 pull() 拉到才開得起來
+  finally{restoring=false}
+}
+
 function sheet(t,h,opt){
   opt=opt||{};
   const cur=topL();
@@ -582,7 +748,7 @@ function sheet(t,h,opt){
     const sh=cur.el.querySelector(".sheet");
     sh.classList.toggle("tall",!!opt.tall);sh.classList.toggle("nohead",!!opt.noHead);sh.classList.toggle("full",!!opt.full);
     const bk=cur.el.querySelector(".back");bk.style.display=opt.back?"grid":"none";bk.dataset.back=opt.back||"";
-    cur.opt=opt;return;
+    cur.opt=opt;cur.route=routeFor(t,opt);syncUrl();return;
   }
   const L=document.createElement("div");
   L.className="layer";
@@ -594,17 +760,32 @@ function sheet(t,h,opt){
         <button class="x sclose" aria-label="關閉"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
       </div><div class="sbd">${h}</div></div>`;
   $("sheets").appendChild(L);
-  layers.push({el:L,key:t,opt});
+  const rec={el:L,key:t,opt,uid:++uidSeq,route:routeFor(t,opt),pushed:false};
+  layers.push(rec);
   requestAnimationFrame(()=>{L.querySelector(".scrim").classList.add("on");L.querySelector(".sheet").classList.add("on")});
+  if(rec.route)openedRoute(rec);
 }
-function close(){
+function closeRaw(){
   const L=layers.pop();if(!L)return;
   L.el.querySelector(".sheet").classList.remove("on");
   L.el.querySelector(".scrim").classList.remove("on");
   setTimeout(()=>L.el.remove(),300);
   if(tick){clearInterval(tick);tick=null}
 }
-function closeAll(){while(layers.length)close()}
+/* 關最上層。這層若是我們為它推的那一格（返回鍵能關的），順便把那格 pop 掉，
+   不然歷史裡會留一格「按返回沒反應」的空格。DOM 一律先同步收掉，後面的程式接著畫不受影響。 */
+function close(){
+  const L=topL();if(!L)return;
+  const own=!!(L.pushed&&L.route&&hstate().mkL===L.uid&&location.pathname===BASE);
+  closeRaw();
+  if(own){expectPop++;armExpect();history.back()}else syncUrl();
+}
+function closeAll(){
+  const T=topL();let n=0;
+  if(T&&T.pushed&&T.route&&hstate().mkL===T.uid&&location.pathname===BASE)n=layers.filter(l=>l.pushed).length;
+  while(layers.length)closeRaw();
+  if(n>0){expectPop++;armExpect();history.go(-n)}else syncUrl();
+}
 $("sheets").addEventListener("click",e=>{
   if(e.target.classList.contains("scrim")||e.target.closest(".sclose")){close();return}
   const bk=e.target.closest(".back");
@@ -657,7 +838,7 @@ function searchSheet(q){
       <button class="del" data-qdel="${esc(t)}">清除</button></div>`).join("")}
     ${hotKws().length?`<div class="kwsec">熱門搜尋</div>`:""}
     ${hotKws().map(k=>`<button class="kwrow" data-qs="${esc(k)}">${esc(k)}</button>`).join("")}
-  </div>`}`,{tall:true});
+  </div>`}`,{tall:true,route:{v:"search",q:kw||undefined}});
   const el=$("qIn");el.addEventListener("keydown",e=>{if(e.key==="Enter")searchSheet(el.value.trim())});
 }
 function moreSheet(kind){
@@ -888,7 +1069,7 @@ function sellOrderDetail(no){
     body=`<div class="blk"><div class="kv"><span>物流單號</span><span>${esc(o.track)}</span></div>
       <div class="kv noline"><span>保證金</span><span style="color:var(--green)">已退還 ${nt(o.dep)}G</span></div></div>`;
   }
-  sheet("訂單 "+o.no,steps+banner+top+head+body,{tall:true,back:"sorders"});
+  sheet("訂單 "+o.no,steps+banner+top+head+body,{tall:true,back:"sorders",route:{v:"sorder",no:o.no}});
   if(o.st===0&&o.due)startCD(o,()=>{sellOrders=sellOrders.filter(x=>x.no!==o.no);toast("買家逾時未付款，保證金已解鎖");close();render()});
   if(o.st===1){
     if(!o.cdue)o.cdue=Date.now()+15*60000;
@@ -920,7 +1101,7 @@ function shopSheet(name){
     </div></div>
   <div class="blk" style="margin-top:8px"><div class="secttl">全部商品 ${list.length}</div></div>
   <div class="grid" style="padding-top:0">${list.map(it=>cardC2C(it,false)).join("")}</div>
-  <div style="height:14px"></div>`);
+  <div style="height:14px"></div>`,{route:{v:"shop",s:name}});
 }
 
 /* ── 聊聊 ── */
@@ -963,7 +1144,7 @@ function drawChat(name,itemMode){
   <div class="chatbox" id="chatBox">${ms.map(m=>m.card?chatCard(m.card)
     : `<div class="bub ${m.me?"me":"you"}">${m.me?"":`<span class="uav sm">${avatar(name)}</span>`}<span class="tx">${esc(m.t)}</span></div>`).join("")}</div>
   <div class="quick">${QK.map(q=>`<button class="qk" data-say="${esc(q)}">${q}</button>`).join("")}</div>
-  <div class="chatbar"><input class="fin" id="chatIn" placeholder="輸入訊息…"><button class="sendbtn" data-send="${esc(name)}">送出</button></div>`);
+  <div class="chatbar"><input class="fin" id="chatIn" placeholder="輸入訊息…"><button class="sendbtn" data-send="${esc(name)}">送出</button></div>`,{route:{v:"chat",s:name}});
   const box=$("chatBox");if(box)box.scrollTop=box.scrollHeight;
   const inp=$("chatIn");
   if(inp)inp.addEventListener("keydown",e=>{if(e.key==="Enter")say(name,inp.value)});
@@ -1046,10 +1227,28 @@ function recoStrip(){
   return `<div class="strip" style="margin:0 0 8px"><div class="striphd"><b>猜你喜歡</b></div>
     <div class="srow">${scards(C2C.filter(x=>x.feat).slice(0,4),"推薦")}</div></div>`;
 }
-function itemC2C(id){
-  const it=C2C.find(x=>x.id===id),a=art(it.k,it.id,it.img),g=guard(it);
-  sheet("商品詳情",`<button class="floatback" data-x="1" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
-  <div class="hero" style="background:${a.bg}">${a.s}</div>
+/* ── 商品詳情（獨立頁 /sell/<id>）──
+   老闆 2026-08-15：商品頁要是獨立頁面不是彈層，網址帶商品編號；返回鍵在左、分享鍵在右
+   （分享同抽獎商品：手機系統分享面板／桌機複製連結）。點任何商品卡一律換頁（goItem）；
+   版面沿用原型的商品詳情彈層內容，套在 #screen 裡當一頁，操作列固定在底部。 */
+const goItem=id=>{
+  if(ITEM_MODE&&+id===+opts.item){closeAll();return}   // 已經在這件商品的頁上（店舖／猜你喜歡點回自己）
+  if(opts.nav)opts.nav("/sell/"+id);else location.href="/sell/"+id;
+};
+function itemC2C(id){goItem(id)}
+function itemB2C(id){goItem(id)}
+const floatNav=()=>`<div class="floatnav">
+  <button class="floatback" data-iback="1" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <button class="floatshare" data-share="1" aria-label="分享"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></button></div>`;
+function vItem(){
+  const id=+opts.item;
+  const c=C2C.find(x=>x.id===id),b=c?null:B2C.find(x=>x.id===id);
+  if(!c&&!b)return floatNav()+`<div class="empty" style="padding-top:38vh">商品不存在或已下架</div>`;
+  return floatNav()+(c?itemC2CHTML(c):itemB2CHTML(b));
+}
+function itemC2CHTML(it){
+  const a=art(it.k,it.id,it.img),g=guard(it);
+  return `  <div class="hero" style="background:${a.bg}">${a.s}</div>
   <div class="pricebar"><span class="s">NT$</span><span class="n">${nt(minP(it))}</span>${it.specs?'<span class="s">起</span>':""}
     <span class="r">${shipTxt(it.ship)}<br>已售 ${it.sold} 件</span></div>
   <div class="blk"><div class="ttl">${esc(it.t)}</div></div>
@@ -1068,12 +1267,11 @@ function itemC2C(id){
     <div class="kv"><span>運送</span><span>7-11 交貨便 · ${it.ship?"買家付 "+nt(it.ship):"賣家吸收"}</span></div>
     <div class="kv"><span>買家保障</span><span style="color:var(--red)">賣家保證金 ${nt(g.need)}G</span></div>
   </div>
-  <div class="abar"><button class="aicon" data-chat="${esc(it.s)}" data-itm2="${it.id}"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M20 12a7.5 7.5 0 01-11 6.6L4 20l1.4-4.2A7.5 7.5 0 1120 12z"/></svg></span><span>私聊</span></button><button class="aicon" data-cart="${it.id}"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M3 4h2.2l2.3 11h10l2.2-8H6"/><circle cx="9.5" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg></span><span>購物車</span></button><button class="buy" data-buy="${it.id}">直接購買 · NT$${nt(g.total)}</button></div>`,{full:true});
+  <div class="abar"><button class="aicon" data-chat="${esc(it.s)}" data-itm2="${it.id}"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M20 12a7.5 7.5 0 01-11 6.6L4 20l1.4-4.2A7.5 7.5 0 1120 12z"/></svg></span><span>私聊</span></button><button class="aicon" data-cart="${it.id}"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M3 4h2.2l2.3 11h10l2.2-8H6"/><circle cx="9.5" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg></span><span>購物車</span></button><button class="buy" data-buy="${it.id}">直接購買 · NT$${nt(g.total)}</button></div>`;
 }
-function itemB2C(id){
-  const it=B2C.find(x=>x.id===id),a=art(it.k,it.id,it.img);
-  sheet("商品詳情",`<button class="floatback" data-x="1" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
-  <div class="hero" style="background:${a.bg}">${a.s}</div>
+function itemB2CHTML(it){
+  const a=art(it.k,it.id,it.img);
+  return `  <div class="hero" style="background:${a.bg}">${a.s}</div>
   <div class="pricebar" style="background:linear-gradient(100deg,#333,#111)"><span class="s">NT$</span><span class="n">${nt(minP(it))}</span>${it.specs?'<span class="s">起</span>':""}
     <span class="r">${shipTxt(it.ship)}<br>已售 ${it.sold} 件</span></div>
   <div class="blk"><div class="ttl">${esc(it.t)}</div></div>
@@ -1088,7 +1286,19 @@ function itemB2C(id){
     <div class="kv"><span>付款</span><span>信用卡 / 分期</span></div>
     <div class="kv"><span>退換</span><span>7 天鑑賞期，原路退刷</span></div>
   </div>
-  <div class="abar"><button class="aicon" data-chat="吉吉比官方客服"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M20 12a7.5 7.5 0 01-11 6.6L4 20l1.4-4.2A7.5 7.5 0 1120 12z"/></svg></span><span>私聊</span></button><button class="aicon" data-cartb="${it.id}"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M3 4h2.2l2.3 11h10l2.2-8H6"/><circle cx="9.5" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg></span><span>購物車</span></button><button class="buy dark" data-cbuy="${it.id}">直接購買 · NT$${nt(it.p+it.ship)}</button></div>`,{full:true});
+  <div class="abar"><button class="aicon" data-chat="吉吉比官方客服"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M20 12a7.5 7.5 0 01-11 6.6L4 20l1.4-4.2A7.5 7.5 0 1120 12z"/></svg></span><span>私聊</span></button><button class="aicon" data-cartb="${it.id}"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M3 4h2.2l2.3 11h10l2.2-8H6"/><circle cx="9.5" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg></span><span>購物車</span></button><button class="buy dark" data-cbuy="${it.id}">直接購買 · NT$${nt(it.p+it.ship)}</button></div>`;
+}
+function goBack(){if(opts.onBack)opts.onBack();else history.back()}
+async function shareItem(){
+  const id=+opts.item,it=C2C.find(x=>x.id===id)||B2C.find(x=>x.id===id);
+  const url=location.origin+BASE,title=it?`【吉吉比商城】${it.t}`:"吉吉比商城";
+  const mobile=/Mobile|Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent)&&matchMedia("(pointer: coarse)").matches;
+  try{
+    if(mobile&&navigator.share){await navigator.share({title,url});return}   // 手機：系統分享面板（同抽獎商品）
+    try{await navigator.clipboard.writeText(url)}
+    catch(e){const el=document.createElement("textarea");el.value=url;document.body.appendChild(el);el.select();document.execCommand("copy");el.remove()}
+    toast("連結已複製");
+  }catch(e){/* 使用者取消分享，不處理 */}
 }
 function cardPay(id,spec,qty,tot){
   const it=B2C.find(x=>x.id===id);spec=spec||"";qty=qty||1;tot=tot||(it.p+it.ship);
@@ -1474,7 +1684,7 @@ function openOrder(no){
         <div class="abar"><button class="buy" data-rate="${o.no}">送出評價</button></div>`);
   }
   const doneCard=(o.type==="c2c"&&o.st===4)?b:"";
-  sheet("訂單 "+o.no,steps+(doneCard?doneCard+goods:okban+pay+conf+goods+b),{tall:true,back:layers.length&&layers[layers.length-1].key==="購買清單"?"orders":"close"});
+  sheet("訂單 "+o.no,steps+(doneCard?doneCard+goods:okban+pay+conf+goods+b),{tall:true,back:layers.length&&layers[layers.length-1].key==="購買清單"?"orders":"close",route:{v:"order",no:o.no}});
   if(o.type==="c2c"&&o.st===0){startCD(o);bindHold($$("#holdPaid"),()=>{
     o.st=1;o.cdue=Date.now()+15*60000;toast("已回報匯款，等待賣家確認");openOrder(o.no);render();
   });}
@@ -1708,7 +1918,7 @@ $("hdr").addEventListener("click",e=>{
 $("screen").addEventListener("click",e=>{
   const b=e.target.closest("[data-seg],[data-c2c],[data-b2c],[data-ord],[data-go],[data-off],[data-relist],[data-promo],[data-menu],[data-more],[data-ordt],[data-ntt],[data-orders],[data-csel],[data-callall],[data-cq],[data-cgrp],[data-cspec],[data-cpick],[data-checkout],[data-placeorder],[data-copay],[data-coupon],[data-shopcpn],[data-shopcpnpick],[data-note],[data-notesave],[data-shipsel],[data-coship],[data-paysel],[data-cpn],[data-addr],[data-chat],[data-recv],[data-ord],[data-orders],[data-ntt],[data-noti],[data-more],[data-menu],[data-promo],[data-off],[data-relist],[data-seg]");if(!b)return;
   const d=b.dataset;
-  if(d.seg){seg=d.seg;render()}
+  if(d.seg){seg=d.seg;render();syncUrl()}
   else if(d.ordt!==undefined){ordTab=+d.ordt;render()}
   else if(d.orders!==undefined){ordTab=+d.orders;ordersSheet();return}
   else if(d.ntt!==undefined){ntTab=+d.ntt;render();return}
@@ -1720,7 +1930,9 @@ $("screen").addEventListener("click",e=>{
   else if(d.recv){const o=orders.find(x=>x.no===d.recv);
     if(DB&&o&&o.oid){push(()=>DB.confirmReceived(o.oid),"已確認收貨");return}
     o.st=o.type==="b2c"?3:4;toast("已確認收貨");render();return}
-  else if(d.chat){const o=d.ord2?orders.find(x=>x.no===d.ord2):null;chatSheet(d.chat,o);return}
+  else if(d.chat){let ctx=d.ord2?orders.find(x=>x.no===d.ord2):null;
+    if(d.itm2){const it=C2C.find(x=>x.id===+d.itm2);if(it)ctx={kind:"item",id:it.id,t:it.t,p:minP(it),k:it.k,cid:it.id,specs:!!it.specs}}
+    chatSheet(d.chat,ctx);return}
   else if(d.ord)openOrder(d.ord);
   else if(d.go==="sell"){editIdx=null;useSpec=false;sCat="";specTree=[{v:"",items:[{n:"",p:0,q:1}]}];sellForm();return}
   else if(d.go==="ads"){fromPromo=false;adCenter();return}
@@ -1994,16 +2206,34 @@ $("sheets").addEventListener("click",e=>{
   }
   if(orders.length&&tab==="orders")render();
 });
+/* 商品頁（獨立頁）裡的按鈕：內容畫在 #screen，原型的彈層 handler 管不到，這裡接 */
+if(ITEM_MODE)$("screen").addEventListener("click",e=>{
+  const b=e.target.closest("[data-iback],[data-share],[data-shop],[data-cart],[data-cartb],[data-buy],[data-cbuy]");
+  if(!b)return;const d=b.dataset;
+  if(d.iback!==undefined)goBack();
+  else if(d.share!==undefined)shareItem();
+  else if(d.shop)shopSheet(d.shop);
+  else if(d.cart)specSheet("c2c",+d.cart,"cart");
+  else if(d.cartb)specSheet("b2c",+d.cartb,"cart");
+  else if(d.buy)specSheet("c2c",+d.buy,"buy");
+  else if(d.cbuy)specSheet("b2c",+d.cbuy,"buy");
+});
 root.querySelectorAll(".tabbar button").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;syncTabs();render()});
-function syncTabs(){root.querySelectorAll(".tabbar button").forEach(x=>x.setAttribute("aria-selected",x.dataset.tab===tab))}
+function syncTabs(){root.querySelectorAll(".tabbar button").forEach(x=>x.setAttribute("aria-selected",x.dataset.tab===tab));syncUrl()}
 
 if(opts.initialTab==="official"||opts.initialTab==="me"||opts.initialTab==="notis")tab=opts.initialTab;
-syncMine();render();
+readUrl();                       // ?tab= / ?c=（蓋過 initialTab）
+syncMine();syncTabs();render();
+restoreLayers();                 // ?v= 的彈層要等殼畫好才能開
+if(!pendingRoute)syncUrl();      // 對齊網址（?tab=market 這種多餘的拿掉；開不回來的 ?v= 拿掉）
+window.addEventListener("popstate",onPop);
 // 先畫再拉：殼與列表已經有真資料了，訂單/購物車慢一步進來不影響第一眼
 if(DB)pull();
 
 return {
   destroy(){
+    window.removeEventListener("popstate",onPop);
+    clearTimeout(expectT);
     if(tick){clearInterval(tick);tick=null}
     if(heroT){clearInterval(heroT);heroT=null}
     try{if(AC&&AC.close)AC.close()}catch(e){}

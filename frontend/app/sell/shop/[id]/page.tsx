@@ -11,7 +11,7 @@ import '../../market.css';
  * 資料走 migration 569 的兩支 SECURITY DEFINER RPC（sell_shop_header / sell_shop_feed）：
  * 統計 view join 了有 RLS 的表，前台直接查會被靜默濾成空的。
  *
- * 點商品卡 → `/sell?open=<id>`：購買整條龍都做在商城首頁的彈層裡（含保證金與付款），
+ * 點商品卡 → `/sell/<id>`（商品詳情獨立頁）：購買整條龍都在那頁的引擎裡（含保證金與付款），
  * 這裡不重做一份結帳，免得兩邊行為漂移。
  */
 
@@ -188,7 +188,7 @@ export default function SellerShopPage() {
             <button
               type="button"
               key={r.id}
-              onClick={() => router.push(`/sell?open=${r.id}`)}
+              onClick={() => router.push(`/sell/${r.id}`)}
               className="pcard"
             >
               <div className="pimg" style={{ background: '#F5F5F5' }}>

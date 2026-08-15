@@ -41,8 +41,8 @@ type Product = {
   updated_at: string
 }
 
-// 與 platform_settings.sell_category_whitelist 一致
-const CATEGORIES = ['一番賞', '盒玩', '轉蛋', '卡牌', '公仔模型', '周邊商品']
+// 與 platform_settings.sell_category_whitelist 一致（migration 579，2026-08-15 定案的十類）
+const CATEGORIES = ['公仔模型', '盲盒盲袋', '卡牌收藏', '積木拼裝', '娃娃玩偶', '遙控玩具', '益智桌遊', '兒童玩具', '限定收藏', '玩具配件']
 
 const emptyDraft = () => ({
   id: 0,

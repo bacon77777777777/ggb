@@ -11,10 +11,24 @@
 
 import { createClient } from '@/lib/supabase/client';
 
-/** 引擎用來挑插畫的種類；DB 只有中文類別，對映到原型的五種 */
+/**
+ * 引擎用來挑佔位插畫的種類；DB 存的是中文類別，對映到原型的五種畫風。
+ * 十類是 2026-08-15 定案的商城類別（migration 579）；舊六類保留對映，
+ * 免得白名單改回去或殘留舊值時直接沒圖。
+ */
 const KIND_BY_CATEGORY: Record<string, string> = {
-  一番賞: 'fig',
   公仔模型: 'fig',
+  盲盒盲袋: 'box',
+  卡牌收藏: 'card',
+  積木拼裝: 'box',
+  娃娃玩偶: 'plush',
+  遙控玩具: 'box',
+  益智桌遊: 'box',
+  兒童玩具: 'plush',
+  限定收藏: 'fig',
+  玩具配件: 'card',
+  // 舊值
+  一番賞: 'fig',
   盒玩: 'box',
   轉蛋: 'cap',
   卡牌: 'card',
@@ -50,6 +64,8 @@ function toItem(r: FeedRow) {
     p: Number(r.price) || 0,
     ship: Number(r.shipping_fee) || 0,
     k: KIND_BY_CATEGORY[String(r.category || '')] || 'box',
+    // 首頁分類列用類別本身過濾（白名單那十類），k 只管佔位圖
+    category: String(r.category || ''),
     cond: r.condition || '',
     s: String(r.seller_name || '玩家'),
     // 原型用 v 表示「已完成手機實名」
@@ -90,6 +106,27 @@ export async function loadMallData(): Promise<MallData | null> {
     };
   } catch (e) {
     console.error('[mall] 取真實資料失敗，改用引擎內建示範資料:', e);
+    return null;
+  }
+}
+
+/**
+ * 商品詳情獨立頁（/sell/<id>）用：單獨載入一件商品。
+ *
+ * 首頁 feed 只拿前 60 筆，分享出去的連結／較舊的商品不一定在裡面，
+ * 所以詳情頁一律自己打 sell_feed_one（578 版起形狀與 sell_feed 一致，多 is_official）。
+ * 回 { item, official } —— 引擎要靠 official 決定放進 C2C 還是 B2C 那一池。
+ * 找不到（已下架／不存在）回 null，頁面顯示「商品不存在或已下架」。
+ */
+export async function loadItem(id: number): Promise<{ item: any; official: boolean } | null> {
+  try {
+    const { data, error } = await createClient().rpc('sell_feed_one', { p_id: id });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return null;
+    return { item: toItem(row), official: !!row.is_official };
+  } catch (e) {
+    console.error('[mall] 取商品詳情失敗:', e);
     return null;
   }
 }
