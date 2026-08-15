@@ -46,6 +46,7 @@
   讚、分享、商品卡→商品頁、og 預覽）。五支示範影片是 STG 商品主圖 ffmpeg 合成的直式 H.264
   放 R2 `reels-proto/`，資料先寫死在 `lib/sell/reelsProto.ts`，第一期再接 DB。
   坑：全站 PathnameKeyed 依 pathname 重掛整頁，換支的 replaceState 要帶原 history.state 讓 Next 放行。
+  影音頁本身不放底部導航、播放區滿版（老闆定），回商城走左上返回鍵。
 
 ---
 
