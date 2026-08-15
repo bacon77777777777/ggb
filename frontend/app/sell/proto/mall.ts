@@ -107,7 +107,7 @@ let CATS=(opts.categories&&opts.categories.length)?opts.categories.slice():["公
 let sCat="";
 /* 類別 → 分類列圖片（老闆 2026-08-15 給的十張插畫，public/images/sell/category/*.webp）。
    白名單多了沒圖的類別退回線條圖示（CAT_ICON → ICONS） */
-const CAT_IMG={"公仔模型":"figure","盲盒盲袋":"blindbox","卡牌收藏":"card","積木拼裝":"brick","娃娃玩偶":"plush","遙控玩具":"rc","益智桌遊":"boardgame","兒童玩具":"kids","限定收藏":"limited","玩具配件":"accessory"};
+const CAT_IMG={"all":"all","公仔模型":"figure","盲盒盲袋":"blindbox","卡牌收藏":"card","積木拼裝":"brick","娃娃玩偶":"plush","遙控玩具":"rc","益智桌遊":"boardgame","兒童玩具":"kids","限定收藏":"limited","玩具配件":"accessory"};
 /* 類別 → 分類列線條圖示（ICONS 的 key）／示範資料的畫風／圓底色 */
 const CAT_ICON={"公仔模型":"fig","盲盒盲袋":"box","卡牌收藏":"card","積木拼裝":"brick","娃娃玩偶":"plush","遙控玩具":"car","益智桌遊":"dice","兒童玩具":"balloon","限定收藏":"gem","玩具配件":"wrench",
   "一番賞":"fig","盒玩":"box","轉蛋":"cap","卡牌":"card","周邊商品":"plush"};
