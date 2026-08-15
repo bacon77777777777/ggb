@@ -286,7 +286,7 @@ function header(){
   if(tab==="market"||tab==="official"){
     $("hdr").className="hdr";
     $("hdr").innerHTML=`<div class="srch">
-      <button class="hicon" data-back="1" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="hicon hback" data-back="1" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
       <button class="sbox" data-search="1"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BFBFBF" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
       <span class="sboxt">${tab==="market"?"搜尋一番賞、盒玩":"搜尋官方商品"}</span></button>
       <button class="hicon" data-go="cart" aria-label="購物車"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M3 4h2.2l2.3 11h10l2.2-8H6"/><circle cx="9.5" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg>${cart.length?`<span class="hicn">${cart.length}</span>`:""}</button>

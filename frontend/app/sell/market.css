@@ -961,6 +961,11 @@
 /* 老闆 2026-08-15：頂欄圖標間距拿掉（緊密一點）；「我的」那組同步 gap 0，
    切分頁時購物車／聊聊才會停在同一個座標（兩邊都是 [購物車][聊聊] 靠右、右內距 12） */
 .mk.mallroot .srch, .mk.mallroot .metopbar { gap: 0; }
+/* 頂欄返回鍵照「我的倉庫」：lucide chevron-left 24px、stroke 2，圖標左緣停在 8px
+   （倉庫是 px-2 容器 + -ml-2 p-2 的按鈕 → 圖標在 8px）。左內距收到 8，按鈕自己吃回去 */
+.mk.mallroot .hdr { padding-left: 8px; }
+.mk.mallroot .hdr .srch > .hicon.hback { margin-left: -8px; width: 40px; padding: 0 8px; }
+.mk.mallroot .hdr .srch > .hicon.hback svg { width: 24px; height: 24px; }
 
 /*
  * 彈層內容要自己捲，操作列（.abar）才停得住在底部。
