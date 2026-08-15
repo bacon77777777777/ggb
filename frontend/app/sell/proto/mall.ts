@@ -401,8 +401,11 @@ function vMarket(){
   const topic=`<div class="strip">
     <div class="striphd"><b>本週一番賞精選</b><button class="more" data-more="topic">更多 ›</button></div>
     <div class="srow">${scards([C2C[0],C2C[7],C2C[5],C2C[1]].filter(Boolean),"專題")}</div></div>`;
+  // 「抽到不想要的獎品？去上架」橫幅老闆 2026-08-15 指定隱藏（從抽獎紀錄一鍵上架還沒做，先別掛餌）；
+  // 標記留著，接好再放回 return
   const draw=`<div class="dban"><div><b>抽到不想要的獎品？</b><small>從抽獎紀錄一鍵上架，賣給需要的人</small></div><span class="go">去上架</span></div>`;
-  return heroHTML+catRow+catStrip+topic+draw+`<div class="grid">${feed(list,cardC2C,pool)}</div>`;
+  void draw;
+  return heroHTML+catRow+catStrip+topic+`<div class="grid">${feed(list,cardC2C,pool)}</div>`;
 }
 function vOfficial(){
   const pool=B2C.filter(x=>x.feat);
