@@ -1910,7 +1910,7 @@ $("hdr").addEventListener("click",e=>{
   const b=e.target.closest("[data-search],[data-back],[data-go]");if(!b)return;
   const d=b.dataset;
   if(d.search!==undefined)searchSheet("");
-  else if(d.back){if(tab==="official"){tab="market";syncTabs();render()}else toast("已在首頁")}
+  else if(d.back){if(opts.nav)opts.nav("/");else location.href="/"}   // 老闆：頂欄返回 = 回抽獎首頁
   else if(d.go==="cart")cartSheet();
   else if(d.go==="rep"){repSheet();return}
   else if(d.go==="chats")chatList();
