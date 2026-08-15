@@ -434,7 +434,7 @@ function vOrders(){
   const list=orders.filter(F[ordTab][1]);
   return `<div class="blk first tabbar2">
     <div class="ptabs">${F.map((f,i)=>{const n=orders.filter(f[1]).length;
-      return `<button data-ordt="${i}" aria-pressed="${ordTab===i}">${f[0]}${n?`<span class="cnt">${n}</span>`:""}</button>`}).join("")}</div></div>
+      return `<button data-ordt="${i}" aria-pressed="${ordTab===i}"><span class="tl">${f[0]}${n?`<span class="cnt">${n}</span>`:""}</span></button>`}).join("")}</div></div>
   ${list.length?`<div class="olist">${list.map(o=>{const a=art(o.k,o.cid,o.img),S=stepsOf(o);
     return `<div class="ocard">
       <div class="ohd"><span>${o.type==="b2c"?"吉吉比官方旗艦店":esc(o.s)}</span>
@@ -932,7 +932,7 @@ function vNoti(){
   const list=NOTIS.filter(F[ntTab][1]);
   const html=`<div class="blk first tabbar2">
     <div class="ptabs">${F.map((f,i)=>{const un=NOTIS.filter(x=>f[1](x)&&x.un).length;
-      return `<button data-ntt="${i}" aria-pressed="${ntTab===i}">${f[0]}${un?`<span class="cnt">${un}</span>`:""}</button>`}).join("")}</div></div>
+      return `<button data-ntt="${i}" aria-pressed="${ntTab===i}"><span class="tl">${f[0]}${un?`<span class="cnt">${un}</span>`:""}</span></button>`}).join("")}</div></div>
   ${list.length?`<div class="blk" style="padding:0 16px">
     ${list.map(n=>{const i=NOTIS.indexOf(n);const c=NIC[n.ic];
       return `<button class="ntrow" data-noti="${i}">
@@ -963,7 +963,7 @@ function sellOrdersSheet(){
   sheetFull("賣家訂單",`
   <div class="blk first tabbar2">
     <div class="ptabs">${F.map((f,i)=>{const n=sellOrders.filter(f[1]).length;
-      return `<button data-sot="${i}" aria-pressed="${soTab===i}">${f[0]}${n?`<span class="cnt">${n}</span>`:""}</button>`}).join("")}</div></div>
+      return `<button data-sot="${i}" aria-pressed="${soTab===i}"><span class="tl">${f[0]}${n?`<span class="cnt">${n}</span>`:""}</span></button>`}).join("")}</div></div>
   ${list.length?`<div class="olist">${list.map(o=>{const a=art(o.k,o.cid,o.img);
     return `<div class="ocard">
       <div class="ohd"><span>買家 ${esc(o.buyer)}</span>

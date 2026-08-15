@@ -981,15 +981,19 @@
    按鈕 padding 8/12、按鈕間距 8、指示器 3px 左右內縮 4px 貼在底線上。
    容器 .tabbar2 原型有 12/14 的內距，這裡用負邊距吃回來，底線才會像首頁那樣緊貼分頁。 */
 .mk .tabbar2 .ptabs { margin: -12px -14px; }
-.mk .ptabs { display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+/* 老闆 2026-08-15：分頁滿寬平分。button flex:1 0 0 → 放得下就等寬（通知三格、購買清單五格），
+   放不下（賣家訂單七格）自動退回內容寬＋橫向捲；指示器掛在文字（.tl）上，等寬時底線還是跟著字走 */
+.mk .ptabs { display: flex; align-items: stretch; overflow-x: auto; scrollbar-width: none; }
 .mk .ptabs::-webkit-scrollbar { display: none; }
 .mk .ptabs button {
-  position: relative; padding: 8px 12px; font-size: 15px; font-weight: 900; line-height: 1.5;
-  color: #737373; white-space: nowrap; flex-shrink: 0; background: none; border: 0;
+  position: relative; flex: 1 0 0; display: flex; align-items: center; justify-content: center;
+  padding: 8px 8px; font-size: 15px; line-height: 1.5;   /* 粗度不設（老闆：移除），跟著內文 */
+  color: #737373; white-space: nowrap; background: none; border: 0;
 }
+.mk .ptabs .tl { position: relative; display: inline-flex; align-items: center; padding: 0 6px; }
 .mk .ptabs button[aria-pressed="true"] { color: rgb(var(--primary, 238 77 45)); }
-.mk .ptabs button[aria-pressed="true"]::after {
-  content: ""; position: absolute; left: 4px; right: 4px; bottom: 0;
+.mk .ptabs button[aria-pressed="true"] .tl::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -8px;
   height: 3px; border-radius: 2px 2px 0 0; background: rgb(var(--primary, 238 77 45));
 }
 /* 未讀／筆數：橘圓圈白字（老闆 2026-08-15），選中與未選中都一樣 */
