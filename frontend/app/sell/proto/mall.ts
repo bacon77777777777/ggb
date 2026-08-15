@@ -1739,7 +1739,7 @@ function sellForm(){
   if(ed)sCat=ed.category||sCat;
   sheet(ed?"編輯商品":"我要上架",`
   <div class="blk first"><div class="secttl">類別（必選）</div>
-    <div class="opts" id="catPick">${CATS.map(c=>`<button class="opt" data-scat="${esc(c)}" aria-pressed="${sCat===c}">${esc(c)}</button>`).join("")}</div>
+    <select class="fin selcat" id="sCatSel" required><option value=""${sCat?"":" selected"} disabled>請選擇類別</option>${CATS.map(c=>`<option value="${esc(c)}"${sCat===c?" selected":""}>${esc(c)}</option>`).join("")}</select>
     <p class="hint" style="margin:9px 0 0">只能上架平台開放的類別，選好才能送審</p></div>
   <div class="blk"><label class="f">商品名稱</label><input class="fin" id="sT" placeholder="例：航海王 一番賞 B賞 魯夫 五檔" value="${ed?esc(ed.t):""}">
   <div class="two" style="margin-top:14px"><div><label class="f">售價 NT$</label><input class="fin" id="sP" type="number" inputmode="numeric" placeholder="3200" value="${ed?ed.p:""}"></div>
@@ -1958,6 +1958,10 @@ $("screen").addEventListener("click",e=>{
   else if(d.relist!==undefined){myList[+d.relist].st="active";syncMine();toast("已重新上架");render();}
   else if(d.promo!==undefined){promoFor=+d.promo;fromPromo=true;adCenter()}
 });
+/* 上架表單的類別下拉（老闆：膠囊改下拉選單）—— change 不走 click 委派，單獨接 */
+$("sheets").addEventListener("change",e=>{
+  if(e.target&&e.target.id==="sCatSel")sCat=e.target.value||"";
+});
 $("sheets").addEventListener("click",e=>{
   const b=e.target.closest("[data-buy],[data-cbuy],[data-ecpay],[data-paid],[data-ship],[data-late],[data-claim],[data-recv],[data-pack],[data-oship],[data-refund],[data-submit],[data-p],[data-p2],[data-pay],[data-sconfirm],[data-rate],[data-star],[data-appeal],[data-apsend],[data-adjudge],[data-adreject],[data-x],[data-c2c],[data-b2c],[data-q],[data-slot],[data-busy],[data-ad],[data-adlen],[data-kw],[data-adbuy],[data-go],[data-prob],[data-opt],[data-sku],[data-q],[data-confirm],[data-addcart],[data-cart],[data-cartb],[data-ordt],[data-csel],[data-callall],[data-cq],[data-cgrp],[data-cspec],[data-cpick],[data-checkout],[data-placeorder],[data-copay],[data-coupon],[data-shopcpn],[data-shopcpnpick],[data-note],[data-notesave],[data-shipsel],[data-coship],[data-paysel],[data-cpn],[data-addr],[data-shop],[data-chat],[data-itm2],[data-say],[data-send],[data-edit],[data-del],[data-off],[data-relist],[data-sot],[data-sod],[data-sopaid],[data-socancel],[data-soway],[data-soship],[data-sorecv],[data-noti],[data-go],[data-ord],[data-orders],[data-more],[data-menu],[data-promo],[data-payex],[data-shipex],[data-amtex],[data-qs],[data-qgo],[data-qdel],[data-scat]");
   if(!b)return;const d=b.dataset;
@@ -2171,6 +2175,7 @@ $("sheets").addEventListener("click",e=>{
   else if(d.x){close();render()}
   else if(d.submit){
     const t=tierOf(ME),ti=$("sT").value.trim()||"未命名商品",p=+$("sP").value||0,q=+$("sQ").value||1;
+    if($("sCatSel"))sCat=$("sCatSel").value||"";
     if(!sCat){toast("請先選擇商品類別");return}
     if(!p){toast("請輸入售價");return}
     if(p>t.max){toast(`「${t.n}」單件最高賣 ${nt(t.max)}`);return}
