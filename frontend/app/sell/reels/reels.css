@@ -65,9 +65,3 @@
 .reels-top button svg { width: 22px; height: 22px; }
 .reels-top .snd { display: flex; align-items: center; gap: 6px; width: auto; padding: 0 12px 0 10px; border-radius: 999px; font-size: 12.5px; font-weight: 800; }
 .reels-top .snd svg { width: 18px; height: 18px; }
-
-/* 底部導航：跟商城引擎同一組樣式（market.css .mk .tabbar），這裡只補定位 */
-.reels-nav.mk { flex-shrink: 0; background: #fff; }
-/* market.css 的 `.mk .tabbar{display:flex}` 那條被原型移植時的註解前綴弄成 `.mk .mk .tabbar`，
-   商城首頁靠 .mallroot 那條補回來；這裡自己補 display */
-.reels-nav .tabbar { display: flex; border-top: 1px solid #eee; padding-bottom: env(safe-area-inset-bottom); }

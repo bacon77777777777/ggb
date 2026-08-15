@@ -21,7 +21,6 @@ import Link from 'next/link';
 import { Heart, Share2, Volume2, VolumeX, ChevronLeft, Play } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { REELS_PROTO, type Reel } from '@/lib/sell/reelsProto';
-import '@/app/sell/market.css';
 import '@/app/sell/reels/reels.css';
 
 const POOL = 3;
@@ -315,26 +314,6 @@ export default function ReelsFeed({ startId }: { startId?: number }) {
           })}
         </div>
 
-        {/* 底部導航：跟商城引擎（app/sell/proto/shell.ts）同一組，短影音為選中 */}
-        <div className="reels-nav mk">
-          <nav className="tabbar" role="tablist">
-            <button role="tab" aria-selected="false" onClick={() => router.push('/sell')}>
-              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4.2-4.2" /></svg>找物
-            </button>
-            <button role="tab" aria-selected="false" onClick={() => router.push('/sell?tab=official')}>
-              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 9l1.5-5h15L21 9M4.5 9v11h15V9M4.5 9h15" /><path d="M9.5 20v-6h5v6" /></svg>官方
-            </button>
-            <button role="tab" aria-selected="true">
-              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3.5" y="4" width="17" height="16" rx="3" /><path d="M10 9.2v5.6l4.6-2.8z" /></svg>短影音
-            </button>
-            <button role="tab" aria-selected="false" onClick={() => router.push('/sell?tab=notis')}>
-              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 15V10a6 6 0 10-12 0v5l-1.6 2.4h15.2z" /><path d="M10 19.5a2.2 2.2 0 004 0" /></svg>通知
-            </button>
-            <button role="tab" aria-selected="false" onClick={() => router.push('/sell?tab=me')}>
-              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="8" r="3.6" /><path d="M4.5 20.5a7.5 7.5 0 0115 0" /></svg>我的
-            </button>
-          </nav>
-        </div>
       </div>
     </div>
   );
