@@ -561,7 +561,7 @@ export default function Home() {
     }
     const menuTabs = menus.map((m) => ({ id: `menu:${m.id}` as PrimaryTabId, label: m.name }));
     return [...base, ...menuTabs];
-  }, [flagStates, flags.sell, menus]);
+  }, [flagStates, menus]);
 
   /*
    * 這兩段是「頁籤不存在就別停在上面」的保護，但**功能旗標載完之前不能動手**。
