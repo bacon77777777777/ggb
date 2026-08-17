@@ -3,6 +3,7 @@
   "short_name": "吉吉比轉蛋",
   "start_url": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
   "icons": [

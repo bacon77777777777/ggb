@@ -175,6 +175,26 @@ export default async function RootLayout({
         {themeCss && <style dangerouslySetInnerHTML={{ __html: themeCss }} />}
       </head>
       <body className="min-h-screen flex flex-col font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-50 transition-colors duration-300">
+        {/*
+          橫向提示。純 CSS 控制顯示（見 globals.css 的 #rotate-hint）——
+          瀏覽器分頁裡沒有任何 API 能鎖定方向（screen.orientation.lock 只在
+          全螢幕的 Android 有效，iOS 完全不支援），所以只能在橫向時蓋一層。
+          放在最外層、AuthProvider 之外：不管哪一頁、載入到哪個階段都要蓋得住。
+        */}
+        <div id="rotate-hint" aria-hidden>
+          <div className="rh-inner">
+            <div className="rh-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+                   strokeLinecap="round" strokeLinejoin="round">
+                <rect x="7" y="2" width="10" height="20" rx="2" />
+                <path d="M12 18h.01" />
+              </svg>
+            </div>
+            <p className="rh-title">請轉回直向使用</p>
+            <p className="rh-sub">吉吉比是為直向畫面設計的</p>
+          </div>
+        </div>
+
         <AuthProvider>
         {/* 維護開啟時把停在頁面上的使用者帶到維護頁 */}
         <MaintenanceWatcher />
