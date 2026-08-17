@@ -27,7 +27,7 @@ export type PackShowcase3DHandle = {
 type Props = {
   packStyles: string[];
   onActiveStyleChange?: (styleId: string) => void;
-  /** 容器高度（px）。商品頁上半部是固定高度，不是滿版 */
+  /** 容器高度（px）。機台區是 375 × 375×(932/750) ≒ 466 */
   height?: number;
 };
 
@@ -50,86 +50,38 @@ const DEFAULTS: Params = {
 // 實體卡包比例（窄高版）62 × 116 mm，等比縮放進 3D 世界
 const PACK_MM_W = 62;
 const PACK_MM_H = 116;
-const PACK_W = 1.75;
-const PACK_H = PACK_W * (PACK_MM_H / PACK_MM_W);
+const PACK_W = 2.15;   // 原型是滿版 demo；商品頁機台區只有 375×466，卡包要放大才撐得起來
+const PACK_H_DEFAULT = PACK_W * (PACK_MM_H / PACK_MM_W);
 const BULGE = 0.1;
 const CRIMP = 0.1;
 const TEX_W = 640;
-const TEX_H = Math.round(TEX_W * (PACK_MM_H / PACK_MM_W));
-const TEX_R = 14;
 const CAM_Z = 9;
 const FOV = 36;
-const BASE_Y = 0.35 + PACK_H / 2;
+/** 卡包底緣站在這個高度（地板在 y=0）。高度不同的卡包一律底部對齊，像站在檯面上 */
+const FLOOR_Y = 0.35;
 
-/** 圓角裁切路徑 —— 卡包四角不是直角 */
-function roundPath(x: CanvasRenderingContext2D, w: number, h: number, r: number) {
-  x.beginPath();
-  x.moveTo(r, 0); x.lineTo(w - r, 0); x.quadraticCurveTo(w, 0, w, r);
-  x.lineTo(w, h - r); x.quadraticCurveTo(w, h, w - r, h);
-  x.lineTo(r, h); x.quadraticCurveTo(0, h, 0, h - r);
-  x.lineTo(0, r); x.quadraticCurveTo(0, 0, r, 0);
-  x.closePath();
-}
 
-/** 上下緣的鋸齒撕線（destination-out 挖掉，才有真的缺口而不是畫上去的） */
-function serrate(x: CanvasRenderingContext2D) {
-  x.save();
-  x.globalCompositeOperation = 'destination-out';
-  const tw = 16, th = 9;
-  x.beginPath();
-  for (let px = 0; px < TEX_W; px += tw) {
-    x.moveTo(px, 0); x.lineTo(px + tw / 2, th); x.lineTo(px + tw, 0);
-  }
-  x.fill();
-  x.beginPath();
-  for (let px = 0; px < TEX_W; px += tw) {
-    x.moveTo(px + tw / 2, TEX_H - th); x.lineTo(px, TEX_H); x.lineTo(px + tw, TEX_H);
-    x.lineTo(px + tw / 2, TEX_H - th);
-  }
-  x.fill();
-  x.restore();
-}
 
-/** 上下封口的壓紋 */
-function crimpStrip(x: CanvasRenderingContext2D, y0: number, h: number) {
-  const g = x.createLinearGradient(0, y0, 0, y0 + h);
-  g.addColorStop(0, '#cfc4e8'); g.addColorStop(0.5, '#efeaf8'); g.addColorStop(1, '#b9aede');
-  x.fillStyle = g; x.fillRect(0, y0, TEX_W, h);
-  x.strokeStyle = 'rgba(110,95,160,0.5)'; x.lineWidth = 2;
-  for (let i = 0; i < 4; i++) {
-    const yy = y0 + h * (0.25 + i * 0.17);
-    x.beginPath();
-    for (let px = 0; px <= TEX_W; px += 14) {
-      const off = (px / 14) % 2 === 0 ? -2.5 : 2.5;
-      if (px === 0) x.moveTo(px, yy + off); else x.lineTo(px, yy + off);
-    }
-    x.stroke();
-  }
-}
 
-function makeTexture(draw: (x: CanvasRenderingContext2D) => void) {
-  const c = document.createElement('canvas');
-  c.width = TEX_W; c.height = TEX_H;
-  const x = c.getContext('2d')!;
-  x.clearRect(0, 0, TEX_W, TEX_H);
-  x.save();
-  roundPath(x, TEX_W, TEX_H, TEX_R);
-  x.clip();
-  draw(x);
-  x.restore();
-  serrate(x);
-  const t = new THREE.CanvasTexture(c);
-  t.anisotropy = 8;
-  return t;
-}
 
-/** 圖片鋪滿卡包（cover），再套圓角與撕線 */
+/**
+ * 圖片決定卡包比例：寬固定、高照圖片比例算，所以圖不裁切也不變形
+ * （原型是 cover 裁切成固定的 62×116，長寬比不同的卡包圖會被切掉頭尾）。
+ *
+ * ⚠️ 不要再套圓角與鋸齒撕線：卡包圖**本身就已經去背、帶著自己的鋸齒邊**，
+ * 再切一次只會在邊緣多出半透明像素。而去背圖的透明區 RGB 是純黑，
+ * 那些半透明像素縮放時會把黑色混進來 —— 那就是卡包周圍那圈黑邊的來源。
+ */
 function imageTexture(img: HTMLImageElement) {
-  return makeTexture(x => {
-    const s = Math.max(TEX_W / img.width, TEX_H / img.height);
-    const w2 = img.width * s, h2 = img.height * s;
-    x.drawImage(img, (TEX_W - w2) / 2, (TEX_H - h2) / 2, w2, h2);
-  });
+  const texH = Math.max(1, Math.round(TEX_W * (img.height / img.width)));
+  const c = document.createElement('canvas');
+  c.width = TEX_W; c.height = texH;
+  c.getContext('2d')!.drawImage(img, 0, 0, TEX_W, texH);
+  const tex = new THREE.CanvasTexture(c);
+  tex.anisotropy = 8;
+  // 搭配材質的 premultipliedAlpha：邊緣做透明度內插時不會混進黑色
+  tex.premultiplyAlpha = true;
+  return { tex, ratio: img.height / img.width };
 }
 
 /** 讀圖：R2 是跨網域，沒有 crossOrigin 會變成 tainted canvas 而整張黑掉 */
@@ -144,12 +96,12 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 /** 卡包不是平面：中間鼓起、上下封口收窄 */
-function buildPackGeo() {
-  const geo = new THREE.PlaneGeometry(PACK_W, PACK_H, 48, 84);
+function buildPackGeo(packH: number) {
+  const geo = new THREE.PlaneGeometry(PACK_W, packH, 48, 84);
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const px = pos.getX(i), py = pos.getY(i);
-    const u = px / PACK_W + 0.5, v = py / PACK_H + 0.5;
+    const u = px / PACK_W + 0.5, v = py / packH + 0.5;
     const vv = (v - CRIMP) / (1 - 2 * CRIMP);
     const envV = vv <= 0 || vv >= 1 ? 0 : Math.pow(Math.sin(Math.PI * vv), 0.5);
     const envU = Math.pow(Math.sin(Math.PI * u), 0.75);
@@ -177,7 +129,7 @@ function slotFor(d: number, aspect: number) {
 }
 
 const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
-  ({ packStyles, onActiveStyleChange, height = 360 }, ref) => {
+  ({ packStyles, onActiveStyleChange, height = 466 }, ref) => {
     const mountRef = useRef<HTMLDivElement | null>(null);
     const curRef = useRef(0);
     const paramsRef = useRef<Params>(DEFAULTS);
@@ -222,8 +174,11 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       scene.fog = new THREE.Fog(0xe9edf7, 7, 16);
 
       const camera = new THREE.PerspectiveCamera(FOV, W / H, 0.1, 100);
-      camera.position.set(0, BASE_Y - 0.55, CAM_Z);
-      camera.lookAt(0, BASE_Y - 0.55, 0);
+      // 對準卡包中心，卡包才會落在畫面正中央。
+      // 每個卡包高度不同（照圖片比例），所以目標高度會跟著當前卡包平滑移動
+      let camY = FLOOR_Y + PACK_H_DEFAULT / 2;
+      camera.position.set(0, camY, CAM_Z);
+      camera.lookAt(0, camY, 0);
 
       /*
        * WebGL 拿不到就整個放棄（舊機、關閉硬體加速、context 數量爆掉都會發生）。
@@ -269,29 +224,21 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       shadowPlane.receiveShadow = true;
       scene.add(shadowPlane);
 
-      const fadeCnv = document.createElement('canvas');
-      fadeCnv.width = fadeCnv.height = 512;
-      const fx = fadeCnv.getContext('2d')!;
-      const fg = fx.createRadialGradient(256, 256, 40, 256, 256, 256);
-      fg.addColorStop(0, 'rgba(213,219,236,0.35)');
-      fg.addColorStop(0.55, 'rgba(213,219,236,0.85)');
-      fg.addColorStop(1, 'rgba(213,219,236,1)');
-      fx.fillStyle = fg; fx.fillRect(0, 0, 512, 512);
-      const fadeTex = new THREE.CanvasTexture(fadeCnv);
-      const fadeGeo = new THREE.PlaneGeometry(40, 40);
-      const fadeMat = new THREE.MeshBasicMaterial({ map: fadeTex, transparent: true, depthWrite: false });
-      const fade = new THREE.Mesh(fadeGeo, fadeMat);
-      fade.rotation.x = -Math.PI / 2;
-      fade.renderOrder = 3;
-      scene.add(fade);
-
+      /*
+       * 原型有一層淺灰的地板霧面（把倒影往外淡出）。那是為淺色攝影棚背景畫的，
+       * 蓋在商品頁的機台圖上會變成一塊突兀的灰霧，所以整層拿掉；
+       * 倒影改用較低的不透明度收斂，看起來像機台檯面的反光。
+       */
       // ── 卡包們（含地板倒影）──
-      const geo = buildPackGeo();
-      const textures: THREE.Texture[] = [fadeTex];
-      const materials: THREE.Material[] = [shadowMat, fadeMat];
+      const textures: THREE.Texture[] = [];
+      const materials: THREE.Material[] = [shadowMat];
       const packs: {
         grp: THREE.Group; rGrp: THREE.Group;
+        meshes: THREE.Mesh[];
         mats: THREE.MeshPhysicalMaterial[];
+        geo: THREE.BufferGeometry;
+        /** 卡包高度與中心高度：照圖片比例算，所以每包可能不一樣 */
+        packH: number; basY: number;
         rot: number; prevD?: number;
       }[] = [];
 
@@ -299,8 +246,8 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         new THREE.MeshPhysicalMaterial({
           map, roughness: 0.34, metalness: 0.12,
           clearcoat: 1, clearcoatRoughness: 0.3,
-          transparent: true, alphaTest: 0.5,
-          opacity: refl ? 0.24 : 1, depthWrite: !refl,
+          transparent: true, alphaTest: 0.02, premultipliedAlpha: true,
+          opacity: refl ? 0.14 : 1, depthWrite: !refl,
         });
 
       for (let i = 0; i < N; i++) {
@@ -310,6 +257,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         const rBackMat = mk(null, true);
         materials.push(frontMat, backMat, rFrontMat, rBackMat);
 
+        const geo = buildPackGeo(PACK_H_DEFAULT);
         const grp = new THREE.Group();
         const fMesh = new THREE.Mesh(geo, frontMat);
         fMesh.castShadow = true;
@@ -320,19 +268,24 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         grp.add(bMesh);
 
         const rGrp = new THREE.Group();
-        rGrp.add(new THREE.Mesh(geo, rFrontMat));
+        const rf = new THREE.Mesh(geo, rFrontMat);
         const rb = new THREE.Mesh(geo, rBackMat);
         rb.rotation.y = Math.PI;
-        rGrp.add(rb);
+        rGrp.add(rf); rGrp.add(rb);
         rGrp.renderOrder = 2;
         scene.add(rGrp);
 
         const slot = slotFor(i, W / H);
-        grp.position.set(slot.x, BASE_Y, slot.z);
+        const basY = FLOOR_Y + PACK_H_DEFAULT / 2;
+        grp.position.set(slot.x, basY, slot.z);
         grp.rotation.y = slot.rot;
         scene.add(grp);
 
-        packs.push({ grp, rGrp, mats: [frontMat, backMat, rFrontMat, rBackMat], rot: slot.rot });
+        packs.push({
+          grp, rGrp, meshes: [fMesh, bMesh, rf, rb],
+          mats: [frontMat, backMat, rFrontMat, rBackMat],
+          geo, packH: PACK_H_DEFAULT, basY, rot: slot.rot,
+        });
       }
 
       /*
@@ -349,13 +302,26 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
           try {
             const [fImg, bImg] = await Promise.all([loadImage(frontSrc), loadImage(backSrc)]);
             if (disposed) return;
-            const fTex = imageTexture(fImg);
-            const bTex = imageTexture(bImg);
-            textures.push(fTex, bTex);
-            const [fm, bm, rfm, rbm] = packs[i].mats;
-            fm.map = fTex; rfm.map = fTex;
-            bm.map = bTex; rbm.map = bTex;
+            const f = imageTexture(fImg);
+            const bk = imageTexture(bImg);
+            textures.push(f.tex, bk.tex);
+            const pk = packs[i];
+            const [fm, bm, rfm, rbm] = pk.mats;
+            fm.map = f.tex; rfm.map = f.tex;
+            bm.map = bk.tex; rbm.map = bk.tex;
             [fm, bm, rfm, rbm].forEach(m => { m.needsUpdate = true; });
+
+            // 寬固定、高照正面圖的比例 —— 幾何體要跟著換，否則圖會被壓扁
+            const packH = PACK_W * f.ratio;
+            if (Math.abs(packH - pk.packH) > 0.001) {
+              const old = pk.geo;
+              const geo2 = buildPackGeo(packH);
+              pk.meshes.forEach(m => { m.geometry = geo2; });
+              pk.geo = geo2;
+              pk.packH = packH;
+              pk.basY = FLOOR_Y + packH / 2;
+              old.dispose();
+            }
           } catch {
             // 圖掛了就讓那格保持無貼圖（alphaTest 會讓它整片透明），不要中斷其他格
           }
@@ -422,7 +388,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
           const g = pk.grp;
           if (pk.prevD === undefined) pk.prevD = d;
           if (Math.abs(d - pk.prevD) > 2) {
-            g.position.set(slot.x, BASE_Y * 0.96, slot.z);
+            g.position.set(slot.x, pk.basY * 0.96, slot.z);
             g.scale.setScalar(slot.s);
             pk.rot = slot.rot;
           }
@@ -434,7 +400,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
           const bob = isCur ? Math.sin(t * 1.3) * 0.05 : 0;
           g.position.x += (slot.x - g.position.x) * 0.12;
           g.position.z += (slot.z - g.position.z) * 0.12;
-          g.position.y = BASE_Y * (isCur ? 1 : 0.97) + bob;
+          g.position.y = pk.basY * (isCur ? 1 : 0.97) + bob;
           const s = g.scale.x + (slot.s - g.scale.x) * 0.12;
           g.scale.set(s, s, s);
           g.rotation.y = pk.rot;
@@ -445,6 +411,12 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
           pk.rGrp.scale.set(s, -s, s);
           pk.rGrp.rotation.y = pk.rot;
         });
+
+        // 鏡頭高度跟著當前卡包的中心走（不同高度的卡包都會落在畫面正中）
+        const wantY = packs[ci].basY;
+        camY += (wantY - camY) * 0.12;
+        camera.position.y = camY;
+        camera.lookAt(0, camY, 0);
 
         renderer.render(scene, camera);
       };
@@ -469,9 +441,8 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         goRef.current = null;
         // 原型只 dispose renderer，貼圖與 geometry 會留在 GPU；
         // 商品頁是逛完一個換一個，不收會一路累積到當掉
-        geo.dispose();
+        packs.forEach(pk => pk.geo.dispose());
         shadowGeo.dispose();
-        fadeGeo.dispose();
         textures.forEach(x => x.dispose());
         materials.forEach(m => m.dispose());
         renderer.dispose();

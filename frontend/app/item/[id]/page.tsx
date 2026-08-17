@@ -1516,7 +1516,7 @@ export default function ProductDetailPage() {
                   ref={packCarouselRef}
                   packStyles={packStyles}
                   onActiveStyleChange={handleActiveStyleChange}
-                  height={360}
+                  height={Math.round(375 * 932 / 750)}
                 />
               </div>
             </div>
