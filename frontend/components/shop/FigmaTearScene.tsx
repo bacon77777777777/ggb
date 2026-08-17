@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import SoundToggle from '@/components/ui/SoundToggle';
+import { bigRip, crackle, spawnConfetti, unlockTearAudio } from '@/lib/tearSfx';
 import { isSoundMuted } from '@/lib/soundPrefs';
 
 declare global {
@@ -80,12 +81,13 @@ export default function FigmaTearScene({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done, isLast]);
 
-  // 音效
-  const tearAudioRef = useRef<HTMLAudioElement | null>(null);
-  useEffect(() => {
-    tearAudioRef.current = new Audio('/audio/tanweraman-paper-rip-fast-252617.mp3');
-    tearAudioRef.current.preload = 'auto';
-  }, []);
+  /*
+   * 音效改用 WebAudio 合成（lib/tearSfx，自老闆的 ichiban-tear 原型移植）。
+   * 原本是在翻頁動畫**完成之後**才播一顆 0.5 秒的撕紙 mp3，
+   * 玩家整段拖曳都是安靜的，聲音永遠慢半拍 —— 這就是「音效對不上」的原因。
+   */
+  /** 上次觸發細碎聲的位移，每 8px 響一次（同原型） */
+  const lastCrackle = useRef(0);
 
   // 載入 jQuery + turn.js，初始化 flipbook
   useEffect(() => {
@@ -114,6 +116,9 @@ export default function FigmaTearScene({
       pressStartX.current = e.clientX;
       slideRight.current = false;
       hasMoved.current = false;  // 每次按下重置
+      lastCrackle.current = 0;
+      // iOS 的 AudioContext 必須在使用者手勢裡建立，否則第一次撕會沒聲音
+      if (!isSoundMuted()) unlockTearAudio();
     };
 
     const onCapturePointerMove = (e: PointerEvent) => {
@@ -126,9 +131,15 @@ export default function FigmaTearScene({
         const pt = getPtEl();
         if (pt) pt.style.visibility = 'visible';
       }
+      // 虛線孔一格格裂開的細碎聲：跟著手指走，撕多少響多少
+      if (!isSoundMuted() && dx - lastCrackle.current > 8) {
+        crackle(Math.min(1, dx / 150));
+        lastCrackle.current = dx;
+      }
     };
 
     const onPointerUp = () => {
+      lastCrackle.current = 0;
       if (!slideRight.current) {
         wrapperRef.current?.classList.remove('tearing');
         const pt = getPtEl();
@@ -181,7 +192,13 @@ export default function FigmaTearScene({
           // turning gate 已移除：turn.js 需要拖曳過 50% 才完成，純點擊不會到達，不需攔截
           turned: (_e: Event, page: number) => {
             if (page === 2) {
-              if (!isSoundMuted()) tearAudioRef.current?.play().catch(() => {});
+              if (!isSoundMuted()) bigRip();
+              const host = wrapperRef.current?.parentElement ?? wrapperRef.current;
+              if (host) {
+                // 撕開的同時就撒，等 setDone 之後這個節點就不在了
+                if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+                spawnConfetti(host);
+              }
               setTimeout(() => setDone(true), 300);
             } else if (page === 1) {
               // 彈回時清除拖曳狀態
