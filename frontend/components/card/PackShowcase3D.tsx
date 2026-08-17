@@ -3,16 +3,23 @@
 /**
  * 卡包 3D 輪播展示（抽卡商品頁上半部）
  *
- * 移植自老闆的原型 public/images/card/pack-showcase.jsx（TCG Pocket 構圖）：
- * 淺色攝影棚、地板倒影、主包置中、側包貼齊畫面邊微轉角、更後方隱約背面包。
+ * **這份是老闆原型 `docs/prototypes/`／`public/images/card/pack-showcase.jsx` 的 1:1 移植。**
+ * 場景、打光、地板倒影、卡包幾何體、貼圖處理、輪播槽位、互動手勢全部照抄，
+ * 連淺色攝影棚背景都照原型（老闆指定：先一比一呈現原型，再疊我們要的接口）。
  *
- * 對外介面刻意跟被取代的 PackSelectionCarousel 一模一樣
- * （packStyles / onActiveStyleChange / goToNext / getActiveIndex），
- * 商品頁的「換一批」「立即開包」才不用跟著改。
+ * ⚠️ 不要再自行「改良」尺寸、比例或邊緣處理。之前擅自把卡包放大、改成
+ * 依圖片比例縮放、又自己削邊，結果側面出現黑縫、邊緣出現黑邊 ——
+ * 那些都是原型本來沒有的問題，全是改動帶出來的。
  *
- * 卡包正反面圖與自動翻轉由後台「抽獎模組設定 → 抽卡 → 參數設定」決定，
- * 存在 machine_theme_params.theme = 'card_pack'。**留空時退回內建的五款卡包圖**
- * —— 不然沒設圖的商品輪播會五格長得一模一樣。
+ * 只有三處是宿主必要的調整：
+ *   1. 版面：原型是 100vh 滿版 demo，這裡填滿容器（機台區 375×466）
+ *   2. 對外介面：跟被取代的 PackSelectionCarousel 一致
+ *      （packStyles／onActiveStyleChange／goToNext／getActiveIndex），
+ *      商品頁的「換一批」「立即開包」才不用改
+ *   3. 資料來源：原型的「上傳正面／背面／旋轉開關」是 demo 按鈕，
+ *      改讀後台參數（machine_theme_params.theme = 'card_pack'）
+ *
+ * 另外補了原型沒有的三件防護：WebGL 建不起來的退路、資源釋放、圖片 crossOrigin。
  */
 
 import { useEffect, useImperativeHandle, useRef, forwardRef, useState } from 'react';
@@ -47,111 +54,69 @@ const DEFAULTS: Params = {
   idleDelay: 1.2,
 };
 
+// ── 以下常數與函式全部照原型 ────────────────────────────────────
 // 實體卡包比例（窄高版）62 × 116 mm，等比縮放進 3D 世界
-const PACK_MM_W = 62;
-const PACK_MM_H = 116;
-const PACK_W = 2.15;   // 原型是滿版 demo；商品頁機台區只有 375×466，卡包要放大才撐得起來
-const PACK_H_DEFAULT = PACK_W * (PACK_MM_H / PACK_MM_W);
+const PACK_MM_W = 62, PACK_MM_H = 116;
+const PACK_W = 1.75, PACK_H = PACK_W * (PACK_MM_H / PACK_MM_W);
 const BULGE = 0.1;
 const CRIMP = 0.1;
-const TEX_W = 640;
-const CAM_Z = 9;
-const FOV = 36;
-/** 卡包底緣站在這個高度（地板在 y=0）。高度不同的卡包一律底部對齊，像站在檯面上 */
-const FLOOR_Y = 0.35;
+const TEX_W = 640, TEX_H = Math.round(TEX_W * (PACK_MM_H / PACK_MM_W)), TEX_R = 14;
+const CAM_Z = 9, FOV = 36;
+const BASE_Y = 0.35 + PACK_H / 2;
 
-
-
-
-
-/** 往內削掉的像素數（貼圖座標）。描邊約 2px，放大到 640 寬約 3px，取 4 保險 */
-const EDGE_SHAVE = 4;
-
-/**
- * 削掉卡包外緣那圈深色描邊。
- *
- * 卡包圖**本身就烙著一圈 1～2px 的深色描邊**（實測 01a.webp 邊界像素是
- * 11,66,36 → 0,21,0，幾乎純黑）。原型看不到它，是因為原型把圖 cover 裁切成
- * 62×116（比原圖窄很多），左右那圈剛好被裁掉；我們改成保留圖片比例後就露出來了。
- * 描邊沿著上下的鋸齒邊也有，所以單純裁四邊切不乾淨。
- *
- * 做法：alpha 先硬化（半透明一律當透明，去掉會混進黑色的過渡像素），
- * 再用四鄰域往內侵蝕幾圈，描邊那一圈就跟著不見。
- */
-function shaveEdge(x: CanvasRenderingContext2D, w: number, h: number) {
-  const img = x.getImageData(0, 0, w, h);
-  const a = img.data;
-  let cur = new Uint8Array(w * h);
-  for (let i = 0; i < w * h; i++) cur[i] = a[i * 4 + 3] > 200 ? 1 : 0;
-
-  for (let k = 0; k < EDGE_SHAVE; k++) {
-    const next = new Uint8Array(w * h);
-    for (let y = 1; y < h - 1; y++) {
-      const row = y * w;
-      for (let xx = 1; xx < w - 1; xx++) {
-        const i = row + xx;
-        if (cur[i] && cur[i - 1] && cur[i + 1] && cur[i - w] && cur[i + w]) next[i] = 1;
-      }
-    }
-    cur = next;
-  }
-
-  for (let i = 0; i < w * h; i++) a[i * 4 + 3] = cur[i] ? 255 : 0;
-
-  /*
-   * 光把 alpha 設 0 還不夠：**透明像素的 RGB 還留著剛削掉的那圈黑**，
-   * 貼圖做 mipmap 與雙線性內插時會把它們混回邊緣，看起來就還是有黑邊。
-   * 所以把邊界顏色往外「暈開」幾圈填掉透明區（業界常說的 alpha bleed）。
-   */
-  const opaque = Uint8Array.from(cur);
-  for (let k = 0; k < EDGE_SHAVE + 2; k++) {
-    const grown = Uint8Array.from(opaque);
-    for (let y = 1; y < h - 1; y++) {
-      const row = y * w;
-      for (let xx = 1; xx < w - 1; xx++) {
-        const i = row + xx;
-        if (opaque[i]) continue;
-        const src = opaque[i - 1] ? i - 1 : opaque[i + 1] ? i + 1
-                  : opaque[i - w] ? i - w : opaque[i + w] ? i + w : -1;
-        if (src < 0) continue;
-        a[i * 4] = a[src * 4];
-        a[i * 4 + 1] = a[src * 4 + 1];
-        a[i * 4 + 2] = a[src * 4 + 2];
-        grown[i] = 1;
-      }
-    }
-    opaque.set(grown);
-  }
-
-  x.putImageData(img, 0, 0);
+function roundPath(x: CanvasRenderingContext2D, w: number, h: number, r: number) {
+  x.beginPath();
+  x.moveTo(r, 0); x.lineTo(w - r, 0); x.quadraticCurveTo(w, 0, w, r);
+  x.lineTo(w, h - r); x.quadraticCurveTo(w, h, w - r, h);
+  x.lineTo(r, h); x.quadraticCurveTo(0, h, 0, h - r);
+  x.lineTo(0, r); x.quadraticCurveTo(0, 0, r, 0);
+  x.closePath();
 }
 
-/**
- * 圖片決定卡包比例：寬固定、高照圖片比例算，所以圖不裁切也不變形
- * （原型是 cover 裁切成固定的 62×116，長寬比不同的卡包圖會被切掉頭尾）。
- *
- * ⚠️ 不要再套圓角與鋸齒撕線：卡包圖**本身就已經去背、帶著自己的鋸齒邊**，
- * 再切一次只會在邊緣多出半透明像素。而去背圖的透明區 RGB 是純黑，
- * 那些半透明像素縮放時會把黑色混進來 —— 那就是卡包周圍那圈黑邊的來源。
- */
-function imageTexture(img: HTMLImageElement) {
-  const texH = Math.max(1, Math.round(TEX_W * (img.height / img.width)));
+function serrate(x: CanvasRenderingContext2D) {
+  x.save();
+  x.globalCompositeOperation = 'destination-out';
+  const tw = 16, th = 9;
+  x.beginPath();
+  for (let px = 0; px < TEX_W; px += tw) {
+    x.moveTo(px, 0); x.lineTo(px + tw / 2, th); x.lineTo(px + tw, 0);
+  }
+  x.fill();
+  x.beginPath();
+  for (let px = 0; px < TEX_W; px += tw) {
+    x.moveTo(px + tw / 2, TEX_H - th); x.lineTo(px, TEX_H); x.lineTo(px + tw, TEX_H);
+    x.lineTo(px + tw / 2, TEX_H - th);
+  }
+  x.fill();
+  x.restore();
+}
+
+function makeTexture(draw: (x: CanvasRenderingContext2D) => void) {
   const c = document.createElement('canvas');
-  c.width = TEX_W; c.height = texH;
+  c.width = TEX_W; c.height = TEX_H;
   const x = c.getContext('2d')!;
-  x.drawImage(img, 0, 0, TEX_W, texH);
-  shaveEdge(x, TEX_W, texH);
-
-  const tex = new THREE.CanvasTexture(c);
-  tex.anisotropy = 8;
-
-  // 寬高為 0（解碼失敗、SVG 沒有內建尺寸）時 ratio 會是 NaN，
-  // 傳下去幾何體的 position 會整片變 NaN，three 就一路噴 computeBoundingSphere 警告
-  const ratio = img.width > 0 && img.height > 0 ? img.height / img.width : PACK_MM_H / PACK_MM_W;
-  return { tex, ratio };
+  x.clearRect(0, 0, TEX_W, TEX_H);
+  x.save();
+  roundPath(x, TEX_W, TEX_H, TEX_R);
+  x.clip();
+  draw(x);
+  x.restore();
+  serrate(x);
+  const t = new THREE.CanvasTexture(c);
+  t.anisotropy = 8;
+  return t;
 }
 
-/** 讀圖：R2 是跨網域，沒有 crossOrigin 會變成 tainted canvas 而整張黑掉 */
+/** 原型的做法：圖片 cover 進固定的 62×116，再套圓角與撕線 */
+function imageTexture(img: HTMLImageElement) {
+  return makeTexture((x) => {
+    const s = Math.max(TEX_W / img.width, TEX_H / img.height);
+    const w2 = img.width * s, h2 = img.height * s;
+    x.drawImage(img, (TEX_W - w2) / 2, (TEX_H - h2) / 2, w2, h2);
+  });
+}
+
+/** 讀圖：卡包圖可能在 R2（跨網域），沒設 crossOrigin 會變 tainted canvas 整張黑掉 */
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -162,22 +127,14 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** 卡包不是平面：中間鼓起、上下封口收窄 */
-function buildPackGeo(packHRaw: number) {
-  // 除以 packH 的地方不只一處，這裡先擋掉 0 與 NaN
-  const packH = Number.isFinite(packHRaw) && packHRaw > 0 ? packHRaw : PACK_H_DEFAULT;
-  const geo = new THREE.PlaneGeometry(PACK_W, packH, 48, 84);
+function buildPackGeo() {
+  const geo = new THREE.PlaneGeometry(PACK_W, PACK_H, 48, 84);
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const px = pos.getX(i), py = pos.getY(i);
-    const u = px / PACK_W + 0.5, v = py / packH + 0.5;
+    const u = px / PACK_W + 0.5, v = py / PACK_H + 0.5;
     const vv = (v - CRIMP) / (1 - 2 * CRIMP);
-    /*
-     * Math.pow(負數, 小數) 是 NaN。PlaneGeometry 的頂點座標是浮點累加出來的，
-     * 邊界那圈的 u/v 會差個 1e-16 而讓 sin 變成極小的負數 —— 整片 position
-     * 就跟著 NaN，three 每幀噴 computeBoundingSphere 警告。原型的尺寸剛好閃過，
-     * 卡包放大後就踩到了。夾住負值即可。
-     */
+    // Math.max(0, …)：pow(負數, 小數) 是 NaN，浮點誤差會讓邊界的 sin 變成 -1e-16
     const envV = vv <= 0 || vv >= 1 ? 0 : Math.pow(Math.max(0, Math.sin(Math.PI * vv)), 0.5);
     const envU = Math.pow(Math.max(0, Math.sin(Math.PI * u)), 0.75);
     pos.setZ(i, BULGE * envU * envV);
@@ -202,6 +159,13 @@ function slotFor(d: number, aspect: number) {
   const halfW = tanV * (CAM_Z - z) * aspect;
   return { x: sg * (halfW * 0.72 + (ad - 2) * 0.4), z, s: 0.8, rot: Math.PI, dim: 0.45 };
 }
+
+/**
+ * 原型的攝影棚背景。
+ * 卡包是兩片曲面組成的殼，轉到側面時中間那道縫會透出背景 ——
+ * 原型的背景是這個淺色漸層，所以縫看不出來；換成別的背景就會露餡。
+ */
+const STUDIO_BG = 'linear-gradient(180deg, #dfe6f4 0%, #f4f6fc 42%, #d5dbec 100%)';
 
 const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
   ({ packStyles, onActiveStyleChange, height = 466 }, ref) => {
@@ -235,7 +199,6 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       getActiveIndex: () => curRef.current,
     }));
 
-    // 參數讀完才建場景：貼圖在建場景時就決定，先建再換會閃一次內建圖
     useEffect(() => {
       if (!ready) return;
       const mount = mountRef.current;
@@ -249,11 +212,8 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       scene.fog = new THREE.Fog(0xe9edf7, 7, 16);
 
       const camera = new THREE.PerspectiveCamera(FOV, W / H, 0.1, 100);
-      // 對準卡包中心，卡包才會落在畫面正中央。
-      // 每個卡包高度不同（照圖片比例），所以目標高度會跟著當前卡包平滑移動
-      let camY = FLOOR_Y + PACK_H_DEFAULT / 2;
-      camera.position.set(0, camY, CAM_Z);
-      camera.lookAt(0, camY, 0);
+      camera.position.set(0, BASE_Y - 0.55, CAM_Z);
+      camera.lookAt(0, BASE_Y - 0.55, 0);
 
       /*
        * WebGL 拿不到就整個放棄（舊機、關閉硬體加速、context 數量爆掉都會發生）。
@@ -299,21 +259,29 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       shadowPlane.receiveShadow = true;
       scene.add(shadowPlane);
 
-      /*
-       * 原型有一層淺灰的地板霧面（把倒影往外淡出）。那是為淺色攝影棚背景畫的，
-       * 蓋在商品頁的機台圖上會變成一塊突兀的灰霧，所以整層拿掉；
-       * 倒影改用較低的不透明度收斂，看起來像機台檯面的反光。
-       */
+      const fadeCnv = document.createElement('canvas');
+      fadeCnv.width = fadeCnv.height = 512;
+      const fx = fadeCnv.getContext('2d')!;
+      const fg = fx.createRadialGradient(256, 256, 40, 256, 256, 256);
+      fg.addColorStop(0, 'rgba(213,219,236,0.35)');
+      fg.addColorStop(0.55, 'rgba(213,219,236,0.85)');
+      fg.addColorStop(1, 'rgba(213,219,236,1)');
+      fx.fillStyle = fg; fx.fillRect(0, 0, 512, 512);
+      const fadeTex = new THREE.CanvasTexture(fadeCnv);
+      const fadeGeo = new THREE.PlaneGeometry(40, 40);
+      const fadeMat = new THREE.MeshBasicMaterial({ map: fadeTex, transparent: true, depthWrite: false });
+      const fade = new THREE.Mesh(fadeGeo, fadeMat);
+      fade.rotation.x = -Math.PI / 2;
+      fade.renderOrder = 3;
+      scene.add(fade);
+
       // ── 卡包們（含地板倒影）──
-      const textures: THREE.Texture[] = [];
-      const materials: THREE.Material[] = [shadowMat];
+      const geo = buildPackGeo();
+      const textures: THREE.Texture[] = [fadeTex];
+      const materials: THREE.Material[] = [shadowMat, fadeMat];
       const packs: {
         grp: THREE.Group; rGrp: THREE.Group;
-        meshes: THREE.Mesh[];
         mats: THREE.MeshPhysicalMaterial[];
-        geo: THREE.BufferGeometry;
-        /** 卡包高度與中心高度：照圖片比例算，所以每包可能不一樣 */
-        packH: number; basY: number;
         rot: number; prevD?: number;
       }[] = [];
 
@@ -322,7 +290,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
           map, roughness: 0.34, metalness: 0.12,
           clearcoat: 1, clearcoatRoughness: 0.3,
           transparent: true, alphaTest: 0.5,
-          opacity: refl ? 0.14 : 1, depthWrite: !refl,
+          opacity: refl ? 0.24 : 1, depthWrite: !refl,
         });
 
       for (let i = 0; i < N; i++) {
@@ -332,7 +300,6 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         const rBackMat = mk(null, true);
         materials.push(frontMat, backMat, rFrontMat, rBackMat);
 
-        const geo = buildPackGeo(PACK_H_DEFAULT);
         const grp = new THREE.Group();
         const fMesh = new THREE.Mesh(geo, frontMat);
         fMesh.castShadow = true;
@@ -343,29 +310,24 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         grp.add(bMesh);
 
         const rGrp = new THREE.Group();
-        const rf = new THREE.Mesh(geo, rFrontMat);
+        rGrp.add(new THREE.Mesh(geo, rFrontMat));
         const rb = new THREE.Mesh(geo, rBackMat);
         rb.rotation.y = Math.PI;
-        rGrp.add(rf); rGrp.add(rb);
+        rGrp.add(rb);
         rGrp.renderOrder = 2;
         scene.add(rGrp);
 
         const slot = slotFor(i, W / H);
-        const basY = FLOOR_Y + PACK_H_DEFAULT / 2;
-        grp.position.set(slot.x, basY, slot.z);
+        grp.position.set(slot.x, BASE_Y, slot.z);
         grp.rotation.y = slot.rot;
         scene.add(grp);
 
-        packs.push({
-          grp, rGrp, meshes: [fMesh, bMesh, rf, rb],
-          mats: [frontMat, backMat, rFrontMat, rBackMat],
-          geo, packH: PACK_H_DEFAULT, basY, rot: slot.rot,
-        });
+        packs.push({ grp, rGrp, mats: [frontMat, backMat, rFrontMat, rBackMat], rot: slot.rot });
       }
 
       /*
        * 貼圖：後台有設就整批用同一張（一個商品一款卡包），
-       * 沒設才照 packStyles 給每格不同的內建卡包圖 —— 否則五格會長得一模一樣。
+       * 沒設才照 packStyles 給每格不同的內建卡包圖 —— 否則每格會長得一模一樣。
        */
       let disposed = false;
       const applyTextures = async () => {
@@ -377,28 +339,15 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
           try {
             const [fImg, bImg] = await Promise.all([loadImage(frontSrc), loadImage(backSrc)]);
             if (disposed) return;
-            const f = imageTexture(fImg);
-            const bk = imageTexture(bImg);
-            textures.push(f.tex, bk.tex);
-            const pk = packs[i];
-            const [fm, bm, rfm, rbm] = pk.mats;
-            fm.map = f.tex; rfm.map = f.tex;
-            bm.map = bk.tex; rbm.map = bk.tex;
+            const fTex = imageTexture(fImg);
+            const bTex = imageTexture(bImg);
+            textures.push(fTex, bTex);
+            const [fm, bm, rfm, rbm] = packs[i].mats;
+            fm.map = fTex; rfm.map = fTex;
+            bm.map = bTex; rbm.map = bTex;
             [fm, bm, rfm, rbm].forEach(m => { m.needsUpdate = true; });
-
-            // 寬固定、高照正面圖的比例 —— 幾何體要跟著換，否則圖會被壓扁
-            const packH = PACK_W * f.ratio;
-            if (Number.isFinite(packH) && packH > 0 && Math.abs(packH - pk.packH) > 0.001) {
-              const old = pk.geo;
-              const geo2 = buildPackGeo(packH);
-              pk.meshes.forEach(m => { m.geometry = geo2; });
-              pk.geo = geo2;
-              pk.packH = packH;
-              pk.basY = FLOOR_Y + packH / 2;
-              old.dispose();
-            }
           } catch {
-            // 圖掛了就讓那格保持無貼圖（alphaTest 會讓它整片透明），不要中斷其他格
+            // 圖掛了就讓那格保持無貼圖，不要中斷其他格
           }
         }
       };
@@ -441,7 +390,8 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       window.addEventListener('pointermove', move);
       window.addEventListener('pointerup', up);
       el.style.cursor = 'grab';
-      el.style.touchAction = 'pan-y';   // 只吃橫向；直向留給頁面捲動
+      // 原型是滿版 demo 所以吃掉所有手勢；商品頁下面還有內容，直向要留給頁面捲動
+      el.style.touchAction = 'pan-y';
 
       let raf = 0, t = 0;
       const loop = () => {
@@ -463,7 +413,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
           const g = pk.grp;
           if (pk.prevD === undefined) pk.prevD = d;
           if (Math.abs(d - pk.prevD) > 2) {
-            g.position.set(slot.x, pk.basY * 0.96, slot.z);
+            g.position.set(slot.x, BASE_Y * 0.96, slot.z);
             g.scale.setScalar(slot.s);
             pk.rot = slot.rot;
           }
@@ -475,7 +425,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
           const bob = isCur ? Math.sin(t * 1.3) * 0.05 : 0;
           g.position.x += (slot.x - g.position.x) * 0.12;
           g.position.z += (slot.z - g.position.z) * 0.12;
-          g.position.y = pk.basY * (isCur ? 1 : 0.97) + bob;
+          g.position.y = BASE_Y * (isCur ? 1 : 0.97) + bob;
           const s = g.scale.x + (slot.s - g.scale.x) * 0.12;
           g.scale.set(s, s, s);
           g.rotation.y = pk.rot;
@@ -486,12 +436,6 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
           pk.rGrp.scale.set(s, -s, s);
           pk.rGrp.rotation.y = pk.rot;
         });
-
-        // 鏡頭高度跟著當前卡包的中心走（不同高度的卡包都會落在畫面正中）
-        const wantY = packs[ci].basY;
-        camY += (wantY - camY) * 0.12;
-        camera.position.y = camY;
-        camera.lookAt(0, camY, 0);
 
         renderer.render(scene, camera);
       };
@@ -515,29 +459,29 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         el.removeEventListener('pointerdown', down);
         goRef.current = null;
         // 原型只 dispose renderer，貼圖與 geometry 會留在 GPU；
-        // 商品頁是逛完一個換一個，不收會一路累積到當掉
-        packs.forEach(pk => pk.geo.dispose());
+        // 商品頁是逛完一個換一個，不收會一路累積
+        geo.dispose();
         shadowGeo.dispose();
+        fadeGeo.dispose();
         textures.forEach(x => x.dispose());
         materials.forEach(m => m.dispose());
         renderer.dispose();
         if (el.parentNode === mount) mount.removeChild(el);
       };
-      // packStyles 換一批時要重建（貼圖跟著換）
     }, [ready, packStyles, height]);
 
     if (fallback) {
       const style = packStyles[0] ?? '01';
       const src = params.frontImage || `/images/card/pack/${style}a.webp`;
       return (
-        <div className="w-full flex items-center justify-center" style={{ height }}>
+        <div className="w-full flex items-center justify-center" style={{ height, background: STUDIO_BG }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={src} alt="" style={{ height: height * 0.82, objectFit: 'contain' }} />
         </div>
       );
     }
 
-    return <div ref={mountRef} className="w-full" style={{ height }} />;
+    return <div ref={mountRef} className="w-full" style={{ height, background: STUDIO_BG }} />;
   }
 );
 
