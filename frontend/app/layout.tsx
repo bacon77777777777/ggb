@@ -190,8 +190,8 @@ export default async function RootLayout({
                 <path d="M12 18h.01" />
               </svg>
             </div>
-            <p className="rh-title">請轉回直向使用</p>
-            <p className="rh-sub">吉吉比是為直向畫面設計的</p>
+            <p className="rh-title">請轉回直式使用</p>
+            <p className="rh-sub">體驗操作最佳</p>
           </div>
         </div>
 
