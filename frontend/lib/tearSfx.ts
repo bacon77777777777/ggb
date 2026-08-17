@@ -78,36 +78,42 @@ export function bigRip() {
     src.start(st);
     src.stop(st + 0.36);
   }
-  // 低頻撞擊：讓「唰」有重量，不然只有高頻沙沙聲
-  const th = ac.createOscillator();
+  /*
+   * 纖維分離的「沙——」尾音（高頻噪音短衰減）。
+   * 老闆改版後的原型 ichiban-tear_1 用它取代了原本的低頻頓感 ——
+   * 低頻聽起來像東西掉在桌上，高頻尾音才像紙纖維被扯開。
+   */
+  const tail = ac.createBufferSource();
+  tail.buffer = noiseBuffer(ac, 0.28);
+  const hp = ac.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = 3800;
   const tg = ac.createGain();
-  th.type = 'sine';
-  th.frequency.setValueAtTime(140, t);
-  th.frequency.exponentialRampToValueAtTime(50, t + 0.18);
-  tg.gain.setValueAtTime(0.22, t);
-  tg.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-  th.connect(tg).connect(ac.destination);
-  th.start(t);
-  th.stop(t + 0.22);
+  tg.gain.setValueAtTime(0.0001, t + 0.08);
+  tg.gain.exponentialRampToValueAtTime(0.18, t + 0.13);
+  tg.gain.exponentialRampToValueAtTime(0.001, t + 0.34);
+  tail.connect(hp).connect(tg).connect(ac.destination);
+  tail.start(t + 0.08);
+  tail.stop(t + 0.36);
 }
 
-const CONFETTI_COLORS = ['#F5C24B', '#E8574A', '#4FA3E3', '#67C98B', '#B87CE8', '#FFFFFF'];
+/** 紙屑顏色：紙白 ×2（比例高）＋ 券面紅＋米色，同原型 */
+const BIT_COLORS = ['#f6efe2', '#f6efe2', '#b8262b', '#e8dcc4'];
 
 /**
- * 撕開後的彩帶。
+ * 撕開後從撕線噴出的紙屑（同老闆原型 ichiban-tear_1 的 spawnBits）。
  *
- * 用 Web Animations API 而不是 CSS keyframes：每片彩帶的軌跡都不一樣，
- * 用 CSS 要嘛生一堆 keyframes、要嘛全部同一條路徑（看起來就很假）。
+ * 不是彩色彩帶而是紙屑 —— 顏色取自券本身，噴發角度集中在撕線附近再往下掉，
+ * 看起來才像「這張紙被撕開」而不是「有人在慶祝」。
  * 動畫結束自己移除，不留 DOM。
  */
-export function spawnConfetti(host: HTMLElement, count = 28) {
+export function spawnConfetti(host: HTMLElement, count = 16) {
   if (typeof window === 'undefined') return;
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
 
   const rect = host.getBoundingClientRect();
   const layer = document.createElement('div');
-  layer.style.cssText =
-    'position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:60';
+  layer.style.cssText = 'position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:60';
   host.appendChild(layer);
 
   const w = rect.width || 375;
@@ -115,41 +121,32 @@ export function spawnConfetti(host: HTMLElement, count = 28) {
   let alive = count;
 
   for (let i = 0; i < count; i++) {
-    const el = document.createElement('i');
-    const color = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
-    const long = Math.random() > 0.45;
-    el.style.cssText = [
+    const b = document.createElement('i');
+    const size = 3 + Math.random() * 5;
+    b.style.cssText = [
       'position:absolute',
-      `left:${w * (0.28 + Math.random() * 0.44)}px`,
-      `top:${h * 0.42}px`,
-      `width:${long ? 5 : 7}px`,
-      `height:${long ? 14 : 7}px`,
-      `background:${color}`,
-      long ? 'border-radius:1px' : 'border-radius:50%',
+      'border-radius:1px',
+      `width:${size}px`,
+      `height:${size * (0.6 + Math.random())}px`,
+      `background:${BIT_COLORS[i % BIT_COLORS.length]}`,
+      // 從撕線附近散出（券大約在畫面中段）
+      `left:${w * 0.5}px`,
+      `top:${h * 0.42 + Math.random() * h * 0.16}px`,
       'will-change:transform,opacity',
     ].join(';');
-    layer.appendChild(el);
+    layer.appendChild(b);
 
-    // 往上噴再落下，橫向散開；每片的力道與旋轉都不同
-    const dx = (Math.random() - 0.5) * w * 0.9;
-    const up = h * (0.22 + Math.random() * 0.3);
-    const dur = 900 + Math.random() * 700;
-    const spin = (Math.random() - 0.5) * 900;
-
-    const anim = el.animate(
+    const ang = -0.6 + Math.random() * 1.2;
+    const dist = 60 + Math.random() * 130;
+    const anim = b.animate(
       [
-        { transform: 'translate3d(0,0,0) rotate(0deg)', opacity: 1 },
+        { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
         {
-          transform: `translate3d(${dx * 0.6}px,${-up}px,0) rotate(${spin * 0.5}deg)`,
-          opacity: 1,
-          offset: 0.35,
-        },
-        {
-          transform: `translate3d(${dx}px,${h * 0.62}px,0) rotate(${spin}deg)`,
+          transform: `translate(${Math.cos(ang) * dist}px,${Math.sin(ang) * dist + 90}px) rotate(${Math.random() * 400 - 200}deg)`,
           opacity: 0,
         },
       ],
-      { duration: dur, easing: 'cubic-bezier(.22,.68,.4,1)', fill: 'forwards' }
+      { duration: 700 + Math.random() * 500, easing: 'cubic-bezier(.2,.6,.4,1)', fill: 'forwards' }
     );
     anim.onfinish = () => {
       if (--alive <= 0) layer.remove();
@@ -157,5 +154,5 @@ export function spawnConfetti(host: HTMLElement, count = 28) {
   }
 
   // 保險：動畫被中斷（分頁切走）時也要清掉
-  window.setTimeout(() => layer.remove(), 2600);
+  window.setTimeout(() => layer.remove(), 2200);
 }

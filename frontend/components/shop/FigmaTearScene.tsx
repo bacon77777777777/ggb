@@ -356,6 +356,41 @@ export default function FigmaTearScene({
         </div>
       </div>
 
+      {/*
+        券右下方的「下一張 ›」提示。
+        底部那顆按鈕位置太低、玩家的視線還停在券上，容易沒看到（老闆回報），
+        所以在券旁邊再放一個會晃的提示；點它跟點底部按鈕是同一件事。
+      */}
+      <AnimatePresence>
+        {showButton && !isLast && (
+          <motion.button
+            key="next-hint"
+            type="button"
+            onClick={onNext ?? onDone}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              // 左右輕晃：純位移不改大小，才不會跟旁邊的券搶注意力
+              x: [0, 4, -3, 3, -2, 0],
+            }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{
+              opacity: { duration: 0.25 },
+              scale: { duration: 0.25 },
+              x: { duration: 1.1, repeat: Infinity, repeatDelay: 1.1, ease: 'easeInOut' },
+            }}
+            className="absolute z-30 flex items-center gap-1 rounded-full bg-black/55 px-4 py-2
+                       text-[15px] font-semibold tracking-wide text-white backdrop-blur-sm
+                       border border-white/25 shadow-lg active:scale-95"
+            style={{ top: '56%', right: '16%' }}
+          >
+            下一張
+            <span aria-hidden className="text-[17px] leading-none">›</span>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       {/* 底部按鈕列：SKIP 永遠靠右；下一張從左邊展開填滿 */}
       <div className="absolute bottom-4 left-4 right-4 z-30 flex items-center justify-end gap-3">
         <AnimatePresence>
