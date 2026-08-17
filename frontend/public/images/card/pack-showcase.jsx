@@ -176,6 +176,72 @@ function slotFor(d, aspect) {
   return { x: sg * (halfW * 0.72 + (ad - 2) * 0.4), z, s: 0.8, rot: Math.PI, dim: 0.45 };
 }
 
+// ── 音效(WebAudio 合成,免音檔) ──
+const audio = {
+  ctx: null, noise: null, enabled: true,
+  ensure() {
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      this.ctx = new AC();
+      const len = this.ctx.sampleRate;
+      const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      this.noise = buf;
+    }
+    if (this.ctx.state === "suspended") this.ctx.resume();
+  },
+  // 切換卡包:咻
+  swoosh() {
+    if (!this.enabled) return;
+    this.ensure();
+    const c = this.ctx, t = c.currentTime;
+    const src = c.createBufferSource(); src.buffer = this.noise;
+    const f = c.createBiquadFilter(); f.type = "bandpass"; f.Q.value = 1.2;
+    f.frequency.setValueAtTime(2200, t);
+    f.frequency.exponentialRampToValueAtTime(350, t + 0.28);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.45, t + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+    src.connect(f); f.connect(g); g.connect(c.destination);
+    src.start(t); src.stop(t + 0.32);
+  },
+  // 開始拖曳:鋁箔窸窣
+  crinkle() {
+    if (!this.enabled) return;
+    this.ensure();
+    const c = this.ctx, t = c.currentTime;
+    for (let k = 0; k < 4; k++) {
+      const st = t + k * 0.028 + Math.random() * 0.015;
+      const src = c.createBufferSource(); src.buffer = this.noise;
+      const f = c.createBiquadFilter(); f.type = "highpass";
+      f.frequency.value = 2600 + Math.random() * 2200;
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.001, st);
+      g.gain.exponentialRampToValueAtTime(0.1 + Math.random() * 0.06, st + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, st + 0.05);
+      src.connect(f); f.connect(g); g.connect(c.destination);
+      src.start(st); src.stop(st + 0.06);
+    }
+  },
+  // 上傳完成:叮
+  pop() {
+    if (!this.enabled) return;
+    this.ensure();
+    const c = this.ctx, t = c.currentTime;
+    const o = c.createOscillator(); o.type = "sine";
+    o.frequency.setValueAtTime(540, t);
+    o.frequency.exponentialRampToValueAtTime(960, t + 0.12);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.3, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    o.connect(g); g.connect(c.destination);
+    o.start(t); o.stop(t + 0.24);
+  },
+};
+
 export default function PackShowcase() {
   const mountRef = useRef(null);
   const packsRef = useRef([]);
@@ -183,9 +249,11 @@ export default function PackShowcase() {
   const stateRef = useRef({ auto: true });
   const [cur, setCur] = useState(2);
   const [auto, setAuto] = useState(true);
+  const [sound, setSound] = useState(true);
 
   useEffect(() => { curRef.current = cur; }, [cur]);
   useEffect(() => { stateRef.current.auto = auto; }, [auto]);
+  useEffect(() => { audio.enabled = sound; }, [sound]);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -290,19 +358,24 @@ export default function PackShowcase() {
     packsRef.current = packs;
 
     // ── 互動:慢拖=旋轉,快滑=切換 ──
-    let dragging = false, lastX = 0, vel = 0, idle = 0, startX = 0, startT = 0;
+    let dragging = false, lastX = 0, vel = 0, idle = 0, startX = 0, startT = 0, crinkled = false;
     const el = renderer.domElement;
     const down = (e) => {
       dragging = true;
       lastX = e.clientX ?? 0;
       startX = lastX;
       startT = performance.now();
+      crinkled = false;
     };
     const move = (e) => {
       if (!dragging) return;
       const x = e.clientX ?? 0;
       const dx = x - lastX;
       lastX = x;
+      if (!crinkled && Math.abs(x - startX) > 8) {
+        crinkled = true;
+        audio.crinkle();
+      }
       packs[curRef.current].rot += dx * 0.009;
       vel = dx * 0.009;
       idle = 0;
@@ -314,6 +387,7 @@ export default function PackShowcase() {
       const dxTotal = lastX - startX;
       if (dt < 280 && Math.abs(dxTotal) > 70) {
         vel = 0;
+        audio.swoosh();
         const dir = dxTotal < 0 ? 1 : -1;
         setCur((c) => (((c + dir) % THEMES.length) + THEMES.length) % THEMES.length);
       }
@@ -406,6 +480,7 @@ export default function PackShowcase() {
         if (!p) return;
         const mats = side === "front" ? [p.frontMat, p.rFrontMat] : [p.backMat, p.rBackMat];
         mats.forEach((m) => { m.map = tex; m.needsUpdate = true; });
+        audio.pop();
       };
       img.src = reader.result;
     };
@@ -413,7 +488,10 @@ export default function PackShowcase() {
     e.target.value = "";
   };
 
-  const go = (d) => setCur((c) => (((c + d) % THEMES.length) + THEMES.length) % THEMES.length);
+  const go = (d) => {
+    audio.swoosh();
+    setCur((c) => (((c + d) % THEMES.length) + THEMES.length) % THEMES.length);
+  };
 
   const ui = {
     wrap: { position: "relative", width: "100%", height: "100vh", overflow: "hidden", fontFamily: "'PingFang TC','Noto Sans TC','Microsoft JhengHei',sans-serif", background: "linear-gradient(180deg, #dfe6f4 0%, #f4f6fc 42%, #d5dbec 100%)" },
@@ -424,7 +502,7 @@ export default function PackShowcase() {
     arrow: (side) => ({ position: "absolute", top: "46%", [side]: 12, zIndex: 3, width: 44, height: 44, borderRadius: "50%", border: "1px solid #d8ddef", background: "rgba(255,255,255,0.88)", color: "#4a2fa0", fontSize: 22, fontWeight: 900, cursor: "pointer", boxShadow: "0 4px 14px rgba(36,26,74,0.14)" }),
     dots: { position: "absolute", bottom: 104, width: "100%", display: "flex", justifyContent: "center", gap: 8, zIndex: 3 },
     dot: (on) => ({ width: on ? 22 : 8, height: 8, borderRadius: 5, background: on ? "#7a4ae6" : "#c3c9dd", border: "none", cursor: "pointer", transition: "all .25s" }),
-    bar: { position: "absolute", bottom: 20, left: "50%", transform: "translateX(-50%)", display: "flex", justifyContent: "center", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.92)", border: "1px solid #e0e4f2", borderRadius: 14, padding: "9px 14px", zIndex: 3, boxShadow: "0 8px 24px rgba(36,26,74,0.12)" },
+    bar: { position: "absolute", bottom: 20, left: "50%", transform: "translateX(-50%)", display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.92)", border: "1px solid #e0e4f2", borderRadius: 14, padding: "9px 14px", zIndex: 3, boxShadow: "0 8px 24px rgba(36,26,74,0.12)", maxWidth: "94%" },
     up: { background: "rgba(122,74,230,0.07)", color: "#7a4ae6", border: "1px dashed #7a4ae6", borderRadius: 9, padding: "7px 12px", fontSize: 13, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" },
     btn: (on) => ({ background: on ? "#7a4ae6" : "transparent", color: on ? "#fff" : "#7a4ae6", border: "1px solid #7a4ae6", borderRadius: 9, padding: "7px 12px", fontSize: 13, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }),
     hint: { position: "absolute", bottom: 128, width: "100%", textAlign: "center", color: "#8b90ab", fontSize: 12, letterSpacing: "0.15em", zIndex: 2, pointerEvents: "none" },
@@ -443,7 +521,7 @@ export default function PackShowcase() {
       <div style={ui.hint}>快 滑 切 換 ・ 慢 拖 旋 轉</div>
       <div style={ui.dots}>
         {THEMES.map((_, i) => (
-          <button key={i} style={ui.dot(i === cur)} onClick={() => setCur(i)} />
+          <button key={i} style={ui.dot(i === cur)} onClick={() => { if (i !== cur) audio.swoosh(); setCur(i); }} />
         ))}
       </div>
       <div style={ui.bar}>
@@ -457,6 +535,9 @@ export default function PackShowcase() {
         </label>
         <button style={ui.btn(auto)} onClick={() => setAuto(!auto)}>
           {auto ? "旋轉 開" : "旋轉 關"}
+        </button>
+        <button style={ui.btn(sound)} onClick={() => setSound(!sound)}>
+          {sound ? "音效 開" : "音效 關"}
         </button>
       </div>
     </div>

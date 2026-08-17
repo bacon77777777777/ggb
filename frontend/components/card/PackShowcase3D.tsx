@@ -25,6 +25,8 @@
 import { useEffect, useImperativeHandle, useRef, forwardRef, useState } from 'react';
 import * as THREE from 'three';
 import { createClient } from '@/lib/supabase/client';
+import SoundToggle from '@/components/ui/SoundToggle';
+import { crinkle, swoosh, unlockPackAudio } from '@/lib/packSfx';
 
 export type PackShowcase3DHandle = {
   goToNext: () => void;
@@ -419,6 +421,9 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       const el = renderer.domElement;
       const down = (e: PointerEvent) => {
         dragging = true;
+        // iOS 的 AudioContext 要在手勢裡建立，順手在這裡解鎖
+        unlockPackAudio();
+        crinkle();
         lastX = e.clientX ?? 0;
         startX = lastX;
         startT = performance.now();
@@ -433,6 +438,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         idle = 0;
       };
       const go = (dir: number) => {
+        swoosh();
         curRef.current = (((curRef.current + dir) % N) + N) % N;
         notifyRef.current?.(packStyles[curRef.current]);
       };
@@ -602,6 +608,9 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         </div>
         {/* 3D 畫布疊在流星之上 */}
         <div ref={mountRef} className="absolute inset-0" />
+
+        {/* 音效開關（右上角，同原型）。站上共用 SoundToggle，靜音偏好也共用一份 */}
+        <SoundToggle className="absolute right-3 top-3 z-40" />
       </div>
     );
   }
