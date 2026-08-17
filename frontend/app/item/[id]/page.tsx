@@ -40,7 +40,19 @@ const GachaBattleEffect = dynamic(
   { ssr: false },
 );
 const CardDrawAnimation = dynamic(() => import('@/components/card/CardDrawAnimation'), { ssr: false });
-const PackShowcase3D = dynamic(() => import('@/components/card/PackShowcase3D'), { ssr: false });
+const PackShowcase3D = dynamic(() => import('@/components/card/PackShowcase3D'), {
+  ssr: false,
+  // 佔位用同一張棚景，載入期間不會出現空白或別的顏色
+  loading: () => (
+    <div
+      style={{
+        width: '100%',
+        height: Math.round(375 * 932 / 750),
+        background: "url('/images/card/showcase-bg.webp') center/cover no-repeat",
+      }}
+    />
+  ),
+});
 const ProductPackViewer3D = dynamic(
   () => import('@/components/card/ProductPackViewer3D').then(m => m.ProductPackViewer3D),
   { ssr: false },
@@ -1472,7 +1484,9 @@ export default function ProductDetailPage() {
             className="relative w-full"
             style={{
               aspectRatio: '750/932',
-              backgroundImage: "url('/images/card/bg.webp')",
+              // 卡包輪播會整片蓋住這一區，底圖用同一張棚景 ——
+              // 用舊的暗色 bg.webp 的話，輪播載入完成前會先閃一下暗背景（老闆回報）
+              backgroundImage: "url('/images/card/showcase-bg.webp')",
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
