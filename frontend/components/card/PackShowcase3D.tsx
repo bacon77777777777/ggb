@@ -97,6 +97,32 @@ function shaveEdge(x: CanvasRenderingContext2D, w: number, h: number) {
   }
 
   for (let i = 0; i < w * h; i++) a[i * 4 + 3] = cur[i] ? 255 : 0;
+
+  /*
+   * 光把 alpha 設 0 還不夠：**透明像素的 RGB 還留著剛削掉的那圈黑**，
+   * 貼圖做 mipmap 與雙線性內插時會把它們混回邊緣，看起來就還是有黑邊。
+   * 所以把邊界顏色往外「暈開」幾圈填掉透明區（業界常說的 alpha bleed）。
+   */
+  const opaque = Uint8Array.from(cur);
+  for (let k = 0; k < EDGE_SHAVE + 2; k++) {
+    const grown = Uint8Array.from(opaque);
+    for (let y = 1; y < h - 1; y++) {
+      const row = y * w;
+      for (let xx = 1; xx < w - 1; xx++) {
+        const i = row + xx;
+        if (opaque[i]) continue;
+        const src = opaque[i - 1] ? i - 1 : opaque[i + 1] ? i + 1
+                  : opaque[i - w] ? i - w : opaque[i + w] ? i + w : -1;
+        if (src < 0) continue;
+        a[i * 4] = a[src * 4];
+        a[i * 4 + 1] = a[src * 4 + 1];
+        a[i * 4 + 2] = a[src * 4 + 2];
+        grown[i] = 1;
+      }
+    }
+    opaque.set(grown);
+  }
+
   x.putImageData(img, 0, 0);
 }
 
