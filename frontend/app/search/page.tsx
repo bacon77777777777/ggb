@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Search, X, History } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { fetchRecommendations } from '@/lib/recommendations';
 import ProductCard from '@/components/ProductCard';
 import type { Database } from '@/types/database.types';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
@@ -269,6 +270,23 @@ export default function SearchPage() {
   }, []);
 
   const trimmedQuery = query.trim();
+
+  /*
+   * 沒輸入關鍵字時這頁的標題是「猜你喜歡」，但先前只是把全部商品照原順序列出，
+   * 誰看都一樣 —— 文案在承諾一件程式沒做的事。
+   * 這裡取個人化推薦（照玩家自己的抽獎紀錄，見 lib/recommendations），
+   * 排到清單最前面，後面才接原本的全部商品。
+   */
+  const [recommendedIds, setRecommendedIds] = useState<number[]>([]);
+  useEffect(() => {
+    if (trimmedQuery) { setRecommendedIds([]); return; }
+    let alive = true;
+    (async () => {
+      const rows = await fetchRecommendations(supabase, -1, null, 8);
+      if (alive) setRecommendedIds(rows.map(r => Number(r.id)));
+    })();
+    return () => { alive = false; };
+  }, [trimmedQuery, supabase]);
   const visibleHistory = searchHistory.slice(0, 5);
   const showSuggestionPanel = isInputFocused && !trimmedQuery;
 
@@ -387,8 +405,23 @@ export default function SearchPage() {
             })
           : filteredByTab;
 
+    /*
+     * 把推薦的商品提到最前面。只在「沒關鍵字＋全部分頁＋原始排序」時做 ——
+     * 玩家已經自己選了熱門或最新，就不該再被我們重新排過。
+     * 只調順序不篩選，清單內容不變，往下捲照樣看得到全部商品。
+     */
+    if (!trimmedQuery && activePrimaryTab === 'all' && activeSecondaryTab === 'all' && recommendedIds.length) {
+      const rank = new Map(recommendedIds.map((id, i) => [id, i]));
+      return [...sorted].sort((a, b) => {
+        const ra = rank.get(Number((a as { id: number }).id)) ?? Infinity;
+        const rb = rank.get(Number((b as { id: number }).id)) ?? Infinity;
+        return ra - rb;
+      });
+    }
+
     return sorted;
   }, [
+    recommendedIds,
     activePrimaryTab,
     activeSecondaryTab,
     allProducts,
