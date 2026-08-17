@@ -64,6 +64,14 @@ const TEX_W = 640, TEX_H = Math.round(TEX_W * (PACK_MM_H / PACK_MM_W)), TEX_R = 
 const CAM_Z = 9, FOV = 36;
 const BASE_Y = 0.35 + PACK_H / 2;
 
+// ── 老闆指定、與原型不同的三處（集中在這裡，之後微調不用翻程式）──────
+/** 主卡包放大倍率（原型是 1）*/
+const MAIN_SCALE = 1.18;
+/** 鏡頭視點高度。原型是 BASE_Y - 0.55（壓低看地板），值越大畫面裡的卡包越往下 */
+const CAM_LOOK_Y = BASE_Y - 0.12;
+/** 陰影柔霧程度：貼圖越小邊緣越糊 */
+const SHADOW_MAP = 512;
+
 function roundPath(x: CanvasRenderingContext2D, w: number, h: number, r: number) {
   x.beginPath();
   x.moveTo(r, 0); x.lineTo(w - r, 0); x.quadraticCurveTo(w, 0, w, r);
@@ -149,7 +157,7 @@ function buildPackGeo() {
 function slotFor(d: number, aspect: number) {
   const tanV = Math.tan((FOV * Math.PI) / 360);
   const ad = Math.abs(d), sg = Math.sign(d);
-  if (ad === 0) return { x: 0, z: 0, s: 1, rot: 0, dim: 1 };
+  if (ad === 0) return { x: 0, z: 0, s: MAIN_SCALE, rot: 0, dim: 1 };
   if (ad === 1) {
     const z = -0.9;
     const halfW = tanV * (CAM_Z - z) * aspect;
@@ -212,8 +220,8 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       scene.fog = new THREE.Fog(0xe9edf7, 7, 16);
 
       const camera = new THREE.PerspectiveCamera(FOV, W / H, 0.1, 100);
-      camera.position.set(0, BASE_Y - 0.55, CAM_Z);
-      camera.lookAt(0, BASE_Y - 0.55, 0);
+      camera.position.set(0, CAM_LOOK_Y, CAM_Z);
+      camera.lookAt(0, CAM_LOOK_Y, 0);
 
       /*
        * WebGL 拿不到就整個放棄（舊機、關閉硬體加速、context 數量爆掉都會發生）。
@@ -239,7 +247,8 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       const key = new THREE.DirectionalLight(0xffffff, 0.75);
       key.position.set(3, 8, 6);
       key.castShadow = true;
-      key.shadow.mapSize.set(1024, 1024);
+      // 原型是 1024，邊緣太銳利像貼上去的紙片；調小讓 PCFSoft 的核心糊開
+      key.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
       key.shadow.camera.left = -6; key.shadow.camera.right = 6;
       key.shadow.camera.top = 8; key.shadow.camera.bottom = -2;
       scene.add(key);
@@ -252,7 +261,8 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
 
       // ── 地板：接觸陰影 + 倒影淡出層 ──
       const shadowGeo = new THREE.PlaneGeometry(40, 40);
-      const shadowMat = new THREE.ShadowMaterial({ opacity: 0.13 });
+      // 貼圖調小後陰影變淡，濃度往回加一點才看得出來（原型 0.13）
+      const shadowMat = new THREE.ShadowMaterial({ opacity: 0.2 });
       const shadowPlane = new THREE.Mesh(shadowGeo, shadowMat);
       shadowPlane.rotation.x = -Math.PI / 2;
       shadowPlane.position.y = 0.001;
