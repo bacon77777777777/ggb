@@ -88,6 +88,8 @@ export default function FigmaTearScene({
    */
   /** 上次觸發細碎聲的位移，每 8px 響一次（同原型） */
   const lastCrackle = useRef(0);
+  /** 這次真的撕開了。放手時用它決定要不要把紙彈回去 */
+  const tearCompleted = useRef(false);
 
   // 載入 jQuery + turn.js，初始化 flipbook
   useEffect(() => {
@@ -140,7 +142,13 @@ export default function FigmaTearScene({
 
     const onPointerUp = () => {
       lastCrackle.current = 0;
-      if (!slideRight.current) {
+      /*
+       * 沒撕完就要彈回去。
+       * 原本只有「完全沒往右拖」才清掉 tearing —— 拖了一半放手的話，
+       * turn.js 的頁面是彈回去了，但我們自己的撕開視覺（tearing class 與
+       * 那條虛線）留在原地，紙看起來就一直是撕開的。
+       */
+      if (!tearCompleted.current) {
         wrapperRef.current?.classList.remove('tearing');
         const pt = getPtEl();
         if (pt) pt.style.visibility = '';
@@ -192,6 +200,7 @@ export default function FigmaTearScene({
           // turning gate 已移除：turn.js 需要拖曳過 50% 才完成，純點擊不會到達，不需攔截
           turned: (_e: Event, page: number) => {
             if (page === 2) {
+              tearCompleted.current = true;
               if (!isSoundMuted()) bigRip();
               const host = wrapperRef.current?.parentElement ?? wrapperRef.current;
               if (host) {
