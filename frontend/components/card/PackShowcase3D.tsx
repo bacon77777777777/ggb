@@ -74,8 +74,11 @@ const MAIN_CENTER_Y = 0.35 + (PACK_H * MAIN_SCALE) / 2;
  * 卡包才會落在畫面正中。跟著 MAIN_SCALE 走，改大小不用重調這個值。
  */
 const CAM_LOOK_Y = MAIN_CENTER_Y - 0.12;
-/** 投射陰影的柔霧程度：貼圖越小邊緣越糊 */
-const SHADOW_MAP = 256;
+/**
+ * 投射陰影的貼圖大小。太小雖然糊，但會出現階梯狀鋸齒（老闆回報）；
+ * 拉回 512 並把濃度壓很淡，看得見的影子交給下面那層柔霧橢圓負責。
+ */
+const SHADOW_MAP = 512;
 /** 卡包正下方那圈柔霧接觸陰影的濃度與大小（原型沒有，老闆要求加的）*/
 const BLOB_OPACITY = 0.55, BLOB_W = 1.6, BLOB_H = 0.62;
 
@@ -176,11 +179,13 @@ function slotFor(d: number, aspect: number) {
 }
 
 /**
- * 原型的攝影棚背景。
- * 卡包是兩片曲面組成的殼，轉到側面時中間那道縫會透出背景 ——
- * 原型的背景是這個淺色漸層，所以縫看不出來；換成別的背景就會露餡。
+ * 攝影棚背景（老闆給的圖，自 bg.png 轉 WebP：367KB → 12KB）。
+ *
+ * 卡包是兩片曲面組成的殼，轉到側面時中間那道縫會透出背景。
+ * 這張是淺色棚景，縫透出來也是淺的所以看不出來 —— 換成暗色背景就會露餡，
+ * 先前那條「側面黑縫」就是背景留成暗色機台圖造成的。
  */
-const STUDIO_BG = 'linear-gradient(180deg, #dfe6f4 0%, #f4f6fc 42%, #d5dbec 100%)';
+const STUDIO_BG = "url('/images/card/showcase-bg.webp') center/cover no-repeat";
 
 const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
   ({ packStyles, onActiveStyleChange, height = 466 }, ref) => {
@@ -269,29 +274,18 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       // ── 地板：接觸陰影 + 倒影淡出層 ──
       const shadowGeo = new THREE.PlaneGeometry(40, 40);
       // 貼圖調小後陰影變淡，濃度往回加一點才看得出來（原型 0.13）
-      const shadowMat = new THREE.ShadowMaterial({ opacity: 0.34 });
+      const shadowMat = new THREE.ShadowMaterial({ opacity: 0.12 });
       const shadowPlane = new THREE.Mesh(shadowGeo, shadowMat);
       shadowPlane.rotation.x = -Math.PI / 2;
       shadowPlane.position.y = 0.001;
       shadowPlane.receiveShadow = true;
       scene.add(shadowPlane);
 
-      const fadeCnv = document.createElement('canvas');
-      fadeCnv.width = fadeCnv.height = 512;
-      const fx = fadeCnv.getContext('2d')!;
-      const fg = fx.createRadialGradient(256, 256, 40, 256, 256, 256);
-      fg.addColorStop(0, 'rgba(213,219,236,0.35)');
-      fg.addColorStop(0.55, 'rgba(213,219,236,0.85)');
-      fg.addColorStop(1, 'rgba(213,219,236,1)');
-      fx.fillStyle = fg; fx.fillRect(0, 0, 512, 512);
-      const fadeTex = new THREE.CanvasTexture(fadeCnv);
-      const fadeGeo = new THREE.PlaneGeometry(40, 40);
-      const fadeMat = new THREE.MeshBasicMaterial({ map: fadeTex, transparent: true, depthWrite: false });
-      const fade = new THREE.Mesh(fadeGeo, fadeMat);
-      fade.rotation.x = -Math.PI / 2;
-      fade.renderOrder = 3;
-      scene.add(fade);
-
+      /*
+       * 原型有一層淺灰的地板霧面（把倒影往外淡出）。背景改成老闆這張自帶地板的
+       * 棚景之後，那層會整片蓋掉地板的格線，所以拿掉；倒影本來就只有 0.24，
+       * 直接落在背景的地板上看起來就像檯面反光。
+       */
       /*
        * 卡包正下方的柔霧接觸陰影。
        *
@@ -312,8 +306,8 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
 
       // ── 卡包們（含地板倒影）──
       const geo = buildPackGeo();
-      const textures: THREE.Texture[] = [fadeTex, blobTex];
-      const materials: THREE.Material[] = [shadowMat, fadeMat];
+      const textures: THREE.Texture[] = [blobTex];
+      const materials: THREE.Material[] = [shadowMat];
       const packs: {
         grp: THREE.Group; rGrp: THREE.Group;
         blob: THREE.Mesh; blobMat: THREE.MeshBasicMaterial;
@@ -523,7 +517,6 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         // 商品頁是逛完一個換一個，不收會一路累積
         geo.dispose();
         shadowGeo.dispose();
-        fadeGeo.dispose();
         blobGeo.dispose();
         textures.forEach(x => x.dispose());
         materials.forEach(m => m.dispose());
