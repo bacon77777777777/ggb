@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { fetchRecommendations } from '@/lib/recommendations';
 import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -75,21 +76,13 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
     })();
   }, [(product as any).supplier_id, supabase]);
 
-  // 猜你喜歡：任意類型 active 商品
+  // 猜你喜歡：照玩家自己的抽獎紀錄推薦（見 lib/recommendations）
   useEffect(() => {
     (async () => {
-      try {
-        const { data } = await supabase
-          .from('products')
-          .select(PRODUCT_PUBLIC_COLUMNS)
-          .eq('status', 'active')
-          .neq('type', 'slot')
-          .neq('id', productId)
-          .limit(4);
-        setRecommendations(data ?? []);
-      } catch {}
+      const rows = await fetchRecommendations(supabase, productId, (product as any).type);
+      setRecommendations(rows);
     })();
-  }, [productId, supabase]);
+  }, [productId, (product as any).type, supabase]);
 
   const displayPrizes = prizes.filter(
     p => p.level !== 'Last One' && p.level !== 'LAST ONE' && !p.level?.includes('最後賞')

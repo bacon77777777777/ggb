@@ -64,6 +64,7 @@ import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
 import PinchZoomImage from '@/components/ui/PinchZoomImage';
 import FairnessPanel from '@/components/product/FairnessPanel';
 import NoticeBar from '@/components/promo/NoticeBar';
+import { fetchRecommendations } from '@/lib/recommendations';
 import { PRODUCT_PUBLIC_COLUMNS, PRIZE_PUBLIC_COLUMNS } from '@/lib/productColumns'
 import { useRequireLogin } from '@/hooks/useRequireLogin';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
@@ -1216,8 +1217,8 @@ export default function ProductDetailPage() {
         supabase.from('product_categories').select('categories(id, name)').eq('product_id', productId),
         supabase.from('product_prizes').select(PRIZE_PUBLIC_COLUMNS).eq('product_id', productId)
           .order('level', { ascending: true }),
-        supabase.from('products').select(PRODUCT_PUBLIC_COLUMNS).neq('id', productId)
-          .eq('status', 'active').limit(4),
+        // 佔位：真正的推薦在下面用 fetchRecommendations 取代（需要先知道 type）
+        Promise.resolve({ data: null }),
       ]);
 
       setSupplierName((supRes.data as { name?: string } | null)?.name ?? null);
@@ -1231,7 +1232,9 @@ export default function ProductDetailPage() {
       if (prizesRes.error) throw prizesRes.error;
       setPrizes(prizesRes.data || []);
 
-      if (recRes.data) setRecommendations(recRes.data);
+      // 猜你喜歡：照玩家自己的抽獎紀錄推薦（見 lib/recommendations）
+      void recRes;
+      fetchRecommendations(supabase, productId, productData?.type).then(setRecommendations);
 
     } catch (error) {
       console.error('Error fetching data:', error);
