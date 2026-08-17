@@ -552,7 +552,9 @@ export default function Home() {
       { id: 'card',     label: '抽卡',   type: 'card' },
       { id: 'custom',   label: '自製賞', type: 'custom' },
     ];
-    if (flags.sell) base.push({ id: 'sell', label: '商城' });
+    // 抽獎首頁不放「商城」頁籤（老闆指定）——
+    // 商城有自己的入口與獨立版型，混在抽獎的分類頁籤裡會讓兩邊的動線互相干擾。
+    // 之後要加回來，把這行還原即可（flags.sell 仍然控制商城本身開不開）。
     for (const t of CATEGORY_TABS) {
       if (categoryState(t.type, flagStates, false) === 'off') continue;
       base.push({ id: t.id, label: t.label });

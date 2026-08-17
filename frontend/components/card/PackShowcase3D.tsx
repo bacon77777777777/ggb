@@ -198,9 +198,11 @@ const STUDIO_BG = "url('/images/card/showcase-bg.webp') center/cover no-repeat";
 const METEORS = [
   // 只留三顆，而且刻意慢 —— 遠方的流星在視野裡移動得很慢，
   // 之前六顆快速掠過像螢幕保護程式（老闆說「太假」）
-  { left: 18, delay: 0,   dur: 11, len: 34, op: 0.55 },
-  { left: 66, delay: 4.5, dur: 16, len: 26, op: 0.42 },
-  { left: 87, delay: 8,   dur: 13, len: 30, op: 0.48 },
+  { left: 22, delay: 0,   dur: 11, len: 34, op: 0.55 },
+  { left: 62, delay: 3.5, dur: 16, len: 26, op: 0.42 },
+  { left: 84, delay: 7,   dur: 13, len: 30, op: 0.48 },
+  // 最右邊再補一顆：流星是往左下飄的，只放三顆的話右半部常常整片空著（老闆回報）
+  { left: 96, delay: 1.5, dur: 18, len: 22, op: 0.4 },
 ];
 
 const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
@@ -558,10 +560,10 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         <div className="pointer-events-none absolute inset-0" aria-hidden>
           <style>{`
             @keyframes ggbMeteor {
-              0%   { transform: translate3d(0,0,0) rotate(38deg); opacity: 0; }
+              0%   { transform: translate3d(0,0,0) rotate(22deg); opacity: 0; }
               12%  { opacity: var(--op); }
               70%  { opacity: var(--op); }
-              100% { transform: translate3d(-22vh, 30vh, 0) rotate(38deg); opacity: 0; }
+              100% { transform: translate3d(-11vh, 32vh, 0) rotate(22deg); opacity: 0; }
             }
             .ggb-meteor {
               position: absolute; top: -10%;
