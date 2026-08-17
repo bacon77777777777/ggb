@@ -156,3 +156,33 @@ export function spawnConfetti(host: HTMLElement, count = 16) {
   // 保險：動畫被中斷（分頁切走）時也要清掉
   window.setTimeout(() => layer.remove(), 2200);
 }
+
+/**
+ * 撕開瞬間的黃光一閃（同老闆原型 ichiban-tear_1 的 #flash.pop）。
+ *
+ * 徑向漸層由畫面 50%/46% 往外淡出，0.55 秒內快速亮起再收掉 ——
+ * 18% 處到最亮是刻意的：亮得比撕開動作稍慢一點點，才像被「撕」出來的光。
+ * 蓋在紙屑之下（z-index 29 對 60），光是背景、紙屑要看得見。
+ */
+export function flashPop(host: HTMLElement) {
+  if (typeof window === 'undefined') return;
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+
+  const el = document.createElement('div');
+  el.style.cssText = [
+    'position:absolute',
+    'inset:0',
+    'background:radial-gradient(circle at 50% 46%,rgba(255,238,200,.95),rgba(255,238,200,0) 55%)',
+    'opacity:0',
+    'z-index:29',
+    'pointer-events:none',
+  ].join(';');
+  host.appendChild(el);
+
+  const anim = el.animate(
+    [{ opacity: 0 }, { opacity: 1, offset: 0.18 }, { opacity: 0 }],
+    { duration: 550, easing: 'ease-out', fill: 'forwards' }
+  );
+  anim.onfinish = () => el.remove();
+  window.setTimeout(() => el.remove(), 1200);
+}

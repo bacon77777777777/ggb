@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import SoundToggle from '@/components/ui/SoundToggle';
-import { bigRip, crackle, spawnConfetti, unlockTearAudio } from '@/lib/tearSfx';
+import { bigRip, crackle, flashPop, spawnConfetti, unlockTearAudio } from '@/lib/tearSfx';
 import { isSoundMuted } from '@/lib/soundPrefs';
 
 declare global {
@@ -226,6 +226,7 @@ export default function FigmaTearScene({
               if (host) {
                 // 撕開的同時就撒，等 setDone 之後這個節點就不在了
                 if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+                flashPop(host);      // 先鋪黃光，紙屑蓋在它上面
                 spawnConfetti(host);
               }
               setTimeout(() => setDone(true), 300);
