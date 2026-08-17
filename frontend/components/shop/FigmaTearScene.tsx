@@ -90,6 +90,12 @@ export default function FigmaTearScene({
   const lastCrackle = useRef(0);
   /** 這次真的撕開了。放手時用它決定要不要把紙彈回去 */
   const tearCompleted = useRef(false);
+  /**
+   * 按下的位置是否落在左緣的撕取區。
+   * 只有這裡按下去 turn.js 才真的會撕；按券中間或右邊拖曳不會撕，
+   * 卻照樣觸發撕紙音效與撕開視覺 —— 老闆回報「紙還沒捏起來就有聲音」。
+   */
+  const inGrabZone = useRef(false);
 
   // 載入 jQuery + turn.js，初始化 flipbook
   useEffect(() => {
@@ -119,13 +125,26 @@ export default function FigmaTearScene({
       slideRight.current = false;
       hasMoved.current = false;  // 每次按下重置
       lastCrackle.current = 0;
+
+      // 左緣的撕取區＝ turn.js 的 tl/bl 角，寬度就是 cornerSize（見下方 cs）
+      const fb = flipbookRef.current;
+      if (fb) {
+        const r = fb.getBoundingClientRect();
+        const grabW = Math.ceil(r.height / 2) + 4;   // 與 turn.js 的 cornerSize 同式
+        inGrabZone.current = e.clientX - r.left <= grabW;
+      } else {
+        inGrabZone.current = false;
+      }
+
       // iOS 的 AudioContext 必須在使用者手勢裡建立，否則第一次撕會沒聲音
-      if (!isSoundMuted()) unlockTearAudio();
+      if (inGrabZone.current && !isSoundMuted()) unlockTearAudio();
     };
 
     const onCapturePointerMove = (e: PointerEvent) => {
       if (pressStartX.current === null) return;
       hasMoved.current = true;  // 只要有任何移動就設 true（turning gate 用這個）
+      // 不是從左緣捏起來的，就不是在撕 —— 不出聲、也不要進入撕開的視覺狀態
+      if (!inGrabZone.current) return;
       const dx = e.clientX - pressStartX.current;
       if (dx > 3) {
         slideRight.current = true;
@@ -142,6 +161,7 @@ export default function FigmaTearScene({
 
     const onPointerUp = () => {
       lastCrackle.current = 0;
+      inGrabZone.current = false;
       /*
        * 沒撕完就要彈回去。
        * 原本只有「完全沒往右拖」才清掉 tearing —— 拖了一半放手的話，
