@@ -198,11 +198,11 @@ const STUDIO_BG = "url('/images/card/showcase-bg.webp') center/cover no-repeat";
 const METEORS = [
   // 只留三顆，而且刻意慢 —— 遠方的流星在視野裡移動得很慢，
   // 之前六顆快速掠過像螢幕保護程式（老闆說「太假」）
-  { left: 22, delay: 0,   dur: 11, len: 34, op: 0.55 },
-  { left: 62, delay: 3.5, dur: 16, len: 26, op: 0.42 },
-  { left: 84, delay: 7,   dur: 13, len: 30, op: 0.48 },
+  { left: 22, delay: 0,   dur: 11, len: 58, op: 0.6 },
+  { left: 62, delay: 3.5, dur: 16, len: 44, op: 0.48 },
+  { left: 84, delay: 7,   dur: 13, len: 52, op: 0.55 },
   // 最右邊再補一顆：流星是往左下飄的，只放三顆的話右半部常常整片空著（老闆回報）
-  { left: 96, delay: 1.5, dur: 18, len: 22, op: 0.4 },
+  { left: 96, delay: 1.5, dur: 18, len: 38, op: 0.46 },
 ];
 
 const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
@@ -567,21 +567,21 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
             }
             .ggb-meteor {
               position: absolute; top: -10%;
-              width: 1.5px; border-radius: 2px;
+              width: 2.5px; border-radius: 3px;
               /* 白光暈：尾巴很淡，靠頭部那點亮光帶出來 */
               background: linear-gradient(180deg,
                 rgba(255,255,255,0) 0%,
                 rgba(255,255,255,0.9) 70%,
                 rgba(255,255,255,0.35) 100%);
-              filter: drop-shadow(0 0 3px rgba(255,255,255,0.9))
-                      drop-shadow(0 0 6px rgba(190,210,255,0.55));
+              filter: drop-shadow(0 0 4px rgba(255,255,255,0.95))
+                      drop-shadow(0 0 9px rgba(190,210,255,0.6));
               animation: ggbMeteor var(--dur) linear var(--delay) infinite;
               will-change: transform, opacity;
             }
             /* 流星頭：很小一點光暈 —— 在遠方，不該有明顯的實體 */
             .ggb-meteor::after {
               content: ''; position: absolute; left: 50%; bottom: -2px;
-              width: 4px; height: 4px; margin-left: -2px; border-radius: 50%;
+              width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%;
               background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(215,230,255,0.6) 50%, rgba(215,230,255,0) 100%);
             }
             @media (prefers-reduced-motion: reduce) { .ggb-meteor { animation: none; opacity: 0; } }
