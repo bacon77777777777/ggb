@@ -131,7 +131,14 @@ export default function FigmaTearScene({
       if (fb) {
         const r = fb.getBoundingClientRect();
         const grabW = Math.ceil(r.height / 2) + 4;   // 與 turn.js 的 cornerSize 同式
-        inGrabZone.current = e.clientX - r.left <= grabW;
+        /*
+         * 要「落在券上」而且「靠左緣」兩個都成立。
+         * 先前只判斷 `clientX - left <= grabW`，按在券**左邊外側**的空白處時
+         * 這個差是負數、一樣成立，所以捏著手指那一塊拖曳也會出聲（老闆回報）。
+         */
+        const inX = e.clientX >= r.left && e.clientX - r.left <= grabW;
+        const inY = e.clientY >= r.top && e.clientY <= r.bottom;
+        inGrabZone.current = inX && inY;
       } else {
         inGrabZone.current = false;
       }
@@ -401,44 +408,34 @@ export default function FigmaTearScene({
               scale: { duration: 0.25 },
               x: { duration: 1.1, repeat: Infinity, repeatDelay: 1.1, ease: 'easeInOut' },
             }}
-            className="absolute z-30 flex items-center gap-1 rounded-full bg-black/55 px-4 py-2
-                       text-[15px] font-semibold tracking-wide text-white backdrop-blur-sm
-                       border border-white/25 shadow-lg active:scale-95"
-            style={{ top: '56%', right: '16%' }}
+            className="absolute z-30 flex items-center gap-1 overflow-hidden rounded-full
+                       bg-black/60 px-5 h-10 border border-white/30 backdrop-blur-sm shadow-lg
+                       text-white text-sm font-black tracking-[0.25em] active:scale-95"
+            style={{ top: '56%', right: '6%' }}
           >
             下一張
-            <span aria-hidden className="text-[17px] leading-none">›</span>
+            <span aria-hidden className="text-base leading-none">›</span>
+            {/* 光劃過特效：沿用原本底部按鈕的做法，參數也一樣 */}
+            <motion.span
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 w-1/2"
+              style={{
+                background:
+                  'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)',
+              }}
+              initial={{ left: '-50%' }}
+              animate={{ left: '150%' }}
+              transition={{ duration: 0.8, repeat: Infinity, repeatDelay: 1.6, ease: 'easeInOut' }}
+            />
           </motion.button>
         )}
       </AnimatePresence>
 
-      {/* 底部按鈕列：SKIP 永遠靠右；下一張從左邊展開填滿 */}
+      {/*
+        底部只留 SKIP。「下一張」改用券旁邊那顆會晃的提示（老闆指定）——
+        底部那顆位置太低，玩家視線還停在券上時容易沒看到，兩顆並存也只是重複。
+      */}
       <div className="absolute bottom-4 left-4 right-4 z-30 flex items-center justify-end gap-3">
-        <AnimatePresence>
-          {showButton && !isLast && (
-            <motion.button
-              key="next"
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -8 }}
-              onClick={onNext ?? onDone}
-              className="relative overflow-hidden flex-1 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em] active:scale-95"
-            >
-              下一張
-              {/* 光劃過特效 */}
-              <motion.span
-                aria-hidden
-                className="pointer-events-none absolute inset-y-0 w-1/2"
-                style={{
-                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)',
-                }}
-                initial={{ left: '-50%' }}
-                animate={{ left: '150%' }}
-                transition={{ duration: 0.8, repeat: Infinity, repeatDelay: 1.6, ease: 'easeInOut' }}
-              />
-            </motion.button>
-          )}
-        </AnimatePresence>
         <button
           onClick={() => {
             if (finishedRef.current) return;
