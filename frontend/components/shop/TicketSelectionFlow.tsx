@@ -47,6 +47,15 @@ interface TicketSelectionFlowProps {
   onTearFinish?: (results: TearResult[]) => void;
 }
 
+/** get_drawn_tickets（migration 580）的回傳形狀 */
+interface DrawnTicket {
+  ticket_number: number | null;
+  prize_level: string | null;
+  prize_name: string | null;
+  prize_image_url: string | null;
+  is_last_one: boolean;
+}
+
 interface DrawResult {
   grade: string;
   name: string;
@@ -280,21 +289,20 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
     setShowResultModal(true);
     
     try {
+      // 同樣不能直接查 draw_records：RLS 只給自己的紀錄，一覽會只剩自己抽的那幾張
       const { data, error } = await supabase
-        .from('draw_records')
-        .select('ticket_number, prize_level, prize_name, prize_image_url, is_last_one')
-        .eq('product_id', product.id)
-        .order('ticket_number', { ascending: true });
+        .rpc('get_drawn_tickets', { p_product_id: product.id });
 
       if (error) throw error;
 
-      const formattedResults = data.map(record => ({
-        grade: record.prize_level,
-        name: record.prize_name,
+      const rows = (data ?? []) as DrawnTicket[];
+      const formattedResults = rows.map(record => ({
+        grade: record.prize_level ?? '',
+        name: record.prize_name ?? '',
         isOpened: true,
         image_url: record.prize_image_url || '',
         is_last_one: record.is_last_one || false,
-        ticket_number: record.ticket_number
+        ticket_number: record.ticket_number ?? 0
       }));
 
       if (!formattedResults.some(r => r.is_last_one)) {
@@ -349,20 +357,27 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
           typeof productData.remaining === 'number' ? productData.remaining : null
         );
 
+        /*
+         * 走 RPC 而不是直接 select draw_records：
+         * 那張表的 RLS 只允許 `auth.uid() = user_id`，直接查只會拿到自己的紀錄，
+         * **別人抽走的籤在格子上仍是可選**，按下確認支付才被 play_ichiban 擋掉
+         * （TICKET_ALREADY_DRAWN）。只要那件商品有第二個人抽過就會踩到。
+         * get_drawn_tickets 只吐籤號與獎項，不含 user_id（migration 580）。
+         */
         const { data: historyData, error: historyError } = await supabase
-          .from('draw_records')
-          .select('ticket_number, prize_level, prize_name')
-          .eq('product_id', productId);
+          .rpc('get_drawn_tickets', { p_product_id: productId })
+  ;
 
         if (historyError) throw historyError;
 
-        const sold = historyData
+        const history = (historyData ?? []) as DrawnTicket[];
+        const sold = history
           .map(h => h.ticket_number || 0)
           .filter(n => n > 0);
         setSoldTickets(sold);
 
         const infoMap: Record<number, { prizeLevel: string; prizeName: string }> = {};
-        for (const h of historyData) {
+        for (const h of history) {
           if (h.ticket_number && h.ticket_number > 0) {
             infoMap[h.ticket_number] = {
               prizeLevel: h.prize_level || '',
@@ -690,21 +705,18 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
           
           if (normalRemaining === 0) {
             // 嘗試從抽獎紀錄取最後賞
-            const { data: loRecord } = await supabase
-              .from('draw_records')
-              .select('ticket_number, prize_level, prize_name, image_url, is_last_one')
-              .eq('product_id', product.id)
-              .eq('ticket_number', 0)
-              .order('id', { ascending: false })
-              .limit(1)
-              .maybeSingle();
+            // 最後賞是別人抽走的機率很高，直接查 draw_records 會被 RLS 濾掉
+            const { data: loRows } = await supabase
+              .rpc('get_drawn_tickets', { p_product_id: product.id })
+      ;
+            const loRecord = ((loRows ?? []) as DrawnTicket[]).find(r => r.is_last_one) ?? null;
             
             if (loRecord) {
               const lastOne = {
-                grade: loRecord.prize_level,
-                name: loRecord.prize_name,
+                grade: loRecord.prize_level ?? '',
+                name: loRecord.prize_name ?? '',
                 isOpened: true,
-                image_url: loRecord.image_url || '',
+                image_url: loRecord.prize_image_url || '',
                 is_last_one: true,
                 ticket_number: 0
               };

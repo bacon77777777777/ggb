@@ -196,12 +196,11 @@ const STUDIO_BG = "url('/images/card/showcase-bg.webp') center/cover no-repeat";
  * 流星會在 React 重新渲染時整批跳位置。
  */
 const METEORS = [
-  { left: 6,  delay: 0,   dur: 3.4, len: 78,  op: 0.5 },
-  { left: 24, delay: 1.7, dur: 4.2, len: 104, op: 0.38 },
-  { left: 41, delay: 0.8, dur: 3.0, len: 66,  op: 0.45 },
-  { left: 58, delay: 2.6, dur: 4.6, len: 120, op: 0.32 },
-  { left: 72, delay: 1.1, dur: 3.6, len: 88,  op: 0.42 },
-  { left: 88, delay: 3.1, dur: 4.0, len: 96,  op: 0.36 },
+  // 只留三顆，而且刻意慢 —— 遠方的流星在視野裡移動得很慢，
+  // 之前六顆快速掠過像螢幕保護程式（老闆說「太假」）
+  { left: 18, delay: 0,   dur: 11, len: 34, op: 0.55 },
+  { left: 66, delay: 4.5, dur: 16, len: 26, op: 0.42 },
+  { left: 87, delay: 8,   dur: 13, len: 30, op: 0.48 },
 ];
 
 const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
@@ -562,24 +561,26 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
               0%   { transform: translate3d(0,0,0) rotate(38deg); opacity: 0; }
               12%  { opacity: var(--op); }
               70%  { opacity: var(--op); }
-              100% { transform: translate3d(-46vh, 62vh, 0) rotate(38deg); opacity: 0; }
+              100% { transform: translate3d(-22vh, 30vh, 0) rotate(38deg); opacity: 0; }
             }
             .ggb-meteor {
-              position: absolute; top: -14%;
-              width: 3px; border-radius: 3px;
-              /* 背景是淺色棚景，白色流星會整條消失 —— 用偏紫藍的暗色才看得見 */
+              position: absolute; top: -10%;
+              width: 1.5px; border-radius: 2px;
+              /* 白光暈：尾巴很淡，靠頭部那點亮光帶出來 */
               background: linear-gradient(180deg,
-                rgba(120,140,225,0) 0%,
-                rgba(96,116,214,0.85) 55%,
-                rgba(150,170,240,0.15) 100%);
+                rgba(255,255,255,0) 0%,
+                rgba(255,255,255,0.9) 70%,
+                rgba(255,255,255,0.35) 100%);
+              filter: drop-shadow(0 0 3px rgba(255,255,255,0.9))
+                      drop-shadow(0 0 6px rgba(190,210,255,0.55));
               animation: ggbMeteor var(--dur) linear var(--delay) infinite;
               will-change: transform, opacity;
             }
-            /* 流星頭：一顆帶光暈的亮點，尾巴才有方向感 */
+            /* 流星頭：很小一點光暈 —— 在遠方，不該有明顯的實體 */
             .ggb-meteor::after {
-              content: ''; position: absolute; left: 50%; bottom: -3px;
-              width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%;
-              background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(130,150,235,0.75) 45%, rgba(130,150,235,0) 100%);
+              content: ''; position: absolute; left: 50%; bottom: -2px;
+              width: 4px; height: 4px; margin-left: -2px; border-radius: 50%;
+              background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(215,230,255,0.6) 50%, rgba(215,230,255,0) 100%);
             }
             @media (prefers-reduced-motion: reduce) { .ggb-meteor { animation: none; opacity: 0; } }
           `}</style>
