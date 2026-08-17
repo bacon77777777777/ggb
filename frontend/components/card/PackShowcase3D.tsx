@@ -66,11 +66,18 @@ const BASE_Y = 0.35 + PACK_H / 2;
 
 // ── 老闆指定、與原型不同的三處（集中在這裡，之後微調不用翻程式）──────
 /** 主卡包放大倍率（原型是 1）*/
-const MAIN_SCALE = 1.18;
-/** 鏡頭視點高度。原型是 BASE_Y - 0.55（壓低看地板），值越大畫面裡的卡包越往下 */
-const CAM_LOOK_Y = BASE_Y - 0.12;
-/** 陰影柔霧程度：貼圖越小邊緣越糊 */
-const SHADOW_MAP = 512;
+const MAIN_SCALE = 1.38;
+/** 主卡包放大後的中心高度（底緣仍站在地板上）*/
+const MAIN_CENTER_Y = 0.35 + (PACK_H * MAIN_SCALE) / 2;
+/**
+ * 鏡頭視點高度。原型是壓低 0.55 去看地板；這裡對準主卡包中心再往下一點，
+ * 卡包才會落在畫面正中。跟著 MAIN_SCALE 走，改大小不用重調這個值。
+ */
+const CAM_LOOK_Y = MAIN_CENTER_Y - 0.12;
+/** 投射陰影的柔霧程度：貼圖越小邊緣越糊 */
+const SHADOW_MAP = 256;
+/** 卡包正下方那圈柔霧接觸陰影的濃度與大小（原型沒有，老闆要求加的）*/
+const BLOB_OPACITY = 0.55, BLOB_W = 1.6, BLOB_H = 0.62;
 
 function roundPath(x: CanvasRenderingContext2D, w: number, h: number, r: number) {
   x.beginPath();
@@ -262,7 +269,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       // ── 地板：接觸陰影 + 倒影淡出層 ──
       const shadowGeo = new THREE.PlaneGeometry(40, 40);
       // 貼圖調小後陰影變淡，濃度往回加一點才看得出來（原型 0.13）
-      const shadowMat = new THREE.ShadowMaterial({ opacity: 0.2 });
+      const shadowMat = new THREE.ShadowMaterial({ opacity: 0.34 });
       const shadowPlane = new THREE.Mesh(shadowGeo, shadowMat);
       shadowPlane.rotation.x = -Math.PI / 2;
       shadowPlane.position.y = 0.001;
@@ -285,12 +292,31 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       fade.renderOrder = 3;
       scene.add(fade);
 
+      /*
+       * 卡包正下方的柔霧接觸陰影。
+       *
+       * 主光在 (3,8,6)，主卡包的投射陰影會落到左後方、剛好被卡包自己擋住，
+       * 所以畫面上只看得到側包的影子。這層是貼在地板上、跟著卡包走的柔邊橢圓，
+       * 邊緣本來就是漸層，怎麼看都是霧的。
+       */
+      const blobCnv = document.createElement('canvas');
+      blobCnv.width = blobCnv.height = 128;
+      const bx = blobCnv.getContext('2d')!;
+      const bg = bx.createRadialGradient(64, 64, 4, 64, 64, 64);
+      bg.addColorStop(0, 'rgba(90,100,130,1)');
+      bg.addColorStop(0.45, 'rgba(90,100,130,0.55)');
+      bg.addColorStop(1, 'rgba(90,100,130,0)');
+      bx.fillStyle = bg; bx.fillRect(0, 0, 128, 128);
+      const blobTex = new THREE.CanvasTexture(blobCnv);
+      const blobGeo = new THREE.PlaneGeometry(1, 1);
+
       // ── 卡包們（含地板倒影）──
       const geo = buildPackGeo();
-      const textures: THREE.Texture[] = [fadeTex];
+      const textures: THREE.Texture[] = [fadeTex, blobTex];
       const materials: THREE.Material[] = [shadowMat, fadeMat];
       const packs: {
         grp: THREE.Group; rGrp: THREE.Group;
+        blob: THREE.Mesh; blobMat: THREE.MeshBasicMaterial;
         mats: THREE.MeshPhysicalMaterial[];
         rot: number; prevD?: number;
       }[] = [];
@@ -332,7 +358,20 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         grp.rotation.y = slot.rot;
         scene.add(grp);
 
-        packs.push({ grp, rGrp, mats: [frontMat, backMat, rFrontMat, rBackMat], rot: slot.rot });
+        const blobMat = new THREE.MeshBasicMaterial({
+          map: blobTex, transparent: true, depthWrite: false, opacity: BLOB_OPACITY,
+        });
+        materials.push(blobMat);
+        const blob = new THREE.Mesh(blobGeo, blobMat);
+        blob.rotation.x = -Math.PI / 2;
+        blob.position.set(slot.x, 0.004, slot.z);
+        blob.renderOrder = 1;   // 在地板霧面層之下，才不會被它蓋掉
+        scene.add(blob);
+
+        packs.push({
+          grp, rGrp, blob, blobMat,
+          mats: [frontMat, backMat, rFrontMat, rBackMat], rot: slot.rot,
+        });
       }
 
       /*
@@ -432,15 +471,27 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
             const diff = slot.rot - (pk.rot % (Math.PI * 2));
             pk.rot += diff * 0.1;
           }
+          /*
+           * 縮放是以群組中心為原點，照原型的固定 BASE_Y 放大會讓卡包**底部沉到
+           * 地板以下**，影子就被卡包自己蓋住。改成依當下縮放算出「站在地板上」
+           * 的中心高度，放大時卡包是往上長而不是往下沉。
+           */
+          const s = g.scale.x + (slot.s - g.scale.x) * 0.12;
+          g.scale.set(s, s, s);
+          const standY = 0.35 + (PACK_H * s) / 2;
           const bob = isCur ? Math.sin(t * 1.3) * 0.05 : 0;
           g.position.x += (slot.x - g.position.x) * 0.12;
           g.position.z += (slot.z - g.position.z) * 0.12;
-          g.position.y = BASE_Y * (isCur ? 1 : 0.97) + bob;
-          const s = g.scale.x + (slot.s - g.scale.x) * 0.12;
-          g.scale.set(s, s, s);
+          g.position.y = standY * (isCur ? 1 : 0.97) + bob;
           g.rotation.y = pk.rot;
           const c = pk.mats[0].color.r + (slot.dim - pk.mats[0].color.r) * 0.15;
           pk.mats.forEach(m => m.color.setScalar(c));
+          // 接觸陰影跟著卡包走：越大越低的卡包，影子越大越濃
+          // 往鏡頭方向挪一點，影子才會露在卡包前面而不是整片被擋住
+          pk.blob.position.set(g.position.x, 0.004, g.position.z + 0.28);
+          pk.blob.scale.set(BLOB_W * s, BLOB_H * s, 1);
+          pk.blobMat.opacity = BLOB_OPACITY * (isCur ? 1 : 0.55);
+
           // 倒影同步
           pk.rGrp.position.set(g.position.x, -g.position.y, g.position.z);
           pk.rGrp.scale.set(s, -s, s);
@@ -473,6 +524,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         geo.dispose();
         shadowGeo.dispose();
         fadeGeo.dispose();
+        blobGeo.dispose();
         textures.forEach(x => x.dispose());
         materials.forEach(m => m.dispose());
         renderer.dispose();
