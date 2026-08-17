@@ -187,6 +187,23 @@ function slotFor(d: number, aspect: number) {
  */
 const STUDIO_BG = "url('/images/card/showcase-bg.webp') center/cover no-repeat";
 
+/**
+ * 背景的流星。
+ *
+ * 刻意做成 CSS 圖層而不是丟進 3D 場景 —— 這樣完全不動原型的場景，
+ * 也不用多算粒子；瀏覽器的 transform 動畫走合成執行緒，等於零成本。
+ * 位置與時間錯開用固定值而不是 Math.random()：每次重繪都重骰的話，
+ * 流星會在 React 重新渲染時整批跳位置。
+ */
+const METEORS = [
+  { left: 6,  delay: 0,   dur: 3.4, len: 78,  op: 0.5 },
+  { left: 24, delay: 1.7, dur: 4.2, len: 104, op: 0.38 },
+  { left: 41, delay: 0.8, dur: 3.0, len: 66,  op: 0.45 },
+  { left: 58, delay: 2.6, dur: 4.6, len: 120, op: 0.32 },
+  { left: 72, delay: 1.1, dur: 3.6, len: 88,  op: 0.42 },
+  { left: 88, delay: 3.1, dur: 4.0, len: 96,  op: 0.36 },
+];
+
 const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
   ({ packStyles, onActiveStyleChange, height = 466 }, ref) => {
     const mountRef = useRef<HTMLDivElement | null>(null);
@@ -536,7 +553,54 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       );
     }
 
-    return <div ref={mountRef} className="w-full" style={{ height, background: STUDIO_BG }} />;
+    return (
+      <div className="relative w-full overflow-hidden" style={{ height, background: STUDIO_BG }}>
+        {/* 流星層：夾在背景圖與 3D 畫布中間（畫布是透明的，所以看得到） */}
+        <div className="pointer-events-none absolute inset-0" aria-hidden>
+          <style>{`
+            @keyframes ggbMeteor {
+              0%   { transform: translate3d(0,0,0) rotate(38deg); opacity: 0; }
+              12%  { opacity: var(--op); }
+              70%  { opacity: var(--op); }
+              100% { transform: translate3d(-46vh, 62vh, 0) rotate(38deg); opacity: 0; }
+            }
+            .ggb-meteor {
+              position: absolute; top: -14%;
+              width: 3px; border-radius: 3px;
+              /* 背景是淺色棚景，白色流星會整條消失 —— 用偏紫藍的暗色才看得見 */
+              background: linear-gradient(180deg,
+                rgba(120,140,225,0) 0%,
+                rgba(96,116,214,0.85) 55%,
+                rgba(150,170,240,0.15) 100%);
+              animation: ggbMeteor var(--dur) linear var(--delay) infinite;
+              will-change: transform, opacity;
+            }
+            /* 流星頭：一顆帶光暈的亮點，尾巴才有方向感 */
+            .ggb-meteor::after {
+              content: ''; position: absolute; left: 50%; bottom: -3px;
+              width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%;
+              background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(130,150,235,0.75) 45%, rgba(130,150,235,0) 100%);
+            }
+            @media (prefers-reduced-motion: reduce) { .ggb-meteor { animation: none; opacity: 0; } }
+          `}</style>
+          {METEORS.map((m, i) => (
+            <span
+              key={i}
+              className="ggb-meteor"
+              style={{
+                left: `${m.left}%`,
+                height: m.len,
+                ['--dur' as string]: `${m.dur}s`,
+                ['--delay' as string]: `${m.delay}s`,
+                ['--op' as string]: m.op,
+              } as React.CSSProperties}
+            />
+          ))}
+        </div>
+        {/* 3D 畫布疊在流星之上 */}
+        <div ref={mountRef} className="absolute inset-0" />
+      </div>
+    );
   }
 );
 
