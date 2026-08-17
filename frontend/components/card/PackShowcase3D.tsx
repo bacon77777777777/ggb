@@ -64,6 +64,42 @@ const FLOOR_Y = 0.35;
 
 
 
+/** 往內削掉的像素數（貼圖座標）。描邊約 2px，放大到 640 寬約 3px，取 4 保險 */
+const EDGE_SHAVE = 4;
+
+/**
+ * 削掉卡包外緣那圈深色描邊。
+ *
+ * 卡包圖**本身就烙著一圈 1～2px 的深色描邊**（實測 01a.webp 邊界像素是
+ * 11,66,36 → 0,21,0，幾乎純黑）。原型看不到它，是因為原型把圖 cover 裁切成
+ * 62×116（比原圖窄很多），左右那圈剛好被裁掉；我們改成保留圖片比例後就露出來了。
+ * 描邊沿著上下的鋸齒邊也有，所以單純裁四邊切不乾淨。
+ *
+ * 做法：alpha 先硬化（半透明一律當透明，去掉會混進黑色的過渡像素），
+ * 再用四鄰域往內侵蝕幾圈，描邊那一圈就跟著不見。
+ */
+function shaveEdge(x: CanvasRenderingContext2D, w: number, h: number) {
+  const img = x.getImageData(0, 0, w, h);
+  const a = img.data;
+  let cur = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) cur[i] = a[i * 4 + 3] > 200 ? 1 : 0;
+
+  for (let k = 0; k < EDGE_SHAVE; k++) {
+    const next = new Uint8Array(w * h);
+    for (let y = 1; y < h - 1; y++) {
+      const row = y * w;
+      for (let xx = 1; xx < w - 1; xx++) {
+        const i = row + xx;
+        if (cur[i] && cur[i - 1] && cur[i + 1] && cur[i - w] && cur[i + w]) next[i] = 1;
+      }
+    }
+    cur = next;
+  }
+
+  for (let i = 0; i < w * h; i++) a[i * 4 + 3] = cur[i] ? 255 : 0;
+  x.putImageData(img, 0, 0);
+}
+
 /**
  * 圖片決定卡包比例：寬固定、高照圖片比例算，所以圖不裁切也不變形
  * （原型是 cover 裁切成固定的 62×116，長寬比不同的卡包圖會被切掉頭尾）。
@@ -76,12 +112,17 @@ function imageTexture(img: HTMLImageElement) {
   const texH = Math.max(1, Math.round(TEX_W * (img.height / img.width)));
   const c = document.createElement('canvas');
   c.width = TEX_W; c.height = texH;
-  c.getContext('2d')!.drawImage(img, 0, 0, TEX_W, texH);
+  const x = c.getContext('2d')!;
+  x.drawImage(img, 0, 0, TEX_W, texH);
+  shaveEdge(x, TEX_W, texH);
+
   const tex = new THREE.CanvasTexture(c);
   tex.anisotropy = 8;
-  // 搭配材質的 premultipliedAlpha：邊緣做透明度內插時不會混進黑色
-  tex.premultiplyAlpha = true;
-  return { tex, ratio: img.height / img.width };
+
+  // 寬高為 0（解碼失敗、SVG 沒有內建尺寸）時 ratio 會是 NaN，
+  // 傳下去幾何體的 position 會整片變 NaN，three 就一路噴 computeBoundingSphere 警告
+  const ratio = img.width > 0 && img.height > 0 ? img.height / img.width : PACK_MM_H / PACK_MM_W;
+  return { tex, ratio };
 }
 
 /** 讀圖：R2 是跨網域，沒有 crossOrigin 會變成 tainted canvas 而整張黑掉 */
@@ -96,15 +137,23 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 /** 卡包不是平面：中間鼓起、上下封口收窄 */
-function buildPackGeo(packH: number) {
+function buildPackGeo(packHRaw: number) {
+  // 除以 packH 的地方不只一處，這裡先擋掉 0 與 NaN
+  const packH = Number.isFinite(packHRaw) && packHRaw > 0 ? packHRaw : PACK_H_DEFAULT;
   const geo = new THREE.PlaneGeometry(PACK_W, packH, 48, 84);
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const px = pos.getX(i), py = pos.getY(i);
     const u = px / PACK_W + 0.5, v = py / packH + 0.5;
     const vv = (v - CRIMP) / (1 - 2 * CRIMP);
-    const envV = vv <= 0 || vv >= 1 ? 0 : Math.pow(Math.sin(Math.PI * vv), 0.5);
-    const envU = Math.pow(Math.sin(Math.PI * u), 0.75);
+    /*
+     * Math.pow(負數, 小數) 是 NaN。PlaneGeometry 的頂點座標是浮點累加出來的，
+     * 邊界那圈的 u/v 會差個 1e-16 而讓 sin 變成極小的負數 —— 整片 position
+     * 就跟著 NaN，three 每幀噴 computeBoundingSphere 警告。原型的尺寸剛好閃過，
+     * 卡包放大後就踩到了。夾住負值即可。
+     */
+    const envV = vv <= 0 || vv >= 1 ? 0 : Math.pow(Math.max(0, Math.sin(Math.PI * vv)), 0.5);
+    const envU = Math.pow(Math.max(0, Math.sin(Math.PI * u)), 0.75);
     pos.setZ(i, BULGE * envU * envV);
     const t = v > 1 - CRIMP ? (v - (1 - CRIMP)) / CRIMP : v < CRIMP ? (CRIMP - v) / CRIMP : 0;
     if (t > 0) pos.setX(i, px * (1 - 0.05 * t));
@@ -246,7 +295,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         new THREE.MeshPhysicalMaterial({
           map, roughness: 0.34, metalness: 0.12,
           clearcoat: 1, clearcoatRoughness: 0.3,
-          transparent: true, alphaTest: 0.02, premultipliedAlpha: true,
+          transparent: true, alphaTest: 0.5,
           opacity: refl ? 0.14 : 1, depthWrite: !refl,
         });
 
@@ -313,7 +362,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
 
             // 寬固定、高照正面圖的比例 —— 幾何體要跟著換，否則圖會被壓扁
             const packH = PACK_W * f.ratio;
-            if (Math.abs(packH - pk.packH) > 0.001) {
+            if (Number.isFinite(packH) && packH > 0 && Math.abs(packH - pk.packH) > 0.001) {
               const old = pk.geo;
               const geo2 = buildPackGeo(packH);
               pk.meshes.forEach(m => { m.geometry = geo2; });
