@@ -5,6 +5,7 @@ import Modal from '@/components/Modal'
 import Button from '@/components/ui/Button'
 import Switch from '@/components/ui/Switch'
 import { useToast } from '@/contexts/ToastContext'
+import ImageUploadField from '@/components/ui/ImageUploadField'
 import { MACHINE_PARAM_SPECS, defaultParams, type ParamSpec } from './machineParams'
 
 /**
@@ -21,7 +22,7 @@ export default function ParamsModal({ theme, themeLabel, isOpen, onClose }: {
 }) {
   const { toast } = useToast()
   const specs: ParamSpec[] = MACHINE_PARAM_SPECS[theme] ?? []
-  const [values, setValues] = useState<Record<string, number | boolean>>({})
+  const [values, setValues] = useState<Record<string, number | boolean | string>>({})
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -76,7 +77,15 @@ export default function ParamsModal({ theme, themeLabel, isOpen, onClose }: {
                   <div key={s.key}>
                     <div className="grid grid-cols-[92px_1fr_58px] items-center gap-3">
                       <label className="text-sm text-neutral-700">{s.label}</label>
-                      {s.type === 'toggle' ? (
+                      {s.type === 'image' ? (
+                        <div className="col-span-2">
+                          <ImageUploadField
+                            value={String(values[s.key] ?? '')}
+                            onChange={url => setValues(p => ({ ...p, [s.key]: url }))}
+                            folder="products"
+                          />
+                        </div>
+                      ) : s.type === 'toggle' ? (
                         <div className="col-span-2">
                           <Switch
                             checked={Boolean(values[s.key])}

@@ -40,6 +40,7 @@ const GachaBattleEffect = dynamic(
   { ssr: false },
 );
 const CardDrawAnimation = dynamic(() => import('@/components/card/CardDrawAnimation'), { ssr: false });
+const PackShowcase3D = dynamic(() => import('@/components/card/PackShowcase3D'), { ssr: false });
 const ProductPackViewer3D = dynamic(
   () => import('@/components/card/ProductPackViewer3D').then(m => m.ProductPackViewer3D),
   { ssr: false },
@@ -1511,11 +1512,11 @@ export default function ProductDetailPage() {
                 輪播內層有自己的 perspective 容器，外面再夾一層高度只會打架 */}
             <div className="absolute left-1/2 top-0 -translate-x-1/2 flex items-center justify-center" style={{ width: 375, zIndex: 10 }}>
               <div className="relative w-full flex items-center justify-center">
-                <PackSelectionCarousel
-                  cardScale={cardScale}
+                <PackShowcase3D
                   ref={packCarouselRef}
                   packStyles={packStyles}
                   onActiveStyleChange={handleActiveStyleChange}
+                  height={360}
                 />
               </div>
             </div>

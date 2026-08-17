@@ -13,17 +13,37 @@ export interface ParamSpec {
   label: string
   /** 分組標題，同組會排在一起 */
   group: string
-  type: 'range' | 'toggle'
+  type: 'range' | 'toggle' | 'image'
   min?: number
   max?: number
   step?: number
   /** 顯示用的單位後綴 */
   unit?: string
-  default: number | boolean
+  default: number | boolean | string
   hint?: string
 }
 
 export const MACHINE_PARAM_SPECS: Record<string, ParamSpec[]> = {
+  /*
+   * 抽卡：商品頁上半部的卡包 3D 輪播。
+   *
+   * 正反面圖留空時，前台照舊用內建的五款卡包圖（/images/card/pack/NNa|b.webp），
+   * 輪播才不會五格長得一模一樣 —— 有設圖的商品才統一換成自己的卡包。
+   */
+  card_pack: [
+    { key: 'frontImage', label: '卡包正面', group: '卡包外觀', type: 'image', default: '',
+      hint: '直式卡包，建議 62 × 116 比例（實體卡包尺寸）。留空用內建卡包圖。' },
+    { key: 'backImage',  label: '卡包背面', group: '卡包外觀', type: 'image', default: '',
+      hint: '玩家把卡包轉過去時看到的那面。留空用內建卡背。' },
+
+    { key: 'autoSpin',   label: '自動翻轉', group: '展示動態', type: 'toggle', default: true,
+      hint: '玩家停手一段時間後，主卡包自己慢慢轉。' },
+    { key: 'spinSpeed',  label: '翻轉速度', group: '展示動態', type: 'range', min: 0.002, max: 0.03, step: 0.002, default: 0.008,
+      hint: '每幀轉多少弧度。0.008 大約 13 秒轉一圈。' },
+    { key: 'idleDelay',  label: '停手後延遲', group: '展示動態', type: 'range', min: 0, max: 4, step: 0.2, default: 1.2, unit: 's',
+      hint: '玩家放開後等多久才開始自動轉，太短會跟手勢打架。' },
+  ],
+
   blindbox_mode5: [
     // 出貨節奏
     { key: 'stock',   label: '每格備貨', group: '出貨節奏', type: 'range', min: 0, max: 2,   step: 1,    default: 1,
@@ -58,7 +78,7 @@ export const MACHINE_PARAM_SPECS: Record<string, ParamSpec[]> = {
 }
 
 /** 取某主題的預設值（前台在讀不到設定時也用這份） */
-export function defaultParams(theme: string): Record<string, number | boolean> {
+export function defaultParams(theme: string): Record<string, number | boolean | string> {
   const specs = MACHINE_PARAM_SPECS[theme]
   if (!specs) return {}
   return Object.fromEntries(specs.map(s => [s.key, s.default]))
