@@ -10,7 +10,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/types/database.types';
-import { ActionBar, Button } from '@/components/ui';
+import { Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, Loader2, Check, BookOpen } from 'lucide-react';
@@ -2016,7 +2016,7 @@ export default function ProductDetailPage() {
     // pt 加上警語列高度（--promo-notice-h 由 NoticeBar 量測後掛上）：
     // 警語列是 fixed，不留這段內容會被它蓋住
     <div
-      className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12"
+      className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32"
       style={{ paddingTop: '3.5rem' }}
     >
       <div className="max-w-7xl mx-auto px-2 py-2 sm:py-6">
@@ -2099,28 +2099,6 @@ export default function ProductDetailPage() {
                   </div>
                 </div>
 
-                <div className="pt-2 hidden lg:block">
-                  <div className="flex items-center gap-3">
-          <Button
-                      onClick={totalRemaining === 0 ? handleShowResults : handleDrawClick}
-                      size="lg"
-                      className={cn(
-                        "w-full h-[44px] text-lg font-black rounded-xl shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2",
-                        totalRemaining === 0
-                          ? "bg-neutral-900 dark:bg-neutral-50 text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 shadow-neutral-900/20"
-                          : "shadow-accent-red/20"
-                      )}
-                      variant={totalRemaining === 0 ? "secondary" : "danger"}
-                      disabled={false}
-                    >
-                      {totalRemaining === 0
-                        ? '查看結果'
-                        : product.type === 'ichiban'
-                          ? '立即抽獎'
-                          : '立即轉蛋'}
-                    </Button>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -2382,56 +2360,55 @@ export default function ProductDetailPage() {
           sealed={FAIR_ENGINE_TYPES.includes(product.type)}
         />
 
-        <ActionBar hideOn="lg">
-          <div className="flex items-center gap-4 w-full">
-            <div className="flex flex-col items-center justify-center pl-2">
+        {/* 底部固定操作欄（手機、電腦都顯示）—— 版型與配色照抽卡／盒玩 blindbox_mode5：
+            左側單抽金額，右側「立即抽獎」＋「試試看」。電腦端原本把按鈕畫在左側商品卡裡，
+            老闆指定改成跟抽卡一樣走底部導航 */}
+        <div data-testid="bottom-action-bar" className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-100 bg-white/90 pb-[env(safe-area-inset-bottom)] shadow-modal backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-900/90">
+          <div className="mx-auto flex h-16 max-w-2xl items-center gap-3 px-4">
+            <div className="flex h-full shrink-0 flex-col justify-center pl-1">
+              <span className="mb-0.5 text-[13px] font-black uppercase tracking-widest leading-none text-neutral-400">
+                單抽
+              </span>
               <div className="flex items-center gap-1">
-                <div className="flex items-center justify-center w-4 h-4 rounded-full bg-accent-yellow shadow-sm">
-                  <Image
-                    src="/images/gcoin.webp"
-                    alt="G"
-                    width={10}
-                    height={10}
-                    className="object-contain"
-                  />
-                </div>
-                <div className="flex items-baseline gap-0.5">
-                  <span className="text-[28px] font-black text-accent-red font-amount leading-none tracking-tighter">{product.price.toLocaleString()}</span>
-                  <span className="text-sm font-black text-neutral-400 dark:text-neutral-500 leading-none uppercase tracking-widest">/抽</span>
-                </div>
+                <Image src="/images/gcoin.webp" alt="G" width={16} height={16}
+                  className="inline-block shrink-0" style={{ width: 16, height: 16 }} unoptimized />
+                <span className="font-amount text-xl font-black leading-none text-accent-red">
+                  {(product.price ?? 0).toLocaleString()}
+                </span>
               </div>
             </div>
-            <Button
-              onClick={totalRemaining === 0 ? handleShowResults : handleDrawClick}
-              size="lg"
-              className={cn(
-                "flex-1 h-[44px] text-base font-black rounded-xl shadow-xl transition-all active:scale-[0.95] flex items-center justify-center gap-2",
-                totalRemaining === 0
-                  ? "bg-neutral-900 dark:bg-neutral-50 text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 shadow-neutral-900/20"
-                  : "shadow-accent-red/20"
-              )}
-              variant={totalRemaining === 0 ? "secondary" : "danger"}
-              disabled={false}
-            >
-              {totalRemaining === 0
-                ? '查看結果'
-                : isLotterySale
-                  ? '免費抽籤'
-                  : product.type === 'ichiban'
-                    ? '立即抽獎'
-                    : '立即轉蛋'}
-            </Button>
-            {/* 試試看：一律單抽的免費試玩，走該商品模組自己的演出 */}
-            {(product.type === 'ichiban' || product.type === 'custom') && totalRemaining > 0 && !isLotterySale && (
+
+            <div className="flex h-[44px] flex-1 items-center gap-2">
               <button
-                onClick={handleTrialPlay}
-                className="h-[44px] shrink-0 rounded-xl bg-purple-600 px-3 text-sm font-black text-white shadow-lg shadow-purple-600/30 transition-colors hover:bg-purple-700"
+                onClick={totalRemaining === 0 ? handleShowResults : handleDrawClick}
+                className={cn(
+                  "h-full flex-1 whitespace-nowrap rounded-xl text-base font-black shadow-lg transition-all active:scale-[0.98]",
+                  totalRemaining === 0
+                    ? "bg-neutral-900 text-white shadow-neutral-900/20 hover:bg-neutral-800 dark:bg-neutral-50 dark:text-neutral-900 dark:hover:bg-neutral-200"
+                    : "bg-accent-red text-white shadow-accent-red/30"
+                )}
               >
-                試試看
+                {totalRemaining === 0
+                  ? '查看結果'
+                  : isLotterySale
+                    ? '免費抽籤'
+                    : product.type === 'ichiban'
+                      ? '立即抽獎'
+                      : '立即轉蛋'}
               </button>
-            )}
+              {/* 試試看：一律單抽的免費試玩，走該商品模組自己的演出（免費抽籤模式沒有試玩） */}
+              {(product.type === 'ichiban' || product.type === 'custom') && !isLotterySale && (
+                <button
+                  onClick={handleTrialPlay}
+                  disabled={totalRemaining === 0}
+                  className="h-[44px] shrink-0 rounded-xl bg-purple-600 px-3 text-sm font-black text-white shadow-lg shadow-purple-600/30 transition-colors hover:bg-purple-700 disabled:opacity-50"
+                >
+                  試試看
+                </button>
+              )}
+            </div>
           </div>
-        </ActionBar>
+        </div>
 
         {showResultModal && (
           <PrizeResultModal
