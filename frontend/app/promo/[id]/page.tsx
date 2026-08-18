@@ -85,6 +85,7 @@ export default function PromoListPage() {
                   price={p.price}
                   remaining={p.remaining}
                   total={p.total_count}
+                  cardsPerPack={(p as any).cards_per_pack}
                   isHot={p.is_hot}
                   type={p.type}
                   status={p.status}

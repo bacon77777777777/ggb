@@ -13,6 +13,7 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
   ],
   card:     [
     { value: 'card_pack',  label: '蓄力開卡包（按住撕開 → 翻牌）' },
+    { value: 'card_peel',  label: '撕開封口（拖曳把手撕開 → 逐張翻牌＋累計價值）' },
     { value: 'card_video', label: '過場影片（播完回商品頁彈出恭喜）' },
   ],
   custom:   [
@@ -31,6 +32,7 @@ import AdminLayout from '@/components/AdminLayout'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import { YearMonthPicker, DatePicker, Modal, Input, TagSelector } from '@/components'
 import SelectField from '@/components/ui/SelectField'
+import { InfoIcon } from '@/components/analytics/StatCard'
 import { useLog } from '@/contexts/LogContext'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -58,6 +60,11 @@ export default function NewProductPage() {
     cost: '',
     image: null as File | null,
     imagePreview: '/images/item.png',
+    // 抽卡三張圖：正面＝商品主圖，另兩張額外設定（migration 588）
+    packBackImage: null as File | null,
+    packBackImagePreview: '',
+    cardBackImage: null as File | null,
+    cardBackImagePreview: '',
     // 一律先建成「待上架」（老闆指定）：一番賞／抽卡／自製賞一上架就會
     // 自動排籤封存、殺率同時鎖死，所以要留一個能調殺率的空檔
     status: 'pending',
@@ -79,6 +86,8 @@ export default function NewProductPage() {
     isPreorder: false,
     preorderAvailableAt: '',
     machineTheme: '',
+    // 抽卡整包模式：一抽開幾張（migration 584）。空白或 1 = 單抽模式
+    cardsPerPack: '',
     // 抽籤販售必須在建立時就決定：上架當下就會排籤封存，
     // 之後再切換模式落選籤補不進去（DB trigger 也會擋）
     saleMode: 'normal',
@@ -166,6 +175,20 @@ export default function NewProductPage() {
   // 自動計算商品總數和剩餘數量（排除最後賞）
   const normalPrizes = prizes.filter(p => !isLastOneLevel(p.level))
   const calculatedTotalCount = normalPrizes.reduce((sum, prize) => sum + prize.total, 0)
+
+  /* ── 抽卡兩種模式（DB 端由 migration 586 的 CHECK 把關）──
+     單抽模式：一抽一張，模組不可用「撕開封口」
+     卡包模式：一抽一整包、玩家選的是包，模組固定「撕開封口」，
+               庫存以包為單位（總張數必須是每包張數的整數倍） */
+  const isCardType    = formData.type === 'card'
+  const cardsPerPack  = Math.max(1, Number(formData.cardsPerPack) || 1)
+  const isPackMode    = isCardType && cardsPerPack >= 2
+  const packTotal     = isPackMode ? Math.floor(calculatedTotalCount / cardsPerPack) : 0
+  const packRemainder = isPackMode ? calculatedTotalCount % cardsPerPack : 0
+  const moduleOptions = (MODULE_OPTIONS[formData.type] ?? []).filter(o => {
+    if (!isCardType) return true
+    return isPackMode ? o.value === 'card_peel' : o.value !== 'card_peel'
+  })
   const calculatedRemaining = normalPrizes.reduce((sum, prize) => sum + prize.remaining, 0)
 
   // 當獎項數量變化時，自動更新機率
@@ -255,6 +278,15 @@ export default function NewProductPage() {
       toast('請填寫所有必填欄位並至少添加一個獎項', 'warning')
       return
     }
+    // 卡包模式：庫存以包為單位，張數除不盡代表有永遠賣不掉的尾數張
+    if (isPackMode && packRemainder !== 0) {
+      toast(`卡包模式的總張數必須是每包 ${cardsPerPack} 張的整數倍，目前 ${calculatedTotalCount} 張多出 ${packRemainder} 張`, 'warning')
+      return
+    }
+    if (isPackMode && packTotal < 1) {
+      toast(`卡包模式至少要湊得出一包（每包 ${cardsPerPack} 張）`, 'warning')
+      return
+    }
     if (isLottery) {
       if (!Number(formData.lotteryTotalDraws) || !Number(formData.lotteryPerUserDraws)) {
         toast('抽籤販售必須設定總抽獎次數與每人可抽次數', 'warning')
@@ -321,6 +353,18 @@ export default function NewProductPage() {
       }
       productImageUrl = sanitizeImageUrl(productImageUrl) ?? productImageUrl
 
+      // 抽卡的卡包背面／卡牌背面
+      let packBackUrl: string | null = formData.packBackImagePreview || null
+      if (formData.packBackImage) {
+        const f = formData.packBackImage
+        packBackUrl = await uploadViaAdmin(f, `packback-${Date.now()}.${f.name.split('.').pop()}`)
+      }
+      let cardBackUrl: string | null = formData.cardBackImagePreview || null
+      if (formData.cardBackImage) {
+        const f = formData.cardBackImage
+        cardBackUrl = await uploadViaAdmin(f, `cardback-${Date.now()}.${f.name.split('.').pop()}`)
+      }
+
       // 2. Insert Product
       const totalCount = calculatedTotalCount
       const remaining = calculatedRemaining
@@ -365,9 +409,14 @@ export default function NewProductPage() {
         rarity: formData.rarity,
         started_at: startedAt,
         image_url: productImageUrl || '/images/item.png',
+        pack_back_image_url: isCardType ? packBackUrl : null,
+        card_back_image_url: isCardType ? cardBackUrl : null,
         is_preorder: formData.isPreorder,
         preorder_available_at: formData.preorderAvailableAt ? `${formData.preorderAvailableAt} 00:00:00` : null,
         machine_theme: formData.machineTheme || null,
+        cards_per_pack: formData.type === 'card' && Number(formData.cardsPerPack) > 1
+          ? Number(formData.cardsPerPack)
+          : null,
         ...slotOverrides,
       }
 
@@ -488,8 +537,9 @@ export default function NewProductPage() {
                   required
                 />
               </div>
-              {/* 商品圖 — 點擊上傳（機台：自動帶機台圖片） */}
-              {!isSlot && <label className="flex-shrink-0 cursor-pointer group relative">
+              {/* 商品圖 — 點擊上傳（機台：自動帶機台圖片）。
+                  抽卡改到下面的三圖列，名稱獨佔一行 */}
+              {!isSlot && !isCardType && <label className="flex-shrink-0 cursor-pointer group relative">
                 <input
                   type="file"
                   accept="image/*"
@@ -522,23 +572,106 @@ export default function NewProductPage() {
               </label>}
             </div>
 
-            {/* 類型 */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                類型 <span className="text-red-500">*</span>
-              </label>
-              <SelectField
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              >
-                <option value="ichiban">一番賞</option>
-                <option value="blindbox">盒玩 (盲盒)</option>
-                <option value="gacha">轉蛋</option>
-                <option value="card">抽卡</option>
-                <option value="custom">自製賞</option>
-                <option value="slot">機台</option>
-              </SelectField>
+            {/* 抽卡三張圖排成一列：卡包正面（＝商品主圖）、卡包背面、卡牌背面。
+                卡包模式的輪播與開包演出都吃這三張，不再用內建隨機款式 */}
+            {isCardType && (
+              <div className="grid grid-cols-3 gap-3">
+                {([
+                  { key: 'image',    label: '卡包正面', preview: formData.imagePreview },
+                  { key: 'packBack', label: '卡包背面', preview: formData.packBackImagePreview },
+                  { key: 'cardBack', label: '卡牌背面', preview: formData.cardBackImagePreview },
+                ] as const).map(({ key, label, preview }) => {
+                  const fileKey = key === 'image' ? 'image' : `${key}Image`
+                  const prevKey = key === 'image' ? 'imagePreview' : `${key}ImagePreview`
+                  return (
+                    <div key={key}>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">{label}</label>
+                      <div className="flex items-center gap-2">
+                        <label className="cursor-pointer">
+                          <input type="file" accept="image/*" hidden onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            setFormData(prev => ({ ...prev, [fileKey]: file, [prevKey]: URL.createObjectURL(file) }))
+                          }} />
+                          <div className="w-16 h-16 rounded-lg border-2 border-dashed border-neutral-300 overflow-hidden bg-white flex items-center justify-center hover:border-primary transition-colors">
+                            {preview
+                              ? <img src={preview} alt={label} className="w-full h-full object-cover" />
+                              : <span className="text-lg text-neutral-300">＋</span>}
+                          </div>
+                        </label>
+                        {preview && (
+                          <button type="button" className="text-xs text-neutral-400 hover:text-red-500"
+                            onClick={() => setFormData(prev => ({ ...prev, [fileKey]: null, [prevKey]: '' }))}>
+                            移除
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* 類別（抽卡時右邊併排開卡模式 —— 兩者要一起決定，分開放會漏設） */}
+            <div className={isCardType ? 'grid grid-cols-2 gap-3' : undefined}>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  類別 <span className="text-red-500">*</span>
+                </label>
+                <SelectField
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                >
+                  <option value="ichiban">一番賞</option>
+                  <option value="blindbox">盒玩 (盲盒)</option>
+                  <option value="gacha">轉蛋</option>
+                  <option value="card">抽卡</option>
+                  <option value="custom">自製賞</option>
+                  <option value="slot">機台</option>
+                </SelectField>
+              </div>
+              {isCardType && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <label className="block text-sm font-medium text-neutral-700">開卡模式</label>
+                    <InfoIcon width={280} text={
+                      isPackMode
+                        ? `售價是「一包」的價格，一抽開 ${cardsPerPack} 張、扣 ${cardsPerPack} 張籤。\n\n庫存以包為單位：品項總張數必須是每包張數的整數倍，否則會有湊不成包、永遠賣不掉的尾數。\n\n卡包模式固定使用「撕開封口」演出。`
+                        : '一抽開一張，售價即單張價格。單抽模式不可使用「撕開封口」演出（那是整包的演出）。'
+                    } />
+                  </div>
+                  <SelectField
+                    value={formData.cardsPerPack || '1'}
+                    onChange={(e) => {
+                      const next = e.target.value
+                      // 卡包模式固定「撕開封口」；切回單抽時清掉，免得留下 DB 會擋的組合
+                      const nextTheme = Number(next) >= 2
+                        ? 'card_peel'
+                        : (formData.machineTheme === 'card_peel' ? '' : formData.machineTheme)
+                      setFormData({ ...formData, cardsPerPack: next, machineTheme: nextTheme })
+                    }}
+                  >
+                    <option value="1">單抽模式（一抽一張）</option>
+                    <option value="3">卡包模式・每包 3 張</option>
+                    <option value="5">卡包模式・每包 5 張</option>
+                    <option value="10">卡包模式・每包 10 張</option>
+                    <option value="12">卡包模式・每包 12 張</option>
+                    <option value="20">卡包模式・每包 20 張</option>
+                  </SelectField>
+                </div>
+              )}
             </div>
+            {/* 庫存換算只在「湊不成整包」時醒目提示；正常狀態的說明收在驚嘆號裡 */}
+            {isPackMode && packRemainder !== 0 && (
+              <p className="-mt-1 text-xs text-red-500">
+                庫存以包為單位：目前 {calculatedTotalCount} 張，多出 {packRemainder} 張湊不成整包
+              </p>
+            )}
+            {isPackMode && packRemainder === 0 && calculatedTotalCount > 0 && (
+              <p className="-mt-1 text-xs text-primary">
+                品項共 {calculatedTotalCount} 張 = {packTotal} 包
+              </p>
+            )}
 
             {/* 售價 / 成本（機台：價格由檔次決定，不適用） */}
             {!isSlot && <div className="grid grid-cols-2 gap-3">
@@ -758,19 +891,25 @@ export default function NewProductPage() {
                 })()}
               </div>
               {!isSlot && <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  抽獎模組
-                </label>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <label className="block text-sm font-medium text-neutral-700">抽獎模組</label>
+                  {isPackMode && (
+                    <InfoIcon width={260} text="卡包模式固定使用「撕開封口」，不可更換 —— 兩種模式的演出不通用。" />
+                  )}
+                </div>
                 <SelectField
                   value={formData.machineTheme}
+                  disabled={isPackMode}
                   onChange={(e) => setFormData({ ...formData, machineTheme: e.target.value })}
                 >
-                  <option value="">— 類別預設 —</option>
-                  {(MODULE_OPTIONS[formData.type] ?? []).map(o => (
+                  {/* 卡包模式必須明確指定 card_peel，不能留「類別預設」 */}
+                  {!isPackMode && <option value="">— 類別預設 —</option>}
+                  {moduleOptions.map(o => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </SelectField>
               </div>}
+
             </div>
 
             {/* 機台說明 */}

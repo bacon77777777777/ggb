@@ -244,6 +244,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
                 price={item.price}
                 remaining={item.remaining}
                 total={item.total_count}
+                cardsPerPack={(item as any).cards_per_pack}
                 isHot={item.is_hot || false}
                 category={item.category || ''}
                 type={item.type}

@@ -1550,6 +1550,7 @@ export default function Home() {
                         price={product.price}
                         remaining={product.remaining}
                         total={product.total_count}
+                        cardsPerPack={(product as any).cards_per_pack}
                         isHot={product.is_hot}
                         type={product.type}
                         status={product.status}
@@ -1595,6 +1596,7 @@ export default function Home() {
                     price={product.price}
                     remaining={product.remaining}
                     total={product.total_count}
+                    cardsPerPack={(product as any).cards_per_pack}
                     isHot={product.is_hot}
                     type={product.type}
                     status={product.status}

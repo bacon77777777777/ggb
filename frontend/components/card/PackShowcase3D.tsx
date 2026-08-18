@@ -38,6 +38,13 @@ type Props = {
   onActiveStyleChange?: (styleId: string) => void;
   /** 容器高度（px）。機台區是 375 × 375×(932/750) ≒ 466 */
   height?: number;
+  /**
+   * 指定卡包正／背面圖，蓋過後台參數與內建款式。
+   * 卡包模式用：玩家買的是「這一檔商品的卡包」，樣式必須固定且由商品決定，
+   * 不能每次進頁面都隨機換一款（老闆 2026-08-18）。
+   */
+  frontImage?: string;
+  backImage?: string;
 };
 
 type Params = {
@@ -136,6 +143,23 @@ function imageTexture(img: HTMLImageElement) {
   });
 }
 
+/**
+ * 跨網域圖片改走 Next 的同源圖片端點。
+ *
+ * WebGL 貼圖一定要 crossOrigin='anonymous'，而那要求對方回 Access-Control-Allow-Origin。
+ * 我們的 R2 公開桶**沒有**回這個標頭（實測 2026-08-18），所以直接載商品圖會 onerror，
+ * 卡包整個變白。`/_next/image` 是同源，由伺服器去抓圖再吐給瀏覽器，完全不經過 CORS。
+ * R2 網域已在 next.config 的 remotePatterns 裡，這條路是通的。
+ */
+function sameOriginSrc(src: string): string {
+  if (typeof window === 'undefined') return src;
+  if (!/^https?:\/\//i.test(src)) return src;                 // 本站相對路徑
+  try {
+    if (new URL(src).origin === window.location.origin) return src;
+  } catch { return src; }
+  return `/_next/image?url=${encodeURIComponent(src)}&w=1080&q=90`;
+}
+
 /** 讀圖：卡包圖可能在 R2（跨網域），沒設 crossOrigin 會變 tainted canvas 整張黑掉 */
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -143,7 +167,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = reject;
-    img.src = src;
+    img.src = sameOriginSrc(src);
   });
 }
 
@@ -208,7 +232,7 @@ const METEORS = [
 ];
 
 const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
-  ({ packStyles, onActiveStyleChange, height = 466 }, ref) => {
+  ({ packStyles, onActiveStyleChange, height = 466, frontImage, backImage }, ref) => {
     const mountRef = useRef<HTMLDivElement | null>(null);
     const curRef = useRef(0);
     const paramsRef = useRef<Params>(DEFAULTS);
@@ -219,7 +243,14 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
     const [fallback, setFallback] = useState(false);
 
     useEffect(() => { notifyRef.current = onActiveStyleChange; });
-    useEffect(() => { paramsRef.current = params; }, [params]);
+    // prop 指定的圖優先（卡包模式）；沒給才用後台參數／內建款式
+    useEffect(() => {
+      paramsRef.current = {
+        ...params,
+        frontImage: frontImage || params.frontImage,
+        backImage: backImage || params.backImage,
+      };
+    }, [params, frontImage, backImage]);
 
     // 後台參數（讀不到就用預設，展示照樣能看）
     useEffect(() => {
@@ -397,10 +428,18 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         const p = paramsRef.current;
         for (let i = 0; i < N; i++) {
           const style = packStyles[i] ?? '01';
-          const frontSrc = p.frontImage || `/images/card/pack/${style}a.webp`;
-          const backSrc = p.backImage || `/images/card/pack/${style}b.webp`;
+          const builtinFront = `/images/card/pack/${style}a.webp`;
+          const builtinBack = `/images/card/pack/${style}b.webp`;
+          // 自訂圖載不到（網址失效、格式不支援…）就退回內建款式 —— 寧可長得不一樣，也不要白色空包
+          const loadOr = async (custom: string | undefined, fallback: string) => {
+            if (!custom) return loadImage(fallback);
+            try { return await loadImage(custom); } catch { return loadImage(fallback); }
+          };
           try {
-            const [fImg, bImg] = await Promise.all([loadImage(frontSrc), loadImage(backSrc)]);
+            const [fImg, bImg] = await Promise.all([
+              loadOr(p.frontImage, builtinFront),
+              loadOr(p.backImage, builtinBack),
+            ]);
             if (disposed) return;
             const fTex = imageTexture(fImg);
             const bTex = imageTexture(bImg);
@@ -547,7 +586,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         renderer.dispose();
         if (el.parentNode === mount) mount.removeChild(el);
       };
-    }, [ready, packStyles, height]);
+    }, [ready, packStyles, height, frontImage, backImage]);
 
     if (fallback) {
       const style = packStyles[0] ?? '01';

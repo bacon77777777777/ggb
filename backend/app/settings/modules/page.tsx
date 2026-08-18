@@ -31,12 +31,23 @@ const PRODUCT_TYPES: {
       { value: 'ichiban_tear', label: '沉浸式撕紙', desc: '全畫面場景，撕開揭曉最大賞，再進開獎列表' },
     ],
   },
+  /* 抽卡拆成兩種模式各自的預設（老闆 2026-08-18）：
+     兩種模式的演出不通用 —— 撕開封口是整包的演出，蓄力開卡包是單張的，
+     混在同一個下拉會讓人以為可以互換（DB 端 migration 586 的 CHECK 也會擋）。
+     設定鍵 card = 單抽模式、card_pack_mode = 卡包模式 */
   {
     type: 'card',
-    label: '抽卡',
+    label: '抽卡・單抽模式',
     themes: [
       { value: 'card_pack',  label: '蓄力開卡包', desc: '按住蓄力撕開卡包，卡牌一一揭曉（預設）' },
       { value: 'card_video', label: '過場影片',   desc: '播放開卡影片，播完回商品頁彈出恭喜獲得' },
+    ],
+  },
+  {
+    type: 'card_pack_mode',
+    label: '抽卡・卡包模式',
+    themes: [
+      { value: 'card_peel',  label: '撕開封口',   desc: '拖曳封口把手撕開卡包，卡牌一一揭曉並累計價值（目前僅此一款）' },
     ],
   },
   {

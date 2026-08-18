@@ -40,6 +40,7 @@ const GachaBattleEffect = dynamic(
   { ssr: false },
 );
 const CardDrawAnimation = dynamic(() => import('@/components/card/CardDrawAnimation'), { ssr: false });
+const GgbPackRip = dynamic(() => import('@/components/card/GgbPackRip'), { ssr: false });
 const PackShowcase3D = dynamic(() => import('@/components/card/PackShowcase3D'), {
   ssr: false,
   // 佔位用同一張棚景，載入期間不會出現空白或別的顏色
@@ -916,7 +917,32 @@ export default function ProductDetailPage() {
     const trialPrize = makeTrialPrize();
     if (!product || !trialPrize) return;
     trackEvent('draw_trial', { productId: product.id });
-    setWonPrizes([trialPrize]);
+
+    /*
+     * 卡包模式的試玩要開「一整包」，不是一張（老闆回報：試試看只跑出 1/1）。
+     * 組法：前面填一般卡、最後一張放 makeTrialPrize 挑出的大賞 ——
+     * 演出的收尾光環吃的是最後一張，壓軸擺前面就白做了。
+     */
+    const perPack = Math.max(1, Number((product as any).cards_per_pack) || 1);
+    if (perPack >= 2) {
+      const pool = prizes.filter(
+        p => !(p as { is_last_one?: boolean }).is_last_one
+          && !/最後賞|last\s*one/i.test(String(p.level || '')),
+      );
+      const filler = Array.from({ length: perPack - 1 }, (_, i) => {
+        const pick = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : null;
+        return {
+          id: `trial-${i}`,
+          name: pick?.name ?? '卡片',
+          rarity: String(pick?.level ?? ''),
+          grade: String(pick?.level ?? ''),
+          image_url: pick?.image_url ?? undefined,
+        } as Prize;
+      });
+      setWonPrizes([...filler, trialPrize]);
+    } else {
+      setWonPrizes([trialPrize]);
+    }
     setIsVideoOpen(true);
   };
 
@@ -1446,6 +1472,13 @@ export default function ProductDetailPage() {
           ? validPrizes.reduce((acc, prize) => acc + (prize.remaining || 0), 0)
           : 0);
 
+  /* 抽卡卡包模式（migration 584）：一抽 = 一整包。
+     庫存與價格對玩家一律以「包」為單位呈現 —— 張數是內部的籤位數，
+     玩家買的是包，看到「剩餘 1030」會以為還能抽一千次 */
+  const cardsPerPack = Math.max(1, Number((product as any).cards_per_pack) || 1);
+  const isPackMode = product.type === 'card' && cardsPerPack >= 2;
+  const packsRemaining = isPackMode ? Math.floor((totalRemaining ?? 0) / cardsPerPack) : 0;
+
   const totalItems =
     typeof product.total_count === 'number'
       ? product.total_count
@@ -1534,6 +1567,11 @@ export default function ProductDetailPage() {
                   packStyles={packStyles}
                   onActiveStyleChange={handleActiveStyleChange}
                   height={Math.round(375 * 932 / 750)}
+                  /* 卡包模式：一律用這一檔商品自己的卡包正／背面，不再隨機換內建款式。
+                     玩家買的是「這一檔的卡包」，每次進頁面長得不一樣會很怪（老闆指定）。
+                     正面＝商品主圖，背面＝pack_back_image_url */
+                  frontImage={isPackMode ? (product.image_url || undefined) : undefined}
+                  backImage={isPackMode ? ((product as any).pack_back_image_url || undefined) : undefined}
                 />
               </div>
             </div>
@@ -1792,6 +1830,7 @@ export default function ProductDetailPage() {
                     price={item.price}
                     remaining={item.remaining}
                     total={item.total_count}
+                    cardsPerPack={(item as any).cards_per_pack}
                     isHot={item.is_hot || false}
                     category={item.category || ''}
                     type={item.type}
@@ -1845,13 +1884,17 @@ export default function ProductDetailPage() {
                         <Image src="/images/gcoin.webp" alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-4xl font-black text-accent-red font-amount tracking-tighter leading-none">{product.price.toLocaleString()}</span>
-                          <span className="text-sm text-neutral-400 font-black uppercase tracking-widest">/ 抽</span>
+                          <span className="text-sm text-neutral-400 font-black uppercase tracking-widest">{isPackMode ? '/ 包' : '/ 抽'}</span>
                         </div>
                       </div>
                       {typeof totalRemaining === 'number' && (
                         <div className="text-right shrink-0">
                           <div className="text-[11px] text-neutral-400 font-bold">剩餘</div>
-                          <div className="text-xl font-black text-neutral-900 dark:text-white font-amount leading-none">{totalRemaining.toLocaleString()}</div>
+                          <div className="text-xl font-black text-neutral-900 dark:text-white font-amount leading-none">
+                            {(isPackMode ? packsRemaining : totalRemaining).toLocaleString()}
+                            {isPackMode && <span className="ml-0.5 text-xs font-bold text-neutral-400">包</span>}
+                          </div>
+                          {isPackMode && <div className="text-[10px] text-neutral-400">每包 {cardsPerPack} 張</div>}
                         </div>
                       )}
                     </div>
@@ -1874,7 +1917,50 @@ export default function ProductDetailPage() {
         />
 
         {(() => {
-          const cardTheme = (product as any).machine_theme || moduleSettings['card'];
+          // 全站預設拆成兩組：card = 單抽模式、card_pack_mode = 卡包模式
+          const cardTheme = (product as any).machine_theme
+            || (isPackMode ? moduleSettings['card_pack_mode' as keyof typeof moduleSettings] : moduleSettings['card']);
+          if (cardTheme === 'card_peel') {
+            // 全畫面直開，不套彈窗 —— 原型的根容器本身就是 fixed inset-0，
+            // 再包一層 modal 會變成「畫面裡的一個小框」，跟蓄力開卡包的體感不一致（老闆指定）
+            if (!isVideoOpen || wonPrizes.length === 0) return null;
+            /* 稀有度 → 原型的三層光環：blue 稀有 / purple 史詩 / gold 傳說。
+               最後一張決定整包的收尾光環，所以取整包裡最高的那一級 */
+            const tierOf = (p: Prize): 'blue' | 'purple' | 'gold' => {
+              const raw = `${p.grade ?? ''}${p.rarity ?? ''}`.toUpperCase();
+              if (raw.includes('SSR') || raw.includes('超稀有') || p.is_last_one) return 'gold';
+              if (raw.includes('SR') || raw.includes('A賞')) return 'purple';
+              return 'blue';
+            };
+            const rank = { blue: 0, purple: 1, gold: 2 };
+            const topTier = wonPrizes.reduce<'blue' | 'purple' | 'gold'>(
+              (best, p) => (rank[tierOf(p)] > rank[best] ? tierOf(p) : best), 'blue');
+            /*
+             * 依稀有度排序，最好的那張擺最後（老闆：一包裡最大的那張出現在最後一張位置，
+             * 跟真實卡包一樣）。演出的收尾光環吃的就是最後一張，大賞擺中間等於白做。
+             * 只動「顯示順序」，籤號與獎項本身不變 —— 公平性驗證看的是籤號，不受影響。
+             */
+            const ordered = [...wonPrizes].sort((a, b) => rank[tierOf(a)] - rank[tierOf(b)]);
+            return (
+              /* 疊在頁面之上：原型的 stage 是 fixed inset-0 但沒有 z-index，
+                 直接渲染會被底部操作欄（z-40）、警語列、頁首壓在上面 ——
+                 畫面看起來就是卡包被切一半、還能按「立即開包」。
+                 這層只負責疊層，不是彈窗：仍然是滿版無邊框，與過場影片同一個 z-[2100] */
+              <div className="fixed inset-0 z-[2100]">
+              <GgbPackRip
+                /* 卡包正面＝商品主圖、卡牌背面＝商品設定；沒設才退回內建款式 */
+                packImage={product.image_url || `/images/card/pack/${activePackStyle}a.webp`}
+                cardBack={(product as any).card_back_image_url || '/images/card/back.webp'}
+                cards={ordered.map(p => p.image_url || '/images/card/00004.webp')}
+                prizeTier={topTier}
+                soundDefault={!isVideoMuted}
+                title={product.name}
+                onFinish={handleVideoEnd}
+                onExit={handleVideoEnd}
+              />
+              </div>
+            );
+          }
           if (cardTheme === 'card_pack') {
             return (
               <CardDrawAnimation
@@ -1971,7 +2057,7 @@ export default function ProductDetailPage() {
           <div className="mx-auto flex h-16 max-w-2xl items-center gap-3 px-4">
             <div className="flex h-full shrink-0 flex-col justify-center pl-1">
               <span className="mb-0.5 text-[13px] font-black uppercase tracking-widest leading-none text-neutral-400">
-                單抽
+                {isPackMode ? '單包' : '單抽'}
               </span>
               <div className="flex items-center gap-1">
                 <Image src="/images/gcoin.webp" alt="G" width={16} height={16}
@@ -1983,13 +2069,16 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="flex h-[44px] flex-1 items-center gap-2">
-              <button
-                onClick={handleChangePack}
-                disabled={isSoldOut}
-                className="h-[44px] shrink-0 rounded-xl bg-neutral-200 px-3 text-sm font-black text-neutral-700 transition-colors hover:bg-neutral-300 disabled:opacity-50"
-              >
-                換一批
-              </button>
+              {/* 卡包模式沒有「換一批」：整檔只有一種卡包樣式，換了畫面不會有任何變化 */}
+              {!isPackMode && (
+                <button
+                  onClick={handleChangePack}
+                  disabled={isSoldOut}
+                  className="h-[44px] shrink-0 rounded-xl bg-neutral-200 px-3 text-sm font-black text-neutral-700 transition-colors hover:bg-neutral-300 disabled:opacity-50"
+                >
+                  換一批
+                </button>
+              )}
               <button
                 onClick={isSoldOut ? handleShowResults : handleDrawClick}
                 className="h-full flex-1 whitespace-nowrap rounded-xl bg-accent-red text-base font-black text-white shadow-lg shadow-accent-red/30 transition-all active:scale-[0.98] disabled:opacity-50"
@@ -2341,6 +2430,7 @@ export default function ProductDetailPage() {
                     price={item.price}
                     remaining={item.remaining}
                     total={item.total_count}
+                    cardsPerPack={(item as any).cards_per_pack}
                     isHot={item.is_hot || false}
                     category={item.category || ''}
                     type={item.type}
@@ -2367,7 +2457,7 @@ export default function ProductDetailPage() {
           <div className="mx-auto flex h-16 max-w-2xl items-center gap-3 px-4">
             <div className="flex h-full shrink-0 flex-col justify-center pl-1">
               <span className="mb-0.5 text-[13px] font-black uppercase tracking-widest leading-none text-neutral-400">
-                單抽
+                {isPackMode ? '單包' : '單抽'}
               </span>
               <div className="flex items-center gap-1">
                 <Image src="/images/gcoin.webp" alt="G" width={16} height={16}

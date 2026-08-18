@@ -25,6 +25,8 @@ interface ProductCardProps {
   onNavigate?: () => void;
   hrefOverride?: string;
   unitLabel?: string;
+  /** 抽卡卡包模式：一包幾張。>=2 時價格單位與庫存都以「包」呈現 */
+  cardsPerPack?: number;
   showRemainingText?: boolean;
 }
 
@@ -47,7 +49,8 @@ export default function ProductCard(props: ProductCardProps) {
     status,
     onNavigate,
     hrefOverride,
-    unitLabel = '/抽',
+    unitLabel,
+    cardsPerPack,
     showRemainingText = true,
   } = props;
   const href =
@@ -75,9 +78,17 @@ export default function ProductCard(props: ProductCardProps) {
     }
   };
 
+  /* 卡包模式（migration 584）：玩家買的是包，張數是內部籤位數。
+     這裡不換算的話，列表會顯示「1000/1000」而玩家只買得到 100 包 */
+  const perPack = type === 'card' && (cardsPerPack ?? 1) >= 2 ? (cardsPerPack as number) : 1
+  const isPackMode = perPack >= 2
+  const effUnitLabel = unitLabel ?? (isPackMode ? '/包' : '/抽')
+  const packTotal = typeof total === 'number' ? Math.floor(total / perPack) : total
+  const packRemaining = typeof remaining === 'number' ? Math.floor(remaining / perPack) : remaining
+
   const remainingText =
-    showRemainingText && typeof total === 'number' && typeof remaining === 'number' && total > 0
-      ? `${Math.max(remaining, 0)}/${total}`
+    showRemainingText && typeof packTotal === 'number' && typeof packRemaining === 'number' && packTotal > 0
+      ? `${Math.max(packRemaining, 0)}/${packTotal}`
       : null;
 
   return (
@@ -92,11 +103,15 @@ export default function ProductCard(props: ProductCardProps) {
         {/* Image Container */}
         <div className="relative aspect-square overflow-hidden bg-neutral-100 dark:bg-neutral-800 rounded-t-[8px]">
           <div className="w-full h-full flex items-center justify-center text-white/20 group-hover:scale-105 transition-transform duration-500 relative">
+            {/* 完整顯示商品圖、不裁切（老闆 2026-08-18）。
+                原本是 object-cover，非正方形的商品圖會被切掉上下或左右 ——
+                卡包／盒裝的圖常是直式，切掉的往往正好是商品名那一截。
+                留白處用同色底，看起來是刻意留白而不是破圖 */}
             <Image 
               src={displayImage}
               alt={name}
               fill
-              className="object-cover"
+              className="object-contain"
               unoptimized
               onError={handleImageError}
             />
@@ -176,7 +191,7 @@ export default function ProductCard(props: ProductCardProps) {
                   </div>
                   <div className="flex items-baseline gap-0.5">
                     <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">{price.toLocaleString()}</span>
-                    {!!unitLabel && <span className="text-[11px] font-black text-neutral-400">{unitLabel}</span>}
+                    {!!effUnitLabel && <span className="text-[11px] font-black text-neutral-400">{effUnitLabel}</span>}
                   </div>
                 </div>
               </div>
