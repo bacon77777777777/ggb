@@ -612,15 +612,20 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'adjust_user_tokens',
-    description: '手動調整用戶 G幣（tokens）。delta 正數=增加、負數=扣除。操作前應先 lookup_user 確認對象。',
+    description: '手動調整用戶 G幣（tokens）。delta 正數=增加、負數=扣除。操作前應先 lookup_user 確認對象。category 是會計分類，一定要照老闆的意思自己判斷填，不要反問。',
     input_schema: {
       type: 'object' as const,
       properties: {
-        user_id: { type: 'string', description: '用戶 UUID' },
-        delta:   { type: 'number', description: '代幣增減量（正=增加、負=扣除）' },
-        reason:  { type: 'string', description: '調整原因（必填，會記錄在 user_events）' },
+        user_id:  { type: 'string', description: '用戶 UUID' },
+        delta:    { type: 'number', description: '代幣增減量（正=增加、負=扣除）' },
+        reason:   { type: 'string', description: '調整原因（必填，會記錄在 user_events）' },
+        category: {
+          type: 'string',
+          enum: ['marketing', 'correction', 'internal'],
+          description: '會計分類（必填）：marketing＝行銷贈點／補償／活動獎勵（送玩家的、算行銷費用，最常見）；correction＝帳務更正（之前補錯、扣錯，或系統少扣多扣要修回來）；internal＝內部測試／自用帳號（老闆自己或員工的測試帳）',
+        },
       },
-      required: ['user_id', 'delta', 'reason'],
+      required: ['user_id', 'delta', 'reason', 'category'],
     },
   },
   {
@@ -799,8 +804,15 @@ async function updateProductPrice(productId: number, price: number, actorId?: st
 
 // ─── User write tools ──────────────────────────────────────────────
 
-async function adjustUserTokens(userId: string, delta: number, reason: string, actorId?: string) {
+const TOKEN_ADJUST_CATEGORIES = ['marketing', 'correction', 'internal'] as const
+type TokenAdjustCategory = typeof TOKEN_ADJUST_CATEGORIES[number]
+
+async function adjustUserTokens(userId: string, delta: number, reason: string, actorId?: string, category?: string) {
   if (Math.abs(delta) > 999_999) return { error: '單次調整上限 999,999 G幣，請分次操作' }
+  // 會計分類（migration 582）：沒帶或帶錯就當行銷（送玩家的最常見），DB trigger 也會這樣判
+  const cat: TokenAdjustCategory = (TOKEN_ADJUST_CATEGORIES as readonly string[]).includes(category ?? '')
+    ? (category as TokenAdjustCategory)
+    : 'marketing'
   const supabase = getSupabaseAdmin()
   const { data: user } = await supabase.from('users').select('id, name, email, tokens').eq('id', userId).maybeSingle()
   if (!user) return { error: '找不到用戶' }
@@ -818,6 +830,7 @@ async function adjustUserTokens(userId: string, delta: number, reason: string, a
     delta:      delta,
     reason:     reason,
     created_by: actorId ? `admin#${actorId}` : 'GB哥',
+    category:   cat,
   })
   if (ledgerErr) {
     // Rollback: revert users.tokens since the ledger write failed
@@ -1040,7 +1053,7 @@ async function executeTool(name: string, input: Record<string, any>, actorId?: s
       case 'update_product_price':
         return JSON.stringify(await updateProductPrice(input.product_id, input.price, actorId))
       case 'adjust_user_tokens':
-        return JSON.stringify(await adjustUserTokens(input.user_id, input.delta, input.reason, actorId))
+        return JSON.stringify(await adjustUserTokens(input.user_id, input.delta, input.reason, actorId, input.category))
       case 'update_order_tracking':
         return JSON.stringify(await updateOrderTracking(input.identifier, input.tracking_number, input.status, actorId))
       case 'cancel_order':
@@ -1333,7 +1346,7 @@ function describeToolCall(toolName: string, input: any): string {
     case 'update_product_price':
       return `修改商品 ${input.product_id} 價格為 ${input.price}`
     case 'adjust_user_tokens':
-      return `${input.delta > 0 ? '增加' : '扣除'}用戶 ${input.user_id} 代幣 ${Math.abs(input.delta)}G（原因：${input.reason ?? '未說明'}）`
+      return `${input.delta > 0 ? '增加' : '扣除'}用戶 ${input.user_id} 代幣 ${Math.abs(input.delta)}G（原因：${input.reason ?? '未說明'}；分類：${({ marketing: '行銷／補償', correction: '帳務更正', internal: '內部測試' } as Record<string, string>)[input.category] ?? '行銷／補償'}）`
     case 'update_order_tracking':
       return `更新訂單 ${input.identifier} 追蹤號為 ${input.tracking_number}`
     case 'cancel_order':
@@ -1726,7 +1739,7 @@ error_draw_fail, error_delivery_fail
 執行原則：
 **收到老闆指令 → 立即執行 → 回報結果。絕不把問題丟回給老闆，絕不問確認。**
 - 「把龍種下架」→ run_sql 查 ID → update_product_status(archived) → 回報
-- 「給用戶A補100代幣」→ lookup_user 確認 → adjust_user_tokens → 回報前後數值
+- 「給用戶A補100代幣」→ lookup_user 確認 → adjust_user_tokens（category 自己判：送玩家的＝marketing、修錯帳＝correction、內部測試帳＝internal，不要反問）→ 回報前後數值與分類
 - 「訂單123的追蹤號是ABC」→ update_order_tracking → 回報
 - 「發個100元折扣碼 SAVE100」→ create_coupon → 回報
 - 「把今天的草稿全部核准」→ run_sql 查 pending 草稿 ID → update_content_draft(approved) → 回報

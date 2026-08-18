@@ -13,6 +13,7 @@ export const MENU_PATH_ORDER: Array<{ path: string; permission: string }> = [
   { path: '/reports/logistics',  permission: 'reports_logistics' },
   { path: '/reports/products',   permission: 'reports_products' },
   { path: '/reports/dismantled', permission: 'reports_dismantled' },
+  { path: '/reports/adjustments',permission: 'reports_adjustments' },
   { path: '/reports/settlement', permission: 'reports_settlement' },
   { path: '/products',           permission: 'products' },
   { path: '/draws',              permission: 'draws' },

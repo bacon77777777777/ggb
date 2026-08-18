@@ -119,6 +119,7 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string | string[] }>
   { prefix: '/reports/coupons',     permission: 'coupons_report' },
   { prefix: '/reports/products',    permission: 'reports_products' },
   { prefix: '/reports/dismantled',  permission: 'reports_dismantled' },
+  { prefix: '/reports/adjustments', permission: 'reports_adjustments' },
   { prefix: '/reports/settlement',  permission: 'reports_settlement' },
   { prefix: '/settlement-snapshots',permission: 'settlement_snapshots' },
   // 抽獎管理

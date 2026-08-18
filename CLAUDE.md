@@ -84,6 +84,11 @@ psql <SUPABASE_DB_URL> -f backend/db/migrations/<n>_name.sql
 - `token_adjustments` → type `manual`（GB哥或管理員手動調整）
 
 **重要**：手動補幣必須寫 `token_adjustments`，不可寫 `recharge_records`（後者是 ECPay 對帳基礎）。
+`token_adjustments.category` 是會計分類（migration 582）：`marketing` 行銷／補償｜`correction` 帳務更正｜
+`internal` 內部測試｜`shipping_fee` 運費｜`sell` 商城｜`marketplace` 交易所｜`slot` 機台｜`other`。
+程式寫入時**明確帶 category**；沒帶的由 BEFORE INSERT trigger 照 `created_by`／`reason` 前綴判
+（`classify_token_adjustment()`）。後台「對帳報表 → 手動調整明細」（`/reports/adjustments`）依此分類列出、可匯出。
+銀行轉帳／現金／LINE Pay 手動入帳已停用（用戶儲值一律走綠界），會員頁「手動補幣」只剩行銷贈點／補償／測試／帳務更正。
 
 **機器人排除**：所有財務/分析 query 必須加 `WHERE (is_bot IS NULL OR is_bot = false)` 或使用 `getRealUserIds()`。
 

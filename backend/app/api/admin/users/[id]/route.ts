@@ -178,6 +178,7 @@ export async function PUT(
           delta,
           reason: '後台編輯會員直接調整代幣',
           created_by: 'admin',
+          category: 'correction',   // 直接改數字本質上是修帳（migration 582）
         })
       }
     }

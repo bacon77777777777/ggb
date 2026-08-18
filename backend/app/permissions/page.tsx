@@ -42,6 +42,7 @@ const PERMISSION_GROUPS = [
       { id: 'reports_logistics',   label: '物流明細' },
       { id: 'reports_products',    label: '消費明細' },
       { id: 'reports_dismantled',   label: '分解明細' },
+      { id: 'reports_adjustments',  label: '手動調整明細' },
       { id: 'coupons_report',       label: '折價券明細' },
       { id: 'reports_settlement',   label: '廠商結算' },
       { id: 'settlement_snapshots', label: '廠商月結管理' },
@@ -129,7 +130,7 @@ const ROLE_PRESETS: { label: string; permissions: string[] }[] = [
   },
   {
     label: '財務人員',
-    permissions: ['dashboard', 'recharges', 'reports_logistics', 'reports_products', 'reports_dismantled', 'reports_settlement', 'logs'],
+    permissions: ['dashboard', 'recharges', 'reports_logistics', 'reports_products', 'reports_dismantled', 'reports_adjustments', 'reports_settlement', 'logs'],
   },
   {
     label: '商品管理員',

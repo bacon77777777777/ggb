@@ -268,10 +268,11 @@ export default function UserDetailPage() {
   const [activeTab, setActiveTab] = useState<'orders' | 'draws' | 'recharges' | 'warehouse' | 'dismantled'>('orders')
   const [userDismantled, setUserDismantled] = useState<any[]>([])
 
-  // 手動儲值 Modal
+  // 手動補幣 Modal
   const [showManualRechargeModal, setShowManualRechargeModal] = useState(false)
   const [manualRechargeAmount, setManualRechargeAmount] = useState('')
-  const [manualRechargeMethod, setManualRechargeMethod] = useState<'manual_transfer' | 'cash' | 'line_pay' | 'promotion' | 'compensation' | 'test'>('manual_transfer')
+  // 手動補幣類別（銀行轉帳／現金／LINE Pay 已停用：用戶儲值一律走綠界；帳務調整走「帳務更正」）
+  const [manualRechargeMethod, setManualRechargeMethod] = useState<'promotion' | 'compensation' | 'test' | 'correction'>('promotion')
   const [manualRechargeNote, setManualRechargeNote] = useState('')
   const [manualRechargeLoading, setManualRechargeLoading] = useState(false)
 
@@ -566,7 +567,9 @@ export default function UserDetailPage() {
 
   const handleManualRecharge = async () => {
     const amount = parseInt(manualRechargeAmount)
-    if (!amount || amount <= 0) { toast('請輸入有效金額', 'warning'); return }
+    const isCorrection = manualRechargeMethod === 'correction'
+    if (!amount || (!isCorrection && amount <= 0)) { toast('請輸入有效金額', 'warning'); return }
+    if (isCorrection && !manualRechargeNote.trim()) { toast('帳務更正必須填寫原因', 'warning'); return }
     setManualRechargeLoading(true)
     try {
       const res = await fetch('/api/admin/recharges', {
@@ -581,12 +584,12 @@ export default function UserDetailPage() {
       })
       const data = await res.json()
       if (!res.ok) { toast(data.error || '儲值失敗', 'error'); return }
-      setUser(prev => prev ? { ...prev, tokens: prev.tokens + amount } : prev)
+      setUser(prev => prev ? { ...prev, tokens: Math.max(0, prev.tokens + amount) } : prev)
       setShowManualRechargeModal(false)
       setManualRechargeAmount('')
       setManualRechargeNote('')
-      setManualRechargeMethod('manual_transfer')
-      toast(`已成功儲值 ${amount} G幣`, 'success')
+      setManualRechargeMethod('promotion')
+      toast(amount > 0 ? `已補 ${amount} G幣` : `已扣回 ${Math.abs(amount)} G幣`, 'success')
     } finally {
       setManualRechargeLoading(false)
     }
@@ -737,7 +740,7 @@ export default function UserDetailPage() {
               {user?.isSuspicious ? '解除標記' : '標記可疑'}
             </button>
 
-            {/* 手動儲值 */}
+            {/* 手動補幣 */}
             <button
               onClick={() => setShowManualRechargeModal(true)}
               className="px-4 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-all duration-200 text-sm font-medium flex items-center gap-2 shadow-sm hover:shadow-md"
@@ -745,7 +748,7 @@ export default function UserDetailPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              手動儲值
+              手動補幣
             </button>
 
             {/* 重置密碼 */}
@@ -1509,16 +1512,16 @@ export default function UserDetailPage() {
         </div>
       </Modal>
 
-      {/* 手動儲值 Modal */}
+      {/* 手動補幣 Modal */}
       <Modal
         isOpen={showManualRechargeModal}
         onClose={() => {
           setShowManualRechargeModal(false)
           setManualRechargeAmount('')
           setManualRechargeNote('')
-          setManualRechargeMethod('manual_transfer')
+          setManualRechargeMethod('promotion')
         }}
-        title="手動儲值"
+        title="手動補幣"
         footer={
           <div className="flex justify-end gap-3">
             <button
@@ -1526,7 +1529,7 @@ export default function UserDetailPage() {
                 setShowManualRechargeModal(false)
                 setManualRechargeAmount('')
                 setManualRechargeNote('')
-                setManualRechargeMethod('manual_transfer')
+                setManualRechargeMethod('promotion')
               }}
               className="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors"
             >
@@ -1537,51 +1540,54 @@ export default function UserDetailPage() {
               disabled={manualRechargeLoading || !manualRechargeAmount}
               className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {manualRechargeLoading ? '處理中...' : '確認儲值'}
+              {manualRechargeLoading ? '處理中...' : '確認'}
             </button>
           </div>
         }
       >
         <div className="space-y-4">
           <div className="bg-neutral-50 border border-neutral-200 rounded-lg px-4 py-3 text-sm text-neutral-600">
-            儲值對象：<span className="font-semibold text-neutral-800">{user?.name}</span>（{user?.email}）
+            對象：<span className="font-semibold text-neutral-800">{user?.name}</span>（{user?.email}）
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">儲值金額（G幣）</label>
-            <input
-              type="number"
-              min="1"
-              value={manualRechargeAmount}
-              onChange={(e) => setManualRechargeAmount(e.target.value)}
-              placeholder="請輸入 G幣數量"
-              className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">付款方式</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">類別</label>
             <SelectField
               value={manualRechargeMethod}
               onChange={(e) => setManualRechargeMethod(e.target.value as typeof manualRechargeMethod)}
               className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent bg-white"
             >
-              <option value="manual_transfer">銀行轉帳</option>
-              <option value="cash">現金</option>
-              <option value="line_pay">LINE Pay</option>
-              <option value="promotion">行銷贈點</option>
-              <option value="compensation">補償</option>
-              <option value="test">測試</option>
+              <option value="promotion">行銷贈點（活動獎勵，算行銷費用）</option>
+              <option value="compensation">補償（客訴／系統問題，算行銷費用）</option>
+              <option value="test">測試（內部帳號）</option>
+              <option value="correction">帳務更正（補錯扣錯修回來，可填負數扣回）</option>
             </SelectField>
+            <p className="mt-1 text-xs text-neutral-400">用戶儲值一律走綠界；銀行轉帳／現金／LINE Pay 手動入帳已停用。</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">備註（選填）</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
+              {manualRechargeMethod === 'correction' ? '調整量（G幣，負數＝扣回）' : '補幣數量（G幣）'}
+            </label>
+            <input
+              type="number"
+              min={manualRechargeMethod === 'correction' ? undefined : 1}
+              value={manualRechargeAmount}
+              onChange={(e) => setManualRechargeAmount(e.target.value)}
+              placeholder={manualRechargeMethod === 'correction' ? '例：-500 或 500' : '請輸入 G幣數量'}
+              className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
+              {manualRechargeMethod === 'correction' ? '原因（必填）' : '備註（選填）'}
+            </label>
             <input
               type="text"
               value={manualRechargeNote}
               onChange={(e) => setManualRechargeNote(e.target.value)}
-              placeholder="例：LINE 轉帳確認截圖 #001"
+              placeholder={manualRechargeMethod === 'correction' ? '例：8/12 補償多補 500，扣回' : '例：中秋活動獎勵'}
               className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent"
             />
           </div>

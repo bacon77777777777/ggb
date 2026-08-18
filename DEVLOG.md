@@ -4,6 +4,41 @@
 
 ---
 
+## v2026.08.18c｜2026-08-18｜手動補幣分類、停用銀行轉帳入帳、新增「手動調整明細」報表
+
+老闆拍板三件一次做（給外包會計師對帳／報稅用）：
+
+**① `token_adjustments` 加 `category` 欄（migration 582，兩環境已跑）**
+分類：`marketing` 行銷／補償｜`correction` 帳務更正｜`internal` 內部測試｜`shipping_fee` 出貨運費｜
+`sell` 商城｜`marketplace` 交易所｜`slot` 挑戰機台｜`real_payment` 實收（已停用）｜`other`。
+- `classify_token_adjustment(created_by, reason)` 照既有 11 條寫入路徑的前綴判 —— 每條前綴都不同，
+  回填是確定性的（STG 47 筆、PROD 2 筆，零筆落到 other）
+- BEFORE INSERT trigger：程式沒帶 category 就套同一套規則，8 支寫這張表的 DB 函數
+  （buy_listing／create_delivery_order／enter_slot_rush_direct／sell_*）不用逐支改；程式明確帶的以程式為準
+- 程式端：GB哥 `adjust_user_tokens` 多一個必填 `category`（marketing／correction／internal，
+  要求它自己判不要反問）；後台編輯會員直接改代幣＝`correction`；新增會員初始代幣＝`internal`
+- PROD 那筆 8/12「補記錄」+1,000,000（godfrey）與 8/13 初始代幣 +100,000 都歸 `internal`，報稅要排除
+
+**② 停用銀行轉帳／現金／LINE Pay 手動入帳**
+用戶儲值一律走綠界。這三種以前寫 `token_adjustments`，但儲值明細頁只讀 `recharge_records`，
+實收會從銷售額報表消失。API 現在直接回 400；會員頁「手動儲值」改名「手動補幣」，
+類別只剩行銷贈點／補償／測試（照舊寫 `recharge_records`、算行銷費用）＋新的「帳務更正」
+（寫 `token_adjustments` category=correction，可填負數扣回，原因必填，扣超過餘額擋下）。
+
+**③ 新頁「手動調整明細」`/reports/adjustments`（權限 `reports_adjustments`，migration 583 掛給會計）**
+`token_ledger` 裡 `type='manual'` 的全部依分類列出：KPI（筆數／補出／扣回／淨額＝對帳公式的
+`manual_total`）、分類小計卡（點一下即篩選）、搜尋用戶／Email／原因、日期區間、匯出 CSV
+（欄位有逗號會加引號）。排除機器人用「扣掉 bot id」而不是「只留真人 id」——真人會破千被
+PostgREST 靜默截斷。廠商角色打這支 API 一律 403（`/api/admin/reports` 對廠商是放行的，
+這支是全站帳本）。中介層、`permissionPaths`、`AdminLayout` 選單與說明、權限頁清單、
+財務人員預設都補了。
+
+驗過：API（47 筆、分類篩選、401）、補幣 API 五種情況（銀行轉帳 400、更正缺原因 400、
++100／−100 成功且 category=correction、扣超過餘額 400；測試列已清）、頁面與 modal 截圖。
+`tsc` 只剩既有 `tests/api/line-webhook.test.ts` 的 8 個錯，lint 乾淨。
+
+---
+
 ## v2026.08.18b｜2026-08-18｜會計角色權限收斂（外包會計師：只看錢、只讀）
 
 會計（accountant）角色給的是外包會計師，工作是對帳＋報稅。原則：只看錢、只讀、

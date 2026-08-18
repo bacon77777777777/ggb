@@ -50,8 +50,25 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { user_id, amount, payment_method, note } = body
 
-    if (!user_id || !amount || amount <= 0) {
+    // 手動補幣只剩四種：行銷贈點／補償／測試（寫 recharge_records，行銷費用）、
+    // 帳務更正（寫 token_adjustments，category=correction，可正可負）。
+    // 銀行轉帳／現金／LINE Pay 已停用 —— 用戶儲值一律走綠界；這三種以前寫進
+    // token_adjustments，儲值明細頁又只讀 recharge_records，實收會從銷售額報表消失。
+    const REAL_PAYMENT_METHODS = ['manual_transfer', 'cash', 'line_pay']
+    if (REAL_PAYMENT_METHODS.includes(payment_method ?? '')) {
+      return NextResponse.json(
+        { error: '銀行轉帳／現金／LINE Pay 手動入帳已停用，用戶儲值一律走綠界；帳務調整請選「帳務更正」' },
+        { status: 400 },
+      )
+    }
+    const isCorrection = payment_method === 'correction'
+    const amountNum = Number(amount)
+
+    if (!user_id || !Number.isFinite(amountNum) || amountNum === 0 || (!isCorrection && amountNum <= 0)) {
       return NextResponse.json({ error: '缺少必要參數' }, { status: 400 })
+    }
+    if (isCorrection && !String(note ?? '').trim()) {
+      return NextResponse.json({ error: '帳務更正必須填寫原因' }, { status: 400 })
     }
 
     const supabaseAdmin = getSupabaseAdmin()
@@ -67,22 +84,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '找不到此會員' }, { status: 404 })
     }
 
-    const newTokens = (userData.tokens ?? 0) + amount
+    const newTokens = Math.max(0, (userData.tokens ?? 0) + amountNum)
+    if (isCorrection && (userData.tokens ?? 0) + amountNum < 0) {
+      return NextResponse.json({ error: `扣回超過餘額（目前 ${userData.tokens ?? 0} G）` }, { status: 400 })
+    }
     const tradeNo = `MANUAL-${nanoid(10).toUpperCase()}`
 
     const MARKETING_METHODS = ['promotion', 'compensation', 'test']
     const isMarketing = MARKETING_METHODS.includes(payment_method ?? '')
-    // manual_transfer/cash/line_pay 等非 ECPay 手動補幣寫 token_adjustments（避免污染 ECPay 對帳基礎）
-    // 行銷類型（promotion/compensation/test）仍寫 recharge_records（token_ledger VIEW 的 marketing 來源）
-    const isManualTransfer = !isMarketing
+    if (!isMarketing && !isCorrection) {
+      return NextResponse.json({ error: '不支援的補幣類別' }, { status: 400 })
+    }
 
-    if (isManualTransfer) {
-      const method = payment_method ?? 'manual_transfer'
+    if (isCorrection) {
+      // 帳務更正寫 token_adjustments（不污染 ECPay 對帳基礎），category 明確帶 correction
       const { error: insertErr } = await supabaseAdmin.from('token_adjustments').insert({
         user_id,
-        delta: amount,
-        reason: note ? `${method}：${note}` : method,
+        delta: amountNum,
+        reason: `帳務更正：${String(note).trim()}`,
         created_by: 'admin',
+        category: 'correction',
         created_at: new Date().toISOString(),
       })
       if (insertErr) throw insertErr
@@ -91,7 +112,7 @@ export async function POST(request: Request) {
       const { error: insertErr } = await supabaseAdmin.from('recharge_records').insert({
         user_id,
         amount: 0,
-        bonus: amount,
+        bonus: amountNum,
         status: 'success',
         payment_method: payment_method,
         order_number: tradeNo,

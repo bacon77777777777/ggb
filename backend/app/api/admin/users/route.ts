@@ -223,6 +223,7 @@ export async function POST(request: Request) {
         delta: tokens,
         reason: '新增會員時給的初始代幣',
         created_by: 'admin',
+        category: 'internal',   // 後台手建的帳號都是內部／測試用（migration 582）
       })
     }
 
