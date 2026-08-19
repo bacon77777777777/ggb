@@ -148,7 +148,11 @@ export default function DeleteAccountSheet({
     <div className="fixed inset-0 z-[90] bg-neutral-50 dark:bg-neutral-950 overflow-y-auto">
       <SimplePageHeader title="刪除帳號" onBack={onClose} darkBg="page" className="z-[95]" />
 
-      <div className="max-w-2xl mx-auto p-4 pb-32 space-y-3">
+      {/* SimplePageHeader 是 fixed，內容要自己讓開頭部高度，
+          否則捲到頂端時第一張卡會被壓在導航列底下。
+          safe-header-offset = 頭部高度 + 安全區（見 globals.css） */}
+      <div className="safe-header-offset">
+        <div className="max-w-2xl mx-auto p-4 pb-32 space-y-3">
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-20 text-neutral-400 text-[14px]">
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -239,6 +243,7 @@ export default function DeleteAccountSheet({
             )}
           </>
         )}
+        </div>
       </div>
 
       {!loading && pre && (

@@ -133,8 +133,9 @@ export default function MarketPage() {
 
   if (isLoading) return <ProductLoadingScreen />;
 
+  // safe-header-offset：SimplePageHeader 是 fixed，內容要自己讓開頭部高度
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-28">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-28 safe-header-offset">
       <SimplePageHeader title="交易所" onBack={() => router.back()} />
 
       <div className="max-w-3xl mx-auto px-4 pt-3">

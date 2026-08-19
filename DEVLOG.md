@@ -4,6 +4,20 @@
 
 ---
 
+## v2026.08.19r｜2026-08-19｜修正：刪除帳號頁捲到頂端時被頂部導航蓋住
+
+`SimplePageHeader` 是 `fixed top-0`，內容區必須自己讓開頭部高度，
+但新做的刪除帳號頁只寫了 `p-4` —— 捲到最頂端時第一張須知卡會被壓在導航列底下。
+
+修法是包一層 `safe-header-offset`（`calc(3.5rem + env(safe-area-inset-top))`，
+見 `globals.css`），而不是硬寫 `pt-14` —— 那樣在 PWA 與原生殼裡還是會少掉安全區的高度。
+
+順手掃了其他用 `SimplePageHeader` 的頁面，`/market`（交易所）有同一個毛病
+（只有 `pt-3`）。那頁的 feature flag 目前是關的所以沒被發現，一併修掉。
+`/login`、`/forgot-password`、手機驗證彈層都用 `pt-[88px]` 自己讓開了，沒問題。
+
+---
+
 ## v2026.08.19q｜2026-08-19｜卡包模式改成逐包演出；修正 pack_numbers 順序
 
 **買十包只有第 100 張有特效。**
