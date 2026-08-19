@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ImageButton } from '@/components/ui/ImageButton';
+import { hapticMedium } from '@/lib/haptics';
 
 // ─── layout (750×932 design) ─────────────────────────────────────────────────
 const BOX_DESIGN_W = 100;
@@ -192,6 +193,9 @@ export function BlindboxMachineMode3({
     if (frameRef.current !== undefined) cancelAnimationFrame(frameRef.current);
   }, []);
 
+  /** 落地震動的節流時間戳（見物理迴圈裡的說明） */
+  const lastLandHapticRef = useRef(0);
+
   const startPhysicsLoop = useCallback((onSettled: () => void) => {
     if (physActiveRef.current) return;
     physActiveRef.current = true;
@@ -294,6 +298,16 @@ export function BlindboxMachineMode3({
             b.avZ *= 0.30;
             b.avX = 0;
             b.avY = 0;
+            /*
+             * 盒子觸地：畫面在震，手也要震。
+             * 節流 120ms —— 整箱掉下來時十幾個盒子會在極短時間內陸續落地，
+             * 每個都震會變成一陣沒有層次的嗡嗡聲，而且 iOS 的 Taptic 本身有速率上限。
+             */
+            const now2 = Date.now();
+            if (now2 - lastLandHapticRef.current > 120) {
+              lastLandHapticRef.current = now2;
+              hapticMedium();
+            }
           }
         }
 

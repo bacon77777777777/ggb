@@ -3,6 +3,21 @@
 import { native } from './bridge'
 
 /**
+ * Capacitor 的 Browser.open 只吃**絕對網址**，給相對路徑會直接失敗。
+ * 這個坑踩過一次：儲值的交接頁傳了 `/payment/go?t=…`，開啟失敗後掉進退路
+ * 用 form.submit() 導去綠界，而 Capacitor 把站外網址丟給 Safari 時是 GET ——
+ * POST 的參數整包不見，綠界回 MobileErrorHandle。
+ * 統一在這裡補齊，呼叫端就不必記得。
+ */
+function toAbsolute(url: string): string {
+  try {
+    return new URL(url, typeof window !== 'undefined' ? window.location.href : undefined).href
+  } catch {
+    return url
+  }
+}
+
+/**
  * 開啟外部網址
  *
  * App 裡不能讓外部網站在主 webview 開 —— 那沒有網址列也沒有返回鍵，
@@ -14,7 +29,7 @@ import { native } from './bridge'
  */
 export async function openExternal(url: string): Promise<void> {
   if (native.isNativePlatform()) {
-    const r = await native.call('Browser', 'open', { url, presentationStyle: 'popover' })
+    const r = await native.call('Browser', 'open', { url: toAbsolute(url), presentationStyle: 'popover' })
     if (r !== null) return
   }
   window.open(url, '_blank', 'noopener,noreferrer')
@@ -44,7 +59,7 @@ export async function openPayment(url: string, onClosed: () => void): Promise<bo
       onClosed()
     })
 
-    const opened = await native.call('Browser', 'open', { url, presentationStyle: 'fullscreen' })
+    const opened = await native.call('Browser', 'open', { url: toAbsolute(url), presentationStyle: 'fullscreen' })
     if (opened === null) {
       handle.remove?.()
       return false
@@ -54,4 +69,29 @@ export async function openPayment(url: string, onClosed: () => void): Promise<bo
     console.warn('[payment] in-app browser 開啟失敗', err)
     return false
   }
+}
+
+
+/**
+ * 關掉 in-app browser。
+ *
+ * LINE 登入用得到：授權完成後我們是靠輪詢拿到票的，
+ * 這時瀏覽器還停在回呼頁，要主動收掉玩家才會「自動回到 App」。
+ * 不在 App 裡、或外掛不在，就是 no-op。
+ */
+export async function closeInAppBrowser(): Promise<void> {
+  if (!native.isNativePlatform()) return
+  await native.call('Browser', 'close')
+}
+
+/**
+ * 在 in-app browser 開一個網址，不等它關閉。
+ *
+ * 跟 openExternal 的差別：這支保證走 in-app browser（回得來、關得掉），
+ * 不會退回 window.open。給 OAuth 這種「開出去、我自己輪詢結果」的流程用。
+ */
+export async function openInAppBrowser(url: string): Promise<boolean> {
+  if (!native.isNativePlatform()) return false
+  const r = await native.call('Browser', 'open', { url: toAbsolute(url), presentationStyle: 'popover' })
+  return r !== null
 }

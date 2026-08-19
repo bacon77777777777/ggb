@@ -45,11 +45,58 @@ export default function FigmaTearScene({
   const slideRight    = useRef(false);
   const hasMoved      = useRef(false);  // 任何 pointermove 觸發即為 true，比 slideRight 更早
 
-  // 進場後 2 秒才顯示獎項文字（讓 up1.svg 先載入蓋住）
+  /*
+   * 獎項文字要等蓋板圖真的載好才顯示。
+   *
+   * 原本是寫死 `setTimeout(…, 2000)`，註解也直說是「讓 up1.svg 先載入蓋住」——
+   * 但那是用猜的秒數。冷快取或網路慢的時候 2 秒不夠，蓋板還沒出現、
+   * 獎項文字就先浮上來，玩家還沒撕就看到「A賞」，整個演出直接爆雷。
+   *
+   * 改成監聽實際的載入完成。MIN_DELAY 是節奏用的下限（避免跟蓋板同一幀出現）；
+   * HARD_CAP 是保險 —— 圖真的掛了也不能永遠不顯示，否則撕開後是一片空白。
+   */
   useEffect(() => {
     if (initialDone) return;
-    const t = setTimeout(() => setShowPrize(true), 2000);
-    return () => clearTimeout(t);
+
+    const MIN_DELAY = 400;
+    const HARD_CAP = 8000;
+    const COVER_IMAGES = [
+      '/images/ichiban-tear/up1.svg',  // 蓋板正面，就是它擋住獎項
+      '/images/ichiban-tear/up2.svg',  // 掀起時的背面
+      '/images/ichiban-tear/bg.svg',   // 券底，獎項文字畫在它上面
+    ];
+
+    let cancelled = false;
+    const startedAt = Date.now();
+    let revealTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const reveal = () => {
+      if (cancelled) return;
+      const wait = Math.max(0, MIN_DELAY - (Date.now() - startedAt));
+      revealTimer = setTimeout(() => {
+        if (!cancelled) setShowPrize(true);
+      }, wait);
+    };
+
+    let pending = COVER_IMAGES.length;
+    const settle = () => {
+      if (--pending <= 0) reveal();
+    };
+
+    COVER_IMAGES.forEach((src) => {
+      const img = new window.Image();
+      // 載失敗也要往下走：蓋板破圖的情況下，「撕開後什麼都沒有」比爆雷更糟
+      img.onload = settle;
+      img.onerror = settle;
+      img.src = src;
+    });
+
+    const cap = setTimeout(reveal, HARD_CAP);
+    return () => {
+      cancelled = true;
+      clearTimeout(cap);
+      if (revealTimer) clearTimeout(revealTimer);
+    };
   }, [initialDone]);
 
   // Container resize

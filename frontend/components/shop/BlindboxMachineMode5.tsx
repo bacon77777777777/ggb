@@ -24,6 +24,7 @@ import {
   initMachineAudio, disposeMachineAudio, setMachineVolume, setMusicVolume, setMachineMotion, setDucking,
   sfxThunk, sfxRumble, sfxClack, sfxDing, sfxWhirr, sfxCollect, sfxUiClick,
 } from '@/lib/machineSfx';
+import { hapticLight, hapticMedium } from '@/lib/haptics';
 
 export interface BlindboxMachineMode5Props {
   machineState: 'idle' | 'animating';
@@ -461,6 +462,9 @@ export function BlindboxMachineMode5({
     };
 
     // 撞擊回饋
+    // 落地震動的節流時間戳（見 collisionStart 裡的說明）
+    const lastHaptic = { current: 0 };
+
     M.Events.on(engine, 'collisionStart', ev => {
       const now = performance.now();
       ev.pairs.forEach(p => {
@@ -476,6 +480,16 @@ export function BlindboxMachineMode5({
         if (paramsRef.current.shake) S_.shake = Math.max(S_.shake, power * 7);
         if (now - lastSfx.current > 45) { lastSfx.current = now; sfxThunk(power); }
         if (power > 0.42) sfxRumble(power);   // 撞得夠重才震到機台本體
+        /*
+         * 手機震動跟著撞擊力道走：重擊給 MEDIUM、輕碰給 LIGHT。
+         * 節流 110ms（比音效的 45ms 寬）—— 十顆盒子互相推擠時撞擊事件非常密集，
+         * 每次都震會糊成一片嗡嗡聲，而且 iOS 的 Taptic 本身有速率上限，
+         * 灌太快反而會被系統丟掉、變成完全沒感覺。
+         */
+        if (now - lastHaptic.current > 110) {
+          lastHaptic.current = now;
+          if (power > 0.42) hapticMedium(); else hapticLight();
+        }
       });
     });
 

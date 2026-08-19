@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
@@ -183,18 +183,54 @@ function LoadingSkeleton() {
   );
 }
 
+/*
+ * 返回時記憶瀏覽位置。
+ *
+ * 為什麼不能只靠瀏覽器的捲動還原：這頁每次掛載都重新抓資料，`isLoading` 期間
+ * 列表是空的、頁面高度接近 0 —— 瀏覽器嘗試還原位置的那一刻根本沒有東西可以捲，
+ * 等資料回來已經來不及了。分頁籤也會一併被重設回「全部」。
+ *
+ * 所以把「上次看到哪、在哪個分頁、當時的清單」一起記在模組層。
+ * 用模組變數而不是 sessionStorage：這只需要在單頁應用的前後導航之間有效，
+ * 重新整理時本來就該重抓最新文章，順便自然失效。
+ */
+let listCache: { tab: string; items: NewsItem[]; scrollY: number } | null = null;
+
 // ─── 主頁 ────────────────────────────────────────────────────────────────────
 export default function NewsPage() {
-  const [all, setAll]         = useState<NewsItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('all');
+  // 從快取起手：第一幀就有完整內容，捲動位置才還原得回去
+  const [all, setAll]         = useState<NewsItem[]>(() => listCache?.items ?? []);
+  const [isLoading, setIsLoading] = useState(() => !listCache);
+  const [activeTab, setActiveTab] = useState(() => listCache?.tab ?? 'all');
   const supabase = createClient();
+
+  // 內容已經在 DOM 裡了才捲。用 layout effect + rAF：
+  // layout effect 早於瀏覽器繪製，rAF 讓出一幀給圖片版位撐開
+  useLayoutEffect(() => {
+    const y = listCache?.scrollY ?? 0;
+    if (!y) return;
+    requestAnimationFrame(() => window.scrollTo(0, y));
+  }, []);
+
+  // 持續記住捲到哪。passive 監聽，只寫一個數字，不觸發 re-render
+  useEffect(() => {
+    const onScroll = () => { if (listCache) listCache.scrollY = window.scrollY; };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // 清單與分頁籤同步進快取
+  useEffect(() => {
+    listCache = { tab: activeTab, items: all, scrollY: listCache?.scrollY ?? 0 };
+  }, [all, activeTab]);
 
   useEffect(() => {
     trackEvent('news_list_view', { path: '/news' });
   }, []);
 
   const handleTabChange = (value: string) => {
+    // 換分頁等於換一份清單，位置要歸零 —— 不然會停在上一個分頁捲到的高度
+    if (listCache) listCache.scrollY = 0;
     setActiveTab(value);
     if (value !== 'all') {
       trackEvent('news_category_filter', { path: '/news', meta: { category: value } });
@@ -246,7 +282,10 @@ export default function NewsPage() {
   };
 
   useEffect(() => {
-    setIsLoading(true);
+    // 有這個分頁的快取就不要再閃一次 loading —— 直接顯示舊內容、背景換新的。
+    // 這也是捲動位置能還原的前提：畫面不能在還原前變成空的
+    const cached = listCache?.tab === activeTab && listCache.items.length > 0;
+    if (!cached) setIsLoading(true);
     loadArticles(activeTab);
     // 回到頁面時刷新讚/留言數，確保與內頁同步
     const onFocus = () => { if (document.visibilityState === 'visible') loadArticles(activeTab); };

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
+import { hapticLight, hapticMedium } from '@/lib/haptics';
 
 interface BoosterPackProps {
   packImage?: string;
@@ -75,22 +76,38 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
 
   const s = dimW / DW;
 
+  /*
+   * 蓄力的震動節點（progress 0~1）。
+   * 間距刻意由疏到密 —— 等距的話手感是平的，密起來才有「快滿了」的蓄力感。
+   * iOS 沒有「持續震動」這種 API，連續的觸覺一律是靠密集的短震堆出來的。
+   */
+  const HAPTIC_STOPS = useMemo(() => [0.2, 0.38, 0.52, 0.64, 0.74, 0.82, 0.89, 0.95], []);
+  const hapticIdx = useRef(0);
+
   const tick = useCallback((now: number) => {
     const progress = Math.min((now - startRef.current) / 700, 1);
     setCharge(progress * 100);
+
+    while (hapticIdx.current < HAPTIC_STOPS.length && progress >= HAPTIC_STOPS[hapticIdx.current]) {
+      hapticIdx.current++;
+      hapticLight();
+    }
+
     if (progress >= 1) {
+      hapticMedium();            // 蓄滿：明顯較重的一下，不用看畫面也知道
       setPhase('tearing');
       setTimeout(() => { setPhase('done'); onComplete?.(); }, 420);
     } else {
       rafRef.current = requestAnimationFrame(tick);
     }
-  }, [onComplete]);
+  }, [onComplete, HAPTIC_STOPS]);
 
   const pointerStartX = useRef(0);
   const pointerStartTime = useRef(0);
 
   const triggerTear = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
+    hapticMedium();              // 右滑直接撕開，跳過蓄力也要有回饋
     setCharge(100);
     setPhase('tearing');
     setTimeout(() => { setPhase('done'); onComplete?.(); }, 420);
@@ -104,6 +121,8 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
     pointerStartTime.current = performance.now();
     setPhase('charging');
     setCharge(0);
+    hapticIdx.current = 0;
+    hapticLight();               // 按下去先給一下，讓玩家知道按到了
     startRef.current = performance.now();
     rafRef.current = requestAnimationFrame(tick);
   }, [phase, tick]);
@@ -119,6 +138,7 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
     }
     if (phase !== 'charging') return;
     cancelAnimationFrame(rafRef.current);
+    hapticIdx.current = 0;
     setCharge(0);
     setPhase('idle');
   }, [phase, triggerTear]);

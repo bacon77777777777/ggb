@@ -408,3 +408,16 @@ img {
 .safe-header-offset {
   padding-top: calc(3.5rem + env(safe-area-inset-top));
 }
+
+
+/* 下拉更新：滿格放手後的轉圈（見 components/PwaPullToRefresh.tsx）。
+   inline style 寫不了 keyframes，所以放這裡。 */
+@keyframes ptr-spin {
+  to { transform: rotate(360deg); }
+}
+.ptr-spin {
+  animation: ptr-spin .7s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ptr-spin { animation: none; }
+}

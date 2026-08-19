@@ -6,6 +6,7 @@ import { isSoundMuted } from '@/lib/soundPrefs';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ImageButton } from '@/components/ui/ImageButton';
+import { hapticMedium } from '@/lib/haptics';
 
 // ─── layout (750×932 design) ─────────────────────────────────────────────────
 const BOX_DESIGN_W = 100;
@@ -498,6 +499,7 @@ export function BlindboxMachineMode2({
 
     const tDrop = setTimeout(() => {
       playDrop(); // 盒子掉落音效
+      hapticMedium(); // 盒子落地：畫面在震，手也要震
       setSlotState(prev => {
         const n = [...prev];
         selected.forEach(idx => { n[idx] = 'gone'; });

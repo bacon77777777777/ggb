@@ -16,6 +16,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { SoundToggle } from "@/components/ui/SoundToggle";
 import useSoundMuted from "@/hooks/useSoundMuted";
 import { createClient } from "@/lib/supabase/client";
+import { hapticLight, hapticMedium } from '@/lib/haptics';
 
 /* 後台「抽獎模組設定 → 卡包模式 → 撕開封口」可調的參數，
    讀不到就用這組預設（跟 backend/app/settings/modules/machineParams.ts 的 default 一致） */
@@ -337,6 +338,12 @@ export default function GGBPackRip({
      * 改成自己算好進度、在 updater 外面判斷，另外用 ripped 這道鎖保證只跑一次。
      */
     const np = Math.min(1, progRef.current + dx / (window.innerWidth * PEEL_FACTOR));
+    /*
+     * 撕開的顆粒感：每前進約 8% 震一下輕的。
+     * 真實撕紙是一連串細微的斷裂，不是一下大的 —— 密集短震最接近那個感覺。
+     * iOS 沒有「持續震動」API，連續觸覺一律靠這樣堆出來。
+     */
+    if (Math.floor(np / 0.08) > Math.floor(progRef.current / 0.08)) hapticLight();
     progRef.current = np;
     setProgress(np);
     if (np >= 1) finishRip();
@@ -347,6 +354,7 @@ export default function GGBPackRip({
   const finishRip = () => {
     if (ripped.current) return;
     ripped.current = true;
+    hapticMedium();  // 撕開的瞬間
     peel.current.on = false;
     sfx.current.tearDone();
     setFlash(true); later(() => setFlash(false), 400);
@@ -363,7 +371,8 @@ export default function GGBPackRip({
     requestAnimationFrame(() => requestAnimationFrame(() => setDealt(true)));
     sfx.current.shuffle();
     const n = Math.min(cards.length, 8); // 疊太多沒必要全部動畫
-    for (let i = 0; i < n; i++) later(() => sfx.current.deal(), i * cfg.dealStagger);
+    // 發牌：每張跟著音效震一下，牌落到桌上的手感
+    for (let i = 0; i < n; i++) later(() => { sfx.current.deal(); hapticLight(); }, i * cfg.dealStagger);
     const dealDone = (n - 1) * cfg.dealStagger + DEAL_DUR;
     later(() => setDealing(false), dealDone);
     later(() => { if (cards.length > 1) flipTop(0); }, dealDone + cfg.flipDelay); // 只剩最後一張時等玩家點
@@ -445,6 +454,7 @@ export default function GGBPackRip({
         setFlipped(false);            // 一律卡背，不翻正面
         setFlying({ dir: 1 });        // 往右飛
         sfx.current.deal();           // 短音；card-fly 有 1 秒，55ms 一張會糊成一團
+        hapticLight();                // 一張一下，飛牌的節奏用手感也帶出來
       }, k * STEP_MS);
       later(() => {
         setCardIdx(at + 1);
@@ -497,6 +507,27 @@ export default function GGBPackRip({
    */
   const hypeOn = phase === "cards" && isLast && !flipped && dealt
     && (TIERS[prizeTier] || TIERS.blue).big;
+
+  /*
+   * 卡背醞釀期的間隔震動（老闆 2026-08-19）。
+   *
+   * 藍與紫**都要**，但要分得出來 —— 紫比較密、比較重（450ms / MEDIUM），
+   * 藍是輕微的心跳感（760ms / LIGHT）。玩家把手機拿在手上、眼睛盯著卡背時，
+   * 光靠震動的節奏就知道這張大不大。
+   *
+   * 不用更密的間隔：iOS 的 Taptic 有速率上限，灌太快會被系統丟掉反而變沒感覺；
+   * 而且太密會從「心跳」變成「嗡嗡聲」，緊張感消失。
+   */
+  const anticipateOn = phase === "cards" && isLast && !flipped && dealt;
+  useEffect(() => {
+    if (!anticipateOn) return;
+    const purple = prizeTier === "purple";
+    const every = purple ? 450 : 760;
+    const beat = () => (purple ? hapticMedium() : hapticLight());
+    beat();                                   // 卡背停穩就先來一下
+    const id = setInterval(beat, every);
+    return () => clearInterval(id);
+  }, [anticipateOn, prizeTier]);
   useEffect(() => {
     if (!hypeOn || !sound) return;
     const a = sfx.current; // 同上

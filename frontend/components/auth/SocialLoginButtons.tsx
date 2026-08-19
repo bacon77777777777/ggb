@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/Toast';
+import { native } from '@/lib/native/bridge';
+import { closeInAppBrowser, openInAppBrowser } from '@/lib/native/browser';
 
 /**
  * 社群登入
@@ -13,6 +15,13 @@ import { useToast } from '@/components/ui/Toast';
  *
  * **一般瀏覽器**：整頁導去 LINE 授權（會跳 LINE app 一鍵允許），
  * 回程落在同一個瀏覽器，/auth/line/callback 當場完成登入。
+ *
+ * **原生 App（Capacitor）**：跟偽 app 同樣走輪詢票，但授權頁開在
+ * in-app browser（SFSafariViewController／Custom Tabs）。它一樣會跳去
+ * LINE app 一鍵允許，回程落在 in-app browser 裡；票一到我們主動把它關掉，
+ * 玩家就「自動回到 App」，不必自己切。
+ * ⚠️ 不能走下面那條整頁導向：access.line.me 不在 allowNavigation 白名單裡，
+ * 會被丟到系統 Safari，登入態建在 Safari 的 cookie 裡，App 永遠拿不到。
  *
  * **偽 app（加入主畫面的 PWA）**：iOS 不讓任何 app 把網址開回偽 app，
  * 跳出去就回不來。所以主視窗不離開 —— 用 window.open 開覆蓋視窗去授權
@@ -90,6 +99,8 @@ export function SocialLoginButtons() {
       // 系統允許，失敗就算了，玩家還是可以自己關
       try { popupRef.current?.close(); } catch { /* 由系統決定 */ }
       popupRef.current = null;
+      // 原生 App：授權頁開在 in-app browser，主動收掉玩家才會自動回到 App
+      void closeInAppBrowser();
       const supabase = createClient();
       const { error } = await supabase.auth.verifyOtp({ token_hash: json.tokenHash, type: 'email' });
       if (!error) {
@@ -114,7 +125,10 @@ export function SocialLoginButtons() {
   const startLineLogin = () => {
     const state = crypto.randomUUID();
 
+    const isNativeApp = native.isNativePlatform();
+
     const standalone =
+      isNativeApp ||
       window.matchMedia?.('(display-mode: standalone)').matches ||
       (navigator as { standalone?: boolean }).standalone === true;
 
@@ -126,12 +140,24 @@ export function SocialLoginButtons() {
       return;
     }
 
-    // 偽 app：主視窗留在這裡輪詢，授權開在覆蓋視窗
+    // 偽 app／原生 App：主視窗留在這裡輪詢，授權開在另一個視窗
     stateRef.current = state;
     deadlineRef.current = Date.now() + POLL_TIMEOUT_MS;
     setWaiting(true);
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => void claimTicket(), POLL_INTERVAL_MS);
+
+    if (isNativeApp) {
+      // in-app browser：跳得出去、回得來、而且我們關得掉
+      void openInAppBrowser(authorizeUrl(state)).then((ok) => {
+        if (!ok) {
+          // 外掛不在就退回開新視窗，至少還登得成（玩家要自己切回來）
+          popupRef.current = window.open(authorizeUrl(state), '_blank');
+        }
+      });
+      return;
+    }
+
     popupRef.current = window.open(authorizeUrl(state), '_blank');
   };
 

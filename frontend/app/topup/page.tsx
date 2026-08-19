@@ -91,7 +91,9 @@ export default function TopupPage() {
           const { token } = await res.json();
           if (cancelled) return;
 
-          const opened = await openPayment(`/payment/go?t=${encodeURIComponent(token)}`, () => {
+          // 一定要絕對網址：Capacitor 的 Browser.open 不吃相對路徑
+          const goUrl = `${window.location.origin}/payment/go?t=${encodeURIComponent(token)}`;
+          const opened = await openPayment(goUrl, () => {
             // 使用者關掉付款頁就回來了 —— 付成功與否由後端 callback 決定，
             // 這裡只負責把畫面上的餘額換成最新的
             void refreshProfile?.();
@@ -100,11 +102,28 @@ export default function TopupPage() {
             isProcessingRef.current = false;
           });
           if (opened) return;
+          /*
+           * in-app browser 開不起來時，退而求其次讓 webview 自己導去交接頁。
+           * 交接頁在自家網域、在 allowNavigation 白名單內，所以不會被丟出去；
+           * 它會在 webview 裡自動送出表單，付款照樣走得完。
+           */
+          if (!cancelled) window.location.href = goUrl;
+          return;
         } catch (err) {
-          console.error('[topup] App 付款交接失敗，退回一般跳轉', err);
+          console.error('[topup] App 付款交接失敗', err);
         }
-        // 交接失敗就退回原本的做法，至少還付得成
-        if (!cancelled) formRef.current?.submit();
+        /*
+         * ⚠️ 這裡**不能**退回 formRef.submit()。
+         * 那會讓 webview 導去綠界，而 Capacitor 把站外網址交給 Safari 時是 GET —— 
+         * POST 參數整包遺失，玩家看到的是綠界的 MobileErrorHandle 錯誤頁。
+         * 寧可讓他重按一次，也不要把人丟到一個死掉的付款頁。
+         */
+        if (!cancelled) {
+          showToast('付款頁開啟失敗，請再試一次', 'error');
+          setPaymentData(null);
+          setIsProcessing(false);
+          isProcessingRef.current = false;
+        }
       })();
       return () => {
         cancelled = true;

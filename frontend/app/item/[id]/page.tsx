@@ -17,6 +17,8 @@ import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, Loader2, Check, Bo
 import SoundToggle, { RAISED_STYLE } from '@/components/ui/SoundToggle';
 import { useSoundMuted } from '@/hooks/useSoundMuted';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
+import { machineAssets } from '@/lib/machineAssets';
+import { useMachineAssets } from '@/lib/useMachineAssets';
 import ProductCard from '@/components/ProductCard';
 import { useState, useEffect, useMemo, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
@@ -439,7 +441,34 @@ export default function ProductDetailPage() {
   }, [product?.id]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMachineReady, setIsMachineReady] = useState(false);
+
   const [moduleSettings, setModuleSettings] = useState<Record<string, MachineTheme>>({});
+
+  /*
+   * 抽卡的首屏素材預載（老闆回報：進去先看到一張全白卡包）。
+   *
+   * 轉蛋靠機台主圖的 onLoadingComplete 回報、盒玩有自己的 onLoaded，
+   * 只有抽卡完全沒有把關 —— 卡包的棚景底圖與卡背還沒到，畫面就先渲染出去了。
+   *
+   * ⚠️ 位置有講究：hook 不能寫在 `if (product.type === 'card')` 裡（條件呼叫），
+   * 也不能放在第一個條件式 return 之後。這裡剛好在 moduleSettings 宣告之後、
+   * 所有 return 之前。isPackMode 直接就地算，不用後面那個（它宣告得更晚）。
+   */
+  const cardAssetUrls = useMemo(() => {
+    if (!product || product.type !== 'card') return [];
+    const perPack = Math.max(1, Number((product as any).cards_per_pack) || 1);
+    const theme = (product as any).machine_theme
+      || (perPack >= 2
+        ? moduleSettings['card_pack_mode' as keyof typeof moduleSettings]
+        : moduleSettings['card']);
+    // 商品自己的卡包正面／卡背也要等 —— 那才是玩家第一眼看到的東西
+    return machineAssets(theme, [
+      (product as any).pack_front_image_url,
+      (product as any).card_back_image_url,
+      product.image_url,
+    ]);
+  }, [product, moduleSettings]);
+  const cardAssetsReady = useMachineAssets(cardAssetUrls);
 
   const [isFollowed, setIsFollowed] = useState(false);
   const [isGachaLoading, setIsGachaLoading] = useState(false);
@@ -1915,7 +1944,13 @@ export default function ProductDetailPage() {
     );
 
     return (
-      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
+      <>
+      {/* 素材沒到就先放載入動畫，跟轉蛋同一套處理，避免半成品先攤在玩家眼前 */}
+      {!cardAssetsReady && <ProductLoadingScreen />}
+      <div
+        className="min-h-screen bg-neutral-50 dark:bg-neutral-950"
+        style={!cardAssetsReady ? { visibility: 'hidden', position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' } : undefined}
+      >
         {/* Mobile < 1024px；pt 同上，要含警語列高度 */}
         <div
           className="block lg:hidden overflow-x-hidden pb-32"
@@ -2194,6 +2229,7 @@ export default function ProductDetailPage() {
 
         {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar />}
       </div>
+      </>
     );
   }
 

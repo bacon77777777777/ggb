@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { useSettingsStatus } from '@/components/auth/useSettingsStatus';
+import { native } from '@/lib/native/bridge';
+import { closeInAppBrowser, openInAppBrowser } from '@/lib/native/browser';
 
 /**
  * 會員中心「LINE 帳號」那一列 —— 綁定既有帳號的入口
@@ -74,6 +76,8 @@ export function LineBindRow() {
       stopPolling();
       try { popupRef.current?.close(); } catch { /* 由系統決定 */ }
       popupRef.current = null;
+      // 原生 App：授權頁開在 in-app browser，主動收掉玩家才會自動回到 App
+      void closeInAppBrowser();
 
       if (json.bound) {
         showToast(
@@ -101,7 +105,15 @@ export function LineBindRow() {
     // Safari 那頭只有 state 可看，意圖必須寫在裡面
     const state = `bind.${crypto.randomUUID()}`;
 
+    /*
+     * 原生 App 走跟偽 app 同一條輪詢票的路。
+     * 不能走整頁導向：access.line.me 不在 Capacitor 的 allowNavigation 裡，
+     * 會被丟到系統 Safari，綁定結果回不到 App。
+     */
+    const isNativeApp = native.isNativePlatform();
+
     const standalone =
+      isNativeApp ||
       window.matchMedia?.('(display-mode: standalone)').matches ||
       (navigator as { standalone?: boolean }).standalone === true;
 
@@ -117,6 +129,14 @@ export function LineBindRow() {
     setWaiting(true);
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => void claimTicket(), POLL_INTERVAL_MS);
+
+    if (isNativeApp) {
+      void openInAppBrowser(authorizeUrl(state)).then((ok) => {
+        if (!ok) popupRef.current = window.open(authorizeUrl(state), '_blank');
+      });
+      return;
+    }
+
     popupRef.current = window.open(authorizeUrl(state), '_blank');
   };
 
