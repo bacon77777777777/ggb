@@ -14,7 +14,7 @@ import { Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, Loader2, Check, BookOpen } from 'lucide-react';
-import SoundToggle from '@/components/ui/SoundToggle';
+import SoundToggle, { RAISED_STYLE } from '@/components/ui/SoundToggle';
 import { useSoundMuted } from '@/hooks/useSoundMuted';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import ProductCard from '@/components/ProductCard';
@@ -1558,14 +1558,30 @@ export default function ProductDetailPage() {
                 onClick={toggleSkipPackIntro}
                 aria-pressed={skipPackIntro}
                 title={skipPackIntro ? '已開啟：直接看第一張卡' : '略過撕卡包，直接看第一張卡'}
-                className="absolute flex h-9 w-9 items-center justify-center rounded-full backdrop-blur transition-colors"
+                /* 尺寸與質感對齊右上角的靜音鈕：漸層＋內緣高光＋外投影，
+                   按下時往下沉一格。開啟時整顆轉成金色，一眼看得出狀態 */
+                className="absolute flex h-[38px] w-[38px] items-center justify-center rounded-full transition-all active:translate-y-[1px] active:scale-95"
+                /* 與右上角靜音鈕共用同一組立體樣式（行內寫，tailwind 的多重 box-shadow
+                   arbitrary class 解析不出來）。開啟時整顆轉金色，一眼看得出狀態 */
                 style={{
                   left: 12, top: 12, zIndex: 25,
-                  backgroundColor: skipPackIntro ? 'rgba(250,204,21,0.92)' : 'rgba(0,0,0,0.45)',
-                  color: skipPackIntro ? '#3b2d00' : '#fff',
+                  color: skipPackIntro ? '#4a3200' : '#fff',
+                  ...(skipPackIntro
+                    ? {
+                        background:
+                          'radial-gradient(115% 100% at 50% -10%, rgba(255,255,255,0.7) 0%, rgba(253,220,110,0.96) 30%,' +
+                          ' rgba(243,175,26,1) 66%, rgba(192,124,8,1) 100%)',
+                        boxShadow:
+                          '0 6px 14px rgba(170,110,0,0.36), 0 1px 3px rgba(120,80,0,0.26),' +
+                          ' inset 0 2px 4px -2px rgba(255,255,255,0.95),' +
+                          ' inset 0 -8px 12px -7px rgba(120,76,0,0.55),' +
+                          ' inset 0 0 0 1px rgba(255,255,255,0.16)',
+                      }
+                    : RAISED_STYLE),
                 }}
               >
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden
+                     className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]">
                   <path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12l1-8.5z" />
                 </svg>
               </button>
