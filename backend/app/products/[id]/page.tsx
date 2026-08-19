@@ -203,6 +203,8 @@ export default function EditProductPage() {
     boxImage: null as File | null,
     boxImagePreview: '',
     // 抽卡三張圖：正面用商品主圖，這兩張額外設定（migration 588）
+    packFrontImage: null as File | null,
+    packFrontImagePreview: '',
     packBackImage: null as File | null,
     packBackImagePreview: '',
     cardBackImage: null as File | null,
@@ -504,6 +506,8 @@ export default function EditProductPage() {
             selectedTagIds: tagIds,
             boxImage: null as File | null,
             boxImagePreview: (product as any).box_image_url || '',
+            packFrontImage: null as File | null,
+            packFrontImagePreview: (product as any).pack_front_image_url || '',
             packBackImage: null as File | null,
             packBackImagePreview: (product as any).pack_back_image_url || '',
             cardBackImage: null as File | null,
@@ -640,6 +644,11 @@ export default function EditProductPage() {
       }
 
       // 1c. 抽卡的卡包背面／卡牌背面
+      let packFrontUrl: string | null = formData.packFrontImagePreview || null
+      if (formData.packFrontImage) {
+        const f = formData.packFrontImage
+        packFrontUrl = await uploadViaAdmin(f, `packfront-${Date.now()}.${f.name.split('.').pop()}`)
+      }
       let packBackUrl = formData.packBackImagePreview || null
       if (formData.packBackImage) {
         const f = formData.packBackImage
@@ -683,6 +692,7 @@ export default function EditProductPage() {
         // seed: formData.seed || null,
         image_url: productImageUrl,
         box_image_url: boxImageUrl,
+        pack_front_image_url: formData.type === 'card' ? packFrontUrl : null,
         pack_back_image_url: formData.type === 'card' ? packBackUrl : null,
         card_back_image_url: formData.type === 'card' ? cardBackUrl : null,
       }
@@ -958,9 +968,10 @@ export default function EditProductPage() {
               {/* 抽卡三張圖排成一列：卡包正面（＝商品主圖）、卡包背面、卡牌背面。
                   卡包模式的輪播與開包演出都吃這三張，不再用內建隨機款式 */}
               {isCardType && (
-                <div className="col-span-2 grid grid-cols-3 gap-3">
+                <div className="col-span-2 grid grid-cols-4 gap-3">
                   {([
-                    { key: 'image',    label: '卡包正面', preview: formData.imagePreview },
+                    { key: 'image',     label: '商品圖片', preview: formData.imagePreview },
+                  { key: 'packFront', label: '卡包正面', preview: formData.packFrontImagePreview },
                     { key: 'packBack', label: '卡包背面', preview: formData.packBackImagePreview },
                     { key: 'cardBack', label: '卡牌背面', preview: formData.cardBackImagePreview },
                   ] as const).map(({ key, label, preview }) => (

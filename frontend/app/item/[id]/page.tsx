@@ -1613,7 +1613,9 @@ export default function ProductDetailPage() {
                   /* 卡包模式：一律用這一檔商品自己的卡包正／背面，不再隨機換內建款式。
                      玩家買的是「這一檔的卡包」，每次進頁面長得不一樣會很怪（老闆指定）。
                      正面＝商品主圖，背面＝pack_back_image_url */
-                  frontImage={isPackMode ? (product.image_url || undefined) : undefined}
+                  /* 卡包正面是獨立欄位（migration 592）；沒設才退回商品主圖 —— 商品主圖是
+                     列表／小卡用的，構圖跟直式卡包不一定合，不該綁在一起 */
+                  frontImage={isPackMode ? ((product as any).pack_front_image_url || product.image_url || undefined) : undefined}
                   backImage={isPackMode ? ((product as any).pack_back_image_url || undefined) : undefined}
                 />
               </div>
@@ -1999,8 +2001,8 @@ export default function ProductDetailPage() {
                  這層只負責疊層，不是彈窗：仍然是滿版無邊框，與過場影片同一個 z-[2100] */
               <div className="fixed inset-0 z-[2100]">
               <GgbPackRip
-                /* 卡包正面＝商品主圖、卡牌背面＝商品設定；沒設才退回內建款式 */
-                packImage={product.image_url || `/images/card/pack/${activePackStyle}a.webp`}
+                /* 卡包正面用自己的欄位，沒設才退回商品主圖，再沒有才用內建款式 */
+                packImage={(product as any).pack_front_image_url || product.image_url || `/images/card/pack/${activePackStyle}a.webp`}
                 cardBack={(product as any).card_back_image_url || '/images/card/back.webp'}
                 cards={ordered.map(p => p.image_url || '/images/card/00004.webp')}
                 prizeTier={topTier}

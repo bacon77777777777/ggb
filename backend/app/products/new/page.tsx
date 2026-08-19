@@ -61,6 +61,8 @@ export default function NewProductPage() {
     image: null as File | null,
     imagePreview: '/images/item.png',
     // 抽卡三張圖：正面＝商品主圖，另兩張額外設定（migration 588）
+    packFrontImage: null as File | null,
+    packFrontImagePreview: '',
     packBackImage: null as File | null,
     packBackImagePreview: '',
     cardBackImage: null as File | null,
@@ -355,6 +357,11 @@ export default function NewProductPage() {
       productImageUrl = sanitizeImageUrl(productImageUrl) ?? productImageUrl
 
       // 抽卡的卡包背面／卡牌背面
+      let packFrontUrl: string | null = formData.packFrontImagePreview || null
+      if (formData.packFrontImage) {
+        const f = formData.packFrontImage
+        packFrontUrl = await uploadViaAdmin(f, `packfront-${Date.now()}.${f.name.split('.').pop()}`)
+      }
       let packBackUrl: string | null = formData.packBackImagePreview || null
       if (formData.packBackImage) {
         const f = formData.packBackImage
@@ -410,6 +417,7 @@ export default function NewProductPage() {
         rarity: formData.rarity,
         started_at: startedAt,
         image_url: productImageUrl || '/images/item.png',
+        pack_front_image_url: isCardType ? packFrontUrl : null,
         pack_back_image_url: isCardType ? packBackUrl : null,
         card_back_image_url: isCardType ? cardBackUrl : null,
         is_preorder: formData.isPreorder,
@@ -576,9 +584,10 @@ export default function NewProductPage() {
             {/* 抽卡三張圖排成一列：卡包正面（＝商品主圖）、卡包背面、卡牌背面。
                 卡包模式的輪播與開包演出都吃這三張，不再用內建隨機款式 */}
             {isCardType && (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-4 gap-3">
                 {([
-                  { key: 'image',    label: '卡包正面', preview: formData.imagePreview },
+                  { key: 'image',     label: '商品圖片', preview: formData.imagePreview },
+                  { key: 'packFront', label: '卡包正面', preview: formData.packFrontImagePreview },
                   { key: 'packBack', label: '卡包背面', preview: formData.packBackImagePreview },
                   { key: 'cardBack', label: '卡牌背面', preview: formData.cardBackImagePreview },
                 ] as const).map(({ key, label, preview }) => {

@@ -27,7 +27,7 @@ function sameOriginSrc(src) {
 
 const CARD_W = 2.75;    // 寬度固定（原型 2.1 → 放大，底座移除後版面空出來了）
 const CARD_T = 0.018;   // 厚度(薄)
-const CORNER = 0.12;    // 圓角半徑
+const CORNER = 0.175;   // 圓角半徑（0.12 → 0.175，畫面上約 +6px，老闆 2026-08-19）
 const TEX_W = 630;
 const TEX_R = Math.round((CORNER / CARD_W) * TEX_W); // 貼圖圓角(px)
 const DEFAULT_RATIO = 88 / 63;
@@ -59,23 +59,16 @@ function roundedTexture(texH, draw) {
   return t;
 }
 
-function makePlaceholder(kind) {
+/*
+ * 貼圖還沒載好時用的空白圖。
+ *
+ * 原型這裡畫的是深藍／深紅底 ＋「正 面」「背 面」「上傳你的卡牌圖片」字樣 ——
+ * 那是給示範頁看的。線上一開彈窗會先閃出那塊深色模型才換成真的卡（老闆回報），
+ * 改成全透明，並且在正面貼圖載好之前整個卡片都不顯示，改用「載入中…」。
+ */
+function makePlaceholder() {
   const texH = Math.round(TEX_W * DEFAULT_RATIO);
-  return roundedTexture(texH, (x, h) => {
-    const g = x.createLinearGradient(0, 0, TEX_W, h);
-    if (kind === "front") { g.addColorStop(0, "#141c44"); g.addColorStop(1, "#0b1026"); }
-    else { g.addColorStop(0, "#7a1420"); g.addColorStop(1, "#3d0a12"); }
-    x.fillStyle = g; x.fillRect(0, 0, TEX_W, h);
-    x.strokeStyle = "#ffc64b"; x.lineWidth = 14;
-    x.strokeRect(24, 24, TEX_W - 48, h - 48);
-    x.fillStyle = "#ffc64b";
-    x.font = "900 92px sans-serif"; x.textAlign = "center";
-    x.fillText(kind === "front" ? "正 面" : "背 面", TEX_W / 2, h * 0.48);
-    if (kind === "front") {
-      x.font = "700 34px sans-serif"; x.fillStyle = "#8b96c9";
-      x.fillText("上傳你的卡牌圖片", TEX_W / 2, h * 0.57);
-    }
-  });
+  return roundedTexture(texH, () => {});
 }
 
 function imageTexture(img, ratio) {
@@ -118,6 +111,11 @@ export default function CardShowcase3D({ frontImage, backImage, height = 320, au
   const apiRef = useRef(null);
   const stateRef = useRef({ auto: true, speed: 0.8 });
   const [loaded, setLoaded] = useState({ front: false, back: false });
+  /* 放大時整塊改成全螢幕：WebGL 只畫在畫布裡，容器維持 320px 高的話，
+     放大後卡片會被框裁掉、只看得到中間（老闆 2026-08-19「不要侷限容器裡」）。
+     用 ref 轉交 setter，不把 expanded 放進場景 effect 的相依 —— 那會重建場景、
+     旋轉角度與縮放倍率都會被重置 */
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => { stateRef.current.auto = autoSpin; }, [autoSpin]);
   useEffect(() => { stateRef.current.speed = spinSpeed; }, [spinSpeed]);
@@ -136,7 +134,7 @@ export default function CardShowcase3D({ frontImage, backImage, height = 320, au
     camera.position.set(0, 2.2, 7.2);
     camera.lookAt(0, 1.9, 0);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(W, H);
     renderer.shadowMap.enabled = true;
@@ -225,12 +223,12 @@ export default function CardShowcase3D({ frontImage, backImage, height = 320, au
     cardGroup.add(core);
 
     const frontMat = new THREE.MeshPhysicalMaterial({
-      map: makePlaceholder("front"), roughness: 0.32, metalness: 0.05,
+      map: makePlaceholder(), transparent: true, roughness: 0.32, metalness: 0.05,
       clearcoat: 1, clearcoatRoughness: 0.25,
       transparent: true, alphaTest: 0.5,
     });
     const backMat = new THREE.MeshPhysicalMaterial({
-      map: makePlaceholder("back"), roughness: 0.32, metalness: 0.05,
+      map: makePlaceholder(), transparent: true, roughness: 0.32, metalness: 0.05,
       clearcoat: 1, clearcoatRoughness: 0.25,
       transparent: true, alphaTest: 0.5,
     });
@@ -249,7 +247,24 @@ export default function CardShowcase3D({ frontImage, backImage, height = 320, au
     turntable.add(cardGroup);
 
     // 依圖片比例重建卡牌(寬固定,高跟隨)
+    // 正面貼圖載好之前不顯示，避免先閃一下空白卡與落影
+    cardGroup.visible = false;
+    shadow.visible = false;
+
     apiRef.current = {
+      setVisible(v) { cardGroup.visible = v; shadow.visible = v; },
+      /*
+       * 放大時把場景底改成透明（老闆 2026-08-19：白背景不要跟著放大）。
+       * 白色是「卡片的展示台」，尺寸就該是那塊展示區；全螢幕時整片變白，
+       * 看起來像整頁被洗白，而不是把卡片放大來看。
+       * 透明之後外層鋪一層淡淡的暗底，卡片浮在頁面之上，像燈箱。
+       * 霧一併關掉 —— 霧色是配白底調的，底透明了還留著會在卡緣糊一圈白。
+       */
+      setStageWhite(v) {
+        scene.background = v ? new THREE.Color(0xffffff) : null;
+        scene.fog = v ? new THREE.Fog(0xffffff, 9, 18) : null;
+      },
+      resetZoom() { zoom = 1; applyZoom(); },
       rebuild(ratio) {
         const r = Math.min(Math.max(ratio, 0.4), 2.6); // 防呆
         dims.h = CARD_W * r;
@@ -263,11 +278,57 @@ export default function CardShowcase3D({ frontImage, backImage, height = 320, au
       },
     };
 
-    // ── 互動:拖曳 + 慣性 + 自動旋轉 ──
+    // ── 互動:拖曳旋轉 + 兩指縮放 + 慣性 + 自動旋轉 ──
     let dragging = false, lastX = 0, vel = 0, idle = 0;
     const el = renderer.domElement;
-    const down = (e) => { dragging = true; lastX = e.clientX ?? 0; };
+
+    /*
+     * 兩指縮放（老闆 2026-08-19）：**只推近／拉遠鏡頭，不碰 turntable.rotation.y**，
+     * 所以放大的永遠是「目前轉到的那一面」，不會被拉回正面。
+     * zoom 是「相對原始距離的倍率」：2 就是距離減半＝看起來大一倍。
+     */
+    const CAM_TARGET = new THREE.Vector3(0, 1.9, 0);
+    const CAM_DIR = camera.position.clone().sub(CAM_TARGET);   // 注視點 → 鏡頭
+    const ZOOM_MIN = 1, ZOOM_MAX = 3;
+    let zoom = 1;
+    const clampZoom = (z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
+    const applyZoom = () => {
+      camera.position.copy(CAM_TARGET).add(CAM_DIR.clone().multiplyScalar(1 / zoom));
+      camera.lookAt(CAM_TARGET);
+      // useState 的 setter 身分是穩定的，場景 effect 用 [] 相依也抓得到最新的它
+      const big = zoom > 1.02;
+      setExpanded(big);            // 放大就全螢幕，縮回原始大小自動收回
+      apiRef.current?.setStageWhite(!big);
+    };
+
+    const pts = new Map();
+    let pinchBase = 0, zoomBase = 1;
+    const pinchDist = () => {
+      const [a, b] = [...pts.values()];
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    };
+
+    const down = (e) => {
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 2) {
+        // 進入縮放：關掉旋轉，免得兩指移動時畫面同時被轉
+        dragging = false;
+        pinchBase = pinchDist();
+        zoomBase = zoom;
+      } else if (pts.size === 1) {
+        dragging = true; lastX = e.clientX ?? 0;
+      }
+    };
     const move = (e) => {
+      if (pts.has(e.pointerId)) pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size >= 2) {
+        if (pinchBase > 0) {
+          zoom = clampZoom(zoomBase * (pinchDist() / pinchBase));
+          applyZoom();
+          idle = 0;
+        }
+        return;
+      }
       if (!dragging) return;
       const x = e.clientX ?? 0;
       const dx = x - lastX;
@@ -276,10 +337,34 @@ export default function CardShowcase3D({ frontImage, backImage, height = 320, au
       vel = dx * 0.009;
       idle = 0;
     };
-    const up = () => { dragging = false; };
+    const up = (e) => {
+      pts.delete(e.pointerId);
+      if (pts.size < 2) pinchBase = 0;
+      if (pts.size === 1) {
+        // 放開一指後接著單指拖曳：基準點要接上剩下那指，否則畫面會瞬移
+        dragging = true;
+        lastX = [...pts.values()][0].x;
+        vel = 0;
+      } else if (pts.size === 0) {
+        dragging = false;
+      }
+    };
+
+    // 桌機用滾輪縮放；連點兩下還原
+    const wheel = (e) => {
+      e.preventDefault();
+      zoom = clampZoom(zoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12));
+      applyZoom();
+      idle = 0;
+    };
+    const dbl = () => { zoom = 1; applyZoom(); };
+
     el.addEventListener("pointerdown", down);
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    el.addEventListener("wheel", wheel, { passive: false });
+    el.addEventListener("dblclick", dbl);
     el.style.cursor = "grab";
     el.style.touchAction = "none";
 
@@ -291,7 +376,7 @@ export default function CardShowcase3D({ frontImage, backImage, height = 320, au
         turntable.rotation.y += vel;
         vel *= 0.94;
         idle += 0.016;
-        if (stateRef.current.auto && idle > 1.2) {
+        if (stateRef.current.auto && idle > 1.2 && zoom <= 1.05) {
           turntable.rotation.y += 0.011 * stateRef.current.speed;
         }
       }
@@ -308,13 +393,20 @@ export default function CardShowcase3D({ frontImage, backImage, height = 320, au
       renderer.setSize(w, h);
     };
     window.addEventListener("resize", onResize);
+    // 切換全螢幕時容器尺寸會變，但不會觸發 window resize，所以要觀察元素本身
+    const ro = new ResizeObserver(onResize);
+    ro.observe(mount);
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
+      ro.disconnect();
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
       el.removeEventListener("pointerdown", down);
+      el.removeEventListener("wheel", wheel);
+      el.removeEventListener("dblclick", dbl);
       renderer.dispose();
       mount.removeChild(el);
     };
@@ -338,6 +430,7 @@ export default function CardShowcase3D({ frontImage, backImage, height = 320, au
           mat.map = tex;
           mat.needsUpdate = true;
         }
+        if (side === "front") apiRef.current?.setVisible(true);
         setLoaded((p) => ({ ...p, [side]: true }));
       };
       img.src = sameOriginSrc(src);
@@ -351,8 +444,34 @@ export default function CardShowcase3D({ frontImage, backImage, height = 320, au
   return (
     /* 只保留 3D 畫布：標題、提示、上傳鈕、自動旋轉開關與速度滑桿都是示範用的，
        線上是嵌在「品項詳情」彈窗的圖區塊裡，那些控制項會干擾閱讀 */
-    <div style={{ position: "relative", width: "100%", height, borderRadius: 12, overflow: "hidden" }}>
+    <div
+      style={expanded
+        ? { position: "fixed", inset: 0, zIndex: 3200, background: "rgba(17,20,32,0.55)", backdropFilter: "blur(2px)" }
+        : { position: "relative", width: "100%", height, borderRadius: 12, overflow: "hidden" }}
+    >
       <div ref={mountRef} style={{ position: "absolute", inset: 0 }} />
+      {expanded && (
+        <button
+          onClick={() => apiRef.current?.resetZoom()}
+          style={{
+            position: "absolute", top: 14, right: 14, zIndex: 2,
+            height: 36, padding: "0 16px", borderRadius: 999,
+            background: "rgba(0,0,0,.55)", color: "#fff", border: "none",
+            fontSize: 13, fontWeight: 700, cursor: "pointer",
+          }}
+        >
+          收起
+        </button>
+      )}
+      {!loaded.front && (
+        <div style={{
+          position: "absolute", inset: 0, display: "flex",
+          alignItems: "center", justifyContent: "center",
+          color: "#9aa4b8", fontSize: 13, letterSpacing: "0.1em", pointerEvents: "none",
+        }}>
+          載入中…
+        </div>
+      )}
     </div>
   );
 }
