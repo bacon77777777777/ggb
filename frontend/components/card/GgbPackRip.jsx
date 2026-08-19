@@ -89,7 +89,7 @@ const MEDIA = "/images/card/media";
 const SFX = {
   //  key          檔案                          音量   循環   同時疊幾顆
   packIdle:  [`${MEDIA}/pack-idle-loop.mp3`,     1.0,  true,  1],
-  packTear:  [`${MEDIA}/pack-tear.mp3`,          0.45, true,  1],
+  packTear:  [`${MEDIA}/pack-tear.mp3`,          0.45, false, 1],
   packDone:  [`${MEDIA}/pack-tear-done.mp3`,     0.7,  false, 1],
   shuffle:   [`${MEDIA}/deal-shuffle.mp3`,       0.6,  false, 1],
   dealA:     [`${MEDIA}/card-deal-a.mp3`,        0.5,  false, 2],
