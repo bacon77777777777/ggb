@@ -127,8 +127,10 @@ export default function CardShowcase3D({ frontImage, backImage, height = 320, au
     const W = mount.clientWidth, H = mount.clientHeight;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0b1026);
-    scene.fog = new THREE.Fog(0x0b1026, 9, 18);
+    /* 白底（老闆 2026-08-19）。霧色要跟著換 —— 留著原本的深藍霧，
+       卡片邊緣會蒙上一層藍灰，在白底上看起來像沒去乾淨的背景 */
+    scene.background = new THREE.Color(0xffffff);
+    scene.fog = new THREE.Fog(0xffffff, 9, 18);
 
     const camera = new THREE.PerspectiveCamera(36, W / H, 0.1, 100);
     camera.position.set(0, 2.2, 7.2);
@@ -142,18 +144,52 @@ export default function CardShowcase3D({ frontImage, backImage, height = 320, au
     mount.appendChild(renderer.domElement);
 
     // ── 燈光 ──
-    scene.add(new THREE.AmbientLight(0x39406e, 1.4));
-    const key = new THREE.SpotLight(0xfff3d6, 1.35, 40, Math.PI / 4.5, 0.5, 1.1);
+    // 環境光原本是深藍紫（為深色底調的），白底上會讓卡面整片發灰，改中性
+    /*
+     * 白底的亮度重調（老闆 2026-08-19「太亮了」）。
+     * 原本這組是為深色底配的：環境光 1.15 + 主光 1.35 + 兩盞補光，
+     * 深色底看起來剛好，換白底就整片過曝、卡面細節全被洗掉。
+     * 兩盞彩色補光原本的作用是「讓卡緣從黑底裡浮出來」—— 白底不需要，
+     * 留一點點只為了讓側面有顏色變化，不再負責照亮。
+     */
+    scene.add(new THREE.AmbientLight(0xffffff, 0.72));
+    const key = new THREE.SpotLight(0xfff6e6, 0.62, 40, Math.PI / 4.5, 0.6, 1.1);
     key.position.set(3.5, 8, 5);
     key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024);
     scene.add(key);
-    const rimA = new THREE.PointLight(0x5aa0ff, 1.1, 20);
+    const rimA = new THREE.PointLight(0x5aa0ff, 0.28, 20);
     rimA.position.set(-5, 3, -3);
     scene.add(rimA);
-    const rimB = new THREE.PointLight(0xffc64b, 0.8, 20);
+    const rimB = new THREE.PointLight(0xffc64b, 0.2, 20);
     rimB.position.set(5, 1.5, -2.5);
     scene.add(rimB);
+
+    /*
+     * 卡片底下的落影。地板在移除底座時一起拿掉了，castShadow 沒有東西接，
+     * 所以自己畫一片：徑向漸層（中心深、往外透明）貼在卡片正下方。
+     * 沒有這片，卡片看起來像浮在半空中。
+     */
+    const shCnv = document.createElement("canvas");
+    shCnv.width = shCnv.height = 256;
+    const sx = shCnv.getContext("2d");
+    const sg = sx.createRadialGradient(128, 128, 4, 128, 128, 126);
+    sg.addColorStop(0, "rgba(28,34,58,0.42)");
+    sg.addColorStop(0.45, "rgba(28,34,58,0.16)");
+    sg.addColorStop(1, "rgba(28,34,58,0)");
+    sx.fillStyle = sg;
+    sx.fillRect(0, 0, 256, 256);
+    const shadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(CARD_W * 1.45, CARD_W * 0.62),
+      new THREE.MeshBasicMaterial({
+        map: new THREE.CanvasTexture(shCnv),
+        transparent: true, depthWrite: false,
+      })
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.01;
+    shadow.renderOrder = -1;
+    scene.add(shadow);
 
     // ── 地板 ──
     const cnv = document.createElement("canvas");

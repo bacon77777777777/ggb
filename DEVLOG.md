@@ -4,6 +4,38 @@
 
 ---
 
+## v2026.08.19b｜2026-08-19｜品項詳情 360° 展示：白底、亮度重調、加落影
+
+卡包模式「品項詳情」的立體旋轉展示三項調整（老闆逐項回報）：
+
+- **背景改白底**。霧色要跟著換 —— 只改背景、留著原本的深藍霧，卡片邊緣會蒙一層藍灰，
+  在白底上看起來像背景沒去乾淨。
+- **亮度重調**。原本那組燈是為深色底配的（環境光 1.15 ＋ 主光 1.35 ＋ 兩盞彩色補光），
+  深色底剛好，換白底就整片過曝、卡面文字圖案全被洗掉。改成環境光 0.72、主光 0.62；
+  兩盞補光從 1.1／0.8 降到 0.28／0.2 —— 它們原本是「讓卡緣從黑底浮出來」用的，
+  白底不需要，留一點點只為側面有顏色變化。
+- **底部加落影**。移除底座時把地板也一起拿掉了，`castShadow` 沒有東西可接，
+  所以改成自己畫一片徑向漸層貼在卡片正下方。沒有它，卡片看起來像浮在半空。
+
+### ⚠️ 推版前要跑 `npm run build`，不能只跑 `npm run lint`
+
+`v2026.08.19a` 推正之後後台 Vercel 部署失敗：
+
+```
+./app/settings/modules/ParamsPanel.tsx
+38:23  Error: Definition for rule 'react-hooks/exhaustive-deps' was not found.
+```
+
+後台的 ESLint 走 flat config（`eslint.config.mjs`），**沒有載入 `react-hooks` plugin**，
+所以 `// eslint-disable-line react-hooks/exhaustive-deps` 變成「要停用的規則不存在」而報錯。
+前台的設定有載入該 plugin，站上原本就有十幾處這樣寫，所以只有後台掛。
+
+本機 `npm run lint` 沒重現 —— Vercel 跑的是 `npm run build`，那裡的 lint 檢查比較嚴。
+之後推版前一律跑 `npm run build`。另外在跑著 dev server 的目錄下 build 會蓋掉 `.next`
+讓 dev server 讀到不一致的檔案，要先停 dev server 再 build。
+
+---
+
 ## v2026.08.19a｜2026-08-19｜卡包模式：一包最多一張大賞、模組設定重整、開包參數可調
 
 ### 一包最多一張大賞（migration 590）
