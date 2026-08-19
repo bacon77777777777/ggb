@@ -52,17 +52,24 @@ export const MACHINE_PARAM_SPECS: Record<string, ParamSpec[]> = {
 
   /* 撕開封口（卡包模式的開包演出）。閃電粗細先前只能改程式碼，開成可調 */
   card_peel: [
-    { key: 'boltThin',    label: '閃電粗細', group: '大賞閃電', type: 'range', min: 0, max: 6, step: 0.2, default: 2.6,
-      hint: '往內縮多少。0 = 原始素材粗細；越大越細，但超過 4 會把電弧打斷成碎塊。' },
-    { key: 'boltSpeed',   label: '閃電頻率', group: '大賞閃電', type: 'range', min: 60, max: 260, step: 10, default: 110, unit: 'ms',
-      hint: '九格素材每格停留多久。越小閃得越急。' },
-    { key: 'boltScale',   label: '閃電範圍', group: '大賞閃電', type: 'range', min: 0, max: 24, step: 1, default: 13, unit: '%',
-      hint: '往卡片外擴多少。太小會被卡片蓋住，太大會飄到畫面邊緣。' },
-    { key: 'boltOffsetY', label: '閃電高度', group: '大賞閃電', type: 'range', min: -80, max: 20, step: 2, default: -46, unit: 'px',
-      hint: '相對卡片的上下位置。負值往上。' },
+    // 兩支影片都是正方形素材、置中疊在卡片上，大小一律以**卡牌高度**為基準：
+    // 100% = 跟卡牌一樣高（素材是正方形，所以寬也等於卡牌高）。
+    // 先前拿卡牌寬度當基準，數字看起來不大、算出來卻遠大於卡牌，電弧會甩到畫面邊緣。
+    { key: 'vortexScale',   label: '漩渦大小', group: '大賞特效', type: 'range', min: 40, max: 300, step: 5, default: 100, unit: '%',
+      hint: '卡片後面那圈漩渦（vortex.mp4）的大小，100% = 跟卡牌同高、置中。' },
+    { key: 'vortexOffsetY', label: '漩渦位置', group: '大賞特效', type: 'range', min: -200, max: 200, step: 2, default: 0, unit: 'px',
+      hint: '漩渦相對卡牌中心的上下位置。負值往上，0 = 正中。' },
+    { key: 'energyScale',   label: '能量大小', group: '大賞特效', type: 'range', min: 40, max: 300, step: 5, default: 100, unit: '%',
+      hint: '卡片周圍電弧（energy.mp4）的範圍，100% = 跟卡牌同高、置中。' },
+    { key: 'energyOffsetY', label: '能量位置', group: '大賞特效', type: 'range', min: -200, max: 200, step: 2, default: 0, unit: 'px',
+      hint: '電弧相對卡牌中心的上下位置。負值往上，0 = 正中。' },
+    { key: 'fxOpacity',     label: '光效強度', group: '大賞特效', type: 'range', min: 0.2, max: 1.4, step: 0.05, default: 0.9,
+      hint: '漩渦與能量的整體濃度。太高會蓋掉卡面細節。' },
 
     { key: 'dealStagger', label: '發牌間隔', group: '開包節奏', type: 'range', min: 40, max: 200, step: 10, default: 90, unit: 'ms',
       hint: '卡片一張張頂上來的間隔。' },
+    { key: 'skipFlyMs',   label: 'SKIP 飛牌速度', group: '開包節奏', type: 'range', min: 20, max: 200, step: 5, default: 55, unit: 'ms',
+      hint: '按 SKIP 時，跳過的牌一張張往右飛出去的間隔。越小飛越快；買十包要跳 90 張，55ms 約 5 秒。' },
     { key: 'flipDelay',   label: '翻牌延遲', group: '開包節奏', type: 'range', min: 200, max: 1200, step: 50, default: 500, unit: 'ms',
       hint: '發完牌到最上張自動翻面的等待時間。' },
   ],

@@ -20,8 +20,10 @@ import { createClient } from "@/lib/supabase/client";
 /* 後台「抽獎模組設定 → 卡包模式 → 撕開封口」可調的參數，
    讀不到就用這組預設（跟 backend/app/settings/modules/machineParams.ts 的 default 一致） */
 const PARAM_DEFAULTS = {
-  boltThin: 2.6, boltSpeed: 110, boltScale: 13, boltOffsetY: -46,
-  dealStagger: 90, flipDelay: 500,
+  vortexScale: 100, vortexOffsetY: 0,
+  energyScale: 100, energyOffsetY: 0,
+  fxOpacity: 0.9,
+  dealStagger: 90, flipDelay: 500, skipFlyMs: 55,
 };
 
 /* ============================================================
@@ -45,23 +47,11 @@ const TIERS = {
   purple: { tag: "💜 史詩", rim: "#b76bff", glow: "#cf9bff", big: true,  spark: ["#d9a8ff", "#b76bff", "#ffffff"] },
   gold:   { tag: "🏆 傳說", rim: "#ffd54a", glow: "#ffe98a", big: true,  spark: ["#ffd54a", "#ffe98a", "#ff9e3d", "#ffffff"] },
 };
-const raysBG = (c) => "conic-gradient(from 0deg," +
-  Array.from({ length: 8 }, (_, i) => { const a = i * 45; return `${c}00 ${a}deg,${c}cc ${a + 12}deg,${c}00 ${a + 24}deg`; }).join(",") +
-  `,${c}00 360deg)`;
-/*
- * 大賞（紫）的閃電：老闆給的九格循環，素材在 public/images/card/light/。
- * 只有 1,3,4,5,7,8 有圖，2、6、9 是**刻意留空**的空白格 —— 閃電本來就要有斷續感，
- * 每格都有圖會變成一直亮著的光暈，不像在打閃。
- *
- * 上色用遮罩不用濾鏡：素材是 fill="white" 的路徑，白色沒有色相，hue-rotate 轉不動。
- * 拿它當 alpha 遮罩、底下鋪紫色漸層，顏色才完全可控。
- */
-const BOLT_FRAMES = [1, null, 3, 4, 5, null, 7, 8, null];
-const BOLT_MS = 110;
+/* 大賞特效改用老闆給的影片（energy.mp4 / vortex.mp4），
+   原本的九格 SVG 輪播與侵蝕濾鏡已移除 —— 素材留在 public/images/card/light/ 沒刪 */
 
 const DEAL_STAGGER = 90;    // 每張發牌間隔 ms
 const DEAL_DUR = 480;       // 單張上滑時間 ms
-const FLIP_DELAY = 500;     // 定位後到翻牌的延遲 ms
 
 /* ---------- 內建素材（吉吉比卡包 / 卡背 / 卡面，可在 ⚙️ 換圖） ---------- */
 
@@ -210,7 +200,6 @@ export default function GGBPackRip({
   const [flipped, setFlipped] = useState(false); // 最上張已翻正面
   const [auraOn, setAuraOn] = useState(false);
   const [flash, setFlash] = useState(false);
-  const [boltFrame, setBoltFrame] = useState(0);
   const [cfg, setCfg] = useState(PARAM_DEFAULTS);
   useEffect(() => {
     createClient()
@@ -393,12 +382,44 @@ export default function GGBPackRip({
      */
     const lastPackStart = Math.max(0, cards.length - Math.max(1, cardsPerPack));
     const target = cardIdx < lastPackStart ? lastPackStart : lastIdx;
+
+    /*
+     * 跳過的牌**一張一張**卡背朝上往右飛出去，最後停在 target（老闆 2026-08-19）。
+     * 原本是瞬間跳過去，看不出中間發生什麼事。
+     *
+     * 節奏由後台參數「SKIP 飛牌速度」控制（預設 55ms／張）：買一包（跳 6~9 張）約半秒；
+     * 買十包跳 90 張約 5 秒 —— 那是「快速發牌」該有的長度。
+     * 先前逐張快翻被退回是因為當時 130ms／張，100 張要十幾秒，比不按 SKIP 還久。
+     * 飛出動畫 .14s 比間隔略長，牌才會有殘影般的連續感而不是一格一格跳。
+     */
+    const STEP_MS = Math.max(20, Number(cfg.skipFlyMs) || 55);
+
+    setSkipping(true);
     setCardOffset({ x: 0, y: 0 });
-    setCardIdx(target);
-    setSettled(true);
-    setFlipped(false);
-    // 落在最後一包的中間時，該張照原本規則自動翻開；只有整包最後一張留給玩家點
-    if (target < lastIdx) later(() => flipTop(target), 160);
+
+    for (let at = cardIdx; at < target; at++) {
+      const k = at - cardIdx;
+      later(() => {
+        setFlipped(false);            // 一律卡背，不翻正面
+        setFlying({ dir: 1 });        // 往右飛
+        sfx.current.flick();
+      }, k * STEP_MS);
+      later(() => {
+        setCardIdx(at + 1);
+        setFlying(null);
+        setSettled(true);
+      }, k * STEP_MS + STEP_MS * 0.7);
+    }
+
+    later(() => {
+      setSkipping(false);
+      setFlying(null);
+      setCardIdx(target);
+      setSettled(true);
+      setFlipped(false);
+      // 落在最後一包的中間時，該張照原本規則自動翻開；只有整包最後一張留給玩家點
+      if (target < lastIdx) later(() => flipTop(target), 160);
+    }, (target - cardIdx) * STEP_MS + 140);
   };
 
   /*
@@ -416,6 +437,7 @@ export default function GGBPackRip({
   const [cardOffset, setCardOffset] = useState({ x: 0, y: 0 });
   const [tilt, setTilt] = useState({ x: 0, y: 0 }); // 翻開後 3D 傾斜
   const [flying, setFlying] = useState(null);
+  const [skipping, setSkipping] = useState(false);
   const isLast = cardIdx === cards.length - 1;
 
   /* 紫/金等級：最後一張卡背周圍閃電電弧（參考站紫光閃電，隨機劈啪） */
@@ -426,13 +448,11 @@ export default function GGBPackRip({
    */
   const boltsOn = phase === "cards" && isLast && !flipped && dealt && prizeTier === "purple";
   useEffect(() => {
-    if (!boltsOn) { setBoltFrame(0); return; }
-    const iv = setInterval(() => {
-      setBoltFrame(f => (f + 1) % BOLT_FRAMES.length);
-      if (Math.random() < 0.3) sfx.current.spark();
-    }, cfg.boltSpeed);
+    if (!boltsOn) return;
+    // 影片自己會動，這支計時器只負責偶爾補一記火花音
+    const iv = setInterval(() => { if (Math.random() < 0.4) sfx.current.spark(); }, 260);
     return () => clearInterval(iv);
-  }, [boltsOn, cfg.boltSpeed]); // eslint-disable-line
+  }, [boltsOn]); // eslint-disable-line
 
   const onCardDown = (e) => {
     if (phase !== "cards" || flying || !dealt) return;
@@ -587,47 +607,43 @@ export default function GGBPackRip({
   }, [packImg, dims]); // eslint-disable-line
   useEffect(() => { drawStrip(); }); // progress 變動時重繪
 
+  /*
+   * 最上張卡的外層位移／動畫抽成變數 —— 特效影片要「跟著卡片飄動與傾斜」
+   * （老闆 2026-08-19），所以影片層直接套同一組 transform 與同名 keyframes，
+   * 而不是各寫一份。寫兩份的話卡片改位置、特效就會脫節。
+   */
+  const cardTransform = flying
+    ? `translate(${flying.dir * 130}vw, ${cardOffset.y - 80}px) rotate(${flying.dir * 35}deg)`
+    : !dealt
+      ? `translateY(120vh) rotate(${BASE_TILT}deg)`
+      : !settled
+        ? `translateY(${STACK_Y + 26}px) rotate(${BASE_TILT + 2.5}deg) scale(.95)` // 從堆疊位起步
+        : flipped
+          ? isLast
+            ? `translate(${cardOffset.x}px, ${cardOffset.y + 12}px) rotate(${(cardOffset.x * 0.05).toFixed(2)}deg) scale(1.05)` // 最後一張：畫面正中間
+            : `translate(${cardOffset.x - 34}px, ${cardOffset.y}px) rotate(${BASE_TILT - 3 + cardOffset.x * 0.06}deg)`
+          : `translate(${cardOffset.x}px, ${cardOffset.y + STACK_Y}px) rotate(${BASE_TILT + cardOffset.x * 0.06}deg)`;
+  const cardTransition = flying
+    ? (skipping ? "transform .14s ease-in" : "transform .38s ease-in")
+    : cardDrag.current.on
+      ? "none"
+      : !dealt
+        ? `transform ${DEAL_DUR}ms cubic-bezier(.2,.9,.3,1) 0ms`
+        : !settled
+          ? "none"
+          : "transform .35s ease, filter .35s ease";
+  // 待翻的最後一張才飄／才傾斜（翻開後傾斜改由指標控制）
+  const cardIdle = isLast && !flipped && dealt && settled;
+  const floatAnim = cardIdle ? "ggbFloatCard 3.2s ease-in-out infinite" : "none";
+  const tiltAnim = cardIdle ? "ggbTilt3d 4.6s ease-in-out infinite" : "none";
+  const tiltTransform = flipped ? `rotateX(${tilt.x.toFixed(1)}deg) rotateY(${tilt.y.toFixed(1)}deg)` : "none";
+
   return (
     <div id="ggb-stage" style={S.stage}
       onPointerDown={onStageDown} onPointerMove={onStageMove}
       onPointerUp={onStageUp} onPointerCancel={onStageUp}>
       <style>{CSS_KEYFRAMES}</style>
 
-      {/*
-        閃電變細用的侵蝕濾鏡（老闆：線太粗）。
-        素材是實心色塊，CSS 沒有「把形狀往內縮」的功能，所以自己做一顆：
-          先高斯模糊讓邊緣變成漸層 → 再用 feFuncA 把 alpha 重新映射，
-          只留下模糊後仍然夠濃的中心部分 → 形狀就往內縮了。
-        slope/intercept 控制縮多少：intercept 越負縮得越多（線越細）。
-      */}
-      <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden>
-        <defs>
-          <filter id="ggbBoltThin" x="-25%" y="-25%" width="150%" height="150%"
-                  colorInterpolationFilters="sRGB">
-            {/* 侵蝕距離 ≈ 模糊半徑 × Φ⁻¹(門檻)，門檻 = -intercept/slope。
-                實測校準（σ / 門檻 → 結果）：
-                  3.2 / 0.70 → 幾乎看不出差別，電弧還是粗的
-                  11  / 0.75 → 侵蝕過頭，電弧整條消失只剩外圈光暈
-                  6   / 0.68 → 也消失
-                  4.5 / 0.66 → 電弧被打斷成碎塊（細的段落先消失，粗的還是粗）
-                  2.6 / 0.58 → 略細但不斷線（目前值）
-
-                ⚠ 這個技術有天花板：模糊＋門檻是「等距離往內縮」，
-                素材裡細的線段會先整段消失，粗的區塊卻只縮掉一點 ——
-                所以再往上加只會把電弧打散，不會讓它整體變細。
-                真要更細必須改素材本身（線畫細一點再匯出）。
-                ⚠ 上面的判讀來自無頭瀏覽器截圖，而無頭環境的 SVG 濾鏡渲染未必等同
-                真實瀏覽器 —— 這格數字請以老闆實機看到的為準。
-                調法：stdDeviation 加大＝更細，減小＝更粗，一次動 ±1 就好。 */}
-            <feGaussianBlur stdDeviation={cfg.boltThin} result="b" />
-            <feComponentTransfer in="b">
-              {/* 門檻固定 0.6（slope 20 / intercept -12）；粗細由上面的模糊半徑控制。
-                  boltThin = 0 等於不模糊，也就完全不侵蝕，維持素材原始粗細 */}
-              <feFuncA type="linear" slope="20" intercept="-12" />
-            </feComponentTransfer>
-          </filter>
-        </defs>
-      </svg>
 
       {STARS.map((s, i) => (
         <div key={i} style={{
@@ -724,22 +740,44 @@ export default function GGBPackRip({
       {/* ---------- 卡牌堆：背面發牌 → 翻牌 ---------- */}
       {phase === "cards" && (
         <div style={S.cardArea}>
+          {/*
+            卡牌後方的漩渦（老闆給的 vortex.mp4）。
+            素材是 yuv420p 黑底、**沒有 alpha 通道**，靠 mix-blend-mode: screen 把黑色透掉。
+
+            ⚠️ screen 只跟「同一個堆疊環境裡、畫在它下面」的東西混合。原本 S.cardArea 帶著
+            z-index 自成一個堆疊環境，影片底下什麼都沒有，黑底就原封不動變成一個黑方塊
+            （老闆 2026-08-19 截圖）。所以 cardArea 的 z-index 已拿掉，讓影片混到舞台底色。
+            另外混合模式掛在**最外層**而不是 <video> 上：外層有 transform／z-index 會自成
+            堆疊環境，掛在裡面的話一樣被隔離。
+
+            三層結構完全複製卡片本體（外層位移 → 飄動 → 傾斜），特效才會跟著卡片一起晃。
+            紫色大賞才放；藍色維持柔光就好，不然每包都在放特效反而不稀奇。
+          */}
+          {prizeTier === "purple" && isLast && dealt && settled && (
+            <div style={{
+              ...S.fxLayer, zIndex: 4,
+              transform: cardTransform, transition: cardTransition, opacity: cfg.fxOpacity,
+            }}>
+              <div style={{ ...S.fxSpin, animation: floatAnim }}>
+                <div style={{ ...S.fxSpin, animation: tiltAnim, transform: tiltTransform }}>
+                  <video
+                    src="/images/card/light/vortex.mp4"
+                    autoPlay loop muted playsInline
+                    style={{
+                      ...S.fxVideo,
+                      height: `${cfg.vortexScale}%`,
+                      transform: `translate(-50%, calc(-50% + ${cfg.vortexOffsetY}px))`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {auraOn && isLast && flipped && (
-            <>
-              <div style={{
-                ...S.aura,
-                background: prizeTier === "blue"
-                  ? "radial-gradient(circle,#9fd0ff88 0%,#6ea8ff33 45%,#6ea8ff00 70%)"
-                  : raysBG(T.rim),
-                animation: prizeTier === "blue" ? "ggbPulse 2s ease-in-out infinite" : "ggbSpin 6s linear infinite",
-                /* conic-gradient 的色階是硬邊，直接畫出來會看到一根根放射狀的輪廓線（老闆回報）。
-                   模糊 + 由中心往外淡出的遮罩，讓它散成光暈而不是「圖形」 */
-                filter: "blur(14px)",
-                WebkitMaskImage: "radial-gradient(circle, #000 25%, transparent 72%)",
-                maskImage: "radial-gradient(circle, #000 25%, transparent 72%)",
-              }} />
-              <div style={{ ...S.auraGlow, boxShadow: `0 0 90px 30px ${T.glow}66` }} />
-            </>
+            /* 原本這裡還有一圈 conic-gradient 放射光，跟漩渦影片疊起來又亂又髒，
+               改成只留柔光讓影片當主角 */
+            <div style={{ ...S.auraGlow, boxShadow: `0 0 90px 30px ${T.glow}66` }} />
           )}
 
           {/* 底下的牌（卡背，往下露出、扇形微轉） */}
@@ -761,57 +799,38 @@ export default function GGBPackRip({
             );
           })}
 
-          {/* 閃電：老闆給的九格素材輪播（public/images/card/light/），紫色大賞才跑。
-              原本是用 Math.random() 現生折線，每格形狀都不一樣、粗細也不對，看起來很假。
-              素材是 fill="white" 的路徑，所以拿它當 alpha 遮罩、底下鋪紫色漸層來上色。 */}
-          {boltsOn && settled && BOLT_FRAMES[boltFrame] && (() => {
-            const url = `url(/images/card/light/${BOLT_FRAMES[boltFrame]}.svg)`;
-            const mask = { WebkitMaskImage: url, maskImage: url };
-            const box = { inset: `-${cfg.boltScale}%`, transform: `translateY(${cfg.boltOffsetY}px)` };
-            return (
-              <>
-                {/* 光暈層：外層負責模糊，內層負責形狀 */}
-                <div style={{ ...S.boltGlowWrap, ...box }}>
-                  <div style={{ ...S.boltFill, ...mask, background: S.boltGlowBg }} />
+          {/* 大賞的能量特效（老闆給的 energy.mp4，取代原本九格 SVG 輪播）。
+              同樣是黑底無 alpha、同樣三層跟著卡片動，只差 z-index 比卡片高，
+              電弧才會繞在卡片前面。大小／高度由後台的能量特效參數控制。 */}
+          {boltsOn && settled && (
+            <div style={{
+              ...S.fxLayer, zIndex: 26,
+              transform: cardTransform, transition: cardTransition, opacity: cfg.fxOpacity,
+            }}>
+              <div style={{ ...S.fxSpin, animation: floatAnim }}>
+                <div style={{ ...S.fxSpin, animation: tiltAnim, transform: tiltTransform }}>
+                  <video
+                    src="/images/card/light/energy.mp4"
+                    autoPlay loop muted playsInline
+                    style={{
+                      ...S.fxVideo,
+                      height: `${cfg.energyScale}%`,
+                      transform: `translate(-50%, calc(-50% + ${cfg.energyOffsetY}px))`,
+                    }}
+                  />
                 </div>
-                {/*
-                  電弧層：外層套侵蝕濾鏡把線縮細，內層才是被遮罩出來的形狀。
-                  ⚠ 濾鏡與遮罩**不能寫在同一層** —— CSS 的 filter 跑在 mask 之前，
-                  同層的話侵蝕到的是那塊還沒被切形狀的實心漸層，等於什麼都沒做。
-                */}
-                <div style={{ ...S.boltCoreWrap, ...box }}>
-                  <div style={{ ...S.boltFill, ...mask, background: S.boltCoreBg }} />
-                </div>
-              </>
-            );
-          })()}
+              </div>
+            </div>
+          )}
 
           {/* 最上張：3D 翻牌（背 → 正）— key 讓撥掉的牌不會飛回來 */}
           <div key={cardIdx} style={{
             position: "absolute", inset: 0, zIndex: 20,
             perspective: 1100, touchAction: "none",
             cursor: dealt ? "grab" : "default",
-            transform: flying
-              ? `translate(${flying.dir * 130}vw, ${cardOffset.y - 80}px) rotate(${flying.dir * 35}deg)`
-              : !dealt
-                ? `translateY(120vh) rotate(${BASE_TILT}deg)`
-                : !settled
-                  ? `translateY(${STACK_Y + 26}px) rotate(${BASE_TILT + 2.5}deg) scale(.95)` // 從堆疊位起步
-                  : flipped
-                    ? isLast
-                      ? `translate(${cardOffset.x}px, ${cardOffset.y + 12}px) rotate(${(cardOffset.x * 0.05).toFixed(2)}deg) scale(1.05)` // 最後一張：畫面正中間
-                      : `translate(${cardOffset.x - 34}px, ${cardOffset.y}px) rotate(${BASE_TILT - 3 + cardOffset.x * 0.06}deg)`
-                    : `translate(${cardOffset.x}px, ${cardOffset.y + STACK_Y}px) rotate(${BASE_TILT + cardOffset.x * 0.06}deg)`,
+            transform: cardTransform,
             filter: dealt && !settled ? "brightness(.82)" : "none",
-            transition: flying
-              ? "transform .38s ease-in"
-              : cardDrag.current.on
-                ? "none"
-                : !dealt
-                  ? `transform ${DEAL_DUR}ms cubic-bezier(.2,.9,.3,1) 0ms`
-                  : !settled
-                    ? "none"
-                    : "transform .35s ease, filter .35s ease",
+            transition: cardTransition,
           }}
             onPointerDown={onCardDown} onPointerMove={onCardMove}
             onPointerUp={onCardUp} onPointerCancel={onCardUp}
@@ -819,14 +838,14 @@ export default function GGBPackRip({
             {/* 飄動層：最後一張待翻時緩緩浮動 */}
             <div style={{
               position: "absolute", inset: 0, transformStyle: "preserve-3d",
-              animation: isLast && !flipped && dealt && settled ? "ggbFloatCard 3.2s ease-in-out infinite" : "none",
+              animation: floatAnim,
             }}>
             {/* 3D 傾斜層：滑鼠 / 拖曳感應 */}
             <div style={{
               position: "absolute", inset: 0, transformStyle: "preserve-3d",
-              transform: flipped ? `rotateX(${tilt.x.toFixed(1)}deg) rotateY(${tilt.y.toFixed(1)}deg)` : "none",
+              transform: tiltTransform,
               // 待翻的最後一張也緩緩傾斜 —— 只有上下飄不夠立體（老闆 2026-08-19）
-              animation: isLast && !flipped && dealt && settled ? "ggbTilt3d 4.6s ease-in-out infinite" : "none",
+              animation: tiltAnim,
               transition: "transform .15s ease",
             }}>
             <div style={{
@@ -930,8 +949,11 @@ const S = {
   packWrap: { position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 26, zIndex: 10 },
   hint: { fontSize: 16, color: "#fff", letterSpacing: 1, fontWeight: 700, minHeight: 24, textShadow: "0 2px 8px #0008" },
   cardArea: {
+    // ⚠️ 不要加 z-index：加了就自成堆疊環境，特效影片的 mix-blend-mode: screen
+    //    會找不到底色可混，黑底直接糊成一個黑方塊（老闆 2026-08-19 截圖）。
+    //    這裡不加也不影響疊法 —— 舞台上要壓在卡片之上的元素都自己帶了更高的 z-index。
     position: "relative", width: "min(70vw,270px)", aspectRatio: "5/7",
-    display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10,
+    display: "flex", alignItems: "center", justifyContent: "center",
     marginTop: "-6vh",
   },
   card: {
@@ -949,28 +971,27 @@ const S = {
     pointerEvents: "none", zIndex: 5,
   },
   /*
-   * 閃電定位：
-   *   inset -13%       素材四周本來就留白；-8% → -13% 是老闆要的放大約一成
-   *   maskSize contain 素材 432×566（0.763）vs 卡片 5/7（0.714），拉伸會變形
-   *   ggbBoltFloat     與卡片同步的飄動＋3D 傾斜，**含卡堆上移 STACK_Y(-30px)**
-   *                    —— 未翻的卡片整體上移，閃電沒跟上就會看起來偏下（老闆回報）
+   * 影片特效共用（vortex / energy）：黑底素材靠 mix-blend-mode: screen 去背。
+   *   fxLayer 對齊卡片外框，套跟卡片一樣的位移；混合模式掛這層
+   *   fxSpin  飄動層 / 傾斜層，套跟卡片同名的 keyframes
+   *   fxVideo 以卡片寬為基準的正方形，置中；大小與高度由後台參數決定
+   * 用「卡片寬的百分比 + 置中」而不是 inset 負值 —— 素材是正方形、卡片是 5:7，
+   * 用 inset 撐的話 contain 會自己留黑邊，位置怎麼調都對不準（老闆 2026-08-19）。
    */
-  boltFill: {
-    position: "absolute", inset: 0,
-    animation: "ggbBoltFloat 4.6s ease-in-out infinite",
-    WebkitMaskSize: "contain", maskSize: "contain",
-    WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
-    WebkitMaskPosition: "center", maskPosition: "center",
+  fxLayer: {
+    position: "absolute", inset: 0, pointerEvents: "none",
+    perspective: 1100, mixBlendMode: "screen",
   },
-  boltCoreBg: "linear-gradient(180deg,#fbf2ff 0%,#e0bcff 32%,#bd7dff 64%,#9b4dff 100%)",
-  boltGlowBg: "radial-gradient(circle at 50% 45%, #f3e8ff, #b06bff 55%, #7c3aed)",
-  boltCoreWrap: {
-    position: "absolute", zIndex: 27, pointerEvents: "none",
-    filter: "url(#ggbBoltThin) drop-shadow(0 0 3px #f5ebffee) drop-shadow(0 0 10px #c9a0ffdd) drop-shadow(0 0 24px #a855f7aa)",
-  },
-  boltGlowWrap: {
-    position: "absolute", zIndex: 26, pointerEvents: "none",
-    filter: "blur(11px)", opacity: 0.7,
+  fxSpin: { position: "absolute", inset: 0, transformStyle: "preserve-3d" },
+  fxVideo: {
+    position: "absolute", left: "50%", top: "50%",
+    // 尺寸以**卡牌高度**為基準（100% = 跟卡牌一樣高），素材是正方形所以寬＝高。
+    // 先前用卡牌寬度當基準，數字看起來不大、算出來卻遠大於卡牌（漩渦 260% = 682px
+    // 對上 263px 寬的卡），電弧整片甩到畫面邊緣（老闆 2026-08-19：「沒對到」）。
+    width: "auto", aspectRatio: "1", objectFit: "contain", pointerEvents: "none",
+    // ⚠️ Tailwind preflight 有 `img, video { max-width: 100% }`，不解掉的話
+    //    寬度會被夾在 100%，參數調了完全沒反應（實測 200% 與 150% 都算出 270px）。
+    maxWidth: "none",
   },
   auraGlow: { position: "absolute", inset: "8%", borderRadius: 20, zIndex: 6, pointerEvents: "none" },
   prizeTag: {
