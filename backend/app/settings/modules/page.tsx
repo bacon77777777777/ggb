@@ -1,97 +1,163 @@
 'use client'
 
 import { AdminLayout, PageCard } from '@/components'
-import Badge from '@/components/ui/Badge'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect } from 'react'
 import SelectField from '@/components/ui/SelectField'
-import ParamsModal from './ParamsModal'
+import { SettingsShell, SettingsNav, SectionHead, SettingsRow } from '@/components/settings/SettingsSection'
+import ParamsPanel from './ParamsPanel'
 
-const PRODUCT_TYPES: {
-  type: string
-  label: string
-  themes: { value: string; label: string; desc: string }[]
-}[] = [
+/**
+ * 抽獎模組設定
+ *
+ * 版型與功能開關頁一致（左邊類別、右邊內容），由 SettingsShell / SettingsNav 提供。
+ *
+ * 這一頁有兩種列，別混在一起（老闆 2026-08-19 指出原本「功能都亂放」）：
+ *
+ *   預設模組（kind: 'default'）
+ *     這個類別的商品沒有個別指定時，開包演出用哪一款。存進 module_settings。
+ *
+ *   商品頁展示（kind: 'params'）
+ *     商品頁上半部的展示元件，跟開包演出無關，所以**沒有「預設模組」可選**，
+ *     只有參數。先前它的參數掛在「蓄力開卡包」底下，於是在單抽模式關掉自動旋轉，
+ *     連卡包模式的商品頁都跟著停 —— migration 591 拆成獨立的 card_showcase。
+ */
+
+type Theme = { value: string; label: string; desc: string }
+
+type Row =
+  | { kind: 'default'; productType: string; title: string; desc: string; themes: Theme[] }
+  | { kind: 'params'; theme: string; title: string; desc: string; paramLabel: string }
+
+const CARD_MODULES: Theme[] = [
+  { value: 'card_peel',  label: '撕開封口',   desc: '拖曳封口把手撕開卡包，卡牌一一揭曉' },
+  { value: 'card_pack',  label: '蓄力開卡包', desc: '按住蓄力撕開卡包，卡牌一一揭曉' },
+  { value: 'card_video', label: '過場影片',   desc: '播放開卡影片，播完回商品頁彈出恭喜獲得' },
+]
+
+const CATEGORIES: { key: string; label: string; info: string; rows: Row[] }[] = [
   {
-    type: 'gacha',
-    label: '轉蛋',
-    themes: [
-      { value: 'gacha_classic', label: '原始經典', desc: '物理蛋球掉落轉蛋機' },
-      { value: 'gacha_mode2', label: '新款機台', desc: '旋鈕式轉蛋機，蛋口出蛋設計' },
-      { value: 'gacha_mode3', label: '金光閃閃機台', desc: '旋鈕式轉蛋機，金光閃閃特效版' },
-      { value: 'gacha_mode4', label: '狗狗蛋箱', desc: '蛋箱風格轉蛋機，無旋鈕設計' },
-      { value: 'gacha_mode5', label: '紫金旋鈕機台', desc: '旋鈕式轉蛋機，操作鈕在頁面底部' },
-    ],
-  },
-  {
-    type: 'ichiban',
+    key: 'ichiban',
     label: '一番賞',
-    themes: [
-      { value: 'ichiban_grid', label: '經典列表', desc: '票券網格排列，各自拖拉撕開（預設）' },
-      { value: 'ichiban_tear', label: '沉浸式撕紙', desc: '全畫面場景，撕開揭曉最大賞，再進開獎列表' },
-    ],
-  },
-  /* 抽卡拆成兩種模式各自的預設（老闆 2026-08-18）：
-     兩種模式的演出不通用 —— 撕開封口是整包的演出，蓄力開卡包是單張的，
-     混在同一個下拉會讓人以為可以互換（DB 端 migration 586 的 CHECK 也會擋）。
-     設定鍵 card = 單抽模式、card_pack_mode = 卡包模式 */
-  {
-    type: 'card',
-    label: '抽卡・單抽模式',
-    themes: [
-      { value: 'card_pack',  label: '蓄力開卡包', desc: '按住蓄力撕開卡包，卡牌一一揭曉（預設）' },
-      { value: 'card_video', label: '過場影片',   desc: '播放開卡影片，播完回商品頁彈出恭喜獲得' },
-    ],
+    info: '沒有個別指定模組的一番賞商品，開獎時用哪一款演出。',
+    rows: [{
+      kind: 'default', productType: 'ichiban', title: '預設開獎演出',
+      desc: '商品頁沒有另外指定時套用這一款',
+      themes: [
+        { value: 'ichiban_grid', label: '經典列表', desc: '票券網格排列，各自拖拉撕開' },
+        { value: 'ichiban_tear', label: '沉浸式撕紙', desc: '全畫面場景，撕開揭曉最大賞，再進開獎列表' },
+      ],
+    }],
   },
   {
-    type: 'card_pack_mode',
-    label: '抽卡・卡包模式',
-    themes: [
-      { value: 'card_peel',  label: '撕開封口',   desc: '拖曳封口把手撕開卡包，卡牌一一揭曉並累計價值（目前僅此一款）' },
-    ],
-  },
-  {
-    type: 'custom',
-    label: '自製賞',
-    themes: [
-      { value: 'custom_combo', label: '影片互動 Combo', desc: '全畫面影片播放，互動點擊揭曉最大賞（預設）' },
-    ],
-  },
-  {
-    type: 'blindbox',
+    key: 'blindbox',
     label: '盒玩',
-    themes: [
-      { value: 'blindbox_classic', label: '原始經典', desc: '過場華麗動畫（預設）' },
-      { value: 'blindbox_mode2', label: '販賣機', desc: '可愛兔子貨架機台，盒子飛入取物口動畫' },
-      { value: 'blindbox_mode3', label: '叢林探險販賣機', desc: '叢林主題貨架機台，盒子飛入取物口動畫' },
-      { value: 'blindbox_mode4', label: '賽璐璐風格販賣機', desc: '賽璐璐動畫風貨架機台，盒子飛入取物口動畫' },
-      { value: 'blindbox_mode5', label: '立體物理販賣機', desc: '3D 盒子推出傾倒，真物理落盒滾進取物口（手感可調）' },
+    info: '沒有個別指定模組的盒玩商品，開盒時用哪一款演出。',
+    rows: [{
+      kind: 'default', productType: 'blindbox', title: '預設開盒演出',
+      desc: '商品頁沒有另外指定時套用這一款',
+      themes: [
+        { value: 'blindbox_classic', label: '原始經典', desc: '過場華麗動畫' },
+        { value: 'blindbox_mode2', label: '販賣機・兔子', desc: '可愛兔子貨架，盒子飛入取物口' },
+        { value: 'blindbox_mode3', label: '販賣機・叢林', desc: '叢林主題貨架，盒子飛入取物口' },
+        { value: 'blindbox_mode4', label: '販賣機・賽璐璐', desc: '賽璐璐動畫風貨架' },
+        { value: 'blindbox_mode5', label: '販賣機・立體物理', desc: '3D 盒子推出翻落' },
+      ],
+    }],
+  },
+  {
+    key: 'gacha',
+    label: '轉蛋',
+    info: '沒有個別指定模組的轉蛋商品，轉蛋時用哪一台機器。',
+    rows: [{
+      kind: 'default', productType: 'gacha', title: '預設轉蛋機台',
+      desc: '商品頁沒有另外指定時套用這一款',
+      themes: [
+        { value: 'gacha_classic', label: '原始經典', desc: '物理蛋球掉落轉蛋機' },
+        { value: 'gacha_mode2', label: '新款機台', desc: '旋鈕式轉蛋機，蛋口出蛋設計' },
+        { value: 'gacha_mode3', label: '金光閃閃機台', desc: '旋鈕式轉蛋機，金光閃閃特效版' },
+        { value: 'gacha_mode4', label: '狗狗蛋箱', desc: '蛋箱風格轉蛋機，無旋鈕設計' },
+        { value: 'gacha_mode5', label: '紫金旋鈕機台', desc: '旋鈕式轉蛋機，操作鈕在頁面底部' },
+      ],
+    }],
+  },
+  {
+    key: 'card',
+    label: '抽卡',
+    info: '抽卡有兩種開卡模式，各自可以指定演出。上方的「商品頁卡包展示」是商品頁上半部那個會轉的卡包，兩種模式共用。',
+    rows: [
+      {
+        kind: 'params', theme: 'card_showcase', paramLabel: '商品頁卡包展示',
+        title: '商品頁卡包展示',
+        desc: '商品頁上半部會轉的那個卡包。與開包演出無關，單抽與卡包模式共用同一組設定',
+      },
+      {
+        kind: 'default', productType: 'card', title: '單抽模式・開包演出',
+        desc: '一抽一張。不可使用「撕開封口」——那是整包的演出',
+        themes: CARD_MODULES.filter(t => t.value !== 'card_peel'),
+      },
+      {
+        kind: 'default', productType: 'card_pack_mode', title: '卡包模式・開包演出',
+        desc: '一抽一整包。三款都可以用',
+        themes: CARD_MODULES,
+      },
     ],
+  },
+  {
+    key: 'custom',
+    label: '自製賞',
+    info: '沒有個別指定模組的自製賞商品，開獎時用哪一款演出。',
+    rows: [{
+      kind: 'default', productType: 'custom', title: '預設開獎演出',
+      desc: '商品頁沒有另外指定時套用這一款',
+      themes: [{ value: 'custom_combo', label: '影片互動 Combo', desc: '全畫面影片播放，互動點擊揭曉最大賞' }],
+    }],
   },
 ]
 
-type Setting = { product_type: string; machine_theme: string }
+/** 存檔要送出的所有預設模組列（params 列沒有預設模組，不參與） */
+const DEFAULT_ROWS = CATEGORIES.flatMap(c => c.rows).filter(
+  (r): r is Extract<Row, { kind: 'default' }> => r.kind === 'default',
+)
 
-export default function ModuleSettingsPage() {
+export default function ModulesSettingsPage() {
+  const [section, setSection] = useState<string>(CATEGORIES[0].key)
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [paramsFor, setParamsFor] = useState<{ theme: string; label: string } | null>(null)
+  /* 展開中的參數面板（老闆：參數設定移出來、不要彈窗）。同時只開一個，
+     免得整頁被滑桿塞滿看不到模組本身 */
+  const [openParams, setOpenParams] = useState<string | null>(null)
+  /* 參數值由這裡保管，跟預設模組共用同一顆「儲存設定」——
+     面板自己再放一顆儲存會變成兩顆，使用者分不出按哪顆存到什麼（老闆 2026-08-19） */
+  const [paramValues, setParamValues] = useState<Record<string, Record<string, number | boolean | string>>>({})
+  const [dirtyThemes, setDirtyThemes] = useState<string[]>([])
+
+  const handleParamsChange = (theme: string, next: Record<string, number | boolean | string>) => {
+    setParamValues(prev => {
+      // 第一次載入（prev 沒有這個 theme）不算改動，否則沒動過的參數也會被寫回去
+      if (prev[theme] !== undefined) {
+        setDirtyThemes(d => (d.includes(theme) ? d : [...d, theme]))
+        setSaved(false)
+      }
+      return { ...prev, [theme]: next }
+    })
+  }
 
   useEffect(() => {
     fetch('/api/admin/settings/modules')
       .then(r => r.json())
-      .then((data: Setting[]) => {
+      .then((rows: { product_type: string; machine_theme: string }[]) => {
         const map: Record<string, string> = {}
-        for (const row of data) map[row.product_type] = row.machine_theme
+        ;(Array.isArray(rows) ? rows : []).forEach(r => { map[r.product_type] = r.machine_theme })
         setSettings(map)
       })
       .finally(() => setIsLoading(false))
   }, [])
 
-  const handleChange = (type: string, theme: string) => {
-    setSettings(prev => ({ ...prev, [type]: theme }))
+  const handleChange = (productType: string, value: string) => {
+    setSettings(prev => ({ ...prev, [productType]: value }))
     setSaved(false)
   }
 
@@ -99,20 +165,30 @@ export default function ModuleSettingsPage() {
     setIsSaving(true)
     setSaved(false)
     try {
-      const body = PRODUCT_TYPES.map(({ type, themes }) => ({
-        product_type: type,
-        machine_theme: settings[type] || themes[0].value,
+      const body = DEFAULT_ROWS.map(r => ({
+        product_type: r.productType,
+        machine_theme: settings[r.productType] || r.themes[0].value,
       }))
       const res = await fetch('/api/admin/settings/modules', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      if (res.ok) setSaved(true)
+      // 有動過的參數一起存。逐個送是因為 API 就是一次一個 theme
+      await Promise.all(dirtyThemes.map(theme =>
+        fetch('/api/admin/settings/modules/params', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ theme, params: paramValues[theme] ?? {} }),
+        })))
+      if (res.ok) { setSaved(true); setDirtyThemes([]) }
     } finally {
       setIsSaving(false)
     }
   }
+
+  const current = CATEGORIES.find(c => c.key === section) ?? CATEGORIES[0]
 
   return (
     <AdminLayout>
@@ -120,68 +196,84 @@ export default function ModuleSettingsPage() {
         {isLoading ? (
           <CardSkeleton rows={3} />
         ) : (
-          <div className="space-y-4">
-            {PRODUCT_TYPES.map(({ type, label, themes }) => (
-              <div key={type} className="p-4 border border-neutral-200 rounded-lg bg-white">
-                <div className="flex items-center gap-4">
-                  <div className="w-20 shrink-0">
-                    <Badge variant="default">{label}</Badge>
+          <SettingsShell nav={<SettingsNav sections={CATEGORIES} value={section} onChange={setSection} />}>
+            <div className="space-y-3">
+              <SectionHead title={current.label} info={current.info} />
+
+              {current.rows.map(row => {
+                if (row.kind === 'params') {
+                  const open = openParams === row.theme
+                  return (
+                    <div key={row.theme} className="space-y-2">
+                      <SettingsRow title={row.title} desc={row.desc}>
+                        <button
+                          onClick={() => setOpenParams(open ? null : row.theme)}
+                          className="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors whitespace-nowrap"
+                        >
+                          {open ? '收起參數' : '參數設定'}
+                        </button>
+                      </SettingsRow>
+                      {open && <ParamsPanel theme={row.theme} values={paramValues[row.theme]} onChange={handleParamsChange} onClose={() => setOpenParams(null)} />}
+                    </div>
+                  )
+                }
+                const cur = settings[row.productType] || row.themes[0].value
+                const curTheme = row.themes.find(t => t.value === cur)
+                const key = `${row.productType}:${cur}`
+                const open = openParams === key
+                return (
+                  <div key={row.productType} className="space-y-2">
+                    <SettingsRow title={row.title} desc={row.desc}>
+                      <div className="flex items-center gap-2">
+                        <SelectField
+                          value={cur}
+                          onChange={e => { handleChange(row.productType, e.target.value); setOpenParams(null) }}
+                          className="min-w-[15rem] border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                        >
+                          {row.themes.map(({ value, label, desc }) => (
+                            <option key={value} value={value}>{label}（{desc}）</option>
+                          ))}
+                        </SelectField>
+                        <button
+                          onClick={() => setOpenParams(open ? null : key)}
+                          className="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors whitespace-nowrap"
+                        >
+                          {open ? '收起參數' : '參數設定'}
+                        </button>
+                      </div>
+                    </SettingsRow>
+                    {open && (
+                      <>
+                        <p className="px-1 text-xs text-neutral-400">
+                          以下是「{curTheme?.label ?? cur}」的參數，換模組時會跟著換
+                        </p>
+                        <ParamsPanel theme={cur} values={paramValues[cur]} onChange={handleParamsChange} onClose={() => setOpenParams(null)} />
+                      </>
+                    )}
                   </div>
-                  <div className="flex-1">
-                    <SelectField
-                      value={settings[type] || themes[0].value}
-                      onChange={e => handleChange(type, e.target.value)}
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      {themes.map(({ value, label: themeLabel, desc }) => (
-                        <option key={value} value={value}>
-                          {themeLabel}（{desc}）
-                        </option>
-                      ))}
-                    </SelectField>
-                  </div>
-                  {/* 原本這裡是重複顯示選中主題名的灰字（下拉裡已經看得到），
-                      老闆指定換成參數設定入口 */}
-                  <div className="w-24 shrink-0 text-right">
-                    <button
-                      onClick={() => {
-                        const cur = settings[type] || themes[0].value
-                        setParamsFor({ theme: cur, label: themes.find(t => t.value === cur)?.label ?? cur })
-                      }}
-                      className="text-sm font-medium text-primary hover:text-primary"
-                    >
-                      參數設定
-                    </button>
-                  </div>
+                )
+              })}
+
+              <div className="flex items-center justify-between gap-3 pt-4 border-t border-neutral-100">
+                <p className="text-xs text-neutral-400">
+                  ※ 各類別未自訂的商品會套用此設定；已在商品頁個別設定的不受影響
+                </p>
+                <div className="flex items-center gap-3">
+                  {saved && <span className="text-sm text-green-600 font-medium">已儲存</span>}
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="px-5 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark disabled:opacity-50 transition-colors whitespace-nowrap"
+                  >
+                    {isSaving ? '儲存中...' : dirtyThemes.length > 0 ? '儲存設定與參數' : '儲存設定'}
+                  </button>
                 </div>
               </div>
-            ))}
-
-            <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
-              <p className="text-xs text-neutral-400">
-                ※ 各類別未自訂的商品會套用此設定；已在商品頁個別設定的不受影響
-              </p>
-              <div className="flex items-center gap-3">
-                {saved && <span className="text-sm text-green-600 font-medium">已儲存</span>}
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="px-5 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark disabled:opacity-50 transition-colors"
-                >
-                  {isSaving ? '儲存中...' : '儲存設定'}
-                </button>
-              </div>
             </div>
-          </div>
+          </SettingsShell>
         )}
       </PageCard>
 
-      <ParamsModal
-        theme={paramsFor?.theme ?? ''}
-        themeLabel={paramsFor?.label ?? ''}
-        isOpen={paramsFor !== null}
-        onClose={() => setParamsFor(null)}
-      />
     </AdminLayout>
   )
 }

@@ -15,6 +15,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import { SoundToggle } from "@/components/ui/SoundToggle";
 import useSoundMuted from "@/hooks/useSoundMuted";
+import { createClient } from "@/lib/supabase/client";
+
+/* 後台「抽獎模組設定 → 卡包模式 → 撕開封口」可調的參數，
+   讀不到就用這組預設（跟 backend/app/settings/modules/machineParams.ts 的 default 一致） */
+const PARAM_DEFAULTS = {
+  boltThin: 2.6, boltSpeed: 110, boltScale: 13, boltOffsetY: -46,
+  dealStagger: 90, flipDelay: 500,
+};
 
 /* ============================================================
    GGB 撕開卡包 — packs.com "Demo Open" 流程
@@ -40,6 +48,17 @@ const TIERS = {
 const raysBG = (c) => "conic-gradient(from 0deg," +
   Array.from({ length: 8 }, (_, i) => { const a = i * 45; return `${c}00 ${a}deg,${c}cc ${a + 12}deg,${c}00 ${a + 24}deg`; }).join(",") +
   `,${c}00 360deg)`;
+/*
+ * 大賞（紫）的閃電：老闆給的九格循環，素材在 public/images/card/light/。
+ * 只有 1,3,4,5,7,8 有圖，2、6、9 是**刻意留空**的空白格 —— 閃電本來就要有斷續感，
+ * 每格都有圖會變成一直亮著的光暈，不像在打閃。
+ *
+ * 上色用遮罩不用濾鏡：素材是 fill="white" 的路徑，白色沒有色相，hue-rotate 轉不動。
+ * 拿它當 alpha 遮罩、底下鋪紫色漸層，顏色才完全可控。
+ */
+const BOLT_FRAMES = [1, null, 3, 4, 5, null, 7, 8, null];
+const BOLT_MS = 110;
+
 const DEAL_STAGGER = 90;    // 每張發牌間隔 ms
 const DEAL_DUR = 480;       // 單張上滑時間 ms
 const FLIP_DELAY = 500;     // 定位後到翻牌的延遲 ms
@@ -166,6 +185,10 @@ export default function GGBPackRip({
   cards: cardsProp,
   prizeTier: prizeTierProp = "blue",
   soundDefault = true,
+  /** 略過撕包步驟，直接進發牌（商品頁左上角的閃電） */
+  skipIntro = false,
+  /** 一包幾張。SKIP 用它算出「最後一包的開頭」 */
+  cardsPerPack = 1,
   onFinish,
   onExit,
   title = "吉吉比・撕開卡包",
@@ -187,6 +210,16 @@ export default function GGBPackRip({
   const [flipped, setFlipped] = useState(false); // 最上張已翻正面
   const [auraOn, setAuraOn] = useState(false);
   const [flash, setFlash] = useState(false);
+  const [boltFrame, setBoltFrame] = useState(0);
+  const [cfg, setCfg] = useState(PARAM_DEFAULTS);
+  useEffect(() => {
+    createClient()
+      .from('machine_theme_params')
+      .select('params')
+      .eq('theme', 'card_peel')
+      .maybeSingle()
+      .then(({ data }) => setCfg({ ...PARAM_DEFAULTS, ...(data?.params ?? {}) }), () => {});
+  }, []);
 
   const sfx = useSfx(sound);
   const packRef = useRef(null);
@@ -304,10 +337,10 @@ export default function GGBPackRip({
     setSettled(true); setDealing(true);
     requestAnimationFrame(() => requestAnimationFrame(() => setDealt(true)));
     const n = Math.min(cards.length, 8); // 疊太多沒必要全部動畫
-    for (let i = 0; i < n; i++) later(() => sfx.current.deal(), i * DEAL_STAGGER);
-    const dealDone = (n - 1) * DEAL_STAGGER + DEAL_DUR;
+    for (let i = 0; i < n; i++) later(() => sfx.current.deal(), i * cfg.dealStagger);
+    const dealDone = (n - 1) * cfg.dealStagger + DEAL_DUR;
     later(() => setDealing(false), dealDone);
-    later(() => { if (cards.length > 1) flipTop(0); }, dealDone + FLIP_DELAY); // 只剩最後一張時等玩家點
+    later(() => { if (cards.length > 1) flipTop(0); }, dealDone + cfg.flipDelay); // 只剩最後一張時等玩家點
   };
 
   const flipTop = (idx) => {
@@ -339,35 +372,44 @@ export default function GGBPackRip({
   const skipToLast = () => {
     if (phaseRef.current !== "cards") return;
     const lastIdx = cards.length - 1;
+    timers.current.forEach(clearTimeout); timers.current = [];
     if (cardIdx >= lastIdx) {
-      timers.current.forEach(clearTimeout); timers.current = [];
+      // 已在最後一張：沒翻就翻開，翻開了就收掉演出回商品頁
       if (!flipped) { flipTop(lastIdx); return; }
       setAuraOn(false);
       if (onFinish) onFinish();
       return;
     }
-    timers.current.forEach(clearTimeout); timers.current = [];
-    const last = lastIdx;
-    const STEP = 130;                       // 每張之間的間隔：看得出在翻，又不拖
-    let t = 0;
-    for (let i = cardIdx; i < last; i++) {
-      const next = i + 1;
-      later(() => {
-        setCardOffset({ x: 0, y: 0 });
-        setCardIdx(next);
-        setSettled(true);
-        if (next < last) {
-          // 中間那幾張快速翻開給玩家看過去
-          setFlipped(true);
-          sfx.current.flip();
-        } else {
-          // 最後一張停在卡背，不自動翻 —— 大賞就在這個位置，
-          // 那一下要留給玩家自己點，跟不按 SKIP 時的收尾一致（老闆指定）
-          setFlipped(false);
-        }
-      }, (t += STEP));
-    }
+    /*
+     * 跳到「最後一包的開頭」（老闆 2026-08-18）：總張數 − 每包張數。
+     *   買 10 包共 100 張、每包 10 → 跳到第 91 張
+     *   買 10 包共  70 張、每包  7 → 跳到第 64 張
+     * 這樣最後一包仍會完整演到它的最後一張（大賞的位置），前面幾包直接略過。
+     *
+     * 為什麼不是逐張快翻：先前每張間隔 130ms，100 張光跳過就十幾秒，比不按還久。
+     * 為什麼不是直接跳最後一張：那會連最後一包的過程都吃掉。
+     *
+     * 只買一包時 lastPackStart 會是 0（等於沒跳），這時就照三段式跳到最後一張。
+     */
+    const lastPackStart = Math.max(0, cards.length - Math.max(1, cardsPerPack));
+    const target = cardIdx < lastPackStart ? lastPackStart : lastIdx;
+    setCardOffset({ x: 0, y: 0 });
+    setCardIdx(target);
+    setSettled(true);
+    setFlipped(false);
+    // 落在最後一包的中間時，該張照原本規則自動翻開；只有整包最後一張留給玩家點
+    if (target < lastIdx) later(() => flipTop(target), 160);
   };
+
+  /*
+   * 閃電（略過撕包）：掛載後直接進發牌，不演撕封條那段。
+   * 放在 startDeal 定義之後才不會踩到 TDZ；只跑一次，之後的階段照常。
+   */
+  useEffect(() => {
+    if (!skipIntro) return;
+    const t = setTimeout(() => { if (phaseRef.current === "idle") startDeal(); }, 60);
+    return () => clearTimeout(t);
+  }, [skipIntro]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ---------- 卡牌滑掉 / 點擊 ---------- */
   const cardDrag = useRef({ on: false, sx: 0, sy: 0, dx: 0, dy: 0, t: 0 });
@@ -377,17 +419,20 @@ export default function GGBPackRip({
   const isLast = cardIdx === cards.length - 1;
 
   /* 紫/金等級：最後一張卡背周圍閃電電弧（參考站紫光閃電，隨機劈啪） */
-  const [boltTick, setBoltTick] = useState(0);
-  const boltsOn = phase === "cards" && isLast && !flipped && dealt &&
-    (TIERS[prizeTier] || TIERS.blue).big;
+  /*
+   * 閃電只在「最後一張、還沒翻、已發完牌」時跑 —— 那是翻牌前的醞釀，
+   * 打在卡背周圍（沿用原型的時機，也就是老闆參考圖的樣子）。
+   * 紫色大賞才有；藍色是一般等級，只留柔光不打閃。
+   */
+  const boltsOn = phase === "cards" && isLast && !flipped && dealt && prizeTier === "purple";
   useEffect(() => {
-    if (!boltsOn) return;
+    if (!boltsOn) { setBoltFrame(0); return; }
     const iv = setInterval(() => {
-      setBoltTick(t => t + 1);
+      setBoltFrame(f => (f + 1) % BOLT_FRAMES.length);
       if (Math.random() < 0.3) sfx.current.spark();
-    }, 140);
+    }, cfg.boltSpeed);
     return () => clearInterval(iv);
-  }, [boltsOn]); // eslint-disable-line
+  }, [boltsOn, cfg.boltSpeed]); // eslint-disable-line
 
   const onCardDown = (e) => {
     if (phase !== "cards" || flying || !dealt) return;
@@ -548,6 +593,42 @@ export default function GGBPackRip({
       onPointerUp={onStageUp} onPointerCancel={onStageUp}>
       <style>{CSS_KEYFRAMES}</style>
 
+      {/*
+        閃電變細用的侵蝕濾鏡（老闆：線太粗）。
+        素材是實心色塊，CSS 沒有「把形狀往內縮」的功能，所以自己做一顆：
+          先高斯模糊讓邊緣變成漸層 → 再用 feFuncA 把 alpha 重新映射，
+          只留下模糊後仍然夠濃的中心部分 → 形狀就往內縮了。
+        slope/intercept 控制縮多少：intercept 越負縮得越多（線越細）。
+      */}
+      <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden>
+        <defs>
+          <filter id="ggbBoltThin" x="-25%" y="-25%" width="150%" height="150%"
+                  colorInterpolationFilters="sRGB">
+            {/* 侵蝕距離 ≈ 模糊半徑 × Φ⁻¹(門檻)，門檻 = -intercept/slope。
+                實測校準（σ / 門檻 → 結果）：
+                  3.2 / 0.70 → 幾乎看不出差別，電弧還是粗的
+                  11  / 0.75 → 侵蝕過頭，電弧整條消失只剩外圈光暈
+                  6   / 0.68 → 也消失
+                  4.5 / 0.66 → 電弧被打斷成碎塊（細的段落先消失，粗的還是粗）
+                  2.6 / 0.58 → 略細但不斷線（目前值）
+
+                ⚠ 這個技術有天花板：模糊＋門檻是「等距離往內縮」，
+                素材裡細的線段會先整段消失，粗的區塊卻只縮掉一點 ——
+                所以再往上加只會把電弧打散，不會讓它整體變細。
+                真要更細必須改素材本身（線畫細一點再匯出）。
+                ⚠ 上面的判讀來自無頭瀏覽器截圖，而無頭環境的 SVG 濾鏡渲染未必等同
+                真實瀏覽器 —— 這格數字請以老闆實機看到的為準。
+                調法：stdDeviation 加大＝更細，減小＝更粗，一次動 ±1 就好。 */}
+            <feGaussianBlur stdDeviation={cfg.boltThin} result="b" />
+            <feComponentTransfer in="b">
+              {/* 門檻固定 0.6（slope 20 / intercept -12）；粗細由上面的模糊半徑控制。
+                  boltThin = 0 等於不模糊，也就完全不侵蝕，維持素材原始粗細 */}
+              <feFuncA type="linear" slope="20" intercept="-12" />
+            </feComponentTransfer>
+          </filter>
+        </defs>
+      </svg>
+
       {STARS.map((s, i) => (
         <div key={i} style={{
           position: "absolute", left: s.x, top: s.y, fontSize: s.s, color: "#ffe14a",
@@ -680,32 +761,30 @@ export default function GGBPackRip({
             );
           })}
 
-          {/* 閃電電弧（紫/金等級待翻時） */}
-          {boltsOn && settled && (
-            <svg key={boltTick} viewBox="0 0 120 168" style={{
-              position: "absolute", inset: "-10%", zIndex: 26,
-              pointerEvents: "none", overflow: "visible",
-            }}>
-              {Array.from({ length: 4 }, (_, b) => {
-                const side = (Math.random() * 4) | 0;
-                let x = side === 0 ? 10 + Math.random() * 100 : side === 1 ? 110 : side === 2 ? 10 + Math.random() * 100 : 10;
-                let y = side === 0 ? 14 : side === 1 ? 14 + Math.random() * 140 : side === 2 ? 154 : 14 + Math.random() * 140;
-                const nx = side === 1 ? 1 : side === 3 ? -1 : 0;
-                const ny = side === 0 ? -1 : side === 2 ? 1 : 0;
-                let d = `M${x.toFixed(1)},${y.toFixed(1)}`;
-                for (let s2 = 0; s2 < 5; s2++) {
-                  x += nx * (2 + Math.random() * 4) + (Math.random() - 0.5) * 9;
-                  y += ny * (2 + Math.random() * 4) + (Math.random() - 0.5) * 9;
-                  d += ` L${x.toFixed(1)},${y.toFixed(1)}`;
-                }
-                return (
-                  <path key={b} d={d} fill="none" stroke={T.rim} strokeWidth={0.9}
-                    strokeLinecap="round" opacity={0.5 + Math.random() * 0.5}
-                    style={{ filter: `drop-shadow(0 0 3px ${T.glow})` }} />
-                );
-              })}
-            </svg>
-          )}
+          {/* 閃電：老闆給的九格素材輪播（public/images/card/light/），紫色大賞才跑。
+              原本是用 Math.random() 現生折線，每格形狀都不一樣、粗細也不對，看起來很假。
+              素材是 fill="white" 的路徑，所以拿它當 alpha 遮罩、底下鋪紫色漸層來上色。 */}
+          {boltsOn && settled && BOLT_FRAMES[boltFrame] && (() => {
+            const url = `url(/images/card/light/${BOLT_FRAMES[boltFrame]}.svg)`;
+            const mask = { WebkitMaskImage: url, maskImage: url };
+            const box = { inset: `-${cfg.boltScale}%`, transform: `translateY(${cfg.boltOffsetY}px)` };
+            return (
+              <>
+                {/* 光暈層：外層負責模糊，內層負責形狀 */}
+                <div style={{ ...S.boltGlowWrap, ...box }}>
+                  <div style={{ ...S.boltFill, ...mask, background: S.boltGlowBg }} />
+                </div>
+                {/*
+                  電弧層：外層套侵蝕濾鏡把線縮細，內層才是被遮罩出來的形狀。
+                  ⚠ 濾鏡與遮罩**不能寫在同一層** —— CSS 的 filter 跑在 mask 之前，
+                  同層的話侵蝕到的是那塊還沒被切形狀的實心漸層，等於什麼都沒做。
+                */}
+                <div style={{ ...S.boltCoreWrap, ...box }}>
+                  <div style={{ ...S.boltFill, ...mask, background: S.boltCoreBg }} />
+                </div>
+              </>
+            );
+          })()}
 
           {/* 最上張：3D 翻牌（背 → 正）— key 讓撥掉的牌不會飛回來 */}
           <div key={cardIdx} style={{
@@ -746,6 +825,8 @@ export default function GGBPackRip({
             <div style={{
               position: "absolute", inset: 0, transformStyle: "preserve-3d",
               transform: flipped ? `rotateX(${tilt.x.toFixed(1)}deg) rotateY(${tilt.y.toFixed(1)}deg)` : "none",
+              // 待翻的最後一張也緩緩傾斜 —— 只有上下飄不夠立體（老闆 2026-08-19）
+              animation: isLast && !flipped && dealt && settled ? "ggbTilt3d 4.6s ease-in-out infinite" : "none",
               transition: "transform .15s ease",
             }}>
             <div style={{
@@ -867,6 +948,30 @@ const S = {
     marginLeft: "-90vmin", marginTop: "-90vmin", borderRadius: "50%",
     pointerEvents: "none", zIndex: 5,
   },
+  /*
+   * 閃電定位：
+   *   inset -13%       素材四周本來就留白；-8% → -13% 是老闆要的放大約一成
+   *   maskSize contain 素材 432×566（0.763）vs 卡片 5/7（0.714），拉伸會變形
+   *   ggbBoltFloat     與卡片同步的飄動＋3D 傾斜，**含卡堆上移 STACK_Y(-30px)**
+   *                    —— 未翻的卡片整體上移，閃電沒跟上就會看起來偏下（老闆回報）
+   */
+  boltFill: {
+    position: "absolute", inset: 0,
+    animation: "ggbBoltFloat 4.6s ease-in-out infinite",
+    WebkitMaskSize: "contain", maskSize: "contain",
+    WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
+    WebkitMaskPosition: "center", maskPosition: "center",
+  },
+  boltCoreBg: "linear-gradient(180deg,#fbf2ff 0%,#e0bcff 32%,#bd7dff 64%,#9b4dff 100%)",
+  boltGlowBg: "radial-gradient(circle at 50% 45%, #f3e8ff, #b06bff 55%, #7c3aed)",
+  boltCoreWrap: {
+    position: "absolute", zIndex: 27, pointerEvents: "none",
+    filter: "url(#ggbBoltThin) drop-shadow(0 0 3px #f5ebffee) drop-shadow(0 0 10px #c9a0ffdd) drop-shadow(0 0 24px #a855f7aa)",
+  },
+  boltGlowWrap: {
+    position: "absolute", zIndex: 26, pointerEvents: "none",
+    filter: "blur(11px)", opacity: 0.7,
+  },
   auraGlow: { position: "absolute", inset: "8%", borderRadius: 20, zIndex: 6, pointerEvents: "none" },
   prizeTag: {
     position: "absolute", top: -54, left: 0, right: 0, textAlign: "center", zIndex: 30,
@@ -898,6 +1003,8 @@ const CSS_KEYFRAMES = `
 @keyframes ggbCardIn { from{transform:scale(.85);opacity:.4} to{transform:scale(1);opacity:1} }
 @keyframes ggbJitter { 0%,100%{transform:translate(0,0)} 25%{transform:translate(.8px,-.5px)} 50%{transform:translate(-.7px,.6px)} 75%{transform:translate(.5px,.5px)} }
 @keyframes ggbFloatCard { 0%,100%{transform:translateY(0) rotate(-1.2deg)} 50%{transform:translateY(-10px) rotate(1.2deg)} }
+@keyframes ggbTilt3d { 0%,100%{transform:rotateX(7deg) rotateY(-9deg)} 50%{transform:rotateX(-6deg) rotateY(9deg)} }
+@keyframes ggbBoltFloat { 0%,100%{transform:translateY(0) rotate(-6deg) rotateX(6deg) rotateY(-7deg)} 50%{transform:translateY(-8px) rotate(-6deg) rotateX(-5deg) rotateY(7deg)} }
 @keyframes ggbRimPulse { 0%,100%{filter:brightness(1)} 50%{filter:brightness(1.3)} }
 @keyframes ggbTwinkle { 0%,100%{opacity:.25;transform:scale(.8) rotate(0)} 50%{opacity:1;transform:scale(1.15) rotate(15deg)} }
 @media (prefers-reduced-motion: reduce){ *{animation:none !important} }

@@ -377,9 +377,10 @@ export default function EditProductPage() {
   const packRemaining  = isPackMode ? Math.floor(calculatedRemaining / cardsPerPack) : 0
 
   // 模組清單照模式過濾：選不到不該選的，就不會被 DB 打回來
+  // 卡包模式三種模組都可以（migration 589 放寬）；單抽模式仍不給 card_peel（整包專用的演出）
   const moduleOptions = (MODULE_OPTIONS[formData.type] ?? []).filter(o => {
     if (!isCardType) return true
-    return isPackMode ? o.value === 'card_peel' : o.value !== 'card_peel'
+    return isPackMode ? true : o.value !== 'card_peel'
   })
 
   // 當獎項數量變化時，自動更新機率
@@ -937,8 +938,10 @@ export default function EditProductPage() {
                       const next = e.target.value
                       // 卡包模式固定「撕開封口」；切回單抽時把它清掉，
                       // 免得留下一個 DB 會擋的組合（單抽 + 撕開封口）
+                      // 切到卡包模式預設帶「撕開封口」，但之後可以改成別的（migration 589）；
+                      // 切回單抽時要清掉 card_peel，否則會留下 DB 會擋的組合
                       const nextTheme = Number(next) >= 2
-                        ? 'card_peel'
+                        ? (formData.machineTheme || 'card_peel')
                         : (formData.machineTheme === 'card_peel' ? '' : formData.machineTheme)
                       setFormData({ ...formData, cardsPerPack: next, machineTheme: nextTheme })
                     }}
@@ -1020,14 +1023,14 @@ export default function EditProductPage() {
                       <InfoIcon width={280} text={
                         (formData.isSealed ? '已排籤封存，不可更換模組 —— 賣到一半換演出，先買與後買的玩家看到的會是兩套。' : '')
                         + (formData.isSealed && isPackMode ? '\n\n' : '')
-                        + (isPackMode ? '卡包模式固定使用「撕開封口」，不可更換。' : '')
+                        + (isPackMode ? '卡包模式三種模組都可以用。' : '')
                       } />
                     )}
                   </div>
-                  <SelectField value={formData.machineTheme} disabled={formData.isSealed || isPackMode}
+                  <SelectField value={formData.machineTheme} disabled={formData.isSealed}
                     onChange={(e) => setFormData({ ...formData, machineTheme: e.target.value })}>
                     {/* 卡包模式必須明確指定 card_peel，不能留「類別預設」 */}
-                    {!isPackMode && <option value="">— 類別預設 —</option>}
+                    <option value="">— 類別預設 —</option>
                     {moduleOptions.map(o => (
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}

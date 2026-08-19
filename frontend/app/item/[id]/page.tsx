@@ -488,6 +488,18 @@ export default function ProductDetailPage() {
   const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [cardScale, setCardScale] = useState(1);
   const [isCardImageMode, setIsCardImageMode] = useState(false);
+  /* 閃電：略過撕卡包，直接看第一張。記在 localStorage —— 會用這個的人每次都想用 */
+  const [skipPackIntro, setSkipPackIntro] = useState(false);
+  useEffect(() => {
+    try { setSkipPackIntro(localStorage.getItem('ggb_skip_pack_intro') === '1'); } catch { /* 無痕模式 */ }
+  }, []);
+  const toggleSkipPackIntro = useCallback(() => {
+    setSkipPackIntro(prev => {
+      const next = !prev;
+      try { localStorage.setItem('ggb_skip_pack_intro', next ? '1' : '0'); } catch { /* 忽略 */ }
+      return next;
+    });
+  }, []);
   const packCarouselRef = useRef<PackSelectionCarouselHandle | null>(null);
   const firstPackStyles = useRef<string[]>(getRandomPackStyles());
   const [packStyles, setPackStyles] = useState<string[]>(firstPackStyles.current);
@@ -925,9 +937,17 @@ export default function ProductDetailPage() {
      */
     const perPack = Math.max(1, Number((product as any).cards_per_pack) || 1);
     if (perPack >= 2) {
+      /*
+       * 一包最多只有一張大賞（老闆 2026-08-19）。
+       * 墊檔的那幾張要把大賞等級排除，否則會像先前那樣一包跑出五張 A賞 ——
+       * 真實卡包不會這樣，而且演出的紫色閃電是給「唯一那張」用的。
+       */
+      const isBigLevel = (lv: unknown) =>
+        /A賞|SSR|超稀有/i.test(String(lv ?? ''));
       const pool = prizes.filter(
         p => !(p as { is_last_one?: boolean }).is_last_one
-          && !/最後賞|last\s*one/i.test(String(p.level || '')),
+          && !/最後賞|last\s*one/i.test(String(p.level || ''))
+          && !isBigLevel(p.level),
       );
       const filler = Array.from({ length: perPack - 1 }, (_, i) => {
         const pick = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : null;
@@ -1510,6 +1530,8 @@ export default function ProductDetailPage() {
   // };
 
   if (product.type === 'card') {
+    const cardThemeForMachine = (product as any).machine_theme
+      || (isPackMode ? moduleSettings['card_pack_mode' as keyof typeof moduleSettings] : moduleSettings['card']);
     const renderCardMachine = () => (
       <div
         className="relative overflow-hidden"
@@ -1528,6 +1550,27 @@ export default function ProductDetailPage() {
               backgroundRepeat: 'no-repeat',
             }}
           >
+            {/* 閃電：略過撕卡包，直接看第一張（老闆指定，位置在機台區左上角）。
+                只有卡包模式、且演出會演撕包的兩款模組才有意義；過場影片沒有撕包步驟 */}
+            {isPackMode && (cardThemeForMachine === 'card_peel' || cardThemeForMachine === 'card_pack') && (
+              <button
+                type="button"
+                onClick={toggleSkipPackIntro}
+                aria-pressed={skipPackIntro}
+                title={skipPackIntro ? '已開啟：直接看第一張卡' : '略過撕卡包，直接看第一張卡'}
+                className="absolute flex h-9 w-9 items-center justify-center rounded-full backdrop-blur transition-colors"
+                style={{
+                  left: 12, top: 12, zIndex: 25,
+                  backgroundColor: skipPackIntro ? 'rgba(250,204,21,0.92)' : 'rgba(0,0,0,0.45)',
+                  color: skipPackIntro ? '#3b2d00' : '#fff',
+                }}
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12l1-8.5z" />
+                </svg>
+              </button>
+            )}
+
             <button
               type="button"
               className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center px-3 rounded-full text-center"
@@ -1914,6 +1957,9 @@ export default function ProductDetailPage() {
           onPrev={prizes.length > 1 ? () => stepPrize(-1) : undefined}
           onNext={prizes.length > 1 ? () => stepPrize(1) : undefined}
           sealed={FAIR_ENGINE_TYPES.includes(product.type)}
+          /* 卡包模式：圖區塊改成卡牌 360° 立體展示（老闆原型 card-showcase） */
+          showcase3d={isPackMode}
+          showcaseBackImage={(product as any).card_back_image_url}
         />
 
         {(() => {
@@ -1926,14 +1972,19 @@ export default function ProductDetailPage() {
             if (!isVideoOpen || wonPrizes.length === 0) return null;
             /* 稀有度 → 原型的三層光環：blue 稀有 / purple 史詩 / gold 傳說。
                最後一張決定整包的收尾光環，所以取整包裡最高的那一級 */
-            const tierOf = (p: Prize): 'blue' | 'purple' | 'gold' => {
+            /*
+             * 卡包模式只有兩種特效（老闆 2026-08-19）：
+             *   紫 = A賞／SSR／最後賞  →  最後一張翻牌前會打閃電（九格素材）
+             *   藍 = B賞、C賞以下      →  只有柔光，不打閃
+             * 要把 B賞 也算紫的話，把下面那行加上 raw.includes('B賞') 就好。
+             */
+            const tierOf = (p: Prize): 'blue' | 'purple' => {
               const raw = `${p.grade ?? ''}${p.rarity ?? ''}`.toUpperCase();
-              if (raw.includes('SSR') || raw.includes('超稀有') || p.is_last_one) return 'gold';
-              if (raw.includes('SR') || raw.includes('A賞')) return 'purple';
+              if (raw.includes('SSR') || raw.includes('超稀有') || raw.includes('A賞') || p.is_last_one) return 'purple';
               return 'blue';
             };
-            const rank = { blue: 0, purple: 1, gold: 2 };
-            const topTier = wonPrizes.reduce<'blue' | 'purple' | 'gold'>(
+            const rank = { blue: 0, purple: 1 };
+            const topTier = wonPrizes.reduce<'blue' | 'purple'>(
               (best, p) => (rank[tierOf(p)] > rank[best] ? tierOf(p) : best), 'blue');
             /*
              * 依稀有度排序，最好的那張擺最後（老闆：一包裡最大的那張出現在最後一張位置，
@@ -1954,6 +2005,8 @@ export default function ProductDetailPage() {
                 cards={ordered.map(p => p.image_url || '/images/card/00004.webp')}
                 prizeTier={topTier}
                 soundDefault={!isVideoMuted}
+                skipIntro={skipPackIntro}
+                cardsPerPack={cardsPerPack}
                 title={product.name}
                 onFinish={handleVideoEnd}
                 onExit={handleVideoEnd}
@@ -2448,6 +2501,9 @@ export default function ProductDetailPage() {
           onPrev={prizes.length > 1 ? () => stepPrize(-1) : undefined}
           onNext={prizes.length > 1 ? () => stepPrize(1) : undefined}
           sealed={FAIR_ENGINE_TYPES.includes(product.type)}
+          /* 卡包模式：圖區塊改成卡牌 360° 立體展示（老闆原型 card-showcase） */
+          showcase3d={isPackMode}
+          showcaseBackImage={(product as any).card_back_image_url}
         />
 
         {/* 底部固定操作欄（手機、電腦都顯示）—— 版型與配色照抽卡／盒玩 blindbox_mode5：

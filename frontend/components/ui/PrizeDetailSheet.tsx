@@ -3,6 +3,10 @@
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import PinchZoomImage from '@/components/ui/PinchZoomImage';
+import dynamic from 'next/dynamic';
+
+// three.js 只能在瀏覽器跑，且只有卡包模式用得到 —— 動態載入不拖累其他玩法的彈窗
+const CardShowcase3D = dynamic(() => import('@/components/card/CardShowcase3D'), { ssr: false });
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import GradeBadge from '@/components/ui/GradeBadge';
@@ -25,6 +29,13 @@ interface Props {
    * 轉蛋／盒玩不顯示：那些數字站上任何地方都沒公開，只在這個彈窗漏出來。
    */
   sealed?: boolean;
+  /**
+   * 卡包模式傳 true：圖區塊換成卡牌 360° 立體旋轉展示（老闆原型 card-showcase）。
+   * 只換圖，彈窗本體、賞等、庫存那幾列完全不動。
+   */
+  showcase3d?: boolean;
+  /** 360° 展示的背面圖（商品設定的卡牌背面）；沒設就只轉正面 */
+  showcaseBackImage?: string | null;
   /** 疊在別的彈窗之上時要拉高（例：中獎結果彈窗是 3000，這裡要更高） */
   zIndex?: number;
   /**
@@ -37,7 +48,7 @@ interface Props {
 }
 
 
-export default function PrizeDetailSheet({ prize, onClose, sealed = false, zIndex = 2700, onPrev, onNext }: Props) {
+export default function PrizeDetailSheet({ prize, onClose, sealed = false, showcase3d = false, showcaseBackImage, zIndex = 2700, onPrev, onNext }: Props) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
@@ -133,14 +144,25 @@ export default function PrizeDetailSheet({ prize, onClose, sealed = false, zInde
                 不畫左右箭頭（老闆指定）—— 手機本來就用滑的，電腦滑鼠拖曳
                 走的是同一套 pointer 事件，再擺兩顆鈕只是擋住圖 */}
             <div className="relative px-5 pt-1 pb-2">
-              <PinchZoomImage
-                key={prize?.name ?? ''}
-                src={prize?.image_url || '/images/item_defaulet.webp'}
-                alt={prize?.name ?? ''}
-                className="mx-auto h-[36dvh] max-h-[320px] w-full rounded-xl"
-                onSwipeLeft={onNext}
-                onSwipeRight={onPrev}
-              />
+              {showcase3d ? (
+                /* 卡包模式：立體旋轉展示（可拖曳手動轉）。
+                   這裡不接左右滑切換品項 —— 拖曳已經被旋轉吃掉了 */
+                <CardShowcase3D
+                  key={prize?.name ?? ''}
+                  frontImage={prize?.image_url || '/images/item_defaulet.webp'}
+                  backImage={showcaseBackImage || undefined}
+                  height={320}
+                />
+              ) : (
+                <PinchZoomImage
+                  key={prize?.name ?? ''}
+                  src={prize?.image_url || '/images/item_defaulet.webp'}
+                  alt={prize?.name ?? ''}
+                  className="mx-auto h-[36dvh] max-h-[320px] w-full rounded-xl"
+                  onSwipeLeft={onNext}
+                  onSwipeRight={onPrev}
+                />
+              )}
             </div>
 
             {/* name */}

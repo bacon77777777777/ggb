@@ -19,8 +19,9 @@ export interface NewArrivalProduct {
 /** 這個 id 不存在於 site_promos，是前端組出來的最新上架彈窗 */
 export const NEW_ARRIVAL_ID = '__new_arrival__';
 
-/** 幾天內上架算「新品」。太舊的東西掛著「最新上架」比不顯示還糟 */
-const NEW_ARRIVAL_DAYS = 30;
+/** 幾天內上架算「新品」。太舊的東西掛著「最新上架」比不顯示還糟。
+ *  30 → 7（老闆 2026-08-19）：同一批新品連跳一個月，玩家會當它是常駐廣告 */
+const NEW_ARRIVAL_DAYS = 7;
 /*
  * 最多帶回幾件。
  *

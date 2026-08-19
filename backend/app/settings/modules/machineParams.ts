@@ -30,7 +30,13 @@ export const MACHINE_PARAM_SPECS: Record<string, ParamSpec[]> = {
    * 正反面圖留空時，前台照舊用內建的五款卡包圖（/images/card/pack/NNa|b.webp），
    * 輪播才不會五格長得一模一樣 —— 有設圖的商品才統一換成自己的卡包。
    */
-  card_pack: [
+  /*
+   * ⚠ 這組是「商品頁上半部的卡包輪播」，不是任何一個開包演出的參數。
+   * 原本掛在 card_pack（蓄力開卡包）底下 —— 於是在「單抽模式」關掉自動旋轉，
+   * 連卡包模式的商品頁都跟著停（老闆 2026-08-19 回報）。拆成獨立的 card_showcase，
+   * 兩種模式共用同一組，因為那本來就是同一個元件。
+   */
+  card_showcase: [
     { key: 'frontImage', label: '卡包正面', group: '卡包外觀', type: 'image', default: '',
       hint: '直式卡包，建議 62 × 116 比例（實體卡包尺寸）。留空用內建卡包圖。' },
     { key: 'backImage',  label: '卡包背面', group: '卡包外觀', type: 'image', default: '',
@@ -42,6 +48,23 @@ export const MACHINE_PARAM_SPECS: Record<string, ParamSpec[]> = {
       hint: '每幀轉多少弧度。0.008 大約 13 秒轉一圈。' },
     { key: 'idleDelay',  label: '停手後延遲', group: '展示動態', type: 'range', min: 0, max: 4, step: 0.2, default: 1.2, unit: 's',
       hint: '玩家放開後等多久才開始自動轉，太短會跟手勢打架。' },
+  ],
+
+  /* 撕開封口（卡包模式的開包演出）。閃電粗細先前只能改程式碼，開成可調 */
+  card_peel: [
+    { key: 'boltThin',    label: '閃電粗細', group: '大賞閃電', type: 'range', min: 0, max: 6, step: 0.2, default: 2.6,
+      hint: '往內縮多少。0 = 原始素材粗細；越大越細，但超過 4 會把電弧打斷成碎塊。' },
+    { key: 'boltSpeed',   label: '閃電頻率', group: '大賞閃電', type: 'range', min: 60, max: 260, step: 10, default: 110, unit: 'ms',
+      hint: '九格素材每格停留多久。越小閃得越急。' },
+    { key: 'boltScale',   label: '閃電範圍', group: '大賞閃電', type: 'range', min: 0, max: 24, step: 1, default: 13, unit: '%',
+      hint: '往卡片外擴多少。太小會被卡片蓋住，太大會飄到畫面邊緣。' },
+    { key: 'boltOffsetY', label: '閃電高度', group: '大賞閃電', type: 'range', min: -80, max: 20, step: 2, default: -46, unit: 'px',
+      hint: '相對卡片的上下位置。負值往上。' },
+
+    { key: 'dealStagger', label: '發牌間隔', group: '開包節奏', type: 'range', min: 40, max: 200, step: 10, default: 90, unit: 'ms',
+      hint: '卡片一張張頂上來的間隔。' },
+    { key: 'flipDelay',   label: '翻牌延遲', group: '開包節奏', type: 'range', min: 200, max: 1200, step: 50, default: 500, unit: 'ms',
+      hint: '發完牌到最上張自動翻面的等待時間。' },
   ],
 
   blindbox_mode5: [

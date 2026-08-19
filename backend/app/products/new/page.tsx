@@ -185,9 +185,10 @@ export default function NewProductPage() {
   const isPackMode    = isCardType && cardsPerPack >= 2
   const packTotal     = isPackMode ? Math.floor(calculatedTotalCount / cardsPerPack) : 0
   const packRemainder = isPackMode ? calculatedTotalCount % cardsPerPack : 0
+  // 卡包模式三種模組都可以（migration 589 放寬）；單抽模式仍不給 card_peel（整包專用的演出）
   const moduleOptions = (MODULE_OPTIONS[formData.type] ?? []).filter(o => {
     if (!isCardType) return true
-    return isPackMode ? o.value === 'card_peel' : o.value !== 'card_peel'
+    return isPackMode ? true : o.value !== 'card_peel'
   })
   const calculatedRemaining = normalPrizes.reduce((sum, prize) => sum + prize.remaining, 0)
 
@@ -636,7 +637,7 @@ export default function NewProductPage() {
                     <label className="block text-sm font-medium text-neutral-700">開卡模式</label>
                     <InfoIcon width={280} text={
                       isPackMode
-                        ? `售價是「一包」的價格，一抽開 ${cardsPerPack} 張、扣 ${cardsPerPack} 張籤。\n\n庫存以包為單位：品項總張數必須是每包張數的整數倍，否則會有湊不成包、永遠賣不掉的尾數。\n\n卡包模式固定使用「撕開封口」演出。`
+                        ? `售價是「一包」的價格，一抽開 ${cardsPerPack} 張、扣 ${cardsPerPack} 張籤。\n\n庫存以包為單位：品項總張數必須是每包張數的整數倍，否則會有湊不成包、永遠賣不掉的尾數。\n\n卡包模式三種模組都可以用（預設撕開封口）。`
                         : '一抽開一張，售價即單張價格。單抽模式不可使用「撕開封口」演出（那是整包的演出）。'
                     } />
                   </div>
@@ -645,8 +646,10 @@ export default function NewProductPage() {
                     onChange={(e) => {
                       const next = e.target.value
                       // 卡包模式固定「撕開封口」；切回單抽時清掉，免得留下 DB 會擋的組合
+                      // 切到卡包模式預設帶「撕開封口」，但之後可以改成別的（migration 589）；
+                      // 切回單抽時要清掉 card_peel，否則會留下 DB 會擋的組合
                       const nextTheme = Number(next) >= 2
-                        ? 'card_peel'
+                        ? (formData.machineTheme || 'card_peel')
                         : (formData.machineTheme === 'card_peel' ? '' : formData.machineTheme)
                       setFormData({ ...formData, cardsPerPack: next, machineTheme: nextTheme })
                     }}
@@ -894,16 +897,16 @@ export default function NewProductPage() {
                 <div className="flex items-center gap-1.5 mb-1">
                   <label className="block text-sm font-medium text-neutral-700">抽獎模組</label>
                   {isPackMode && (
-                    <InfoIcon width={260} text="卡包模式固定使用「撕開封口」，不可更換 —— 兩種模式的演出不通用。" />
+                    <InfoIcon width={260} text="卡包模式三種模組都可以用；單抽模式不可用「撕開封口」（那是整包專用的演出）。" />
                   )}
                 </div>
                 <SelectField
                   value={formData.machineTheme}
-                  disabled={isPackMode}
+                  
                   onChange={(e) => setFormData({ ...formData, machineTheme: e.target.value })}
                 >
                   {/* 卡包模式必須明確指定 card_peel，不能留「類別預設」 */}
-                  {!isPackMode && <option value="">— 類別預設 —</option>}
+                  <option value="">— 類別預設 —</option>
                   {moduleOptions.map(o => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}

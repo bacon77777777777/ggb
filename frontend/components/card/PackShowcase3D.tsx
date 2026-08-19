@@ -257,7 +257,10 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       createClient()
         .from('machine_theme_params')
         .select('params')
-        .eq('theme', 'card_pack')
+        /* card_showcase＝「商品頁卡包輪播」自己的設定（migration 591）。
+           以前讀的是 card_pack（蓄力開卡包模組），等於把商品頁的展示綁在某一個
+           開包模組底下 —— 在單抽模式改設定會連卡包模式的商品頁一起改掉。 */
+        .eq('theme', 'card_showcase')
         .maybeSingle()
         .then(({ data }) => {
           setParams({ ...DEFAULTS, ...((data?.params as Partial<Params>) ?? {}) });
