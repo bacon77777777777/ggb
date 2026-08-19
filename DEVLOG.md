@@ -4,6 +4,37 @@
 
 ---
 
+## v2026.08.19o｜2026-08-19｜修正：商品詳情的品項設了 360 展示，前台仍是靜態圖
+
+後台把品項改成「360 展示」、DB 也存對了（`display_mode='showcase3d'`、
+`anon` 有 SELECT 權限），但前台商品詳情點開品項還是平面圖。
+
+`app/item/[id]/page.tsx` 的 `viewingPrize` 是**逐欄抄過去的物件字面值**，
+不是把整筆 row 傳下去：
+
+```ts
+const viewingPrize = prizes[i] ? {
+  name, image_url, level, total, remaining, probability, recycle_value
+} : null   // ← display_mode 不在裡面
+```
+
+`PrizeDetailSheet` 判斷 `showcase3d && prize?.display_mode === 'showcase3d'`，
+拿到的永遠是 `undefined` → 一律走靜態圖。**不會報錯，只會靜靜失效。**
+
+跟同日 v2026.08.19m 那個後台的 `display_mode` 是**同一類 bug**：欄位加了、
+DB 對了，但中間某個手寫的物件字面值沒跟上。同一個欄位在同一天被兩個不同的
+抄寫點吃掉兩次 —— 已在該處留註解提醒「新欄位要在這裡補一次」。
+
+驗證：STG 840 挑一個品項改成 360，點開品項詳情 canvas 數 2 → 3
+（多的那個是 WebGL 展示層），畫面出現白色展台＋立體卡＋接地陰影；
+設回 static 就恢復平面圖。測試資料已還原。
+
+> `GachaCollectionList` 與 `GachaResultModal` 也是同樣的抄寫寫法、同樣沒帶
+> `display_mode`，但那兩個是轉蛋／盒玩在用，`showcase3d` 根本沒傳進去，
+> 目前沒影響。哪天要讓那兩處也支援 360 再一起補。
+
+---
+
 ## v2026.08.19n｜2026-08-19｜撕開提示文案簡化；新增遊々亭卡包匯入腳本
 
 ### 撕開提示

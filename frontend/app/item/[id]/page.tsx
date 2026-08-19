@@ -457,6 +457,13 @@ export default function ProductDetailPage() {
         remaining: prizes[viewingIndex].remaining,
         probability: (prizes[viewingIndex] as { probability?: number | null }).probability ?? null,
         recycle_value: (prizes[viewingIndex] as { recycle_value?: number | null }).recycle_value ?? null,
+        /*
+         * ⚠️ 這是**逐欄抄過去**的物件，不是把整筆 row 傳下去。
+         * 品項多一個欄位就要在這裡補一次，漏了不會報錯、只會靜靜失效 ——
+         * display_mode 就是這樣：後台設了 360 展示、DB 也存對了，
+         * 前台永遠拿到 undefined 所以一直是靜態圖（老闆 2026-08-19 回報）。
+         */
+        display_mode: (prizes[viewingIndex] as { display_mode?: string | null }).display_mode ?? null,
       }
     : null;
   const stepPrize = (d: 1 | -1) =>
