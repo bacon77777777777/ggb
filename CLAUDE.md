@@ -38,13 +38,13 @@ git fetch origin && git reset --hard origin/dev
 ```bash
 # Backend（後台）
 cd backend
-npm run dev        # 啟動開發伺服器（port 3000，-H 0.0.0.0）
+npm run dev        # 啟動開發伺服器（port 3001，-H 0.0.0.0）
 npm run build      # 建置
 npm run lint       # ESLint
 
 # Frontend（前台）
 cd frontend
-npm run dev        # 啟動開發伺服器
+npm run dev        # 啟動開發伺服器（port 3000，-H 0.0.0.0）
 npm run build
 npm run lint
 npm run test:e2e          # Playwright E2E
@@ -452,6 +452,69 @@ curl -X POST https://admin.ggb.com.tw/api/admin/storage/clear-products \
 裸網址仍相容（舊資料），但新文案一律用有顯示文字的寫法。
 
 同樣原則適用於活動頁、機台頁、錯誤訊息與任何前台提示。
+
+---
+
+## ⚠️ 前台改動一律同時影響「網頁」與「App」
+
+**`mobile/` 的 iOS／Android App 是 remote URL 模式的殼** —— webview 直接載入
+`https://www.ggb.com.tw`。**沒有第二份程式碼、沒有第二次部署**：
+推上去的那一刻，網頁玩家與 App 玩家同時換到新版（App 不用重新送審）。
+
+所以改 `frontend/` 的任何東西之前，都要問一句「App 那邊會怎樣」。
+
+### 怎麼區分兩者的行為
+
+唯一的判斷依據是原生殼注入的 User-Agent 標記 `GGBApp`：
+
+| 位置 | 用途 |
+|------|------|
+| `lib/nativeApp.ts` | `isNativeAppUA()` / `isAppBlockedPath()`，給 middleware 用（server 端） |
+| `lib/useIsNativeApp.ts` | `useNativeAppState()` / `checkNativeAppUA()`，給元件用（client 端） |
+| `lib/native/bridge.ts` | `native.isNativePlatform()`，判斷有沒有 Capacitor 橋接 |
+
+`useNativeAppState()` 回傳的 **`resolved` 一定要用**：初值是「還不知道」不是「不是 App」
+（SSR 沒有 navigator，render 期間猜值會 hydration 不一致）。沒等 resolved 就下判斷，
+App 裡會先閃一次網頁版的樣子。
+
+### App 內不開放的功能
+
+玩家商城（`/sell`）、卡牌交換（`/exchange`）、交易所（`/market`）、
+官方商城（`/official`）在 App 內一律 404。
+
+原因：抽獎是「付費＋隨機＋實體獎品」，再接上能把獎品換回新台幣的 C2C 市集，
+就湊齊了賭博三要件。同業（潮玩家、抽抽一番賞、DOPA!、入魂一番賞）沒有一個
+在 App 裡放這個。**擋門壓在 `FeatureFlagsContext`**（旗標散在十幾處，逐頁補一定會漏），
+外加 middleware 直接回 404 —— 回 404 不是轉址，轉址等於告訴審查員這裡本來有東西。
+
+新增任何 C2C 相關路由時，記得加進 `lib/nativeApp.ts` 的 `BLOCKED_PREFIXES`。
+
+### 已經踩過的坑（不要再踩一次）
+
+| 症狀 | 原因 |
+|------|------|
+| 全站中文變 ☐ | `system-ui` 會用 .notdef 方塊「覆蓋」中文並**中斷 fallback**。中文字型必須排在它**前面**（用 unicode-range 限制範圍，英數才不受影響）。見 `globals.css` 的 `GGB CJK` |
+| 儲值跳到綠界錯誤頁 | `Browser.open()` **只吃絕對網址**。失敗後若退回 `form.submit()`，Capacitor 交給 Safari 是 GET，POST 參數整包遺失 |
+| LINE 登入完回不來 | `display-mode: standalone` **不匹配 Capacitor 的 webview**。任何用它判斷「是不是 App」的地方都要補 `Capacitor.isNativePlatform()`（下拉更新、鍵盤修正都中過） |
+| 外掛裝了卻沒作用 | Capacitor 8 的 iOS 專案走 **SPM 不是 CocoaPods**。沒有 `Package.swift` 的外掛會被 `cap sync` **靜默排除**，CLI 仍會說「Found N plugins」。裝完要確認它出現在 `ios/App/CapApp-SPM/Package.swift` |
+| App 開機即 crash | Firebase 外掛在初始化就呼叫 `FIRApp.configure()`，沒有 `GoogleService-Info.plist` 會拋 NSException。目前已移除，等 Firebase 專案建好再裝回 |
+| iOS 沒有震動 | `navigator.vibrate` 在 iOS **完全無效**（Safari 與 WKWebView 都不支援）。一律用 `lib/haptics`，它有原生／網頁雙軌 |
+| 站外連結困住玩家 | App 的 webview 沒有網址列也沒有返回鍵。外部連結由 `ExternalLinkHandler` 全域攔截後改開 in-app browser —— 不要逐個改 `target="_blank"`，動態產生的連結（公告 linkify）會漏 |
+
+### 金流
+
+入帳靠的是綠界打到後端的 **server-to-server callback（`ReturnURL`）**，
+跟玩家在哪個瀏覽器無關。所以 App 只需要「開得起付款頁、知道玩家回來了、重讀餘額」。
+
+App 內不能讓 webview 直接導去綠界：3D 驗證會跳到各家銀行網域，白名單列不完。
+走 `lib/paymentHandoff.ts` 的 HMAC 一次性簽章交接 —— in-app browser（iOS 的
+SFSafariViewController）**跟 webview 不共用 cookie**，所以交接不能靠 session。
+
+### 原生殼的操作
+
+`mobile/README.md` 有完整步驟。要點：Node ≥ 22（Capacitor 8 CLI 的硬性要求，
+本機預設是 20，用 `nvm use 22`）；改 `capacitor.config.ts` 的 `appendUserAgent`
+前台的判斷會跟著失效，兩邊要一起改。
 
 ## 重要慣例
 
