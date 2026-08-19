@@ -53,7 +53,23 @@ export default async function PaymentGoPage({
         </noscript>
         <script
           dangerouslySetInnerHTML={{
-            __html: `document.getElementById('ecpay').submit();`,
+            /*
+             * 種一張標記再送出。
+             *
+             * 付款完成後綠界會把瀏覽器導回 `/profile?...&status=success`，
+             * 但那是開在 in-app browser 裡 —— 玩家看到的是正確的頁面，
+             * 人卻還在瀏覽器浮層，App 背後仍停在儲值頁（老闆回報「卡在這頁面」）。
+             *
+             * in-app browser（SFSafariViewController）跟 Safari 共用 cookie jar，
+             * 整條付款流程都在同一個 jar 裡，所以這張 cookie 在回程頁讀得到，
+             * 前台就知道要把玩家導回 ggbapp://。一般網頁付款不會有這張 cookie，
+             * 行為完全不受影響。
+             *
+             * 30 分鐘後自動失效：付款流程不會比這更久，過期了也不該再彈回 App。
+             */
+            __html:
+              "document.cookie='ggb_pay_app=1; path=/; max-age=1800; samesite=lax';" +
+              "document.getElementById('ecpay').submit();",
           }}
         />
       </body>

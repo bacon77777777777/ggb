@@ -49,6 +49,49 @@
 
 ---
 
+## v2026.08.20c｜2026-08-20｜LINE 登入改 app-to-app；付款回程帶回 App；狀態列蓋住頂部
+
+### LINE 登入：點下去會跳 LINE App，許可完自動跳回
+
+先前把授權頁開在 in-app browser，結果玩家看到的是**帳號密碼表單**而不是
+LINE App 的一鍵允許 —— SFSafariViewController 不會觸發 Universal Link 去開其他 App。
+
+翻 `@capacitor/ios` 的 `WebViewDelegationHandler.swift` 找到關鍵：
+`createWebViewWith`（處理 `window.open(url, '_blank')`）**無條件**呼叫
+`UIApplication.open()`，**不看 allowNavigation**。也就是說 `window.open('_blank')`
+在 Capacitor 裡就等於「用系統 Safari 開」，不需要任何新 API。
+
+流程：系統 Safari → LINE App 一鍵允許 → 回到 Safari（票入庫）→
+導向 `ggbapp://`（Info.plist 新註冊的自訂 scheme）→ 回到吉吉比 → 取票登入。
+
+- state 加 `app.` 前綴讓回呼頁知道要導回；**解析時要先剝掉前綴**，
+  否則 `app.bind.xxx` 會被誤判成登入而非綁定。送給後端的仍是完整字串
+  （App 那頭拿完整 state 輪詢取票）
+- 自動導向延遲 600ms，讓「登入完成」畫面先出現；另放一顆「回到吉吉比」
+  按鈕當保險 —— Safari 沒有使用者手勢時可能擋掉自動導向
+- iOS 會問一句「要打開吉吉比嗎」，所以是**一鍵**跳回不是零操作。
+  要完全免確認得用 Universal Links，需要付費帳號的 Associated Domains
+
+### 儲值付款成功後卡在瀏覽器裡
+
+`allowNavigation` 修好之後付款終於走得完，但玩家會停在 in-app browser ——
+畫面是對的、錢也入帳了，人卻沒回到 App（老闆回報「卡在這頁面」）。
+
+用同一招：交接頁送出表單前種一張 `ggb_pay_app` cookie（in-app browser 與
+Safari 共用 cookie jar，整條流程都在同一個 jar），回程頁看到付款參數 +
+這張 cookie 就導回 `ggbapp://`。一般網頁付款沒有那張 cookie，完全不受影響。
+30 分鐘後失效 —— 付款不會比這更久，過期也不該再彈回 App。
+
+### 「我的」頁與內頁頂部被狀態列蓋住
+
+`overlaysWebView` 只寫在 `capacitor.config.ts` 的 `plugins.StatusBar` 底下**沒有生效**
+（外掛預設是 `true`）。改成啟動時明確呼叫 `setOverlaysWebView({ overlay: false })`，
+webview 就從狀態列底下開始，網頁完全不必處理瀏海內縮。
+
+⚠️ Info.plist 與原生設定有變動，**App 必須重新建置安裝**。
+
+---
+
 ## v2026.08.20b｜2026-08-20｜修正 App 儲值跳綠界錯誤頁（真正的原因：allowNavigation）
 
 v2026.08.20a 修了「`Browser.open()` 只吃絕對網址」那個 bug，但老闆實測**症狀完全沒變**，

@@ -81,9 +81,19 @@ export default function NativeAppBootstrap() {
     return () => handle?.remove?.();
   }, [refreshProfile]);
 
-  /* 狀態列跟著深淺色模式走。深色底配深色圖示會整片看不見。 */
+  /*
+   * 狀態列。
+   *
+   * `setOverlaysWebView(false)` 一定要在執行階段再呼叫一次 ——
+   * 只寫在 capacitor.config.ts 的 plugins.StatusBar 底下沒有生效（老闆回報
+   * 「我的」頁與所有內頁的頂部被時間蓋住），外掛的預設是 overlaysWebView = true。
+   * 設成 false 之後 webview 會從狀態列底下開始，網頁完全不必處理瀏海內縮。
+   *
+   * 樣式跟著深淺色模式走：深色底配深色圖示會整片看不見。
+   */
   useEffect(() => {
     if (!native.isNativePlatform()) return;
+    void native.call('StatusBar', 'setOverlaysWebView', { overlay: false });
     const dark = theme === 'dark';
     void native.call('StatusBar', 'setStyle', { style: dark ? 'DARK' : 'LIGHT' });
     // Android 才需要設背景色；iOS 的狀態列背景是由底下的 view 決定

@@ -26,12 +26,16 @@ import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen'
 
 type Phase = 'working' | 'return-to-app' | 'error'
 
+/** Info.plist 的 CFBundleURLSchemes 註冊的自訂 scheme，用來把玩家從 Safari 帶回 App */
+const APP_SCHEME_URL = 'ggbapp://line-callback'
+
 function LineCallbackInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [phase, setPhase] = useState<Phase>('working')
   const [error, setError] = useState('')
   const [isBind, setIsBind] = useState(false)
+  const [fromApp, setFromApp] = useState(false)
   // React StrictMode 會把 effect 跑兩次，而授權碼只能用一次 ——
   // 第二次會被 LINE 拒絕，看起來像登入失敗。用 ref 擋重入
   const started = useRef(false)
@@ -65,8 +69,16 @@ function LineCallbackInner() {
       const crossContext = !savedState
       const savedIntent = localStorage.getItem('line_login_intent')
       localStorage.removeItem('line_login_intent')
+      /*
+       * `app.` 前綴代表這趟是從原生 App 出發的（見 SocialLoginButtons）。
+       * 先剝掉再判斷意圖，否則 `app.bind.xxx` 會被誤判成登入而不是綁定。
+       * ⚠️ 送給後端的仍然是**完整的 state** —— App 那頭是拿完整字串在輪詢取票。
+       */
+      const fromApp = state.startsWith('app.')
+      const coreState = fromApp ? state.slice('app.'.length) : state
+      if (fromApp) setFromApp(true)
       // 跨情境時本地什麼都沒有，意圖只能寫在 state 裡帶過來
-      const bind = crossContext ? state.startsWith('bind.') : savedIntent === 'bind'
+      const bind = crossContext ? coreState.startsWith('bind.') : savedIntent === 'bind'
       if (bind) setIsBind(true)
 
       try {
@@ -110,8 +122,18 @@ function LineCallbackInner() {
             setPhase('error')
             return
           }
-          // 票已入庫，偽 app 那頭的輪詢會取走。剩下的只有請玩家切回去
+          // 票已入庫，App／偽 app 那頭的輪詢會取走
           setPhase('return-to-app')
+          /*
+           * 原生 App：導向自訂 scheme 把玩家帶回去，不必自己切。
+           * iOS 通常會先問一句「要打開吉吉比嗎」，所以是一鍵而非零操作；
+           * 要完全免確認得用 Universal Links（需要付費帳號的 Associated Domains）。
+           * 延遲一拍再導：讓「登入完成」的畫面先畫出來，
+           * 萬一導向被系統擋掉，玩家至少看得到成功訊息與下面那顆按鈕。
+           */
+          if (fromApp) {
+            setTimeout(() => { window.location.href = APP_SCHEME_URL }, 600)
+          }
           return
         }
 
@@ -182,9 +204,28 @@ function LineCallbackInner() {
             {isBind ? 'LINE 綁定成功' : '登入完成'}
           </h1>
 
-          <div className="mt-5 rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
-            回到 GGB 繼續
-          </div>
+          {fromApp ? (
+            <>
+              {/*
+                自動導向 ggbapp:// 之外的保險。
+                Safari 在沒有使用者手勢時可能擋掉自動導向，或系統的確認框被按了取消 ——
+                那時這顆就是玩家唯一的出路。點它是使用者手勢，一定開得起來。
+              */}
+              <a
+                href={APP_SCHEME_URL}
+                className="mt-6 rounded-xl bg-primary px-8 py-3 text-[15px] font-black text-white shadow-lg shadow-primary/25 active:scale-[0.98] transition-all"
+              >
+                回到吉吉比
+              </a>
+              <p className="mt-3 text-[13px] text-neutral-400">
+                沒有自動跳回的話，按上面這顆
+              </p>
+            </>
+          ) : (
+            <div className="mt-5 rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
+              回到 GGB 繼續
+            </div>
+          )}
         </div>
       </div>
     )

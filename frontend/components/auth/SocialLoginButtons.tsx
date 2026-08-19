@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/Toast';
 import { native } from '@/lib/native/bridge';
-import { closeInAppBrowser, openInAppBrowser } from '@/lib/native/browser';
+import { closeInAppBrowser } from '@/lib/native/browser';
 
 /**
  * 社群登入
@@ -16,12 +16,19 @@ import { closeInAppBrowser, openInAppBrowser } from '@/lib/native/browser';
  * **一般瀏覽器**：整頁導去 LINE 授權（會跳 LINE app 一鍵允許），
  * 回程落在同一個瀏覽器，/auth/line/callback 當場完成登入。
  *
- * **原生 App（Capacitor）**：跟偽 app 同樣走輪詢票，但授權頁開在
- * in-app browser（SFSafariViewController／Custom Tabs）。它一樣會跳去
- * LINE app 一鍵允許，回程落在 in-app browser 裡；票一到我們主動把它關掉，
- * 玩家就「自動回到 App」，不必自己切。
- * ⚠️ 不能走下面那條整頁導向：access.line.me 不在 allowNavigation 白名單裡，
- * 會被丟到系統 Safari，登入態建在 Safari 的 cookie 裡，App 永遠拿不到。
+ * **原生 App（Capacitor）**：授權頁必須開在**系統 Safari**，不能用 in-app browser
+ * ——後者不會觸發 Universal Link 去開啟 LINE App，玩家只會看到帳號密碼表單
+ * （老闆回報）。`window.open(url, '_blank')` 在 Capacitor iOS 會走
+ * `createWebViewWith`，那支無條件呼叫 `UIApplication.open()`，也就是系統 Safari
+ * ——不受 allowNavigation 影響，正好是我們要的。
+ *
+ * 回程一樣落在 Safari（iOS 不讓別的 app 直接把網址開回來），所以：
+ *   1. state 加 `app.` 前綴，讓回呼頁知道這趟是從 App 出發的
+ *   2. 回呼頁存完票之後導向 `ggbapp://`（Info.plist 註冊的自訂 scheme），
+ *      iOS 就會把玩家帶回吉吉比
+ *   3. 回到前景時 visibilitychange 觸發取票，登入完成
+ * iOS 會先問一句「要打開吉吉比嗎」，所以是一鍵跳回而非零操作；
+ * 要完全免確認得用 Universal Links，那需要付費開發者帳號的 Associated Domains。
  *
  * **偽 app（加入主畫面的 PWA）**：iOS 不讓任何 app 把網址開回偽 app，
  * 跳出去就回不來。所以主視窗不離開 —— 用 window.open 開覆蓋視窗去授權
@@ -123,9 +130,9 @@ export function SocialLoginButtons() {
   };
 
   const startLineLogin = () => {
-    const state = crypto.randomUUID();
-
     const isNativeApp = native.isNativePlatform();
+    // app. 前綴：回呼頁靠它判斷要不要導回 ggbapp://（見檔頭說明）
+    const state = `${isNativeApp ? 'app.' : ''}${crypto.randomUUID()}`;
 
     const standalone =
       isNativeApp ||
@@ -147,17 +154,7 @@ export function SocialLoginButtons() {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => void claimTicket(), POLL_INTERVAL_MS);
 
-    if (isNativeApp) {
-      // in-app browser：跳得出去、回得來、而且我們關得掉
-      void openInAppBrowser(authorizeUrl(state)).then((ok) => {
-        if (!ok) {
-          // 外掛不在就退回開新視窗，至少還登得成（玩家要自己切回來）
-          popupRef.current = window.open(authorizeUrl(state), '_blank');
-        }
-      });
-      return;
-    }
-
+    // 原生 App 與偽 app 都是 window.open —— 在 Capacitor 裡它等於「用系統 Safari 開」
     popupRef.current = window.open(authorizeUrl(state), '_blank');
   };
 

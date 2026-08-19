@@ -22,6 +22,8 @@ import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import NativeAppBootstrap from '@/components/native/NativeAppBootstrap';
 import ExternalLinkHandler from '@/components/native/ExternalLinkHandler';
 import EdgeSwipeBack from '@/components/native/EdgeSwipeBack';
+import PaymentReturnBridge from '@/components/native/PaymentReturnBridge';
+import { Suspense } from 'react';
 
 const siteUrl = getSiteUrl();
 
@@ -230,6 +232,7 @@ export default async function RootLayout({
                     <NativeAppBootstrap />
                     <ExternalLinkHandler />
                     <EdgeSwipeBack />
+                    <Suspense fallback={null}><PaymentReturnBridge /></Suspense>
                     <PathnameKeyed>{children}</PathnameKeyed>
                   </main>
                   <FooterWrapper />
