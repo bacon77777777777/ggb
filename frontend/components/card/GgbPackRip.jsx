@@ -804,9 +804,7 @@ export default function GGBPackRip({
 
           {phase !== "ripped" && (
             <div style={S.hint}>
-              {p === 0
-                ? <>🖐 在畫面上 <b>左右滑動</b> 撕開封條</>
-                : `${Math.round(p * 100)}%`}
+              {p === 0 ? "左右滑動撕開" : `${Math.round(p * 100)}%`}
             </div>
           )}
         </div>
