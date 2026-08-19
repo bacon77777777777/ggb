@@ -98,6 +98,25 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
     return () => { document.body.style.overflow = 'unset'; };
   }, [visible]);
 
+  /*
+   * 底圖先到、資料再淡入（老闆 2026-08-19）。
+   * 原本兩者同時渲染，商品列會先出現在一片空白上，底圖才「啪」地補上來。
+   *
+   * ⚠ 一定要有逾時保險：底圖萬一載不出來（離線、CDN 掛掉、擋圖擴充套件），
+   * 沒有這道保險整個彈窗會永遠空著 —— 那比先看到資料還糟。
+   * onError 也要收，否則 404 時只會等到逾時才顯示。
+   *
+   * 必須放在下面那行提前 return 之前 —— hooks 不能條件式呼叫，
+   * 放在 return 之後 lint 會直接報 rules-of-hooks（build 會失敗）。
+   */
+  const wantsBg = current?.layout === 'new_arrival';
+  const [bgReady, setBgReady] = useState(false);
+  useEffect(() => {
+    if (!wantsBg || bgReady) return;
+    const t = setTimeout(() => setBgReady(true), 1200);
+    return () => clearTimeout(t);
+  }, [wantsBg, bgReady]);
+
   const promo = current;
   if (!promo) return null;
 
@@ -110,6 +129,7 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
    * 看起來像按了沒反應。
    */
   const isNewArrival = promo.layout === 'new_arrival';
+
 
   /*
    * 點內容就是要去看，不算「不想再看到」——只有按叉叉時才把勾選存起來。
@@ -163,8 +183,14 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                   priority
                   className="object-contain select-none pointer-events-none"
                   unoptimized
+                  onLoad={() => setBgReady(true)}
+                  onError={() => setBgReady(true)}
                 />
-                <div className="absolute flex flex-col" style={PANEL}>
+                <div
+                  className="absolute flex flex-col transition-opacity duration-300"
+                  style={{ ...PANEL, opacity: bgReady ? 1 : 0 }}
+                  aria-hidden={!bgReady}
+                >
                   {/* 條列式：小圖 ＋ 類別膠囊 ＋ 名稱／價格。
                       每列不再有自己的卡片外框（老闆指定移除），改用淡分隔線隔開 ——
                       白板本身就是白的，再套一層淺灰卡片只是把版面切得更碎 */}

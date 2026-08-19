@@ -114,27 +114,56 @@ export async function PUT(
         if (fresh.length > 0) {
           return NextResponse.json({ error: '此商品已封存排籤，不可新增賞項（要重排請先刪除整個商品）' }, { status: 400 })
         }
-        const { data: currentRows } = await supabaseAdmin
-          .from('product_prizes').select('id, total, level').eq('product_id', productId)
-        const currentById = new Map((currentRows ?? []).map(r => [Number(r.id), r]))
+        /*
+         * 封存後只能改「不影響排籤承諾」的欄位；total/level/remaining/probability 一律不碰
+         * （remaining 由抽獎扣、probability 封存後不參與出獎）。
+         *
+         * 這裡原本是 `for … await` 逐筆 UPDATE —— 一個 69 品項的商品就是 69 次來回，
+         * 光儲存要十幾秒（老闆回報「儲存都跑好久」）。改成兩件事：
+         *   1. 先比對，**沒變的那幾筆完全不送** —— 實務上一次只會改一兩筆
+         *   2. 真的要改的並行送出，不再一筆等一筆
+         * 不改成 upsert 是因為 upsert 的 INSERT 階段會撞上 guard_sealed_product。
+         */
+        const SAFE_FIELDS = [
+          'name', 'image_url', 'recycle_value', 'decompose_type',
+          'sale_price', 'decompose_value', 'display_mode',
+        ] as const
 
+        const { data: currentRows } = await supabaseAdmin
+          .from('product_prizes')
+          // select 用字面值：組字串的話 supabase-js 的型別推導解析不出來
+          .select('id, total, level, name, image_url, recycle_value, decompose_type, sale_price, decompose_value, display_mode')
+          .eq('product_id', productId)
+        const currentById = new Map(
+          (currentRows ?? []).map(r => {
+            const row = r as unknown as Record<string, unknown>
+            return [Number(row.id), row] as const
+          }),
+        )
+
+        const changed: { id: number; patch: Record<string, unknown> }[] = []
         for (const p of existing) {
           const cur = currentById.get(Number(p.id))
           if (!cur) continue
           if (Number(p.total) !== Number(cur.total) || String(p.level ?? '') !== String(cur.level ?? '')) {
             return NextResponse.json({ error: '此商品已封存排籤，賞項的總數量與等級不可再異動' }, { status: 400 })
           }
-          // 只更新不影響排籤承諾的欄位；total/level/remaining/probability 一律不碰
-          // （remaining 由抽獎扣、probability 封存後不參與出獎）
-          const { error: safeError } = await supabaseAdmin.from('product_prizes').update({
-            name: p.name,
-            image_url: p.image_url,
-            recycle_value: p.recycle_value,
-            decompose_type: p.decompose_type,
-            sale_price: p.sale_price,
-            decompose_value: p.decompose_value,
-          }).eq('id', p.id)
-          if (safeError) throw safeError
+          const patch: Record<string, unknown> = {}
+          for (const f of SAFE_FIELDS) {
+            const next = (p as Record<string, unknown>)[f] ?? null
+            if (String(next ?? '') !== String(cur[f] ?? '')) patch[f] = next
+          }
+          if (Object.keys(patch).length > 0) changed.push({ id: Number(p.id), patch })
+        }
+
+        // 併發上限 8：再高對 Supabase 的連線池沒有好處，反而容易被排隊
+        for (let i = 0; i < changed.length; i += 8) {
+          const results = await Promise.all(
+            changed.slice(i, i + 8).map(c =>
+              supabaseAdmin.from('product_prizes').update(c.patch).eq('id', c.id)),
+          )
+          const failed = results.find(r => r.error)
+          if (failed?.error) throw failed.error
         }
       } else {
         if (existing.length > 0) {
