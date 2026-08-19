@@ -301,6 +301,8 @@ export default function EditProductPage() {
     decompose_type: 'auto' | 'percent' | 'fixed'
     decompose_value: number | null
     salePrice: number
+    /** 品項詳情的圖區塊呈現方式（migration 593）。預設 static */
+    displayMode: 'static' | 'showcase3d'
   }>>([])
   const [savedFormData, setSavedFormData] = useState<typeof formData | null>(null)
   const [savedPrizes, setSavedPrizes] = useState<typeof prizes>([])
@@ -532,8 +534,10 @@ export default function EditProductPage() {
             probability: prize.probability,
             recycleValue: prize.recycle_value ?? 0,
             decompose_type: prize.decompose_type || 'auto',
+          display_mode: prize.displayMode || 'static',
             salePrice: prize.sale_price ?? 0,
             decompose_value: prize.decompose_value ?? null,
+            displayMode: (prize.display_mode === 'showcase3d' ? 'showcase3d' : 'static') as 'static' | 'showcase3d',
           }))
           // 「未中獎」由 ensure_lottery_blank_prize() 自動維護，
           // 列出來只會讓管理員以為可以改它，而封存後 DB 會直接擋下
@@ -1394,8 +1398,25 @@ export default function EditProductPage() {
                         )}
                       </div>
 
-                      {/* 數量資訊 */}
-                      <div className={`grid gap-2 ${isSlot ? 'grid-cols-3' : 'grid-cols-4'}`}>
+                      {/* 數量資訊。抽卡多一格「展示方式」（migration 593） */}
+                      <div className={`grid gap-2 ${isSlot ? 'grid-cols-3' : isCardType ? 'grid-cols-5' : 'grid-cols-4'}`}>
+                        {isCardType && (
+                          <div>
+                            <label className="block text-xs font-medium text-neutral-500 mb-1">展示方式</label>
+                            <SelectField
+                              value={prize.displayMode || 'static'}
+                              onChange={(e) => {
+                                const updated = [...prizes]
+                                updated[index].displayMode = e.target.value as 'static' | 'showcase3d'
+                                setPrizes(updated)
+                              }}
+                              compact
+                            >
+                              <option value="static">一般靜態</option>
+                              <option value="showcase3d">360 展示</option>
+                            </SelectField>
+                          </div>
+                        )}
                         <div>
                           <label className="block text-xs font-medium text-neutral-500 mb-1">總數量</label>
                           {isVerifiable ? (
@@ -1570,7 +1591,7 @@ export default function EditProductPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setPrizes([{ id: `p${Date.now()}`, name: '', level: isGachaType ? defaultLevel : '', image: '', imageFile: null as File | null, imagePreview: '', total: 0, remaining: 0, probability: 0, recycleValue: 0, decompose_type: 'auto' as const, decompose_value: null as number | null, salePrice: 0 }])
+                    setPrizes([{ id: `p${Date.now()}`, name: '', level: isGachaType ? defaultLevel : '', image: '', imageFile: null as File | null, imagePreview: '', total: 0, remaining: 0, probability: 0, recycleValue: 0, decompose_type: 'auto' as const, decompose_value: null as number | null, salePrice: 0, displayMode: 'static' as const }])
                   }}
                   className="w-full text-center py-10 border-2 border-dashed border-neutral-200 rounded-lg bg-neutral-50 hover:border-primary hover:bg-primary/5 transition-all cursor-pointer"
                 >
@@ -1600,6 +1621,7 @@ export default function EditProductPage() {
                       decompose_type: 'auto' as const,
                       decompose_value: null as number | null,
                       salePrice: 0,
+                      displayMode: 'static' as const,   // 展示方式預設一般靜態（migration 593）
                     }
                     setPrizes([...prizes, newPrize])
                   }}

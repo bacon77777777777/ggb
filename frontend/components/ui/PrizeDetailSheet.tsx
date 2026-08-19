@@ -14,6 +14,8 @@ import GradeBadge from '@/components/ui/GradeBadge';
 export interface PrizeInfo {
   name: string;
   image_url?: string | null;
+  /** 圖區塊呈現方式（migration 593）：static 靜態圖｜showcase3d 360° 立體展示 */
+  display_mode?: string | null;
   level?: string | null;
   total?: number;
   remaining?: number;
@@ -30,8 +32,9 @@ interface Props {
    */
   sealed?: boolean;
   /**
-   * 卡包模式傳 true：圖區塊換成卡牌 360° 立體旋轉展示（老闆原型 card-showcase）。
-   * 只換圖，彈窗本體、賞等、庫存那幾列完全不動。
+   * 允許 360° 立體展示（卡包模式）。實際用不用**由該品項自己的 `display_mode` 決定**
+   * —— 同一檔裡不是每個品項都值得 3D，大賞卡值得轉，一般卡看靜態圖就好
+   * （而且 3D 要載 three.js）。migration 593，預設 static。
    */
   showcase3d?: boolean;
   /** 360° 展示的背面圖（商品設定的卡牌背面）；沒設就只轉正面 */
@@ -144,7 +147,7 @@ export default function PrizeDetailSheet({ prize, onClose, sealed = false, showc
                 不畫左右箭頭（老闆指定）—— 手機本來就用滑的，電腦滑鼠拖曳
                 走的是同一套 pointer 事件，再擺兩顆鈕只是擋住圖 */}
             <div className="relative px-5 pt-1 pb-2">
-              {showcase3d ? (
+              {showcase3d && prize?.display_mode === 'showcase3d' ? (
                 /* 卡包模式：立體旋轉展示（可拖曳手動轉）。
                    這裡不接左右滑切換品項 —— 拖曳已經被旋轉吃掉了 */
                 <CardShowcase3D

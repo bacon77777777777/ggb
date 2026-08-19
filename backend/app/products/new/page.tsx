@@ -167,6 +167,8 @@ export default function NewProductPage() {
     probability: number
     recycleValue: number
     salePrice: number
+    /** 品項詳情圖區塊的呈現方式（migration 593）。預設一般靜態 */
+    displayMode: 'static' | 'showcase3d'
   }>>([])
   const lotteryWins = prizes.reduce((sum, p) => sum + (Number(p.total) || 0), 0)
   const lotteryBlanks = isLottery && formData.lotteryTotalDraws
@@ -237,6 +239,7 @@ export default function NewProductPage() {
       probability: 0,
       recycleValue: 0,
       salePrice: 0,
+      displayMode: 'static' as const,
     }
     setPrizes(prev => [...prev, newPrize])
     if (typeof window !== 'undefined') {
@@ -463,6 +466,8 @@ export default function NewProductPage() {
           probability: prize.probability,
           recycle_value: Math.max(0, Math.round(prize.recycleValue) || 0),
           sale_price: Math.max(0, Math.round(prize.salePrice) || 0),
+          // 展示方式（migration 593）：只有抽卡有意義，其餘一律靜態
+          display_mode: formData.type === 'card' ? (prize.displayMode || 'static') : 'static',
         }
       }))
 
