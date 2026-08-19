@@ -103,9 +103,9 @@ export default function TopupPage() {
           });
           if (opened) return;
           /*
-           * in-app browser 開不起來時，退而求其次讓 webview 自己導去交接頁。
-           * 交接頁在自家網域、在 allowNavigation 白名單內，所以不會被丟出去；
-           * 它會在 webview 裡自動送出表單，付款照樣走得完。
+           * in-app browser 開不起來就讓 webview 自己走。
+           * capacitor.config.ts 的 allowNavigation 已改為 '*'，綠界與 3D 驗證的
+           * 銀行頁都留在 webview 裡，跟偽 app 的行為一致 —— 那條路是通的。
            */
           if (!cancelled) window.location.href = goUrl;
           return;

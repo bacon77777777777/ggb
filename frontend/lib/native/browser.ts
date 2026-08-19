@@ -49,6 +49,10 @@ export async function openPayment(url: string, onClosed: () => void): Promise<bo
   if (!plugin || typeof plugin.addListener !== 'function') return false
 
   try {
+    /*
+     * addListener 回傳的是一個 Promise，但 Capacitor 也在它身上掛了 `.remove`
+     * （見 @capacitor/core 的 addListenerNative），所以直接取用是可行的。
+     */
     const add = plugin.addListener as unknown as (
       event: string,
       cb: () => void

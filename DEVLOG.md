@@ -49,6 +49,49 @@
 
 ---
 
+## v2026.08.20b｜2026-08-20｜修正 App 儲值跳綠界錯誤頁（真正的原因：allowNavigation）
+
+v2026.08.20a 修了「`Browser.open()` 只吃絕對網址」那個 bug，但老闆實測**症狀完全沒變**，
+仍然跳到 `payment-stage.ecpay.com.tw/Error/MobileErrorHandle`。
+
+關鍵線索是老闆那句「**我偽 app 都正常**」—— 加到主畫面的偽 app 從頭到尾沒出過問題。
+兩者唯一的差別就是 Capacitor 的 `allowNavigation` 白名單：
+
+```
+綠界付款頁不在白名單
+  → Capacitor 用 UIApplication.open() 把它交給 Safari
+  → 那是 GET，表單的 POST 參數整包遺失
+  → 綠界收到沒有參數的請求 → MobileErrorHandle
+```
+
+而且**前一版的「安全退路」等於換湯不換藥**：導去自家的交接頁沒用，因為那頁最後
+還是要 POST 去綠界，照樣離開 webview、照樣被 Safari 用 GET 打開。這就是為什麼
+改了完全沒有改善。
+
+**解法：`allowNavigation: ['*']`**，讓 App 跟偽 app 一樣不限制導航。
+
+這樣做安全性沒有變差，反而更精準：站外連結早就由
+`components/native/ExternalLinkHandler.tsx` 在 document 層攔截、改用 in-app browser
+開啟（自帶關閉鍵與網址列）。白名單擋的是「網域」，會連金流這種程式觸發的導航
+一起擋掉；攔截器擋的是「使用者主動點擊的站外連結」，兩者互不干擾。
+順帶把「3D 驗證會跳到各家銀行網域」那個列不完的問題也一併解決。
+
+⚠️ **這是編進 App 二進位檔的設定，必須重新建置與安裝**（一般改網頁不用）。
+
+### 兩個錯誤的診斷（記下來免得再走一次）
+
+過程中我提出過兩個原因，翻 `@capacitor/core` 原始碼後確認**都不成立**，已還原：
+
+1. 「`const add = plugin.addListener` 拆開呼叫會丟失 `this`」——
+   `addListenerNative` 是純箭頭函式，沒有用到 `this`，拆開是安全的。
+2. 「`addListener` 回傳 Promise 所以 `.remove` 是 undefined」——
+   Capacitor 在那個 Promise 上另外掛了 `.remove`，直接取用可行。
+
+真正有效的只有 `allowNavigation`。v2026.08.20a 的絕對網址修正仍然保留 ——
+那確實是個 bug（`Browser.open()` 不接受相對路徑），只是不是造成錯誤頁的原因。
+
+---
+
 ## v2026.08.20a｜2026-08-20｜修正 App 儲值失敗；下拉更新重寫；六處觸覺回饋；抽卡載入把關
 
 ### 🔴 App 儲值會跳到綠界錯誤頁（線上實際故障）

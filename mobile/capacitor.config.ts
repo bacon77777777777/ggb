@@ -26,9 +26,22 @@ const config: CapacitorConfig = {
   server: {
     url: APP_URL,
     cleartext: false,
-    // 只允許自家網域在 webview 內開啟；其他（綠界金流頁、外部連結）
-    // 走系統瀏覽器，避免把使用者困在 webview 裡
-    allowNavigation: ['www.ggb.com.tw', 'ggb.com.tw', 'staging.ggb.com.tw'],
+    /*
+     * 不限制導航（'*'）。
+     *
+     * 一開始只放行自家網域，結果金流整條斷掉：綠界的付款頁不在白名單 →
+     * Capacitor 用 `UIApplication.open()` 把它交給 Safari，**那是 GET，
+     * 表單的 POST 參數整包遺失** → 綠界回 MobileErrorHandle 錯誤頁。
+     * 3D 驗證還會再跳到各家銀行的網域，那更是列不完。
+     * 加到主畫面的偽 app 之所以一直正常，就是因為它沒有這層限制。
+     *
+     * 放開之後「使用者被困在沒有網址列的 webview 裡」由前台處理 ——
+     * `components/native/ExternalLinkHandler.tsx` 在 document 層攔截所有
+     * 站外連結，改用 in-app browser（自帶關閉鍵與網址列）開啟。
+     * 也就是說控制權在我們手上，而且比白名單更精準：白名單擋的是「網域」，
+     * 攔截器擋的是「使用者主動點擊的站外連結」，金流那種程式觸發的導航不受影響。
+     */
+    allowNavigation: ['*'],
   },
   ios: {
     appendUserAgent: 'GGBApp/1.0 (ios)',
