@@ -89,7 +89,7 @@ const MEDIA = "/images/card/media";
 const SFX = {
   //  key          檔案                          音量   循環   同時疊幾顆
   packIdle:  [`${MEDIA}/pack-idle-loop.mp3`,     1.0,  true,  1],
-  packTear:  [`${MEDIA}/pack-tear.mp3`,          0.45, false, 1],
+  packTear:  [`${MEDIA}/pack-tear.mp3`,          0.45, true,  1],
   packDone:  [`${MEDIA}/pack-tear-done.mp3`,     0.7,  false, 1],
   shuffle:   [`${MEDIA}/deal-shuffle.mp3`,       0.6,  false, 1],
   dealA:     [`${MEDIA}/card-deal-a.mp3`,        0.5,  false, 2],
@@ -153,11 +153,12 @@ function useSfx(enabled, master = 1) {
   api.current.stopHype = () => stop("hype");
   api.current.win = (tier) => play(WIN_BY_TIER[tier] || "winRare");
   /*
-   * 預熱：把還沒建過的 <audio> 都建起來讓瀏覽器先抓。
-   * 醞釀音有 451KB，等到要放才開始下載會慢半拍（那是大賞前最需要準的一刻）。
-   * 時機挑在「撕開完成」——玩家已經確定要看完，離發牌還有 780ms 可以抓。
+   * 預熱：把所有 <audio> 都先建起來讓瀏覽器抓檔。
+   * 一開始挑在「撕開完成」才預熱，但撕開完成音是同一個 tick 播的 ——
+   * 那時才建 <audio> 等於完全沒預熱到，第一次一定慢。改成掛載就抓。
    */
   api.current.prewarm = () => { Object.keys(SFX).forEach(slot); };
+  useEffect(() => { api.current.prewarm(); }, []);
 
   useEffect(() => { if (!enabled) stopAll(); }, [enabled]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => stopAll(), []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -327,7 +328,6 @@ export default function GGBPackRip({
     if (ripped.current) return;
     ripped.current = true;
     peel.current.on = false;
-    sfx.current.prewarm();
     sfx.current.tearDone();
     setFlash(true); later(() => setFlash(false), 400);
     setPhase("ripped");
