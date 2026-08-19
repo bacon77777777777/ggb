@@ -534,7 +534,6 @@ export default function EditProductPage() {
             probability: prize.probability,
             recycleValue: prize.recycle_value ?? 0,
             decompose_type: prize.decompose_type || 'auto',
-          display_mode: prize.displayMode || 'static',
             salePrice: prize.sale_price ?? 0,
             decompose_value: prize.decompose_value ?? null,
             displayMode: (prize.display_mode === 'showcase3d' ? 'showcase3d' : 'static') as 'static' | 'showcase3d',
@@ -725,6 +724,10 @@ export default function EditProductPage() {
           decompose_type: prize.decompose_type || 'auto',
           sale_price: prize.salePrice || 0,
           decompose_value: prize.decompose_value ?? null,
+          // 展示方式（migration 593）：只有抽卡有意義，其餘一律靜態。
+          // 這欄漏掉的話不只是選了沒存 —— 封存商品的差異比對會把「沒送」當成 null，
+          // 直接撞上 NOT NULL（老闆 2026-08-19 在已封存的 837 儲存時報錯）
+          display_mode: formData.type === 'card' ? (prize.displayMode || 'static') : 'static',
         }
 
         if (!prize.id.toString().startsWith('p')) {

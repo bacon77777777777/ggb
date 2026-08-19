@@ -150,6 +150,10 @@ export async function PUT(
           }
           const patch: Record<string, unknown> = {}
           for (const f of SAFE_FIELDS) {
+            // 前端沒送的欄位＝沒有要改，不能當成 null 寫回去。
+            // 原本寫 `?? null`，結果編輯頁漏送 display_mode 時就把 NOT NULL 的欄位
+            // 設成 null，整筆儲存失敗（老闆 2026-08-19 在已封存的 837 撞到）。
+            if (!(f in (p as Record<string, unknown>))) continue
             const next = (p as Record<string, unknown>)[f] ?? null
             if (String(next ?? '') !== String(cur[f] ?? '')) patch[f] = next
           }

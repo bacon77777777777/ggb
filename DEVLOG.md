@@ -4,6 +4,48 @@
 
 ---
 
+## v2026.08.19m｜2026-08-19｜修正：已封存商品儲存報 display_mode NOT NULL
+
+老闆在已封存的抽卡商品（STG 837，40 品項）按儲存，跳
+`null value in column "display_mode" of relation "product_prizes" violates not-null constraint`。
+
+兩個 bug 疊在一起：
+
+### 表面：後端把「沒送」當成「要清空」
+
+封存商品走的是「逐欄比對安全欄位再更新」，比對寫成：
+
+```ts
+const next = p[f] ?? null   // 前端沒送 → undefined → null
+```
+
+編輯頁的 payload 完全沒有 `display_mode`，`next` 就變成 `null`，
+跟 DB 現值 `'static'` 不同 → 判定為「有改」→ 把 NOT NULL 的欄位 UPDATE 成 null。
+
+### 底下：編輯頁的「展示方式」選了根本沒存
+
+`products/[id]` 組 `prizePayload` 時**漏了 `display_mode`**（`products/new` 有送）。
+所以就算儲存沒報錯，360 展示也永遠切不過去 —— v2026.08.19f 補了 UI 與讀取，
+送出那一段漏掉了。
+
+### 改了三處
+
+1. 編輯頁送出補上 `display_mode`（非抽卡類型一律 `'static'`）
+2. 移掉載入時一行寫錯欄位名的死碼（`prize.displayMode` 在 DB row 上不存在，
+   那行永遠算出 `'static'`，純粹誤導）
+3. 後端比對改成 `if (!(f in p)) continue` —— **前端沒送的欄位就是沒有要改**
+
+第 3 點才是根治。`?? null` 等於「任何一個欄位忘了送就把它清空」，
+今天是 `display_mode`，明天加新欄位還會再中一次。
+
+### 驗收
+
+用本機簽的管理員 session 直接打 `PUT /api/admin/products/837`：
+舊版 payload（不含 `display_mode`）**HTTP 200**（修好前 500）；
+送 `showcase3d` → DB 讀回 `showcase3d`；還原 `static` → DB 讀回 `static`。
+
+---
+
 ## v2026.08.19l｜2026-08-19｜撕開封口：封條改用 3D 圓柱投影
 
 原型（`public/images/card/ggb-pack-rip.jsx`）更新了撕開的畫法，順著把前台換掉，
