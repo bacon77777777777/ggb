@@ -18,16 +18,20 @@
  *
  * 用法：
  *   cd backend && export $(grep -v '^#' .env.local | xargs) \
- *     && npx tsx scripts/import_yuyutei_pack.ts <selection.json> <out.json> [--apply]
+ *     && npx tsx scripts/import_yuyutei_pack.ts <selection.json> <out.json> [--db=STG|PROD] [--apply]
  *   不加 --apply 只搬圖 + 乾跑 SQL（rollback），不會真的寫入。
+ *   --db 預設 STG。R2 是兩環境共用，複製到 PROD 時吃 out.json 就不會重傳圖。
  */
 import fs from 'fs'
 import sharp from 'sharp'
 import { Client } from 'pg'
 import { r2Upload } from '../lib/r2'
 
-const STG = 'postgresql://postgres.zqxxmdbvtwuiocebaxvk:pdsCNbpWjJb4ikpR@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres'
-const SUPPLIER_ID = 3   // 吉吉比
+const DBS = {
+  STG: 'postgresql://postgres.zqxxmdbvtwuiocebaxvk:pdsCNbpWjJb4ikpR@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres',
+  PROD: 'postgresql://postgres.akdqleelvqvjhjnfkpfq:OhpiiPc5OshSrtHt@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres',
+}
+const SUPPLIER_ID = 3   // 吉吉比（兩環境都有）
 
 interface Prize { level: string; name: string; image: string; qty: number; rare: string }
 interface Item {
@@ -37,6 +41,9 @@ interface Item {
 
 const [, , inPath, outPath] = process.argv
 const apply = process.argv.includes('--apply')
+const dbArg = (process.argv.find(a => a.startsWith('--db=')) ?? '--db=STG').slice(5).toUpperCase()
+if (!(dbArg in DBS)) { console.error(`--db 只接受 ${Object.keys(DBS).join(' / ')}`); process.exit(1) }
+const DB_URL = DBS[dbArg as keyof typeof DBS]
 if (!inPath || !outPath) {
   console.error('用法：tsx scripts/import_yuyutei_pack.ts <selection.json> <out.json> [--apply]')
   process.exit(1)
@@ -77,7 +84,7 @@ async function main() {
   }
   fs.writeFileSync(outPath, JSON.stringify(items, null, 1))
 
-  const c = new Client({ connectionString: STG })
+  const c = new Client({ connectionString: DB_URL })
   await c.connect()
   try {
     await c.query('BEGIN')
@@ -102,7 +109,7 @@ async function main() {
            +(p.qty * 100 / it.total_count).toFixed(6)],
         )
       }
-      console.log(`[STG] ${it.name} → 商品 id ${pid}、${it.prizes.length} 個品項`)
+      console.log(`[${dbArg}] ${it.name} → 商品 id ${pid}、${it.prizes.length} 個品項`)
     }
     if (apply) await c.query('COMMIT')
     else { await c.query('ROLLBACK'); console.log('（乾跑，已 rollback；確認後加 --apply）') }
