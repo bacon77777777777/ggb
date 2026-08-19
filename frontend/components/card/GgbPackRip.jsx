@@ -24,6 +24,7 @@ const PARAM_DEFAULTS = {
   energyScale: 100, energyOffsetY: 0,
   fxOpacity: 0.9,
   dealStagger: 90, flipDelay: 500, skipFlyMs: 55,
+  sfxVolume: 1,
 };
 
 /* ============================================================
@@ -73,98 +74,93 @@ function makeSealSVG() {
 }
 const SEAL_URL = makeSealSVG();
 
-/* ---------- WebAudio 合成音效 ---------- */
-function useSfx(enabled) {
-  const ctxRef = useRef(null);
-  const ctx = () => {
-    if (!ctxRef.current) ctxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    if (ctxRef.current.state === "suspended") ctxRef.current.resume();
-    return ctxRef.current;
-  };
-  const noise = (ac, dur) => {
-    const b = ac.createBuffer(1, ac.sampleRate * dur, ac.sampleRate);
-    const d = b.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    const s = ac.createBufferSource(); s.buffer = b; return s;
-  };
+/* ---------- 音效：老闆提供的素材（public/images/card/media） ----------
+ * 原本是 WebAudio 現場合成的（撕紙聲是帶通白噪音、翻牌是掃頻），換成真實錄音。
+ * 實作上要顧三件事：
+ *  1. **連放會互相截斷** —— 同一顆 <audio> 重播得 currentTime=0，前一次的尾音就沒了。
+ *     SKIP 飛牌每 55ms 一張，所以密集的音效各備兩顆輪流用。
+ *  2. **循環音要記得停** —— 靜音、翻牌、元件卸載都得 stop，
+ *     不然玩家關掉演出後聲音還留在頁面上跑。
+ *  3. **自動播放限制** —— 這個場景一定是玩家點「立即開包／試試看」進來的，
+ *     手勢已經有了所以 play() 不會被擋；仍然把 promise catch 掉以防萬一。
+ * 音量比例沿用參考站的設定，再乘上後台的「音效音量」。
+ */
+const MEDIA = "/images/card/media";
+const SFX = {
+  //  key          檔案                          音量   循環   同時疊幾顆
+  packIdle:  [`${MEDIA}/pack-idle-loop.mp3`,     1.0,  true,  1],
+  packTear:  [`${MEDIA}/pack-tear.mp3`,          0.45, false, 1],
+  packDone:  [`${MEDIA}/pack-tear-done.mp3`,     0.7,  false, 1],
+  shuffle:   [`${MEDIA}/deal-shuffle.mp3`,       0.6,  false, 1],
+  dealA:     [`${MEDIA}/card-deal-a.mp3`,        0.5,  false, 2],
+  dealB:     [`${MEDIA}/card-deal-b.mp3`,        0.5,  false, 2],
+  fly:       [`${MEDIA}/card-fly.mp3`,           0.5,  false, 2],
+  flip:      [`${MEDIA}/card-flip.mp3`,          0.6,  false, 2],
+  hype:      [`${MEDIA}/hype-loop.mp3`,          1.0,  true,  1],
+  winRare:   [`${MEDIA}/win-rare.mp3`,           0.54, false, 1],
+  winEpic:   [`${MEDIA}/win-epic.mp3`,           0.54, false, 1],
+  winLegend: [`${MEDIA}/win-legend.mp3`,         0.58, false, 1],
+};
+/* 稀有度 → 中獎音。blue 稀有 / purple 史詩 / gold 傳說 */
+const WIN_BY_TIER = { blue: "winRare", purple: "winEpic", gold: "winLegend" };
+
+function useSfx(enabled, master = 1) {
+  const onRef = useRef(enabled); onRef.current = enabled;
+  const volRef = useRef(master); volRef.current = master;
+  const bank = useRef({});
+  const dealN = useRef(0);
   const api = useRef({});
-  api.current.spark = () => {
-    if (!enabled) return;
-    const ac = ctx(), t = ac.currentTime;
-    const s = noise(ac, 0.05);
-    const f = ac.createBiquadFilter(); f.type = "bandpass";
-    f.frequency.value = 3500 + Math.random() * 4500; f.Q.value = 2;
-    const g = ac.createGain();
-    g.gain.setValueAtTime(0.15 + Math.random() * 0.1, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-    s.connect(f).connect(g).connect(ac.destination); s.start(t);
-  };
-  api.current.ripDone = () => {
-    if (!enabled) return;
-    const ac = ctx(), t = ac.currentTime;
-    const s = noise(ac, 0.35);
-    const f = ac.createBiquadFilter(); f.type = "bandpass"; f.Q.value = 1.2;
-    f.frequency.setValueAtTime(5000, t); f.frequency.exponentialRampToValueAtTime(600, t + 0.3);
-    const g = ac.createGain();
-    g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-    s.connect(f).connect(g).connect(ac.destination); s.start(t);
-  };
-  api.current.deal = () => { // 發牌：單張啪
-    if (!enabled) return;
-    const ac = ctx(), t = ac.currentTime;
-    const s = noise(ac, 0.035);
-    const f = ac.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 2400;
-    const g = ac.createGain();
-    g.gain.setValueAtTime(0.16, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
-    s.connect(f).connect(g).connect(ac.destination); s.start(t);
-  };
-  api.current.flip = () => { // 翻牌
-    if (!enabled) return;
-    const ac = ctx(), t = ac.currentTime;
-    const s = noise(ac, 0.22);
-    const f = ac.createBiquadFilter(); f.type = "bandpass"; f.Q.value = 1.6;
-    f.frequency.setValueAtTime(700, t); f.frequency.exponentialRampToValueAtTime(4200, t + 0.18);
-    const g = ac.createGain();
-    g.gain.setValueAtTime(0.001, t); g.gain.exponentialRampToValueAtTime(0.2, t + 0.05);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
-    s.connect(f).connect(g).connect(ac.destination); s.start(t);
-    const o = ac.createOscillator(); o.type = "sine"; o.frequency.value = 880;
-    const g2 = ac.createGain();
-    g2.gain.setValueAtTime(0.001, t + 0.16); g2.gain.exponentialRampToValueAtTime(0.08, t + 0.18);
-    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-    o.connect(g2).connect(ac.destination); o.start(t + 0.16); o.stop(t + 0.32);
-  };
-  api.current.flick = () => {
-    if (!enabled) return;
-    const ac = ctx(), t = ac.currentTime;
-    const s = noise(ac, 0.16);
-    const f = ac.createBiquadFilter(); f.type = "bandpass"; f.Q.value = 1.5;
-    f.frequency.setValueAtTime(900, t); f.frequency.exponentialRampToValueAtTime(3600, t + 0.14);
-    const g = ac.createGain();
-    g.gain.setValueAtTime(0.001, t); g.gain.exponentialRampToValueAtTime(0.22, t + 0.04);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
-    s.connect(f).connect(g).connect(ac.destination); s.start(t);
-  };
-  api.current.aura = (big) => {
-    if (!enabled) return;
-    const ac = ctx(), t0 = ac.currentTime;
-    const notes = big ? [523.25, 659.25, 783.99, 1046.5] : [523.25, 659.25];
-    notes.forEach((fq, i) => {
-      const t = t0 + i * (big ? 0.11 : 0.16);
-      const o = ac.createOscillator(); o.type = "triangle"; o.frequency.value = fq;
-      const g = ac.createGain();
-      g.gain.setValueAtTime(0.001, t); g.gain.exponentialRampToValueAtTime(big ? 0.22 : 0.12, t + 0.03);
-      g.gain.exponentialRampToValueAtTime(0.001, t + (big ? 0.9 : 0.5));
-      o.connect(g).connect(ac.destination); o.start(t); o.stop(t + 1);
-    });
-    if (big) {
-      const s = noise(ac, 0.8);
-      const f = ac.createBiquadFilter(); f.type = "highpass"; f.frequency.value = 7000;
-      const g = ac.createGain();
-      g.gain.setValueAtTime(0.05, t0 + 0.2); g.gain.exponentialRampToValueAtTime(0.001, t0 + 1);
-      s.connect(f).connect(g).connect(ac.destination); s.start(t0 + 0.2);
+
+  // 用到才建 <audio>，沒撕開的玩家不會白抓那支 451KB 的醞釀音
+  const slot = (key) => {
+    if (typeof window === "undefined" || !SFX[key]) return null;
+    if (!bank.current[key]) {
+      const [src, vol, loop, n] = SFX[key];
+      bank.current[key] = {
+        vol, i: 0,
+        els: Array.from({ length: n }, () => {
+          const a = new Audio(src);
+          a.preload = "auto"; a.loop = !!loop;
+          return a;
+        }),
+      };
     }
+    return bank.current[key];
   };
+  const play = (key) => {
+    if (!onRef.current) return;
+    const s = slot(key); if (!s) return;
+    const a = s.els[s.i]; s.i = (s.i + 1) % s.els.length;
+    a.volume = Math.max(0, Math.min(1, s.vol * (Number(volRef.current) || 0)));
+    try { a.currentTime = 0; const r = a.play(); if (r && r.catch) r.catch(() => {}); } catch { /* 播不出來就算了，不能炸掉演出 */ }
+  };
+  const stop = (key) => {
+    const s = bank.current[key]; if (!s) return;
+    for (const a of s.els) { try { a.pause(); a.currentTime = 0; } catch { /* 同上 */ } }
+  };
+  const stopAll = () => Object.keys(bank.current).forEach(stop);
+
+  api.current.idleLoop = () => play("packIdle");
+  api.current.stopIdle = () => stop("packIdle");
+  // 撕開是一段連續音：pointermove 每幀都會叫到，已經在播就不要從頭來
+  api.current.tear = () => { const s = slot("packTear"); if (s && !s.els[0].paused) return; play("packTear"); };
+  api.current.tearDone = () => { stop("packTear"); stop("packIdle"); play("packDone"); };
+  api.current.shuffle = () => play("shuffle");
+  api.current.deal = () => play(dealN.current++ % 2 ? "dealB" : "dealA");
+  api.current.fly = () => play("fly");
+  api.current.flip = () => play("flip");
+  api.current.hype = () => play("hype");
+  api.current.stopHype = () => stop("hype");
+  api.current.win = (tier) => play(WIN_BY_TIER[tier] || "winRare");
+  /*
+   * 預熱：把還沒建過的 <audio> 都建起來讓瀏覽器先抓。
+   * 醞釀音有 451KB，等到要放才開始下載會慢半拍（那是大賞前最需要準的一刻）。
+   * 時機挑在「撕開完成」——玩家已經確定要看完，離發牌還有 780ms 可以抓。
+   */
+  api.current.prewarm = () => { Object.keys(SFX).forEach(slot); };
+
+  useEffect(() => { if (!enabled) stopAll(); }, [enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => stopAll(), []); // eslint-disable-line react-hooks/exhaustive-deps
   return api;
 }
 
@@ -210,7 +206,7 @@ export default function GGBPackRip({
       .then(({ data }) => setCfg({ ...PARAM_DEFAULTS, ...(data?.params ?? {}) }), () => {});
   }, []);
 
-  const sfx = useSfx(sound);
+  const sfx = useSfx(sound, cfg.sfxVolume);
   const packRef = useRef(null);
   const canvasRef = useRef(null);
   const particles = useRef([]);
@@ -282,11 +278,23 @@ export default function GGBPackRip({
     return () => clearInterval(iv);
   }, [phase]); // eslint-disable-line
 
+  /*
+   * 卡包躺在畫面上還沒撕開時的等待底噪（參考站的 pack-pre-opening，10 秒循環）。
+   * 快速模式是掛載後直接發牌，那段沒有撕包畫面，就不要放。
+   */
+  useEffect(() => {
+    if (phase !== "idle" || skipIntro || !sound) return;
+    const a = sfx.current; // 收進區域變數，cleanup 才不會抓到之後的 ref
+    a.idleLoop();
+    return () => a.stopIdle();
+  }, [phase, skipIntro, sound]); // eslint-disable-line react-hooks/exhaustive-deps
+
   /* ---------- 撕開：整個畫面 左滑/右滑 都可以 ---------- */
   const onStageDown = (e) => {
     if (phaseRef.current !== "idle" && phaseRef.current !== "tearing") return;
     if (e.target.closest?.("[data-ui]")) return;
     peel.current = { on: true, lastX: e.clientX, sinceSpark: 0 };
+    sfx.current.tear(); // 一段連續的撕包音，撕完在 finishRip 收掉
     if (phaseRef.current === "idle") setPhase("tearing");
   };
   const onStageMove = (e) => {
@@ -300,19 +308,27 @@ export default function GGBPackRip({
       p.sinceSpark = 0;
       const fp = foldPoint();
       if (fp) emitSparks(fp.x, fp.y, 5);
-      sfx.current.spark();
     }
-    setProgress(prev => {
-      const np = Math.min(1, prev + dx / (window.innerWidth * PEEL_FACTOR));
-      if (np >= 1 && prev < 1) finishRip();
-      return np;
-    });
+    /*
+     * ⚠️ finishRip 不能寫在 setProgress 的 updater 裡。React 嚴格模式（dev 預設開）
+     * 會把 updater 呼叫兩次，撕開完成的音效、洗牌、翻牌全部放了兩遍
+     * （2026-08-19 換成真實音效後才聽得出來，合成音時只是聽起來厚一點）。
+     * 改成自己算好進度、在 updater 外面判斷，另外用 ripped 這道鎖保證只跑一次。
+     */
+    const np = Math.min(1, progRef.current + dx / (window.innerWidth * PEEL_FACTOR));
+    progRef.current = np;
+    setProgress(np);
+    if (np >= 1) finishRip();
   };
   const onStageUp = () => { peel.current.on = false; };
 
+  const ripped = useRef(false); // 撕開只認第一次（見 onStageMove 的說明）
   const finishRip = () => {
+    if (ripped.current) return;
+    ripped.current = true;
     peel.current.on = false;
-    sfx.current.ripDone();
+    sfx.current.prewarm();
+    sfx.current.tearDone();
     setFlash(true); later(() => setFlash(false), 400);
     setPhase("ripped");
     for (let i = 0; i < 8; i++) { const fp = foldPoint(); if (fp) emitSparks(fp.x, fp.y, 5); }
@@ -325,6 +341,7 @@ export default function GGBPackRip({
     setCardIdx(0); setFlipped(false); setAuraOn(false); setDealt(false);
     setSettled(true); setDealing(true);
     requestAnimationFrame(() => requestAnimationFrame(() => setDealt(true)));
+    sfx.current.shuffle();
     const n = Math.min(cards.length, 8); // 疊太多沒必要全部動畫
     for (let i = 0; i < n; i++) later(() => sfx.current.deal(), i * cfg.dealStagger);
     const dealDone = (n - 1) * cfg.dealStagger + DEAL_DUR;
@@ -335,13 +352,14 @@ export default function GGBPackRip({
   const flipTop = (idx) => {
     if (phaseRef.current !== "cards") return;
     setFlipped(true);
+    sfx.current.stopHype(); // 翻下去的瞬間收掉醞釀音，讓中獎音接手
     sfx.current.flip();
     if (idx === cards.length - 1) {
       later(() => {
         setAuraOn(true);
         setFlash(true); later(() => setFlash(false), 450);
         const T2 = TIERS[prizeTier] || TIERS.blue;
-        sfx.current.aura(T2.big);
+        sfx.current.win(prizeTier);
         const stage = document.getElementById("ggb-stage")?.getBoundingClientRect();
         if (stage) emitSparks(stage.width / 2, stage.height / 2, T2.big ? 60 : 30, T2.spark);
       }, 380);
@@ -402,7 +420,7 @@ export default function GGBPackRip({
       later(() => {
         setFlipped(false);            // 一律卡背，不翻正面
         setFlying({ dir: 1 });        // 往右飛
-        sfx.current.flick();
+        sfx.current.deal();           // 短音；card-fly 有 1 秒，55ms 一張會糊成一團
       }, k * STEP_MS);
       later(() => {
         setCardIdx(at + 1);
@@ -447,12 +465,19 @@ export default function GGBPackRip({
    * 紫色大賞才有；藍色是一般等級，只留柔光不打閃。
    */
   const boltsOn = phase === "cards" && isLast && !flipped && dealt && prizeTier === "purple";
+  /*
+   * 大賞醞釀音（參考站的 card-anticipate，28 秒的循環底噪）：
+   * 最後一張還沒翻、而且是紫／金等級才鋪 —— 藍色是一般等級，鋪這麼滿反而不稀奇。
+   * 條件比 boltsOn 寬一級（金也要），所以另外算一份。
+   */
+  const hypeOn = phase === "cards" && isLast && !flipped && dealt
+    && (TIERS[prizeTier] || TIERS.blue).big;
   useEffect(() => {
-    if (!boltsOn) return;
-    // 影片自己會動，這支計時器只負責偶爾補一記火花音
-    const iv = setInterval(() => { if (Math.random() < 0.4) sfx.current.spark(); }, 260);
-    return () => clearInterval(iv);
-  }, [boltsOn]); // eslint-disable-line
+    if (!hypeOn || !sound) return;
+    const a = sfx.current; // 同上
+    a.hype();
+    return () => a.stopHype();
+  }, [hypeOn, sound]); // eslint-disable-line
 
   const onCardDown = (e) => {
     if (phase !== "cards" || flying || !dealt) return;
@@ -474,7 +499,7 @@ export default function GGBPackRip({
   const dismissCard = (dir) => {
     setTilt({ x: 0, y: 0 });
     setFlying({ dir });
-    sfx.current.flick();
+    sfx.current.fly();
     later(() => {
       setFlying(null);
       setCardOffset({ x: 0, y: 0 });
@@ -505,6 +530,7 @@ export default function GGBPackRip({
 
   const reset = () => {
     timers.current.forEach(clearTimeout); timers.current = [];
+    ripped.current = false;
     setPhase("idle"); setProgress(0); setCardIdx(0);
     setDealt(false); setFlipped(false); setAuraOn(false);
     peel.current = { on: false, lastX: 0, sinceSpark: 0 };

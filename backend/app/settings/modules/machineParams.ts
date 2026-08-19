@@ -72,6 +72,9 @@ export const MACHINE_PARAM_SPECS: Record<string, ParamSpec[]> = {
       hint: '按 SKIP 時，跳過的牌一張張往右飛出去的間隔。越小飛越快；買十包要跳 90 張，55ms 約 5 秒。' },
     { key: 'flipDelay',   label: '翻牌延遲', group: '開包節奏', type: 'range', min: 200, max: 1200, step: 50, default: 500, unit: 'ms',
       hint: '發完牌到最上張自動翻面的等待時間。' },
+
+    { key: 'sfxVolume',   label: '音效音量', group: '音效', type: 'range', min: 0, max: 1, step: 0.05, default: 1,
+      hint: '撕包／發牌／翻牌／中獎音的總音量。各支音效之間的相對大小是固定的，這裡只調整體。0 = 靜音（玩家自己的靜音鍵另外算）。' },
   ],
 
   blindbox_mode5: [

@@ -602,10 +602,14 @@ export default function ProductDetailPage() {
           .catch(err => console.error('Mission track error:', err));
         const productId = Number(params.id)
         if (Number.isFinite(productId)) {
-          supabase.rpc('track_hot_tags_product_view', { p_product_id: productId }).then(
-            () => undefined,
-            () => undefined
-          );
+          /*
+           * 這裡原本還會呼叫 RPC track_hot_tags_product_view。
+           * 那支函式定義在 migration 157，但 STG／PROD 都查不到（後來被拿掉、
+           * migration 沒跟上），所以每次開商品頁都白吃一個 404 ——
+           * 錯誤被 .then 的兩個 undefined 吞掉，畫面沒事所以一直沒人發現。
+           * 熱門標籤功能已經不在了，直接移除呼叫（2026-08-19）。
+           * product_view_events 表還留著，沒有人讀，要清另外處理。
+           */
           // Behavioral event tracking for personalization
           import('@/lib/trackEvent').then(({ trackEvent }) => {
             trackEvent('product_view', {
