@@ -31,6 +31,7 @@ export default function SimplePageHeader({
     <div
       className={cn(
         'fixed top-0 left-0 right-0 h-14 bg-white border-b border-neutral-100 dark:border-neutral-800 z-50',
+        'safe-top',
         darkBg === 'surface' ? 'dark:bg-neutral-900' : 'dark:bg-neutral-950',
         className,
       )}

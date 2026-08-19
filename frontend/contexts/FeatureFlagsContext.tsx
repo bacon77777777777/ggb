@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useNativeAppState } from '@/lib/useIsNativeApp';
 import { createClient } from '@/lib/supabase/client';
 
 export type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'exchange' | 'market' | 'recharge' | 'register';
@@ -176,7 +177,33 @@ export function FeatureFlagsProvider({ children }: { children: React.ReactNode }
     };
   }, []);
 
-  const value = useMemo(() => ({ flags, states, isLoading }), [flags, states, isLoading]);
+  /*
+   * App 版（iOS Capacitor / Android TWA）一律關掉玩家對玩家的現金交易：
+   * 商城（sell）、交易所（market）、卡牌交換（exchange）。
+   *
+   * 為什麼壓在 context 這一層而不是逐頁判斷：這三個旗標散在首頁選單、搜尋結果、
+   * 「我的」頁捷徑、Navbar 等十幾個地方，逐個補一定會漏，而漏掉的那個
+   * 就是審查員會點到的那個。從源頭關掉，所有消費端一次到位。
+   *
+   * 抽獎本身是「付費 + 隨機 + 實體獎品」，再接上一個能把獎品換回新台幣的市集，
+   * 就湊齊了賭博三要件。同業（潮玩家、抽抽一番賞、DOPA!）沒有一個在 App 裡放這個。
+   *
+   * ⚠️ 這只是不讓入口出現。真正的擋門在 middleware（C2C 路徑直接回 404）。
+   */
+  const { isNative: isNativeApp, resolved: nativeResolved } = useNativeAppState();
+
+  const value = useMemo(() => {
+    // 偵測還沒完成前一律維持 isLoading：消費端（首頁選單等）都會等 isLoading 才渲染，
+    // 這樣 App 裡就不會先閃出商城入口再消失
+    if (!nativeResolved) return { flags, states, isLoading: true };
+    if (!isNativeApp) return { flags, states, isLoading };
+    const OFF = { sell: false, market: false, exchange: false } as const;
+    return {
+      flags: { ...flags, ...OFF },
+      states: { ...states, sell: 'off' as const, market: 'off' as const, exchange: 'off' as const },
+      isLoading,
+    };
+  }, [flags, states, isLoading, isNativeApp, nativeResolved]);
   return <FeatureFlagsContext.Provider value={value}>{children}</FeatureFlagsContext.Provider>;
 }
 

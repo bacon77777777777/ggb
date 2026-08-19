@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isAppBlockedPath, isNativeAppUA } from '@/lib/nativeApp'
 
 /**
  * 維護模式
@@ -55,6 +56,16 @@ export async function middleware(request: NextRequest) {
       url.searchParams.set('auth_error', errorCode || error)
       return NextResponse.redirect(url)
     }
+  }
+
+  // ── App 版不開放玩家對玩家的現金交易 ──
+  //
+  // 回 404 而不是轉址：轉址等於告訴審查員「這裡本來有東西，只是被藏起來」。
+  // 404 就是這個 App 沒有這個功能，語意乾淨。
+  //
+  // 網頁版完全不受影響 —— 判斷只看原生殼注入的 User-Agent 標記。
+  if (isNativeAppUA(request.headers.get('user-agent')) && isAppBlockedPath(request.nextUrl.pathname)) {
+    return new NextResponse(null, { status: 404 })
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL

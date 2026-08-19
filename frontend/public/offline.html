@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>目前沒有網路 — 吉吉比</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100dvh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 20px; padding: 32px;
+    font-family: -apple-system, BlinkMacSystemFont, "Noto Sans TC", "PingFang TC", sans-serif;
+    background: #fafafa; color: #171717; text-align: center;
+  }
+  img { width: 96px; height: 96px; }
+  h1 { margin: 0; font-size: 19px; font-weight: 800; }
+  p { margin: 0; font-size: 14px; line-height: 1.7; color: #737373; max-width: 22em; }
+  button {
+    margin-top: 4px; padding: 12px 32px; border: 0; border-radius: 12px;
+    background: #171717; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0a0a0a; color: #fafafa; }
+    p { color: #a3a3a3; }
+    button { background: #fafafa; color: #0a0a0a; }
+  }
+</style>
+</head>
+<body>
+  <img src="/icons/icon-192.png" alt="">
+  <h1>目前沒有網路</h1>
+  <p>抽獎跟倉庫都需要連線才看得到。確認一下 Wi-Fi 或行動網路，再回來試試。</p>
+  <button onclick="location.reload()">重新載入</button>
+</body>
+</html>

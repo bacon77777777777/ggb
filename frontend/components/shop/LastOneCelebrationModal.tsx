@@ -1,9 +1,11 @@
 'use client';
 
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import Button from '@/components/ui/Button';
+import { hapticHeavy } from '@/lib/haptics';
 
 interface LastOneCelebrationModalPrize {
   name: string;
@@ -17,6 +19,10 @@ interface LastOneCelebrationModalProps {
 }
 
 export function LastOneCelebrationModal({ onClose, prize }: LastOneCelebrationModalProps) {
+  // 最後賞是全場最大的一刻，給最重的回饋
+  useEffect(() => {
+    hapticHeavy();
+  }, []);
   const activePrize = prize || null;
   const activeGrade = activePrize?.grade || '最後賞';
 

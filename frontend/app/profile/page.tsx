@@ -19,6 +19,7 @@ import { ProductType } from '@/components/ui/ProductBadge';
 import Image from 'next/image';
 import { useAlert } from '@/components/ui/AlertDialog';
 import { useToast } from '@/components/ui/Toast';
+import DeleteAccountSheet from '@/components/profile/DeleteAccountSheet';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { LineBindRow } from '@/components/auth/LineBindRow';
 import { EmailBindRow } from '@/components/auth/EmailBindRow';
@@ -1175,6 +1176,7 @@ function ProfileContent() {
   const [showEditNickname, setShowEditNickname] = useState(false);
   const [showEditRecipient, setShowEditRecipient] = useState(false);
   const [showAddressBook, setShowAddressBook] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [showTitlePicker, setShowTitlePicker] = useState(false);
   const [userTitles, setUserTitles] = useState<{ id: string; name: string; color_key: string; is_selected: boolean }[]>([]);
   const [selectingTitle, setSelectingTitle] = useState<string | null>(null);
@@ -6114,6 +6116,17 @@ function ProfileContent() {
                       登出
                     </button>
                   </div>
+
+                  {/* 刪除帳號（Apple 5.1.1(v) 要求 App 內要有入口） */}
+                  <div className="mt-3 mb-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteAccount(true)}
+                      className="text-[13px] text-neutral-400 dark:text-neutral-500 underline underline-offset-2 py-2 px-3"
+                    >
+                      刪除帳號
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -6288,8 +6301,30 @@ function ProfileContent() {
                     登出
                   </button>
                 </div>
+
+                {/* 刪除帳號（Apple 5.1.1(v) 要求 App 內要有入口） */}
+                <div className="mt-3 mb-2 text-center px-4 md:px-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteAccount(true)}
+                    className="text-[13px] text-neutral-400 dark:text-neutral-500 underline underline-offset-2 py-2 px-3"
+                  >
+                    刪除帳號
+                  </button>
+                </div>
               </div>
             </div>
+
+            <DeleteAccountSheet
+              isOpen={showDeleteAccount}
+              onClose={() => setShowDeleteAccount(false)}
+              onDeleted={async () => {
+                setShowDeleteAccount(false);
+                toast.success('帳號已刪除');
+                await logout();
+                router.replace('/');
+              }}
+            />
 
             {isPhoneBindModalOpen && (
               <div className="fixed inset-0 z-[90] bg-white dark:bg-neutral-950">

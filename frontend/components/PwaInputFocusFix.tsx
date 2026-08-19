@@ -12,7 +12,11 @@ function isStandaloneMode() {
   if (typeof window === 'undefined') return false;
   const mql = window.matchMedia?.('(display-mode: standalone)');
   const legacy = (navigator as unknown as { standalone?: boolean }).standalone === true;
-  return Boolean(mql?.matches || legacy);
+  // 原生殼（Capacitor）兩個條件都不符合，少了這項在 App 裡不會生效
+  const isNativeShell =
+    (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } })
+      .Capacitor?.isNativePlatform?.() === true;
+  return Boolean(mql?.matches || legacy || isNativeShell);
 }
 
 function getFocusableAtPoint(x: number, y: number) {

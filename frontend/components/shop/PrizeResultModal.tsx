@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import { X } from 'lucide-react';
 import { IpLoader } from '@/components/ui/IpLoader';
+import { hapticHeavy, hapticNotify } from '@/lib/haptics';
 
 export interface ResultPrize {
   id: string;
@@ -100,6 +101,24 @@ export const PrizeResultModal: React.FC<PrizeResultModalProps> = ({
   }, [isOpen, skipRevealAnimation]);
 
   const isHighTier = (grade: string) => HIGH_TIER_GRADES.some(tier => grade.includes(tier));
+
+  /*
+   * 揭曉的那一刻給觸覺回饋。
+   * 掛在 showContent 而不是 isOpen —— 有 2 秒的開獎動畫，
+   * 彈窗一開就震等於在玩家還沒看到東西的時候先爆雷。
+   */
+  useEffect(() => {
+    if (!isOpen || !showContent) return;
+    const items = prizes ?? results ?? [];
+    const hasBigOne = items.some((p) => {
+      const grade = String((p as { grade?: string }).grade ?? '');
+      return (p as { is_last_one?: boolean }).is_last_one || isHighTier(grade);
+    });
+    if (hasBigOne) hapticHeavy();
+    else hapticNotify('SUCCESS');
+    // isHighTier 是純函式，不需要進依賴
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, showContent, prizes, results]);
 
   return (
     <AnimatePresence>

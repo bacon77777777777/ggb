@@ -298,3 +298,31 @@ img {
 @media (prefers-reduced-motion: reduce) {
   #rotate-hint .rh-icon { animation: none; }
 }
+
+
+/* ── 裝置安全區（瀏海 / 動態島 / 底部 home indicator）─────────────────────────
+ *
+ * 只有在畫面真的延伸到安全區底下時 env() 才會回非 0 值：
+ *   - 一般瀏覽器：瀏覽器自己的工具列擋著 → 0，加了也不影響
+ *   - 加到主畫面的 PWA、以及原生殼（capacitor.config.ts 設了 contentInset: 'never'
+ *     讓抽獎機台能做滿版）→ 回真實的內縮值
+ * 所以這幾條在任何情境下都是安全的，不需要判斷平台。
+ *
+ * 用 content-box 是因為固定高度的頁首（h-14 / h-[57px]）若直接加 padding-top，
+ * border-box 下高度不會長，內容會被擠出框外。
+ */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+  box-sizing: content-box;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* SimplePageHeader 是 fixed + h-14，底下的內容原本用 pt-14 讓開。
+ * 頁首吃了安全區之後會變高，內容的偏移要跟著長，否則會被壓在頁首底下。
+ * 瀏覽器裡 env() 是 0，算出來就等於 pt-14，行為完全不變。 */
+.safe-header-offset {
+  padding-top: calc(3.5rem + env(safe-area-inset-top));
+}

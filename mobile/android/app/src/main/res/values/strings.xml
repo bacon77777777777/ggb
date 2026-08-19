@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">吉吉比</string>
+    <string name="title_activity_main">吉吉比</string>
+    <string name="package_name">tw.com.ggb.app</string>
+    <string name="custom_url_scheme">tw.com.ggb.app</string>
+</resources>

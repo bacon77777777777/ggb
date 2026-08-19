@@ -314,6 +314,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [supabase, router]); 
 
   const logout = async () => {
+    /*
+     * 先撤銷推播裝置再登出：signOut 之後 cookie 就沒了，
+     * /api/user/device-token 會回 401，那台手機會一直收到通知。
+     * 失敗不阻擋登出 —— 沒收到通知很煩，登不出去更糟。
+     */
+    try {
+      await fetch('/api/user/device-token', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+        keepalive: true,
+      });
+    } catch {
+      /* 忽略 */
+    }
     await supabase.auth.signOut();
     window.location.replace('/');
   };

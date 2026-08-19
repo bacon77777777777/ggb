@@ -172,6 +172,11 @@ export default function GGBPackRip({
   cardBack,
   cards: cardsProp,
   prizeTier: prizeTierProp = "blue",
+  /**
+   * 每一包各自的特效等級，例如買十包就是十個元素。
+   * 沒給就退回單一的 prizeTier（買一包、或舊的呼叫端）。
+   */
+  prizeTiers: prizeTiersProp = /** @type {('blue'|'purple')[] | null} */ (null),
   soundDefault = true,
   /** 略過撕包步驟，直接進發牌（商品頁左上角的閃電） */
   skipIntro = false,
@@ -186,12 +191,26 @@ export default function GGBPackRip({
   // 素材與稀有度改由商品資料決定（原型是內建 base64 ＋ ⚙️ 手動換）
   const packImg = packImage;
   const cards = cardsProp;
-  const prizeTier = prizeTierProp; // blue稀有 / purple史詩 / gold傳說
+  // prizeTier 的計算移到 cardIdx 宣告之後（要用它算出現在在第幾包）
   // 音效跟著全站靜音偏好走（與盒玩、一番賞同一顆開關），不再自己 useState ——
   // 玩家在商品頁關掉聲音，進了演出又自己響起來的話，那顆開關等於管不到這裡
   const muted = useSoundMuted();
   const sound = !muted;
   const [cardIdx, setCardIdx] = useState(0);
+  /*
+   * 逐包演出。
+   *
+   * 整筆購買是一疊連續的牌（買十包＝一百張），但**每一包都要有自己的收尾**——
+   * 真實卡包就是每包最後一張才是壓軸。先前把整筆當成一疊，只有第一百張吃得到
+   * 特效，中間九包全是平的；SKIP 也只跳到最後一包，所以看起來像是
+   * 「第 91 張才開始有特效」。
+   */
+  const packSize = Math.max(1, cardsPerPack);
+  const tierAt = (idx) =>
+    Array.isArray(prizeTiersProp)
+      ? prizeTiersProp[Math.floor(idx / packSize)] || "blue"
+      : prizeTierProp;
+  const prizeTier = tierAt(cardIdx); // blue稀有 / purple史詩
   const [dealt, setDealt] = useState(false);   // 發牌完成
   const [dealing, setDealing] = useState(false); // 發牌動畫進行中（才用階梯延遲）
   const [settled, setSettled] = useState(true);  // 新頂牌是否已從堆疊位滑到頂位
@@ -355,12 +374,16 @@ export default function GGBPackRip({
     setFlipped(true);
     sfx.current.stopHype(); // 翻下去的瞬間收掉醞釀音，讓中獎音接手
     sfx.current.flip();
-    if (idx === cards.length - 1) {
+    // 每包的最後一張都要有收尾，不是只有整筆的最後一張
+    if ((idx + 1) % packSize === 0 || idx === cards.length - 1) {
       later(() => {
         setAuraOn(true);
         setFlash(true); later(() => setFlash(false), 450);
-        const T2 = TIERS[prizeTier] || TIERS.blue;
-        sfx.current.win(prizeTier);
+        // 用 idx 算等級而不是 prizeTier —— 這支是 callback，
+        // 執行時 cardIdx 可能已經前進到下一張了
+        const tier = tierAt(idx);
+        const T2 = TIERS[tier] || TIERS.blue;
+        sfx.current.win(tier);
         const stage = document.getElementById("ggb-stage")?.getBoundingClientRect();
         if (stage) emitSparks(stage.width / 2, stage.height / 2, T2.big ? 60 : 30, T2.spark);
       }, 380);
@@ -457,7 +480,8 @@ export default function GGBPackRip({
   const [tilt, setTilt] = useState({ x: 0, y: 0 }); // 翻開後 3D 傾斜
   const [flying, setFlying] = useState(null);
   const [skipping, setSkipping] = useState(false);
-  const isLast = cardIdx === cards.length - 1;
+  // 每一包的最後一張都是壓軸（最末張同時也是整筆的結束）
+  const isLast = (cardIdx + 1) % packSize === 0 || cardIdx === cards.length - 1;
 
   /* 紫/金等級：最後一張卡背周圍閃電電弧（參考站紫光閃電，隨機劈啪） */
   /*

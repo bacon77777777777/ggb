@@ -4,6 +4,115 @@
 
 ---
 
+## v2026.08.19q｜2026-08-19｜卡包模式改成逐包演出；修正 pack_numbers 順序
+
+**買十包只有第 100 張有特效。**
+
+`GgbPackRip` 把整筆購買當成一疊連續的牌：
+
+```js
+const isLast = cardIdx === cards.length - 1;   // 只有全部 100 張的最後一張
+```
+
+`prizeTier` 也是整場一個值，頁面端更是把 100 張**一起排序**。實測十包裡
+第 3、7 包各有一張 A賞，排完之後大賞落在第 99、100 張 —— 前面九包的收尾全是平的。
+SKIP 剛好跳到 `lastPackStart`（第 91 張），所以看起來像「第 91 張才開始有特效」。
+
+真實卡包是每一包最後一張才是壓軸，所以兩邊都改成逐包：
+
+- **頁面端**（`app/item/[id]/page.tsx`）先切成一包一包，**各自排序**、各自算等級，
+  傳 `packTiers` 陣列進去
+- **演出端**（`GgbPackRip.jsx`）新增 `prizeTiers` prop，用 `cardIdx` 算出現在在第幾包；
+  `isLast` 改成「每包的最後一張」；收尾光環／火花／中獎音跟著逐包觸發
+
+翻牌那支是 callback，執行時 `cardIdx` 可能已經前進到下一張，所以裡面用傳進來的
+`idx` 重算等級，不能直接用外層的 `prizeTier`。
+
+排序只動顯示順序，籤號與獎項本身不變 —— 公平性驗證看的是籤號，不受影響。
+驗過 1/2/3/5/6/7/10/20 包與每包 5/6/8/10/12 張，壓軸位置與等級都正確。
+
+**順帶修掉一個還沒爆的雷**（migration 596）：`play_ichiban_auto` 挑包用
+`ORDER BY random()`，但展開成籤位是 `ORDER BY n`（籤號全域排序）。因為每包籤號是
+連續區間，卡片是照包號由小到大回傳的，`pack_numbers` 卻維持隨機順序 —— 抽到
+[37, 5, 12] 時卡片順序是 5→12→37，回傳的包號卻是 [37, 5, 12]。前台目前沒讀這個
+欄位所以沒出事，但它的用途正是「玩家拿包號對封存表驗證」，錯了等於驗證本身不可信。
+
+---
+
+## v2026.08.19p｜2026-08-19｜App 上架準備：帳號刪除、PWA、商城隔離、原生殼
+
+為了上架 App Store／Google Play 做的一整包。**網頁版行為完全不變**。
+
+### 帳號刪除（Apple Guideline 5.1.1(v) 強制，缺了必退件）
+
+`migration 594`。做的是**匿名化而不是 DELETE** —— `public.users.id → auth.users`
+是 `ON DELETE CASCADE`，而 `token_adjustments` 又對 users CASCADE。真的刪一列會同時
+炸掉三條鏈：`token_adjustments` 整批消失、`recharge_records` 與 `draw_records` 的
+`user_id` 變 NULL，財務對帳與 `/fairness` 公平性驗證都會斷。加上商業會計法要求
+憑證保存五年，交易紀錄本來就不能刪。
+
+Apple 明文允許依當地法令保留必要資料，我們刪的是「個資 + 登入能力」且不可回復，
+不是它禁止的「暫時停用」。
+
+三道擋門（對齊同業潮玩家）：代幣餘額、倉庫未申請出貨的獎品、進行中訂單。
+另有 `p_force` 讓客服可代辦，「聯繫客服協助」不是空話。
+STG 實測：個資清空、identities/sessions 歸零、永久停權，454 筆抽獎紀錄完整保留，
+並寫入對沖分錄讓帳平。
+
+### App 內不出現玩家商城
+
+抽獎是「付費＋隨機＋實體獎品」，再接上能把獎品換回新台幣的 C2C 市集，就湊齊了
+賭博三要件。同業（潮玩家、抽抽一番賞、DOPA!、入魂一番賞）沒有一個在 App 裡放這個，
+潮玩家還直接寫「代幣不可轉贈他人」。
+
+擋門放在 **FeatureFlagsContext**，不是逐頁判斷 —— `flags.sell/market/exchange` 散在
+首頁選單、搜尋結果、「我的」頁捷徑等十幾處，逐個補一定會漏，而漏掉的那個就是
+審查員會點到的那個。從源頭關掉，連搜尋的資料查詢都不會發出去。
+middleware 另外對 C2C 路徑直接回 **404**（不是轉址 —— 轉址等於告訴審查員這裡本來有東西）。
+
+官方商城（`/official`）也一併關掉：它的訂單與 C2C 共用 `/sell/orders`，留著會變成
+「買得到但看不到訂單」。要在 App 賣官方商城商品，得先給它獨立的訂單頁。
+
+### 原生殼（`mobile/`）
+
+Capacitor **remote URL 模式**：webview 直接載入線上網站，改版不用重新送審。
+代價是 Guideline 4.2 審得嚴，所以推播、Face ID、原生分享、相機掃碼不是加分項而是過審條件。
+
+**金流是唯一需要重新設計的**：App 裡不能讓 webview 直接導去綠界，3D 驗證會跳到
+各家銀行網域，白名單列不完。改用 in-app browser 開付款頁，但它（iOS 的
+SFSafariViewController）**跟 webview 不共用 cookie**，所以交接不能靠 session ——
+改用 HMAC 一次性簽章（`lib/paymentHandoff.ts`）。入帳本來就走綠界打到後端的
+server-to-server callback，跟瀏覽器無關，所以 App 只要在使用者關掉付款頁時重讀餘額。
+簽章驗過八項：竄改金額、偽造簽章、過期、非 https 目標全部擋下。
+
+推播兩端統一走 FCM（iOS 由 Firebase 代發 APNs），後端只有一條發送路徑
+（`backend/lib/push.ts`，OAuth2 用 Node 內建 crypto 簽，沒引入新套件）。
+`migration 595` 建 `device_tokens`，登出與帳號刪除都會撤銷。
+
+### 原生行為補完
+
+- **下拉更新／鍵盤修正**：兩支早就寫好了，但第一行都是 `if (!isStandaloneMode()) return`，
+  而 Capacitor 的 webview 兩個條件都不符合 —— 在 App 裡完全不會啟動
+- **外部連結**：用 document 層級 capture 攔截，不逐個改 `target="_blank"`
+  （站上 6 處，公告 linkify 還會動態產生，改了一定漏）
+- **背景喚醒驗 session**：手機放口袋兩天再開，token 早過期但畫面還是登入狀態
+- **震動**：原本的 `navigator.vibrate` 在 iOS **完全無效**（Safari 與 WKWebView 都不支援），
+  改成雙軌。結果彈窗掛在 `showContent` 而不是 `isOpen` —— 有 2 秒開獎動畫，
+  彈窗一開就震等於先爆雷
+- **Android 返回鍵**：Capacitor 預設沒歷史就直接關 App
+- **iOS 側滑返回**：WKWebView 的原生手勢開關沒被 Capacitor 暴露，改用 JS 邊緣手勢，
+  起點限制在左緣 24px，不與卡包輪播、reels 的水平滑動衝突
+- **安全區**：原本改了 NavbarLayout，發現會連動 8 處以上的 `top-[57px]` sticky 子欄
+  且無實機可驗，**退回**改由原生層 `contentInset: 'automatic'` + StatusBar 不覆蓋 webview 處理
+
+### 尚未完成（依賴外部帳號）
+
+本機沒有 Xcode／CocoaPods／JDK，停在「專案與設定就緒」。Firebase 專案、APNs `.p8`、
+TWA 簽章指紋都要等開發者帳號，步驟寫在 `mobile/README.md`。
+安全區與側滑手勢是照規格寫的，拿到真機要優先驗這兩項。
+
+---
+
 ## v2026.08.19o｜2026-08-19｜修正：商品詳情的品項設了 360 展示，前台仍是靜態圖
 
 後台把品項改成「360 展示」、DB 也存對了（`display_mode='showcase3d'`、

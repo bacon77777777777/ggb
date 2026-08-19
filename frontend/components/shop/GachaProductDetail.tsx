@@ -21,6 +21,7 @@ import PinchZoomImage from '@/components/ui/PinchZoomImage';
 import { SoundToggle } from '@/components/ui/SoundToggle';
 import { trackEvent } from '@/lib/trackEvent';
 import ProductBadge from '@/components/ui/ProductBadge';
+import { hapticHeavy, hapticLight, hapticMedium, hapticNotify } from '@/lib/haptics';
 
 interface GachaProductDetailProps {
   product: Database['public']['Tables']['products']['Row'];
@@ -124,6 +125,7 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
 
   const handlePush = () => {
     if (machineState !== 'idle') return;
+    hapticLight();
     trackEvent('draw_preview', { productId: product.id, series: product.name });
     setPushSoundMode('manual');
     setShakeRepeats(1);
@@ -306,8 +308,10 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
     setPushSoundMode('auto');
     setShakeRepeats(2);
     setMachineState('shaking');
+    hapticMedium();                    // 機台開始轉
     const t1 = window.setTimeout(() => {
       setMachineState('dropping');
+      hapticMedium();                  // 蛋掉下來
       const t2 = window.setTimeout(() => {
         setMachineState('waiting');
         setHasPendingResult(true);
@@ -384,6 +388,9 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
 
   const handleHoleClick = () => {
     if (!hasPendingResult || wonPrizes.length === 0) return;
+    // 最後賞給最重的回饋，其餘用系統的「成功」震動樣式
+    if (wonPrizes.some(p => p.is_last_one)) hapticHeavy();
+    else hapticNotify('SUCCESS');
     setShowResultModal(true);
     // Refresh collection when showing results, so the collection list updates AFTER the user sees the result.
     setCollectionRefreshKey(prev => prev + 1);

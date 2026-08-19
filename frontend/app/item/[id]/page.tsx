@@ -2013,14 +2013,27 @@ export default function ProductDetailPage() {
               return 'blue';
             };
             const rank = { blue: 0, purple: 1 };
-            const topTier = wonPrizes.reduce<'blue' | 'purple'>(
-              (best, p) => (rank[tierOf(p)] > rank[best] ? tierOf(p) : best), 'blue');
             /*
-             * 依稀有度排序，最好的那張擺最後（老闆：一包裡最大的那張出現在最後一張位置，
-             * 跟真實卡包一樣）。演出的收尾光環吃的就是最後一張，大賞擺中間等於白做。
+             * **逐包**排序與逐包算等級（老闆 2026-08-19）。
+             *
+             * 先前是把整筆購買當成一疊排序：買十包時所有大賞會被排到最後面，
+             * 前九包的收尾全是平的，看起來就像「第 91 張才開始有特效」。
+             * 真實卡包是每一包最後一張才是壓軸，所以要切成一包一包各自處理。
+             *
              * 只動「顯示順序」，籤號與獎項本身不變 —— 公平性驗證看的是籤號，不受影響。
              */
-            const ordered = [...wonPrizes].sort((a, b) => rank[tierOf(a)] - rank[tierOf(b)]);
+            const packs: Prize[][] = [];
+            for (let i = 0; i < wonPrizes.length; i += cardsPerPack) {
+              packs.push(wonPrizes.slice(i, i + cardsPerPack));
+            }
+            // 每包內部由低到高排，該包最好的那張落在該包的最後一張
+            const orderedPacks = packs.map(pack =>
+              [...pack].sort((a, b) => rank[tierOf(a)] - rank[tierOf(b)]));
+            const ordered = orderedPacks.flat();
+            // 每包一個特效等級：包裡有大賞就紫，否則藍
+            const packTiers = orderedPacks.map(pack =>
+              pack.reduce<'blue' | 'purple'>(
+                (best, p) => (rank[tierOf(p)] > rank[best] ? tierOf(p) : best), 'blue'));
             return (
               /* 疊在頁面之上：原型的 stage 是 fixed inset-0 但沒有 z-index，
                  直接渲染會被底部操作欄（z-40）、警語列、頁首壓在上面 ——
@@ -2032,7 +2045,8 @@ export default function ProductDetailPage() {
                 packImage={(product as any).pack_front_image_url || product.image_url || `/images/card/pack/${activePackStyle}a.webp`}
                 cardBack={(product as any).card_back_image_url || '/images/card/back.webp'}
                 cards={ordered.map(p => p.image_url || '/images/card/00004.webp')}
-                prizeTier={topTier}
+                prizeTier={packTiers[0] ?? 'blue'}
+                prizeTiers={packTiers}
                 soundDefault={!isVideoMuted}
                 skipIntro={skipPackIntro}
                 cardsPerPack={cardsPerPack}

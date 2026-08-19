@@ -1,0 +1,17 @@
+node_modules/
+# 原生建置產物
+ios/App/Pods/
+ios/App/App/public/
+ios/App/App/GoogleService-Info.plist
+android/app/build/
+android/build/
+android/.gradle/
+android/app/src/main/assets/public/
+android/app/google-services.json
+# 簽章金鑰：外洩等於別人可以冒名發版
+*.keystore
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+twa/android.keystore

@@ -26,6 +26,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
+import { native } from '@/lib/native/bridge';
+import { openPayment } from '@/lib/native/browser';
 
 const TOPUP_PLANS = [
   { id: 'p1', amount: 100, points: 100, bonus: 0, isHot: false },
@@ -65,10 +67,52 @@ export default function TopupPage() {
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    if (paymentData && formRef.current) {
-      formRef.current.submit();
+    if (!paymentData) return;
+
+    /*
+     * App 版不能直接在 webview 導去綠界：3D 驗證會跳到各家銀行的網域，
+     * `allowNavigation` 白名單列不完，一跳就被丟到系統瀏覽器，
+     * 玩家在那邊付完款，App 這頭卻完全不知道發生什麼事。
+     *
+     * 改成用 in-app browser 開一個帶簽章的交接頁（見 lib/paymentHandoff.ts）。
+     * 入帳本來就是綠界打到後端的 server-to-server callback，跟瀏覽器無關，
+     * 所以這裡只要在使用者關掉付款頁時把餘額重讀一次即可。
+     */
+    if (native.isNativePlatform()) {
+      let cancelled = false;
+      (async () => {
+        try {
+          const res = await fetch('/api/payment/handoff', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: paymentData.action, fields: paymentData.fields }),
+          });
+          if (!res.ok) throw new Error('handoff failed');
+          const { token } = await res.json();
+          if (cancelled) return;
+
+          const opened = await openPayment(`/payment/go?t=${encodeURIComponent(token)}`, () => {
+            // 使用者關掉付款頁就回來了 —— 付成功與否由後端 callback 決定，
+            // 這裡只負責把畫面上的餘額換成最新的
+            void refreshProfile?.();
+            setPaymentData(null);
+            setIsProcessing(false);
+            isProcessingRef.current = false;
+          });
+          if (opened) return;
+        } catch (err) {
+          console.error('[topup] App 付款交接失敗，退回一般跳轉', err);
+        }
+        // 交接失敗就退回原本的做法，至少還付得成
+        if (!cancelled) formRef.current?.submit();
+      })();
+      return () => {
+        cancelled = true;
+      };
     }
-  }, [paymentData]);
+
+    formRef.current?.submit();
+  }, [paymentData, refreshProfile]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {

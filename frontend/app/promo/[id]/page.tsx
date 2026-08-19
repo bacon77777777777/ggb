@@ -68,7 +68,7 @@ export default function PromoListPage() {
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
       <SimplePageHeader title={promoName ?? '促銷活動'} onBack={() => router.back()} />
-      <div className="pt-14">
+      <div className="safe-header-offset">
         <div className="max-w-[1200px] mx-auto px-3 sm:px-4 py-4">
           {products.length === 0 ? (
             <div className="py-24 text-center text-sm text-neutral-400">

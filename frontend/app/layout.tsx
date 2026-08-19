@@ -18,6 +18,10 @@ import AnalyticsTracker from '@/components/AnalyticsTracker';
 import { getSiteUrl } from '@/lib/site';
 import MaintenanceWatcher from '@/components/MaintenanceWatcher';
 import { getThemeCss } from '@/lib/serverTheme';
+import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
+import NativeAppBootstrap from '@/components/native/NativeAppBootstrap';
+import ExternalLinkHandler from '@/components/native/ExternalLinkHandler';
+import EdgeSwipeBack from '@/components/native/EdgeSwipeBack';
 
 const siteUrl = getSiteUrl();
 
@@ -93,8 +97,13 @@ export const metadata: Metadata = {
     google: process.env.GOOGLE_SITE_VERIFICATION || process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
   },
   icons: {
-    icon: '/images/20260629/favicon.png',
-    apple: '/images/20260629/favicon.png',
+    icon: [
+      { url: '/images/20260629/favicon.png' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    // iOS 主畫面圖示不吃透明底，也不會自己補白 —— 要用切好的 180×180
+    apple: '/icons/apple-touch-icon.png',
   },
   appleWebApp: {
     title: '吉吉比轉蛋',
@@ -209,6 +218,10 @@ export default async function RootLayout({
                   <AnalyticsTracker />
                   <Navbar />
                   <main className="flex-grow">
+                    <ServiceWorkerRegistrar />
+                    <NativeAppBootstrap />
+                    <ExternalLinkHandler />
+                    <EdgeSwipeBack />
                     <PathnameKeyed>{children}</PathnameKeyed>
                   </main>
                   <FooterWrapper />

@@ -9,7 +9,15 @@ function isStandaloneMode() {
   if (typeof window === 'undefined') return false;
   const mql = window.matchMedia?.('(display-mode: standalone)');
   const legacy = (navigator as unknown as { standalone?: boolean }).standalone === true;
-  return Boolean(mql?.matches || legacy);
+  /*
+   * 原生殼（Capacitor）也要算。它的 webview 既不符合 display-mode: standalone，
+   * navigator.standalone 也是 undefined —— 少了這一項，整支下拉更新
+   * 在 iOS／Android App 裡完全不會啟動（做了等於沒做）。
+   */
+  const isNativeShell =
+    (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } })
+      .Capacitor?.isNativePlatform?.() === true;
+  return Boolean(mql?.matches || legacy || isNativeShell);
 }
 
 function isAtTop(): boolean {

@@ -85,7 +85,7 @@ export default function CustomRulesPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-16 pt-14">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-16 safe-header-offset">
       <SimplePageHeader title="自製賞規則" onBack={() => router.back()} maxWidth="max-w-[960px]" />
 
       <div className="max-w-[560px] md:max-w-[960px] mx-auto px-4 py-6 space-y-4 md:space-y-8">
