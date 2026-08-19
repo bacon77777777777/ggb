@@ -4,6 +4,73 @@
 
 ---
 
+## v2026.08.19s｜2026-08-19｜修正：iOS 上中文顯示為豆腐方塊；字型載入優化
+
+在 iOS 模擬器把 App 跑起來時發現全站中文都是 ☐。原本判斷是模擬器缺字型，
+實測後推翻——**是我們的字型堆疊有問題**。
+
+逐一測試各字型對中文的支援：
+
+| 堆疊 | 中文 |
+|------|------|
+| `sans-serif` / `serif` | ✅ |
+| **`system-ui`／`-apple-system`** | ❌ |
+| `PingFang TC`／`Heiti TC`／`Hiragino Sans` | ✅ |
+
+`sans-serif` 本身沒問題，壞的是 `system-ui`——而 Tailwind 的 `font-sans` 正是以它開頭。
+更關鍵的是它會用 **.notdef 方塊「覆蓋」中文字**，瀏覽器以為這個字有著落就不再往後找：
+
+- `system-ui, 'PingFang TC', sans-serif` → 仍是豆腐（排後面救不到）
+- `'PingFang TC', system-ui, sans-serif` → 正常
+
+也就是說 fallback 完全失效。維基百科在同一環境下也全是豆腐，原因相同。
+
+**修法**：把中文字型排在 `system-ui` 前面，但用 `unicode-range` 限制它只接管 CJK 區段，
+英數仍落到 system-ui（已逐字比對 `GGB NT$1,280 Abcdefg`，字面完全相同）。
+全部走 `local()`，不下載任何東西。
+
+分成三條 `@font-face`，共用 `GGB CJK` / `GGB CJK JP` 兩個別名：
+
+1. **繁中**（PingFang TC…）：中日韓漢字、假名、注音、全形標點
+2. **日文補缺字**（Hiragino Sans…）：PingFang TC 是繁中字型，日文限定的漢字與符號
+   （々、〆、JIS 專用字形）不一定有，缺字時需要它接手。**不能併進第 1 條**——
+   同 family 的 unicode-range 重疊時後者會整段接管，繁中內文會變成日文字形
+   （「骨」「直」中日寫法不同，看得出來）
+3. **韓文**（Apple SD Gothic Neo…）：**也不能併進第 1 條**——PingFang 沒有韓文，
+   宣告了等於讓它回 .notdef，反而擋掉原本可行的 fallback，比不改更糟
+
+**順帶的字型載入優化**：`Chiron GoRound TC` 原本是阻塞載入，但它只用在四個裝飾位置
+（商品頁黃色標籤、開獎結果彈窗），已移到非阻塞那批；阻塞的只留 `Tilt Warp`
+（金額數字，全站 91 處，首屏可見）。
+
+另外 `globals.css` 的 `body { font-family: 'Chiron GoRound TC' }` 是 dead code——
+`<body className="font-sans">` 的 class 選擇器（0,1,0）本來就贏過 element 選擇器（0,0,1），
+那行從來沒生效過，卻讓人誤以為 Chiron 是內文字型。已移除並註明內文字型的唯一來源。
+
+---
+
+## v2026.08.19t｜2026-08-19｜原生殼：掃碼外掛換官方版；暫時移除 Firebase 推播
+
+Xcode 裝好後實際 build 與執行 iOS App，排掉兩個問題。
+
+**掃碼外掛靜默失效**：Capacitor 8 的 iOS 專案預設走 SPM 而不是 CocoaPods
+（所以根本沒有 Podfile），而 `@capacitor-mlkit/barcode-scanning` 沒有 `Package.swift`，
+`cap sync` 會把它從依賴裡默默拿掉——npm 裝好了、CLI 也說「Found 8 plugins」，
+但 iOS 端根本沒編進去，呼叫掃碼只會安靜地什麼都不發生。
+換成官方的 `@capacitor/barcode-scanner`，API 也跟著改寫
+（`scanBarcode({hint})` → `{ScanResult}`，與 mlkit 的 `scan()` → `{barcodes[]}` 不同）。
+
+**App 開機即 crash**：`+[FIRApp configure]` 找不到 `GoogleService-Info.plist` 就拋
+NSException。推播本來就要等 Firebase 專案與 APNs 金鑰才能用，但它不該讓整個 App
+開不起來。先移除 `@capacitor-firebase/messaging`，等 Firebase 專案建好再裝回來。
+前台的推播程式碼保留——橋接層找不到外掛會回 `null`，不會出錯。
+
+**驗證**：iOS App 已能在模擬器啟動並載入正式站。另對正式站以 App User-Agent 實測，
+`/sell`、`/sell/orders`、`/sell/new`、`/exchange`、`/market`、`/official/1` 全部回 404，
+一般瀏覽器 UA 全部 200；`/`、`/search`、`/profile`、`/topup`、`/news` 兩者皆 200。
+
+---
+
 ## v2026.08.19r｜2026-08-19｜修正：刪除帳號頁捲到頂端時被頂部導航蓋住
 
 `SimplePageHeader` 是 `fixed top-0`，內容區必須自己讓開頭部高度，

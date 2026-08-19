@@ -4,9 +4,13 @@
  * 才發現這幾行，然後才去連 fonts.googleapis.com —— 一連串往返全都在擋畫面。
  * 改成 <head> 裡的 <link> 之後，字型與 CSS 同時開始下載。
  *
- * 另外原本載了六套，但全站真正需要的只有 Chiron GoRound TC（內文）與
- * Tilt Warp（金額數字）；Inter／Noto Sans JP 只有排行榜在用、
- * Noto Serif HK 只有抽卡對戰特效在用、Noto Sans SC 一次都沒用到。 */
+ * 阻塞載入的只有 Tilt Warp（金額數字，font-amount，全站 91 處）。
+ * 其餘都改成非阻塞：Chiron GoRound TC 只用在四個裝飾位置（商品頁黃色標籤、
+ * 開獎結果彈窗）、Inter／Noto Sans JP 只有排行榜、Noto Serif HK 只有抽卡對戰特效、
+ * Oswald 只有商城金額。Noto Sans SC 一次都沒用到，已移除。
+ *
+ * ⚠️ 內文**不是** Chiron —— 內文吃的是 Tailwind 的 font-sans
+ * （`<body className="font-sans">`，見 tailwind.config.js）。 */
 
 @tailwind base;
 @tailwind components;
@@ -27,12 +31,90 @@
   --primary-soft: 255 244 239; /* #FFF4EF */
 }
 
+/*
+ * 中文 fallback
+ *
+ * 問題：`system-ui` 在某些 WebKit 環境（iOS 模擬器、部分 Android WebView）
+ * 會用 .notdef 方塊「覆蓋」中文字 —— 瀏覽器以為這個字有著落，就不再往後找，
+ * 所以字型堆疊裡排在它後面的中文字型永遠救不到，整頁中文變豆腐。
+ * 實測：`system-ui, sans-serif` 是豆腐，`'PingFang TC', system-ui` 才正常。
+ *
+ * 解法：把中文字型排在 `system-ui` **前面**，但用 unicode-range 限制它只接管
+ * CJK 區段 —— 英數仍然落到 system-ui，字面長相完全不變（已逐字比對過）。
+ *
+ * 全部用 local()：這些是各平台內建的字型，不下載任何東西，零成本。
+ */
+@font-face {
+  font-family: 'GGB CJK';
+  src: local('PingFang TC'), local('PingFang SC'), local('Heiti TC'),
+       local('Microsoft JhengHei'), local('Noto Sans CJK TC'), local('Noto Sans TC');
+  font-display: swap;
+  unicode-range: U+2E80-2EFF,  /* 康熙部首 */
+                 U+3000-303F,  /* 中日韓標點：、。「」 */
+                 U+3040-30FF,  /* 平假名／片假名：日文商品名 */
+                 U+3100-312F,  /* 注音符號 */
+                 U+31A0-31BF,  /* 注音擴充 */
+                 U+3400-4DBF,  /* 擴充 A */
+                 U+4E00-9FFF,  /* 中日韓統一表意文字 */
+                 U+F900-FAFF,  /* 相容表意文字 */
+                 U+FE30-FE4F,  /* 相容形式（直排標點） */
+                 U+FF00-FFEF;  /* 全形英數與標點 */
+}
+
+/*
+ * 日文補位。
+ *
+ * PingFang TC 是繁體中文字型，日文限定的漢字與符號（々、〆、JIS 專用字形等）
+ * 不一定有。缺字時瀏覽器會往後找，但下一順位是 system-ui —— 而它會用 .notdef
+ * 方塊蓋住並中斷 fallback，結果就是日文商品名／情報標題出現豆腐。
+ *
+ * 這裡不能用同一個 family 名再宣告一次：同 family 的多條 @font-face 若
+ * unicode-range 重疊，後宣告的會整段接管，繁中內文就會變成日文字型的字形
+ * （「骨」「直」這類字中日寫法不同，看得出來）。所以另開一個 family，
+ * 排在 GGB CJK **後面**、system-ui **前面** —— 只有 PingFang 缺字時才輪到它。
+ *
+ * 情報是爬日本來源改寫的，日文會持續出現，這一層是必要的。
+ */
+@font-face {
+  font-family: 'GGB CJK JP';
+  src: local('Hiragino Sans'), local('Hiragino Kaku Gothic ProN'), local('Yu Gothic'),
+       local('Meiryo'), local('Noto Sans JP');
+  font-display: swap;
+  unicode-range: U+2E80-2EFF, U+3000-303F, U+3040-30FF, U+31F0-31FF,
+                 U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FE30-FE4F, U+FF00-FFEF;
+}
+
+/*
+ * 韓文另外一條，不能併進上面。
+ *
+ * PingFang 沒有韓文字符 —— 把 Hangul 併進上面那條的 unicode-range，
+ * 等於宣告「這個字由 PingFang 負責」，然後 PingFang 回一個 .notdef 方塊，
+ * 反而擋住原本可行的 fallback，韓文會比不改還糟。
+ * 同一個 family 可以有多條 @font-face、各自負責不同的 unicode-range，
+ * 這正是這個機制的用途。
+ *
+ * 站上目前只有商品名出現過韓文（6 個字），但情報是爬日韓來源的，會再出現。
+ */
+@font-face {
+  font-family: 'GGB CJK';
+  src: local('Apple SD Gothic Neo'), local('Malgun Gothic'), local('Noto Sans KR'), local('Nanum Gothic');
+  font-display: swap;
+  unicode-range: U+1100-11FF,  /* 韓文字母 */
+                 U+3130-318F,  /* 韓文相容字母 */
+                 U+A960-A97F,  /* 韓文字母擴充 A */
+                 U+AC00-D7AF;  /* 韓文音節 */
+}
+
 * { box-sizing: border-box; }
 html, body { max-width: 100vw; }
 body { 
   background: #f9fafb; 
   color: #111827; 
-  font-family: 'Chiron GoRound TC', sans-serif; 
+  /* 這裡刻意不設 font-family。
+     `<body className="font-sans">` 的 class 選擇器（0,1,0）本來就贏過
+     element 選擇器（0,0,1），寫在這裡的值永遠不會生效 ——
+     先前寫著 'Chiron GoRound TC' 讓人以為那是內文字型，實際上從來沒套用過。
+     內文字型的唯一來源是 tailwind.config.js 的 fontFamily.sans。 */
   overflow-x: clip; 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

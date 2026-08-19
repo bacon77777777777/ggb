@@ -54,7 +54,12 @@ module.exports = {
         'modal': '0 20px 70px -15px rgba(0, 0, 0, 0.15)',
       },
       fontFamily: {
-        sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
+        // 'GGB CJK' 一定要排在 system-ui 前面：後者會用 .notdef 方塊蓋掉中文並
+        // 阻斷 fallback（見 globals.css 的 @font-face 說明）。
+        // 它有 unicode-range 限制，只接管中日韓字，英數照舊走 system-ui。
+        // 順序有意義：GGB CJK（繁中）→ GGB CJK JP（日文補缺字）→ system-ui（英數）。
+        // 兩個 CJK 別名都必須排在 system-ui 前面，它會用 .notdef 方塊中斷 fallback。
+        sans: ['"GGB CJK"', '"GGB CJK JP"', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
         amount: ['Tilt Warp', 'sans-serif'],
       },
       lineHeight: {

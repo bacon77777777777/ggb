@@ -20,10 +20,15 @@ repackaged website 退件。所以推播、Face ID、原生分享、相機掃碼
 ## 環境需求
 
 - **Node ≥ 22**（Capacitor 8 CLI 的硬性要求）。本機預設是 20，用 `nvm use 22`。
-- **Xcode**（iOS）＋ CocoaPods：`sudo gem install cocoapods`
+- **Xcode**（iOS）。CocoaPods **用不到** —— Capacitor 8 的 iOS 專案走 SPM，
+  沒有 Podfile。（裝了也不礙事，之後若遇到只支援 Pods 的外掛會需要。）
 - **Android Studio**（Android）＋ JDK 17
 
-目前本機三者皆未安裝，所以只完成到「專案與設定就緒」，還沒實際 build。
+iOS 端已實際 build 並在模擬器執行成功（2026-08-19）。Android 尚未 build，缺 JDK。
+
+⚠️ **外掛必須支援 SPM**：Capacitor 8 的 iOS 專案預設是 SPM，沒有 `Package.swift`
+的外掛會被 `cap sync` **靜默排除** —— CLI 仍會說「Found N plugins」，但 iOS 端沒編進去。
+裝新外掛後請確認它有出現在 `ios/App/CapApp-SPM/Package.swift` 的 dependencies 裡。
 
 ## 前台的搭配設定
 
@@ -47,6 +52,18 @@ npx @capacitor/assets generate   # 重產圖示／啟動畫面
 依賴外部帳號，目前都還拿不到：
 
 ### 1. 推播（Firebase Cloud Messaging）
+
+⚠️ **`@capacitor-firebase/messaging` 目前已從專案移除。**
+它在初始化就呼叫 `FIRApp.configure()`，找不到 `GoogleService-Info.plist` 會拋
+NSException，**App 開機即 crash**。等下面的設定檔備妥後再裝回來：
+
+```bash
+npm install @capacitor-firebase/messaging@^8.4.0 firebase@^12.6.0
+npx cap sync
+```
+
+前台的推播程式碼（`frontend/lib/native/push.ts`、`/api/user/device-token`、
+`backend/lib/push.ts`）都保留著，橋接層找不到外掛會回 `null`，不會出錯。
 
 兩個平台都走 FCM（iOS 由 Firebase 代發 APNs），後端只有一條發送路徑
 （`backend/lib/push.ts`）。

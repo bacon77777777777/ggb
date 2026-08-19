@@ -142,16 +142,24 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
 
-        {/* 全站都要的兩套：內文與金額數字，照常阻塞載入 */}
+        {/* 阻塞載入的只留 Tilt Warp：它是金額數字用的（font-amount，全站 91 處，
+            首屏就看得到），為它擋一下渲染划算。
+
+            Chiron GoRound TC 已移到下面的非阻塞那批 —— 它是 200..900 的可變粗細
+            中文字型，檔案不小，但實際只用在四個裝飾位置（商品頁的黃色標籤、
+            開獎結果彈窗），不值得讓每一頁都等它。
+            注意：內文**不是**它。body 雖然在 globals.css 寫了 Chiron，但被
+            `<body className="font-sans">` 這個 class 蓋過去（class 優先級高於
+            元素選擇器），從來沒生效過。 */}
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@200..900&family=Tilt+Warp&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Tilt+Warp&display=swap"
         />
 
-        {/* 只有特定頁面用得到的四套，改成不擋渲染：
+        {/* 只有特定頁面用得到的五套，改成不擋渲染：
             先以 media="print" 下載（瀏覽器不會為了它延後繪製），載完再切回 all。
-            Inter／Noto Sans JP 只有排行榜、Noto Serif HK 只有抽卡對戰特效、
-            Oswald 只有商城的金額數字在用，
+            Chiron GoRound TC 只有四個裝飾位置、Inter／Noto Sans JP 只有排行榜、
+            Noto Serif HK 只有抽卡對戰特效、Oswald 只有商城的金額數字在用，
             為了它們讓每一頁都慢下來不划算。（Noto Sans SC 全站沒用到，已移除）
 
             這個 <link> 刻意用 script 建，不放進 React 的樹裡：
@@ -162,7 +170,7 @@ export default async function RootLayout({
             元素不由 React 管，就沒有這個比對。 */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var l=document.createElement('link');l.rel='stylesheet';l.media='print';l.href='https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,700;1,700&family=Noto+Sans+JP:wght@400;500;700;800;900&family=Noto+Serif+HK:wght@200..900&family=Oswald:wght@500;600&display=swap';l.onload=function(){l.media='all'};document.head.appendChild(l)})()`,
+            __html: `(function(){var l=document.createElement('link');l.rel='stylesheet';l.media='print';l.href='https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@200..900&family=Inter:ital,wght@0,400;0,700;1,700&family=Noto+Sans+JP:wght@400;500;700;800;900&family=Noto+Serif+HK:wght@200..900&family=Oswald:wght@500;600&display=swap';l.onload=function(){l.media='all'};document.head.appendChild(l)})()`,
           }}
         />
 
