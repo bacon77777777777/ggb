@@ -35,7 +35,8 @@ export default function ParamsPanel({
       .then(d => { if (!dead) onChange(theme, { ...defaultParams(theme), ...(d?.params ?? {}) }) })
       .catch(() => { if (!dead) onChange(theme, defaultParams(theme)) })
     return () => { dead = true }
-  }, [theme, values]) // eslint-disable-line react-hooks/exhaustive-deps
+    // 相依只放 theme/values：onChange 每次 render 都是新函式，放進來會無限重載
+  }, [theme, values])
 
   if (specs.length === 0) {
     return (
