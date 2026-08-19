@@ -11,7 +11,7 @@ import React, { useState, useRef, useEffect } from "react";
 const STRIP_FRAC = 0.07;    // 封條高度（撕的支點線位置，越小越靠上）
 const PEEL_FACTOR = 0.6;    // 撕完需滑動的螢幕寬倍數（越小越快撕完）
 const STRIP_PAD_TOP = 240;  // 封條 canvas 上方預留（掀起空間）
-const STRIP_PAD_X = 44;
+const STRIP_PAD_X = 200;  // 左側預留：弧線往左上掃
 const STRIP_PAD_RIGHT = 280; // 右側預留：尾端往右上出鏡
 const CARD_COUNT_DEFAULT = 5;
 
@@ -51,8 +51,16 @@ function makeSealSVG() {
 }
 const SEAL_URL = makeSealSVG();
 
-/* ---------- WebAudio 合成音效 ---------- */
-function useSfx(enabled) {
+/* ---------- 音效：可上傳自訂音檔，未提供則用 WebAudio 合成 ---------- */
+const SFX_SLOTS = [
+  ["spark", "撕裂劈啪"], ["ripDone", "撕開完成"], ["deal", "發牌"],
+  ["flip", "翻牌"], ["flick", "滑卡"], ["aura", "獎級音"],
+];
+function useSfx(enabled, custom) {
+  const filesRef = useRef({}); filesRef.current = custom || {};
+  const playFile = (url, vol) => {
+    const a = new Audio(url); a.volume = vol; a.play().catch(() => {});
+  };
   const ctxRef = useRef(null);
   const ctx = () => {
     if (!ctxRef.current) ctxRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -68,6 +76,7 @@ function useSfx(enabled) {
   const api = useRef({});
   api.current.spark = () => {
     if (!enabled) return;
+    if (filesRef.current.spark) return playFile(filesRef.current.spark, 0.35);
     const ac = ctx(), t = ac.currentTime;
     const s = noise(ac, 0.05);
     const f = ac.createBiquadFilter(); f.type = "bandpass";
@@ -79,6 +88,7 @@ function useSfx(enabled) {
   };
   api.current.ripDone = () => {
     if (!enabled) return;
+    if (filesRef.current.ripDone) return playFile(filesRef.current.ripDone, 0.7);
     const ac = ctx(), t = ac.currentTime;
     const s = noise(ac, 0.35);
     const f = ac.createBiquadFilter(); f.type = "bandpass"; f.Q.value = 1.2;
@@ -89,6 +99,7 @@ function useSfx(enabled) {
   };
   api.current.deal = () => { // 發牌：單張啪
     if (!enabled) return;
+    if (filesRef.current.deal) return playFile(filesRef.current.deal, 0.5);
     const ac = ctx(), t = ac.currentTime;
     const s = noise(ac, 0.035);
     const f = ac.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 2400;
@@ -98,6 +109,7 @@ function useSfx(enabled) {
   };
   api.current.flip = () => { // 翻牌
     if (!enabled) return;
+    if (filesRef.current.flip) return playFile(filesRef.current.flip, 0.6);
     const ac = ctx(), t = ac.currentTime;
     const s = noise(ac, 0.22);
     const f = ac.createBiquadFilter(); f.type = "bandpass"; f.Q.value = 1.6;
@@ -114,6 +126,7 @@ function useSfx(enabled) {
   };
   api.current.flick = () => {
     if (!enabled) return;
+    if (filesRef.current.flick) return playFile(filesRef.current.flick, 0.55);
     const ac = ctx(), t = ac.currentTime;
     const s = noise(ac, 0.16);
     const f = ac.createBiquadFilter(); f.type = "bandpass"; f.Q.value = 1.5;
@@ -125,6 +138,7 @@ function useSfx(enabled) {
   };
   api.current.aura = (big) => {
     if (!enabled) return;
+    if (filesRef.current.aura) return playFile(filesRef.current.aura, 0.8);
     const ac = ctx(), t0 = ac.currentTime;
     const notes = big ? [523.25, 659.25, 783.99, 1046.5] : [523.25, 659.25];
     notes.forEach((fq, i) => {
@@ -155,6 +169,7 @@ export default function GGBPackRip() {
   const [cards, setCards] = useState(() => Array.from({ length: CARD_COUNT_DEFAULT }, () => CARD_FRONT_IMG));
   const [prizeTier, setPrizeTier] = useState("blue"); // blue稀有 / purple史詩 / gold傳說
   const [sound, setSound] = useState(true);
+  const [customSfx, setCustomSfx] = useState({}); // 各事件自訂音檔
   const [showSettings, setShowSettings] = useState(false);
   const [cardIdx, setCardIdx] = useState(0);
   const [dealt, setDealt] = useState(false);   // 發牌完成
@@ -164,7 +179,7 @@ export default function GGBPackRip() {
   const [auraOn, setAuraOn] = useState(false);
   const [flash, setFlash] = useState(false);
 
-  const sfx = useSfx(sound);
+  const sfx = useSfx(sound, customSfx);
   const packRef = useRef(null);
   const canvasRef = useRef(null);
   const particles = useRef([]);
@@ -418,24 +433,34 @@ export default function GGBPackRip() {
     }
     // 2) 支點左邊：整塊「裁切」下來，沿支點摺起（鏡像 + 上旋 = 捲起翹片）
     if (fx > 0.5) {
-      const px = STRIP_PAD_X + fx, py = STRIP_PAD_TOP + stripH; // 支點（摺線）
-      const beta = 1.45 + p * 0.5;   // 接近垂直、撕越多越往後倒（參考站中段畫面）
-      const flapW = fx * 0.62;       // 翹片透視縮短，不會拖太長
-      g.save();
-      g.translate(px, py); g.rotate(-beta); g.scale(-1, 1); g.translate(-px, -py);
-      const COLS = 14;                                          // 翹片微彎：分欄畫、中段拱起
+      // 翹片＝一條「鏈接」的帶子：從支點出發，起始方向和未撕段完全同向（平貼），
+      // 前段沿圓弧漸漸彎起，後段才直立微傾——支點處不會出現硬 90 度折角
+      // 一體式弧線（照參考站）：撕開的部分和未撕段是同一條帶子，
+      // 從支點開始「微彎」，往左上掃出一道大弧——不摺角、不壓縮、不變成柱子
+      const thetaMax = 1.1 + 0.55 * p;                      // 末端彎起角（越撕越翹）
+      const COLS = Math.max(12, Math.min(80, Math.floor(fx / 2.5)));
+      const step = fx / COLS;
+      let cx2 = STRIP_PAD_X + fx, cy2 = STRIP_PAD_TOP + stripH * 0.5; // 從支點沿帶子中心線接鏈
+      let m = 0;
       for (let i = 0; i < COLS; i++) {
-        const cw2 = flapW / COLS;
-        const bendY = -Math.sin((i / (COLS - 1)) * Math.PI) * stripH * 0.2;
-        const cx2 = px - flapW + i * cw2;
-        g.drawImage(src, (i / COLS) * fx * sx, 0, (fx * sx) / COLS, src.height,
-          cx2, STRIP_PAD_TOP + stripH * 0.05 + bendY, cw2 + 0.7, stripH * 0.9);
-        g.fillStyle = "rgba(255,255,255,.3)";                   // 反面偏亮
-        g.fillRect(cx2, STRIP_PAD_TOP + stripH * 0.05 + bendY, cw2 + 0.7, stripH * 0.9);
-        g.fillStyle = "rgba(255,236,150,.75)";                  // 撕口亮邊
-        g.fillRect(cx2, STRIP_PAD_TOP + stripH * 0.05 + bendY + stripH * 0.9 - 1.5, cw2 + 0.7, 1.5);
+        const mMid = m + step / 2;
+        const t = mMid / fx;                                // 0=支點, 1=自由端
+        const es = Math.pow(t, 1.25);                       // 支點處平貼、越往外彎越多
+        const phi = Math.PI + thetaMax * es;                // 方向：向左(平貼) → 弧線往左上掃
+        const nx2 = Math.cos(phi), ny2 = Math.sin(phi);
+        const sq = 0.96 - 0.22 * t;                         // 末端輕微變窄（透視）
+        g.save();
+        g.translate(cx2 + nx2 * (step / 2), cy2 + ny2 * (step / 2));
+        g.rotate(phi - Math.PI);
+        g.drawImage(src, (fx - mMid) * sx, 0, Math.max(1, step * sx), src.height,
+          -step / 2 - 0.6, -stripH * sq / 2, step + 1.2, stripH * sq);
+        g.fillStyle = `rgba(255,255,255,${(0.28 * es).toFixed(3)})`;  // 彎起段反光
+        g.fillRect(-step / 2 - 0.6, -stripH * sq / 2, step + 1.2, stripH * sq);
+        g.fillStyle = `rgba(255,236,150,${(0.7 * es).toFixed(3)})`;   // 撕口亮邊
+        g.fillRect(-step / 2 - 0.6, stripH * sq / 2 - 1.4, step + 1.2, 1.4);
+        g.restore();
+        cx2 += nx2 * step; cy2 += ny2 * step; m += step;
       }
-      g.restore();
     }
     // 膠囊釦：水平置中在支點上、垂直坐在撕裂線高度
     const capW = 34, capH = 13, capR = 6.5;
@@ -520,6 +545,23 @@ export default function GGBPackRip() {
           <label style={S.uplBtn}>上傳卡牌正面（可多選）
             <input type="file" accept="image/*" multiple hidden onChange={e => upload(e, "cards")} />
           </label>
+          <div style={{ borderTop: "1px solid #ffffff1e", paddingTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+            <span style={{ fontSize: 12, color: "#b9aee8" }}>自訂音效（未上傳用內建合成音）</span>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+              {SFX_SLOTS.map(([key, label]) => (
+                <label key={key} style={{ ...S.uplBtn, padding: "6px 8px", fontSize: 12, ...(customSfx[key] ? { borderColor: "#8affc0", color: "#8affc0" } : {}) }}>
+                  {customSfx[key] ? "✓ " : ""}{label}
+                  <input type="file" accept="audio/*" hidden onChange={e => {
+                    const f = e.target.files?.[0]; if (!f) return;
+                    const r = new FileReader();
+                    r.onload = () => setCustomSfx(c => ({ ...c, [key]: r.result }));
+                    r.readAsDataURL(f);
+                    e.target.value = "";
+                  }} />
+                </label>
+              ))}
+            </div>
+          </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{ fontSize: 13, color: "#b9aee8" }}>最後一張：</span>
             <button style={{ ...S.tierBtn, ...(prizeTier === "blue" ? S.tierOnB : {}) }} onClick={() => setPrizeTier("blue")}>藍・稀有</button>

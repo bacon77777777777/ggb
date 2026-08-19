@@ -25,6 +25,7 @@ const PARAM_DEFAULTS = {
   fxOpacity: 0.9,
   dealStagger: 90, flipDelay: 500, skipFlyMs: 55,
   sfxVolume: 1,
+  peelCurl: 45,
 };
 
 /* ============================================================
@@ -38,7 +39,7 @@ const PARAM_DEFAULTS = {
 const STRIP_FRAC = 0.07;    // 封條高度（撕的支點線位置，越小越靠上）
 const PEEL_FACTOR = 0.6;    // 撕完需滑動的螢幕寬倍數（越小越快撕完）
 const STRIP_PAD_TOP = 240;  // 封條 canvas 上方預留（掀起空間）
-const STRIP_PAD_X = 44;
+const STRIP_PAD_X = 200;  // 左側預留：弧線往左上掃，捲得越多需要越寬
 const STRIP_PAD_RIGHT = 280; // 右側預留：尾端往右上出鏡
 const CARD_COUNT_DEFAULT = 5;
 
@@ -567,26 +568,74 @@ export default function GGBPackRip({
       g.drawImage(src, fx * sx, 0, (w - fx) * sx, src.height,
         STRIP_PAD_X + fx, STRIP_PAD_TOP, w - fx, stripH);
     }
-    // 2) 支點左邊：整塊「裁切」下來，沿支點摺起（鏡像 + 上旋 = 捲起翹片）
+    /*
+     * 2) 支點左邊：已撕開的封條，捲成一捲 —— **用 3D 投影畫，不是在畫面平面上畫弧**。
+     *
+     * 撕的方向是水平的，所以撕裂前緣是一條垂直線，膜會繞著**垂直軸**往回捲。
+     * 先前照原型在 XY 平面上掃一條大弧，出來就是一個平平的「C」往上翹，
+     * 沒有空間感（老闆 2026-08-19：「怎麼會是往上彎曲，這樣好醜」）。
+     *
+     * 正確的做法是把它當成貼在圓柱上的帶子：
+     *   弧長 s → 轉角 θ = s/R（膜以大致固定的半徑捲）
+     *   3D 位置 X = 支點 - R·sinθ（往左繞回來）、Z = R·(1-cosθ)（捲向鏡頭）
+     *   透視投影 scale = F/(F-Z)：捲到面前的那段會變大、繞到後面的變小
+     * 於是自然得到三件平面畫法給不了的東西：
+     *   ① 橫向壓縮 —— θ=90° 時帶子正對側面，投影寬度趨近 0
+     *   ② 自我遮擋 —— 依 Z 由遠而近排序後畫，捲到前面的段落自然蓋住後面的
+     *   ③ 正反面 —— cosθ<0 時看到的是膜的**背面**，鋪一層白讓它像銀色內裡
+     */
     if (fx > 0.5) {
-      const px = STRIP_PAD_X + fx, py = STRIP_PAD_TOP + stripH; // 支點（摺線）
-      const beta = 1.45 + p * 0.5;   // 接近垂直、撕越多越往後倒（參考站中段畫面）
-      const flapW = fx * 0.62;       // 翹片透視縮短，不會拖太長
-      g.save();
-      g.translate(px, py); g.rotate(-beta); g.scale(-1, 1); g.translate(-px, -py);
-      const COLS = 14;                                          // 翹片微彎：分欄畫、中段拱起
+      const R = Math.max(12, Number(cfg.peelCurl) || 45);
+      const F = 900;                                    // 透視焦距，越小越誇張
+      const px = STRIP_PAD_X + fx;                      // 支點（撕裂前緣）
+      const yMid = STRIP_PAD_TOP + stripH * 0.5;
+      const COLS = Math.max(20, Math.min(110, Math.floor(fx / 2)));
+      const step = fx / COLS;
+      // 沿弧長取角度：支點附近先平貼（跟未撕段接得上），越往自由端捲得越快
+      const ang = (sArc) => (sArc / R) * Math.sqrt(Math.min(1, sArc / fx));
+      const proj = (sArc) => {
+        const th = ang(sArc);
+        const Z = R * (1 - Math.cos(th));
+        const sc = F / (F - Z);
+        return {
+          th, sc,
+          x: px + (px - R * Math.sin(th) - px) * sc,
+          // 只抬一點點：這捲東西是貼著撕裂線往鏡頭捲，不是飄在包上方
+          y: yMid - R * 0.14 * (1 - Math.cos(th)) * sc,
+        };
+      };
+      const slices = [];
       for (let i = 0; i < COLS; i++) {
-        const cw2 = flapW / COLS;
-        const bendY = -Math.sin((i / (COLS - 1)) * Math.PI) * stripH * 0.2;
-        const cx2 = px - flapW + i * cw2;
-        g.drawImage(src, (i / COLS) * fx * sx, 0, (fx * sx) / COLS, src.height,
-          cx2, STRIP_PAD_TOP + stripH * 0.05 + bendY, cw2 + 0.7, stripH * 0.9);
-        g.fillStyle = "rgba(255,255,255,.3)";                   // 反面偏亮
-        g.fillRect(cx2, STRIP_PAD_TOP + stripH * 0.05 + bendY, cw2 + 0.7, stripH * 0.9);
-        g.fillStyle = "rgba(255,236,150,.75)";                  // 撕口亮邊
-        g.fillRect(cx2, STRIP_PAD_TOP + stripH * 0.05 + bendY + stripH * 0.9 - 1.5, cw2 + 0.7, 1.5);
+        const a = proj(i * step), b = proj((i + 1) * step);
+        const mid = proj((i + 0.5) * step);
+        slices.push({ i, a, b, mid, z: R * (1 - Math.cos(mid.th)) });
       }
-      g.restore();
+      // 由遠而近畫 —— 這一步才有自我遮擋，少了它捲到面前的段落會被後面的蓋掉
+      slices.sort((u, v) => u.z - v.z);
+      for (const sl of slices) {
+        const { i, a, b, mid } = sl;
+        const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x);
+        const wdt = Math.max(1.1, x1 - x0 + 1.1);
+        const hgt = stripH * mid.sc;
+        const yTop = mid.y - hgt / 2;
+        const facing = Math.cos(mid.th);                // >0 印刷面朝我們，<0 看到背面
+        const srcX0 = (fx - (i + 1) * step) * sx, srcW = Math.max(1, step * sx);
+        g.save();
+        g.drawImage(src, srcX0, 0, srcW, src.height, x0, yTop, wdt, hgt);
+        if (facing < 0) {                               // 背面：銀色內裡
+          g.fillStyle = `rgba(246,248,255,${(0.42 - 0.3 * facing).toFixed(3)})`;
+          g.fillRect(x0, yTop, wdt, hgt);
+        } else {                                        // 正面：受光的反光
+          g.fillStyle = `rgba(255,255,255,${(0.26 * (1 - facing)).toFixed(3)})`;
+          g.fillRect(x0, yTop, wdt, hgt);
+        }
+        // 轉到側面時壓暗，圓柱感才出得來
+        const shade = 0.34 * Math.max(0, 1 - Math.abs(facing) * 1.15);
+        if (shade > 0.01) { g.fillStyle = `rgba(24,20,40,${shade.toFixed(3)})`; g.fillRect(x0, yTop, wdt, hgt); }
+        g.fillStyle = `rgba(255,236,150,${(0.6 * Math.min(1, mid.th / 1.2)).toFixed(3)})`; // 撕口亮邊
+        g.fillRect(x0, yTop + hgt - 1.4 * mid.sc, wdt, 1.4 * mid.sc);
+        g.restore();
+      }
     }
     // 膠囊釦：水平置中在支點上、垂直坐在撕裂線高度
     const capW = 34, capH = 13, capR = 6.5;

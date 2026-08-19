@@ -73,6 +73,9 @@ export const MACHINE_PARAM_SPECS: Record<string, ParamSpec[]> = {
     { key: 'flipDelay',   label: '翻牌延遲', group: '開包節奏', type: 'range', min: 200, max: 1200, step: 50, default: 500, unit: 'ms',
       hint: '發完牌到最上張自動翻面的等待時間。' },
 
+    { key: 'peelCurl',    label: '封條捲曲半徑', group: '開包節奏', type: 'range', min: 20, max: 140, step: 1, default: 45, unit: 'px',
+      hint: '封條被撕起來後捲成多大一捲（3D 圓柱，會捲向鏡頭）。數字越小捲越緊、越早繞回來蓋住自己；越大越像單純翹起一片。撕越長就繞越多圈，半徑不變。' },
+
     { key: 'sfxVolume',   label: '音效音量', group: '音效', type: 'range', min: 0, max: 1, step: 0.05, default: 1,
       hint: '撕包／發牌／翻牌／中獎音的總音量。各支音效之間的相對大小是固定的，這裡只調整體。0 = 靜音（玩家自己的靜音鍵另外算）。' },
   ],
