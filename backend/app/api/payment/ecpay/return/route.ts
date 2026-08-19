@@ -13,6 +13,17 @@ export async function POST(req: Request) {
    */
   let FrontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000'
 
+  /**
+   * 一律經由前台的 `/payment/return` 落地，不要直接導去目的頁。
+   *
+   * App 的付款是開在 in-app browser 的，那邊沒有 webview 的登入 cookie ——
+   * 直接導去 `/profile` 只會看到「請先登入」，錢明明入帳了畫面卻在叫他登入
+   * （老闆回報「儲值完最後一步跑到那一個未登錄頁面」，2026-08-20）。
+   * 落地頁會判斷這趟是不是從 App 出發，是就把人導回 ggbapp://，
+   * 不是就 302 去原本的目的地 —— 網頁版的體驗完全不變。
+   */
+  const landing = (path: string) => `${FrontendUrl}/payment/return?to=${encodeURIComponent(path)}`
+
   try {
     const formData = await req.formData()
     const params: Record<string, string> = {}
@@ -22,7 +33,7 @@ export async function POST(req: Request) {
     const HashIV = process.env.ECPAY_HASH_IV!
 
     if (!verifyCheckMacValue(params, HashKey, HashIV)) {
-      return NextResponse.redirect(`${FrontendUrl}/topup?status=error`, 302)
+      return NextResponse.redirect(landing('/topup?status=error'), 302)
     }
 
     const rtnCode = params.RtnCode
@@ -38,7 +49,7 @@ export async function POST(req: Request) {
 
       if (tradeNo.startsWith('TP')) {
         await supabase.rpc('confirm_topup_order', { p_order_number: tradeNo })
-        return NextResponse.redirect(`${FrontendUrl}/profile?tab=topup-history&status=success`, 302)
+        return NextResponse.redirect(landing('/profile?tab=topup-history&status=success'), 302)
       }
       if (tradeNo.startsWith('SO')) {
         await supabase.rpc('confirm_sell_escrow_order', {
@@ -54,18 +65,18 @@ export async function POST(req: Request) {
           .single()
         const orderId = String((row as any)?.id || '')
         return NextResponse.redirect(
-          `${FrontendUrl}/purchases?tab=to_ship&order=${encodeURIComponent(orderId)}&status=success`,
+          landing(`/purchases?tab=to_ship&order=${encodeURIComponent(orderId)}&status=success`),
           302
         )
       }
-      return NextResponse.redirect(`${FrontendUrl}?status=success`, 302)
+      return NextResponse.redirect(landing('/?status=success'), 302)
     }
 
     // ATM/CVS 取號成功（RtnCode=2 ATM, 10100073 CVS）
     const isCodeGenerated = rtnCode === '2' || rtnCode === '10100073'
     if (isCodeGenerated) {
       if (tradeNo.startsWith('TP')) {
-        return NextResponse.redirect(`${FrontendUrl}/profile?tab=topup-history&status=waiting_payment`, 302)
+        return NextResponse.redirect(landing('/profile?tab=topup-history&status=waiting_payment'), 302)
       }
       if (tradeNo.startsWith('SO')) {
         const supabase = createClient(
@@ -79,7 +90,7 @@ export async function POST(req: Request) {
           .single()
         const orderId = String((row as any)?.id || '')
         return NextResponse.redirect(
-          `${FrontendUrl}/purchases?tab=to_pay&order=${encodeURIComponent(orderId)}&status=waiting_payment`,
+          landing(`/purchases?tab=to_pay&order=${encodeURIComponent(orderId)}&status=waiting_payment`),
           302
         )
       }
@@ -89,13 +100,13 @@ export async function POST(req: Request) {
     const msg = params.RtnMsg || 'Payment Failed'
     if (tradeNo.startsWith('SO')) {
       return NextResponse.redirect(
-        `${FrontendUrl}/topup?status=failed&message=${encodeURIComponent(msg)}`,
+        landing(`/topup?status=failed&message=${encodeURIComponent(msg)}`),
         302
       )
     }
-    return NextResponse.redirect(`${FrontendUrl}/topup?status=failed&message=${encodeURIComponent(msg)}`, 302)
+    return NextResponse.redirect(landing(`/topup?status=failed&message=${encodeURIComponent(msg)}`), 302)
   } catch (error) {
     console.error('ECPay Return Error:', error)
-    return NextResponse.redirect(`${FrontendUrl}/topup?status=error`, 302)
+    return NextResponse.redirect(landing('/topup?status=error'), 302)
   }
 }

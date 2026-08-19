@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useTheme } from '@/contexts/ThemeContext';
 import { native } from '@/lib/native/bridge';
 import { attachPushListeners, registerPush } from '@/lib/native/push';
+import { closeInAppBrowser } from '@/lib/native/browser';
 
 export default function NativeAppBootstrap() {
   const { user, refreshProfile } = useAuth();
@@ -80,6 +81,61 @@ export default function NativeAppBootstrap() {
 
     return () => handle?.remove?.();
   }, [refreshProfile]);
+
+  /*
+   * 付款回程：`ggbapp://payment-return` 把玩家從 in-app browser 帶回 App。
+   *
+   * 綠界付款走的是 in-app browser（見 lib/native/browser.ts 的 openPayment），
+   * 付完款人還停在那層瀏覽器上 —— 畫面是對的、錢也入帳了，但他沒有回到 App。
+   * 前台的 `/payment/return` 會導向這個自訂 scheme，App 收到之後要做三件事：
+   * 收掉瀏覽器、重讀餘額、把畫面帶到儲值紀錄。
+   *
+   * 餘額讀兩次：綠界的入帳是 server-to-server 打回來的，跟玩家被導回來的時間
+   * 沒有先後保證。第一次可能還沒入帳，兩秒後再補一次就對得上了。
+   */
+  useEffect(() => {
+    if (!native.isNativePlatform()) return;
+
+    const plugin = native.plugin('App');
+    if (!plugin || typeof plugin.addListener !== 'function') return;
+
+    let handle: { remove?: () => void } | undefined;
+    let retry: number | undefined;
+
+    try {
+      const add = plugin.addListener as unknown as (
+        event: string,
+        cb: (e: { url?: string }) => void
+      ) => { remove?: () => void };
+
+      handle = add('appUrlOpen', ({ url }) => {
+        if (!url || !url.startsWith('ggbapp://payment-return')) return;
+
+        void closeInAppBrowser();
+        void refreshProfile?.();
+        retry = window.setTimeout(() => void refreshProfile?.(), 2200);
+
+        // 目的地由落地頁帶過來（儲值是儲值紀錄、商城訂單是訂單頁）
+        let to = '/profile?tab=topup-history';
+        const m = /[?&]to=([^&]+)/.exec(url);
+        if (m) {
+          try {
+            const decoded = decodeURIComponent(m[1]);
+            // 只吃站內相對路徑，帶不回來就用預設值
+            if (decoded.startsWith('/') && !decoded.startsWith('//')) to = decoded;
+          } catch { /* 解不開就用預設值 */ }
+        }
+        router.push(to);
+      });
+    } catch (err) {
+      console.warn('[native] appUrlOpen 掛載失敗', err);
+    }
+
+    return () => {
+      handle?.remove?.();
+      if (retry) window.clearTimeout(retry);
+    };
+  }, [router, refreshProfile]);
 
   /*
    * 狀態列。

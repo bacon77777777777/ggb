@@ -48,6 +48,13 @@ function linkModeOf(banner: { link_url?: string | null; event_id?: string | null
 const PAGE_TABS = [
   { value: 'home', label: '首頁輪播圖' },
   { value: 'challenge', label: '挑戰頁輪播圖' },
+  /*
+   * App 開屏：玩家一打開 App 看到的那張滿版圖（前台 components/native/AppSplashAd.tsx）。
+   * 只在原生殼裡出現，網頁版與 PWA 完全看不到 —— 網頁沒有「啟動」這件事，
+   * 一進站就蓋一張全螢幕只會被當成廣告牆。
+   * 排序最前面那一張會被拿去用，其餘的當備選（改順序就換圖，不必刪）。
+   */
+  { value: 'app_splash', label: 'App 開屏' },
   { value: 'popup', label: '首頁彈窗' },
 ]
 
@@ -74,7 +81,7 @@ export default function BannersPage() {
   const savingLock = useRef(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
-  const [activeTab, setActiveTab] = useState<'home' | 'challenge' | 'popup'>('home')
+  const [activeTab, setActiveTab] = useState<'home' | 'challenge' | 'app_splash' | 'popup'>('home')
   const [linkMode, setLinkMode] = useState<LinkMode>('url')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -84,7 +91,7 @@ export default function BannersPage() {
     link_url: '',
     sort_order: 0,
     is_active: true,
-    page: 'home' as 'home' | 'challenge',
+    page: 'home' as 'home' | 'challenge' | 'app_splash',
     start_at: null as string | null,
     end_at: null as string | null,
     event_id: null as string | null,
@@ -142,7 +149,7 @@ export default function BannersPage() {
       event_id: banner.event_id ?? null,
       sort_order: banner.sort_order,
       is_active: banner.is_active,
-      page: (banner.page as 'home' | 'challenge') || 'home',
+      page: (banner.page as 'home' | 'challenge' | 'app_splash') || 'home',
       imageFile: null,
       imagePreview: banner.image_url
     })
@@ -599,7 +606,7 @@ export default function BannersPage() {
                   <button
                     key={tab.value}
                     type="button"
-                    onClick={() => setFormData({ ...formData, page: tab.value as 'home' | 'challenge' })}
+                    onClick={() => setFormData({ ...formData, page: tab.value as 'home' | 'challenge' | 'app_splash' })}
                     className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
                       formData.page === tab.value
                         ? 'bg-primary text-white border-primary'
@@ -610,6 +617,13 @@ export default function BannersPage() {
                   </button>
                 ))}
               </div>
+              {formData.page === 'app_splash' && (
+                <p className="mt-1 text-xs text-neutral-400">
+                  玩家開 App 時蓋滿整個畫面、停留 3 秒（右上角有倒數可跳過）。
+                  圖請用直式滿版（建議 1080×1920），會裁切填滿；
+                  同時有多張時只顯示排序最前面那一張。網頁版看不到這張。
+                </p>
+              )}
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t mt-6">

@@ -109,7 +109,13 @@ export async function POST(req: Request) {
       orderNumber = String((orderData as any)?.order_number || '')
       amt = amount
       itemName = `吉吉比代幣 ${amount}點`
-      clientBackUrl = `${FrontendUrl}/topup`
+      /*
+       * 綠界付款頁上的「返回商店」也要走前台的 `/payment/return` 落地。
+       * App 的付款開在 in-app browser，那邊沒有登入 cookie —— 直接回 `/topup`
+       * 會叫玩家登入（老闆 2026-08-20 附圖）。落地頁會判斷是不是從 App 出發，
+       * 是就導回 ggbapp://，不是就 302 回 `/topup`，網頁版行為不變。
+       */
+      clientBackUrl = `${FrontendUrl}/payment/return?to=${encodeURIComponent('/topup')}`
     } else if (kind === 'shop') {
       // 官方商城（B2C）。跟 sell_escrow 不同：這筆錢是收進平台的，
       // 訂單在 shop_orders，付款成功由 callback 呼叫 shop_order_mark_paid 入帳

@@ -454,7 +454,12 @@ export default function GGBPackRip({
         setFlipped(false);            // 一律卡背，不翻正面
         setFlying({ dir: 1 });        // 往右飛
         sfx.current.deal();           // 短音；card-fly 有 1 秒，55ms 一張會糊成一團
-        hapticLight();                // 一張一下，飛牌的節奏用手感也帶出來
+        /*
+         * 這裡**不震動**（老闆 2026-08-20）。
+         * 55ms 一張的節奏下，每張都叫一次 Taptic Engine 會把主執行緒卡住 ——
+         * 飛牌動畫直接掉幀，看起來像是「跳過去」而不是「飛出去」。
+         * 手感是加分項，動畫看得到才是本體。
+         */
       }, k * STEP_MS);
       later(() => {
         setCardIdx(at + 1);

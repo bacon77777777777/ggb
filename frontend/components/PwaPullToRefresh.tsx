@@ -1,24 +1,25 @@
 'use client';
 
 /**
- * 下拉更新（PWA + 原生殼）
+ * 下拉更新（PWA + 原生殼）—— 照 Threads（脆）的手感（老闆 2026-08-20 指定，附圖）
  *
  * WKWebView 沒有內建下拉更新（那是 Safari 這個 App 的功能），Capacitor 也沒提供
  * UIRefreshControl。而 App 沒有網址列、沒有重新整理鈕 —— 頁面卡住時這是玩家
- * 唯一的自救方式，所以必須自己做，而且要做得像原生。
+ * 唯一的自救方式，所以必須自己做。
  *
- * 三件事讓它有「原生感」：
- *   1. **內容跟著手指走**，不是只有一個圖示在飄。位移用阻尼曲線，
- *      愈拉愈沉，手感跟 iOS 的橡皮筋一致。
- *   2. **震動蓄力**：拉的過程分段觸發輕震，間距愈往後愈密（加速感），
- *      滿格時給一下明顯較重的，玩家不用看畫面就知道「可以放手了」。
- *   3. **放手才決定**：未滿格彈回去，滿格才刷新 —— 中途反悔不會誤觸發。
+ * 跟 Threads 對齊的三件事：
+ *   1. **不震動**。原本拉的過程分九段震、滿格再重震一下，每次震動都要叫一次
+ *      Taptic Engine，主執行緒被卡住 → 內容位移直接掉幀，「有回饋但畫面在頓」。
+ *      Threads 全程無震動，滑起來反而更順。
+ *   2. **iOS 原生風格的十二格轉圈**，灰色、沒有白底藥丸也沒有陰影 ——
+ *      就是內容上方空出來的那一小塊裡的一顆小轉圈。
+ *   3. **內容跟著手指走**，位移用阻尼曲線，愈拉愈沉（這點原本就對，保留）。
+ *      放手才決定：未滿格彈回去，滿格才刷新，中途反悔不會誤觸發。
  *
  * 只在 standalone／原生殼啟用：一般瀏覽器有自己的下拉更新，兩套疊在一起會打架。
  */
 
 import { useEffect, useRef } from 'react';
-import { hapticLight, hapticMedium } from '@/lib/haptics';
 
 /** 拉到這個距離（未阻尼的原始位移）就算滿格 */
 const THRESHOLD = 90;
@@ -27,11 +28,8 @@ const MAX_PULL = 78;
 /** 刷新時內容停在這個位置，讓轉圈看得見 */
 const REST_PULL = 56;
 
-/**
- * 蓄力的震動節點（progress 0~1）。
- * 間距刻意由疏到密 —— 等距的話手感是平的，密起來才有「快滿了」的感覺。
- */
-const HAPTIC_STOPS = [0.18, 0.34, 0.48, 0.6, 0.7, 0.78, 0.85, 0.91, 0.96];
+/** 十二格轉圈的每一格（iOS UIActivityIndicator 的樣子） */
+const SPOKES = Array.from({ length: 12 }, (_, i) => i);
 
 function isStandaloneMode() {
   if (typeof window === 'undefined') return false;
@@ -69,7 +67,6 @@ export default function PwaPullToRefresh() {
   const startY = useRef(0);
   const pulling = useRef(false);
   const armed = useRef(false);      // 已滿格
-  const stopIdx = useRef(0);        // 下一個要觸發的震動節點
   const refreshing = useRef(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const iconRef = useRef<SVGSVGElement>(null);
@@ -77,7 +74,6 @@ export default function PwaPullToRefresh() {
   useEffect(() => {
     if (!isStandaloneMode()) return;
 
-    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     // 內容區才位移。整個 body 動的話 position:fixed 的導航列與底部操作欄
     // 會因為 transform 產生新的 containing block 而跟著跑掉
     const content = document.querySelector('main') as HTMLElement | null;
@@ -100,7 +96,6 @@ export default function PwaPullToRefresh() {
     const reset = (animate = true) => {
       pulling.current = false;
       armed.current = false;
-      stopIdx.current = 0;
       setShift(0, animate);
       if (iconRef.current) iconRef.current.style.transform = '';
     };
@@ -111,7 +106,6 @@ export default function PwaPullToRefresh() {
       startY.current = e.touches[0].clientY;
       pulling.current = true;
       armed.current = false;
-      stopIdx.current = 0;
     };
 
     const onMove = (e: TouchEvent) => {
@@ -130,23 +124,14 @@ export default function PwaPullToRefresh() {
 
       setShift(shift, false);
       if (iconRef.current) {
-        // 轉一圈剛好對應滿格，滿格後不再轉，改由「已就緒」的樣式表達
-        iconRef.current.style.transform = `rotate(${progress * 360}deg)`;
-        iconRef.current.style.opacity = String(0.35 + progress * 0.65);
+        // 轉一圈剛好對應滿格；十二格的關係，轉起來是一格一格跳的，跟 iOS 一樣
+        iconRef.current.style.transform = `rotate(${Math.round(progress * 12) * 30}deg)`;
+        // 拉得愈深愈清楚 —— 未滿格是淡的，滿格才是完整的深度
+        iconRef.current.style.opacity = String(0.3 + progress * 0.7);
       }
 
-      if (reduceMotion) return;
-
-      // 蓄力：跨過一個節點震一下，間距愈後面愈密
-      while (stopIdx.current < HAPTIC_STOPS.length && progress >= HAPTIC_STOPS[stopIdx.current]) {
-        stopIdx.current++;
-        hapticLight();
-      }
-      // 滿格：給一下明顯較重的，玩家不用看畫面就知道可以放手
-      if (!armed.current && progress >= 1) {
-        armed.current = true;
-        hapticMedium();
-      }
+      // 滿格只改變外觀，不震動（Threads 全程無觸覺回饋）
+      if (!armed.current && progress >= 1) armed.current = true;
     };
 
     const onEnd = () => {
@@ -161,6 +146,7 @@ export default function PwaPullToRefresh() {
       // 滿格：停在看得見的位置轉圈，然後刷新
       refreshing.current = true;
       setShift(REST_PULL, true);
+      if (iconRef.current) iconRef.current.style.opacity = '1';
       iconRef.current?.classList.add('ptr-spin');
       window.setTimeout(() => window.location.reload(), 320);
     };
@@ -188,7 +174,7 @@ export default function PwaPullToRefresh() {
       aria-hidden
       style={{
         position: 'fixed',
-        top: -46,
+        top: -34,
         left: '50%',
         transform: 'translate3d(-50%, 0, 0)',
         opacity: 0,
@@ -196,36 +182,28 @@ export default function PwaPullToRefresh() {
         pointerEvents: 'none',
       }}
     >
-      <div
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: '50%',
-          background: 'rgba(255,255,255,0.96)',
-          boxShadow: '0 2px 12px rgba(0,0,0,0.16)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
+      {/*
+        十二格轉圈，沒有底板。原本包了一顆白色藥丸＋陰影，在深色模式下是一塊
+        突兀的白點；Threads 就是內容上方一顆灰色小轉圈，深淺色都不用管。
+        用 SVG 畫而不是文字符號：`↻` 那類箭頭不在中文字型的 unicode-range 內，
+        會掉到 system-ui，部分 WebKit 環境畫成 .notdef 豆腐方塊。
+      */}
+      <svg
+        ref={iconRef}
+        width="22" height="22" viewBox="0 0 24 24"
+        style={{ display: 'block', opacity: 0.3, transition: 'opacity .1s' }}
       >
-        {/*
-          用 SVG 不用文字符號：原本畫的是 `↻`（U+21BB），它落在箭頭區、
-          不在中文字型的 unicode-range 內，會掉到 system-ui ——
-          而那個字型在部分 WebKit 環境會把缺字畫成 .notdef 方塊，
-          玩家看到的是一個豆腐 ☐ 而不是箭頭。
-        */}
-        <svg
-          ref={iconRef}
-          width="19" height="19" viewBox="0 0 24 24" fill="none"
-          stroke="#404040" strokeWidth="2.4" strokeLinecap="round"
-          style={{ display: 'block', transition: 'opacity .1s' }}
-        >
-          <path d="M21 12a9 9 0 1 1-2.64-6.36" />
-          <path d="M21 3v6h-6" />
-        </svg>
-      </div>
+        {SPOKES.map((i) => (
+          <rect
+            key={i}
+            x="11.1" y="2.2" width="1.8" height="6" rx="0.9"
+            fill="currentColor"
+            className="text-neutral-400 dark:text-neutral-500"
+            opacity={0.28 + (i / SPOKES.length) * 0.72}
+            transform={`rotate(${i * 30} 12 12)`}
+          />
+        ))}
+      </svg>
     </div>
   );
 }

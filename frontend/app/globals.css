@@ -415,8 +415,9 @@ img {
 @keyframes ptr-spin {
   to { transform: rotate(360deg); }
 }
+/* 十二格一跳，跟 iOS 的 UIActivityIndicator 一樣；linear 會變成陀螺，不是那個味道 */
 .ptr-spin {
-  animation: ptr-spin .7s linear infinite;
+  animation: ptr-spin .9s steps(12, end) infinite;
 }
 @media (prefers-reduced-motion: reduce) {
   .ptr-spin { animation: none; }

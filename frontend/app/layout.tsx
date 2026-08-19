@@ -21,7 +21,7 @@ import { getThemeCss } from '@/lib/serverTheme';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import NativeAppBootstrap from '@/components/native/NativeAppBootstrap';
 import ExternalLinkHandler from '@/components/native/ExternalLinkHandler';
-import EdgeSwipeBack from '@/components/native/EdgeSwipeBack';
+import AppSplashAd from '@/components/native/AppSplashAd';
 import PaymentReturnBridge from '@/components/native/PaymentReturnBridge';
 import { Suspense } from 'react';
 
@@ -226,12 +226,14 @@ export default async function RootLayout({
                   <PwaInputFocusFix />
                   <PwaPullToRefresh />
                   <AnalyticsTracker />
+                  {/* 開屏廣告放在 <main> 外面：下拉更新會對 <main> 下 transform，
+                      有 transform 的祖先會讓 position:fixed 失效，滿版就蓋不住整個畫面 */}
+                  <AppSplashAd />
                   <Navbar />
                   <main className="flex-grow">
                     <ServiceWorkerRegistrar />
                     <NativeAppBootstrap />
                     <ExternalLinkHandler />
-                    <EdgeSwipeBack />
                     <Suspense fallback={null}><PaymentReturnBridge /></Suspense>
                     <PathnameKeyed>{children}</PathnameKeyed>
                   </main>
