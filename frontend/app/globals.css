@@ -410,15 +410,16 @@ img {
 }
 
 
-/* 下拉更新：滿格放手後的轉圈（見 components/PwaPullToRefresh.tsx）。
-   inline style 寫不了 keyframes，所以放這裡。 */
-@keyframes ptr-spin {
-  to { transform: rotate(360deg); }
+/* 下拉更新：「頁面更新中」時箭頭的輕微浮動（見 components/PwaPullToRefresh.tsx）。
+   inline style 寫不了 keyframes，所以放這裡。箭頭此時已 rotate(180deg)（朝上），
+   keyframes 會蓋掉 inline transform，所以浮動的每一格都要帶著旋轉。 */
+@keyframes ptr-float {
+  0%, 100% { transform: rotate(180deg) translateY(0); }
+  50% { transform: rotate(180deg) translateY(3px); }
 }
-/* 十二格一跳，跟 iOS 的 UIActivityIndicator 一樣；linear 會變成陀螺，不是那個味道 */
-.ptr-spin {
-  animation: ptr-spin .9s steps(12, end) infinite;
+.ptr-float {
+  animation: ptr-float .9s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .ptr-spin { animation: none; }
+  .ptr-float { animation: none; }
 }

@@ -19,7 +19,10 @@
  *      （情報頁的分類 tab、首頁的分類列…）會被 `<main>` 的位移帶著走，
  *      所以要對它們下一個等量的反向位移抵銷掉 —— 視覺上就是釘住不動
  *      （老闆 2026-08-20：「tab 不要跟著被拉下去，這樣體感不好」）。
- *   3. **轉圈出現在內容上方那道空隙裡**，不是畫面最上緣。
+ *   3. **指示器出現在內容上方那道空隙裡**（老闆 2026-08-20 指定的樣式）：
+ *      灰底上一支深灰**向下箭頭**＋「下拉刷新頁面」；持續拉箭頭會被拉長；
+ *      拉過門檻箭頭彈回並翻成**朝上**、文字變「放開立即更新」；
+ *      放手後文字變「頁面更新中」、箭頭輕微浮動直到刷新完成。
  *      起始位置是「所有釘住的東西的最下緣」，動態量出來的 ——
  *      寫死 57px 的話，情報頁那種底下還有一排 tab 的版面就會被蓋住。
  *      空隙鋪一層底色（`stripRef`）：淺色頁鋪灰（body 是白的，轉圈浮在白上
@@ -60,17 +63,14 @@ const THRESHOLD = 90;
 const MAX_PULL = 78;
 /** 刷新時內容停在這個位置，讓轉圈看得見 */
 const REST_PULL = 56;
-/** 轉圈直徑。原本 22，老闆要求放大 20% */
-const ICON = 26;
+/** 指示器（箭頭＋文字）整組的高度，位置計算用 */
+const ICON = 40;
 
 /**
  * 蓄力的震動節點（progress 0~1）。
  * 間距刻意由疏到密 —— 等距的話手感是平的，密起來才有「快滿了」的感覺。
  */
 const HAPTIC_STOPS = [0.18, 0.34, 0.48, 0.6, 0.7, 0.78, 0.85, 0.91, 0.96];
-
-/** 十二格轉圈的每一格（iOS UIActivityIndicator 的樣子） */
-const SPOKES = Array.from({ length: 12 }, (_, i) => i);
 
 function isStandaloneMode() {
   if (typeof window === 'undefined') return false;
@@ -245,7 +245,8 @@ export default function PwaPullToRefresh() {
   /** 空隙底色帶的頂端（= 導航列下緣），高度蓋到 gapTop + 位移量 */
   const stripTop = useRef(0);
   const gapTop = useRef(0);
-  const iconRef = useRef<SVGSVGElement>(null);
+  const arrowRef = useRef<SVGSVGElement>(null);
+  const labelRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     if (!isStandaloneMode()) return;
@@ -283,8 +284,8 @@ export default function PwaPullToRefresh() {
         // 轉圈停在空隙的正中間：空隙高度是 px，轉圈高 ICON
         wrap.style.transition = animate ? `${t}, opacity .2s` : 'opacity .2s';
         wrap.style.transform = `translate3d(-50%, ${(px - ICON) / 2}px, 0)`;
-        // 空隙還塞不下轉圈之前先不要露臉，不然會看到半顆卡在導航列邊上
-        wrap.style.opacity = px > ICON * 0.7 ? '1' : '0';
+        // 空隙還塞不下指示器之前先不要露臉，不然會看到半截卡在導航列邊上
+        wrap.style.opacity = px > ICON * 0.55 ? '1' : '0';
       }
     };
 
@@ -294,7 +295,11 @@ export default function PwaPullToRefresh() {
       armed.current = false;
       stopIdx.current = 0;
       setShift(0, animate);
-      if (iconRef.current) iconRef.current.style.transform = '';
+      if (arrowRef.current) {
+        arrowRef.current.style.transform = '';
+        arrowRef.current.classList.remove('ptr-float');
+      }
+      if (labelRef.current) labelRef.current.textContent = '下拉刷新頁面';
       // 位移歸零之後才能清空清單，不然那幾條會停在被抵銷的位置
       const restore = pinned.current;
       pinned.current = [];
@@ -419,11 +424,17 @@ export default function PwaPullToRefresh() {
       const progress = Math.min(dy / THRESHOLD, 1);
 
       setShift(shift, false);
-      if (iconRef.current) {
-        // 轉一圈剛好對應滿格；十二格的關係，轉起來是一格一格跳的，跟 iOS 一樣
-        iconRef.current.style.transform = `rotate(${Math.round(progress * 12) * 30}deg)`;
-        // 拉得愈深愈清楚 —— 未滿格是淡的，滿格才是完整的深度
-        iconRef.current.style.opacity = String(0.3 + progress * 0.7);
+      if (arrowRef.current && labelRef.current) {
+        if (progress < 1) {
+          // 拉的過程：箭頭朝下、隨拉動被「拉長」（老闆指定的手感）
+          arrowRef.current.style.transition = 'transform .15s';
+          arrowRef.current.style.transform = `scaleY(${(1 + progress * 0.45).toFixed(3)})`;
+          labelRef.current.textContent = '下拉刷新頁面';
+        } else {
+          // 過門檻：箭頭彈回並翻成朝上 —— 給玩家「可以放手了」的訊號
+          arrowRef.current.style.transform = 'rotate(180deg)';
+          labelRef.current.textContent = '放開立即更新';
+        }
       }
 
       if (reduceMotion) return;
@@ -449,12 +460,15 @@ export default function PwaPullToRefresh() {
         return;
       }
 
-      // 滿格：停在看得見的位置轉圈，然後刷新
+      // 滿格：停在看得見的位置顯示「頁面更新中」，然後刷新
       refreshing.current = true;
       setShift(REST_PULL, true);
-      if (iconRef.current) iconRef.current.style.opacity = '1';
-      iconRef.current?.classList.add('ptr-spin');
-      window.setTimeout(() => window.location.reload(), 320);
+      if (labelRef.current) labelRef.current.textContent = '頁面更新中';
+      if (arrowRef.current) {
+        arrowRef.current.style.transform = 'rotate(180deg)';
+        arrowRef.current.classList.add('ptr-float'); // 輕微浮動，表示還活著
+      }
+      window.setTimeout(() => window.location.reload(), 360);
     };
 
     document.addEventListener('touchstart', onStart, { passive: true });
@@ -508,27 +522,26 @@ export default function PwaPullToRefresh() {
       }}
     >
       {/*
-        十二格轉圈，沒有底板。原本包了一顆白色藥丸＋陰影，在深色模式下是一塊
-        突兀的白點；FB／脆就是內容上方一顆灰色小轉圈，深淺色都不用管。
-        用 SVG 畫而不是文字符號：`↻` 那類箭頭不在中文字型的 unicode-range 內，
-        會掉到 system-ui，部分 WebKit 環境畫成 .notdef 豆腐方塊。
+        深灰向下箭頭＋文字（老闆指定的樣式）。灰底由 stripRef 那條底色帶負責。
+        箭頭用 SVG 畫而不是文字符號：「↓」不在中文字型的 unicode-range 內，
+        部分 WebKit 會畫成豆腐方塊。
       */}
-      <svg
-        ref={iconRef}
-        width={ICON} height={ICON} viewBox="0 0 24 24"
-        style={{ display: 'block', opacity: 0.3, transition: 'opacity .1s' }}
-      >
-        {SPOKES.map((i) => (
-          <rect
-            key={i}
-            x="11.1" y="2.2" width="1.8" height="6" rx="0.9"
-            fill="currentColor"
-            className="text-neutral-400 dark:text-neutral-500"
-            opacity={0.28 + (i / SPOKES.length) * 0.72}
-            transform={`rotate(${i * 30} 12 12)`}
-          />
-        ))}
-      </svg>
+      <div className="flex flex-col items-center gap-[3px]">
+        <svg
+          ref={arrowRef}
+          width="16" height="20" viewBox="0 0 16 20" fill="none"
+          className="text-neutral-500 dark:text-neutral-400"
+          style={{ display: 'block', transformOrigin: 'center', transition: 'transform .15s' }}
+        >
+          <path d="M8 1v14M2.5 10.5 8 16l5.5-5.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span
+          ref={labelRef}
+          className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 whitespace-nowrap leading-none"
+        >
+          下拉刷新頁面
+        </span>
+      </div>
     </div>
     </>
   );
