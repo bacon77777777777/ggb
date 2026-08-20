@@ -13,6 +13,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { useTheme } from '@/contexts/ThemeContext';
 import { native } from '@/lib/native/bridge';
@@ -21,6 +22,7 @@ import { closeInAppBrowser } from '@/lib/native/browser';
 
 export default function NativeAppBootstrap() {
   const { user, refreshProfile } = useAuth();
+  const { showToast } = useToast();
   const { theme } = useTheme();
   const router = useRouter();
   const registeredFor = useRef<string | null>(null);
@@ -130,6 +132,26 @@ export default function NativeAppBootstrap() {
           } catch { /* 解不開就用預設值 */ }
         }
         router.push(to);
+
+        /*
+         * 儲值成功的提示（老闆 2026-08-20：小卡收起 → 儲值紀錄 → 跳
+         * 「儲值成功 G+1,000」）。金額是儲值頁送單前記在 sessionStorage 的
+         * 本金＋贈點；只在回程帶 status=success 時跳，取號（ATM／超商）與
+         * 失敗不跳。實際入帳由綠界的 server callback 決定，這裡的數字
+         * 就是那筆訂單會入的數字。
+         */
+        try {
+          const pending = sessionStorage.getItem('ggb_pending_topup');
+          sessionStorage.removeItem('ggb_pending_topup');
+          if (to.includes('status=success')) {
+            showToast(
+              pending ? `儲值成功，G幣 +${Number(pending).toLocaleString()}` : '儲值成功！',
+              'success',
+            );
+          } else if (to.includes('status=waiting_payment')) {
+            showToast('已取得繳費資訊，完成繳費後入帳', 'info');
+          }
+        } catch { /* sessionStorage 不可用就不跳，無害 */ }
       });
     } catch (err) {
       console.warn('[native] appUrlOpen 掛載失敗', err);
@@ -139,7 +161,7 @@ export default function NativeAppBootstrap() {
       handle?.remove?.();
       if (retry) window.clearTimeout(retry);
     };
-  }, [router, refreshProfile]);
+  }, [router, refreshProfile, showToast]);
 
   /*
    * 狀態列。

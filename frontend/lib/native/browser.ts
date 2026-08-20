@@ -63,7 +63,9 @@ export async function openPayment(url: string, onClosed: () => void): Promise<bo
       onClosed()
     })
 
-    const opened = await native.call('Browser', 'open', { url: toAbsolute(url), presentationStyle: 'fullscreen' })
+    // popover（iOS 的 pageSheet）：付款頁像一張卡從底部滑上來、App 還看得到
+    // 在後面，頂上有「完成」隨時關得掉 —— 老闆要的「彈窗方式」（2026-08-20）
+    const opened = await native.call('Browser', 'open', { url: toAbsolute(url), presentationStyle: 'popover' })
     if (opened === null) {
       handle.remove?.()
       return false

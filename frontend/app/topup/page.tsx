@@ -27,6 +27,7 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { native } from '@/lib/native/bridge';
+import { openPayment } from '@/lib/native/browser';
 
 const TOPUP_PLANS = [
   { id: 'p1', amount: 100, points: 100, bonus: 0, isHot: false },
@@ -107,6 +108,8 @@ export default function TopupPage() {
   const submittedTradeNo = useRef<string | null>(null);
   const refreshProfileRef = useRef(refreshProfile);
   refreshProfileRef.current = refreshProfile;
+  const selectedPlanRef = useRef(selectedPlan);
+  selectedPlanRef.current = selectedPlan;
 
   useEffect(() => {
     if (!paymentData) return;
@@ -116,17 +119,70 @@ export default function TopupPage() {
     submittedTradeNo.current = tradeNo;
 
     /*
-     * App 與網頁走同一條路：表單直接送去綠界，整個流程在**同一個畫面**裡走完
-     *（webview／瀏覽器換頁），付完由綠界把人導回儲值紀錄 —— 同一個 webview，
-     * 登入態原地都在，零彈窗、零跳轉、零確認框（老闆 2026-08-20：儲值要絲滑）。
+     * App：付款開在「付款小卡」（iOS pageSheet 的 in-app browser）——
+     * 從底部滑上來、頂上有「完成」隨時關得掉；OTP 完成後綠界導回
+     * /payment/return，那頁立刻跳 ggbapp://，小卡自動收起、落在儲值紀錄、
+     * 跳「儲值成功 G +N」（老闆 2026-08-20 參考潮玩家的彈窗流程）。
      *
-     * 舊版在 App 裡開 in-app browser + 簽章交接頁 + ggbapp:// 彈回，那是
-     * `allowNavigation` 還鎖白名單時代的產物（3D 驗證的銀行網域列不完，
-     * webview 一跳就被丟去 Safari）。白名單放開（v2026.08.20b）之後 webview
-     * 直走就是通的 —— 偽 app 的玩家從頭到尾走的都是這條，實證沒問題。
-     * 交接頁（/payment/go）與 ggbapp://payment-return 保留：
-     * 已發出去的舊版頁面可能還會用到，而且是無害的死路。
+     * 為什麼不讓 webview 直接換頁去綠界：試過（v2026.08.20o），流程通、
+     * 但綠界頁沒有任何返回鈕，玩家反悔就被關在裡面。
+     * 為什麼不用 iframe 彈窗：綠界回應掛 `frame-ancestors 'none'`，禁止內嵌。
+     *
+     * 小卡裡拿不到 webview 的登入 cookie，所以先跟後端換一張簽了名的交接頁
+     * 網址（/payment/go，見 lib/paymentHandoff.ts），授權全靠網址上的簽章。
      */
+    if (native.isNativePlatform()) {
+      let cancelled = false;
+      (async () => {
+        try {
+          const res = await fetch('/api/payment/handoff', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: paymentData.action, fields: paymentData.fields }),
+          });
+          if (!res.ok) throw new Error('handoff failed');
+          const { token } = await res.json();
+          if (cancelled) return;
+
+          // 回程 toast 用：這一筆會入帳多少 G（本金＋贈點）。
+          // 由 NativeAppBootstrap 在 ggbapp://payment-return 落地時讀走
+          try {
+            sessionStorage.setItem(
+              'ggb_pending_topup',
+              String(selectedPlanRef.current.points + selectedPlanRef.current.bonus),
+            );
+          } catch { /* 無痕模式寫不了就沒有金額，toast 會退回通用文案 */ }
+
+          // 一定要絕對網址：Capacitor 的 Browser.open 不吃相對路徑
+          const goUrl = `${window.location.origin}/payment/go?t=${encodeURIComponent(token)}`;
+          const opened = await openPayment(goUrl, () => {
+            // 玩家自己把小卡關掉：付成功與否由後端 callback 決定，
+            // 這裡只負責把畫面上的餘額換成最新的
+            void refreshProfileRef.current?.();
+            setPaymentData(null);
+            setIsProcessing(false);
+            isProcessingRef.current = false;
+          });
+          if (opened) return;
+          // 小卡開不起來（外掛異常）就讓 webview 直接走 —— 那條路是通的，
+          // 只是沒有返回鈕，當備援可以接受
+          if (!cancelled) window.location.href = goUrl;
+          return;
+        } catch (err) {
+          console.error('[topup] App 付款交接失敗', err);
+        }
+        if (!cancelled) {
+          showToast('付款頁開啟失敗，請再試一次', 'error');
+          setPaymentData(null);
+          setIsProcessing(false);
+          isProcessingRef.current = false;
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
+
     formRef.current?.submit();
   }, [paymentData]);
 

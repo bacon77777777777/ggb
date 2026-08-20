@@ -4,6 +4,24 @@
 
 ---
 
+## v2026.08.20q｜2026-08-20｜儲值改「付款小卡」：底部滑出、完成自動收起、跳入帳提示
+
+v2026.08.20o 的 webview 直走流程通了，但綠界頁**完全沒有返回鈕**，玩家反悔
+就被關在裡面（老闆截圖）。老闆指定參考潮玩家：彈窗方式、OTP 完自動收起、
+導去儲值紀錄跳「儲值成功 G+1,000」。
+
+- 試過 iframe 彈窗：綠界回應掛 `frame-ancestors 'none'`，禁止內嵌，此路不通
+- 改用 **iOS pageSheet 的 in-app browser**（presentationStyle: popover）——
+  付款頁像一張卡從底部滑上來，App 還看得到在後面，頂上有「完成」隨時關得掉
+- OTP 完成 → 綠界導回 /payment/return → 立刻跳 ggbapp:// → 小卡自動收起 →
+  落在儲值紀錄 → **toast「儲值成功，G幣 +N」**（N＝本金＋贈點，儲值頁
+  送單前記在 sessionStorage，NativeAppBootstrap 落地時讀走；只在
+  status=success 跳，ATM／超商取號改跳「已取得繳費資訊」）
+- 小卡開不起來的備援：webview 直走（通、只是沒返回鈕）
+- 網頁版照舊表單直送，不受影響
+
+---
+
 ## v2026.08.20p｜2026-08-20｜原生 LINE SDK 整合：app-to-app 登入（老闆：一次到位）
 
 App 的 LINE 登入接上官方 LINE SDK —— 裝了 LINE 的手機點登入直接切 LINE App
