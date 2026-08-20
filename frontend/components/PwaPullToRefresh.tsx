@@ -13,10 +13,14 @@
  *      手指往下移不到 18px 之前，畫面完全不動、也不震 —— 不然滑一下清單、
  *      手指抖一下都在震，還可能誤刷新（老闆回報）。跨過安全距離之後，位移是從
  *      **跨過的那一點**重新算，所以不會「啪」地跳一段。
- *   2. **只有內容區被拖**。位移下在 `<main>`，頂部導航（`<nav>`，`<main>` 的
- *      兄弟節點）與底部導航完全不動 —— 跟 FB／脆一樣，框不動、內容動。
+ *   2. **只有內容區被拖，所有「釘在頂端」的東西都不動**。
+ *      位移下在 `<main>`，頂部導航（`<nav>`，`<main>` 的兄弟節點）與底部導航
+ *      本來就不受影響；但 `<main>` **裡面**那些已經貼在頂端的 sticky 列
+ *      （情報頁的分類 tab、首頁的分類列…）會被 `<main>` 的位移帶著走，
+ *      所以要對它們下一個等量的反向位移抵銷掉 —— 視覺上就是釘住不動
+ *      （老闆 2026-08-20：「tab 不要跟著被拉下去，這樣體感不好」）。
  *   3. **轉圈出現在內容上方那道空隙裡**，不是畫面最上緣。
- *      起始位置是「目前貼在畫面頂端那條導航列的下緣」，動態量出來的 ——
+ *      起始位置是「所有釘住的東西的最下緣」，動態量出來的 ——
  *      寫死 57px 的話，情報頁那種底下還有一排 tab 的版面就會被蓋住。
  *   4. **蓄力才刷新**。未滿格彈回去，滿格才刷新；過程分段輕震、間距愈往後愈密，
  *      滿格給一下明顯較重的，不用看畫面就知道可以放手了。
@@ -68,16 +72,11 @@ function isAtTop(): boolean {
 }
 
 /**
- * 目前貼在畫面最上緣那條導航列的下緣（沒有就是 0）。
+ * 全站導航列（`<main>` 外面那條）的下緣，沒有就是 0。
  *
  * 為什麼要量而不是寫死 57：導航列在部分頁面是隱藏的，安全區內縮也可能讓它下移。
- * 量出來的值就是「內容區的起點」，轉圈放在這裡才不會蓋到任何東西。
- *
- * 只認 `<nav>`／`<header>` 這種真正的導航容器，而且要 sticky／fixed 且正好貼在
- * 頂端。內容裡那些 sticky 的 tab 列不算 —— 它們在 `<main>` 裡，會跟著內容一起被
- * 拖下去，空隙就開在它們上面，本來就不會被蓋到。
  */
-function headerBottom(): number {
+function navBottom(): number {
   let bottom = 0;
   document.querySelectorAll('nav, header').forEach((el) => {
     const pos = window.getComputedStyle(el).position;
@@ -86,6 +85,31 @@ function headerBottom(): number {
     if (r.top <= 1 && r.bottom > bottom) bottom = r.bottom;
   });
   return bottom;
+}
+
+/**
+ * `<main>` 裡面**此刻正貼在頂端**的 sticky／fixed 列（情報頁分類 tab、
+ * 首頁分類列…）。這些要跟導航列一樣定住，不能被 `<main>` 的位移帶著走。
+ *
+ * 判斷標準是「上緣已經頂到導航列下方」——沒頂到的（例如首頁分類列在輪播圖
+ * 底下、離頂端還很遠）就不算釘住，跟著內容一起被拖才是對的，FB／脆也是這樣。
+ *
+ * 用 class 選擇器先粗篩再看 computed position：整棵 `<main>` 逐一 querySelectorAll
+ * 在長頁面上太貴，而這站的 sticky 一律是 Tailwind 的 `.sticky` / `.fixed`。
+ * 最後濾掉巢狀的子孫 —— 父層已經被抵銷，子層再抵銷一次會多跑一段。
+ */
+function pinnedBars(top: number): HTMLElement[] {
+  const main = document.querySelector('main');
+  if (!main) return [];
+  const found: HTMLElement[] = [];
+  main.querySelectorAll<HTMLElement>('.sticky, .fixed').forEach((el) => {
+    const pos = window.getComputedStyle(el).position;
+    if (pos !== 'sticky' && pos !== 'fixed') return;
+    const r = el.getBoundingClientRect();
+    if (r.height <= 0 || r.height > window.innerHeight * 0.4) return; // 太高的不是頂欄
+    if (r.top <= top + 2) found.push(el);
+  });
+  return found.filter((el) => !found.some((o) => o !== el && o.contains(el)));
 }
 
 /**
@@ -113,6 +137,8 @@ export default function PwaPullToRefresh() {
   const armed = useRef(false);      // 已滿格
   const stopIdx = useRef(0);        // 下一個要觸發的震動節點
   const refreshing = useRef(false);
+  /** 這一趟要「定住」的 sticky 列，連同它們原本的 inline transform（結束要還原） */
+  const pinned = useRef<{ el: HTMLElement; transform: string }[]>([]);
   const wrapRef = useRef<HTMLDivElement>(null);
   const iconRef = useRef<SVGSVGElement>(null);
 
@@ -132,6 +158,16 @@ export default function PwaPullToRefresh() {
         content.style.transform = px ? `translate3d(0, ${px}px, 0)` : '';
         content.style.willChange = px ? 'transform' : '';
       }
+      /*
+       * 釘在頂端的 sticky 列：下一個等量的反向位移，抵銷掉 `<main>` 的位移。
+       * 它們是 `<main>` 的子孫，會繼承那個 transform；不抵銷的話 tab 會跟著
+       * 被拉下去，空隙開在 tab 上面 —— 老闆說那個體感不對，正確的是
+       * 「框（含 tab）不動，只有底下的內容被拖」。
+       */
+      pinned.current.forEach(({ el, transform }) => {
+        el.style.transition = t;
+        el.style.transform = px ? `${transform} translate3d(0, ${-px}px, 0)`.trim() : transform;
+      });
       if (wrap) {
         // 轉圈停在空隙的正中間：空隙高度是 px，轉圈高 ICON
         wrap.style.transition = animate ? `${t}, opacity .2s` : 'opacity .2s';
@@ -148,6 +184,17 @@ export default function PwaPullToRefresh() {
       stopIdx.current = 0;
       setShift(0, animate);
       if (iconRef.current) iconRef.current.style.transform = '';
+      // 位移歸零之後才能清空清單，不然那幾條會停在被抵銷的位置
+      const restore = pinned.current;
+      pinned.current = [];
+      window.setTimeout(() => {
+        restore.forEach(({ el, transform }) => {
+          // 已經被下一趟接手的就別動，不然會把進行中的抵銷清掉
+          if (pinned.current.some((p) => p.el === el)) return;
+          el.style.transform = transform;
+          el.style.transition = '';
+        });
+      }, animate ? 300 : 0);
     };
 
     const onStart = (e: TouchEvent) => {
@@ -183,8 +230,18 @@ export default function PwaPullToRefresh() {
         engaged.current = true;
         // 從跨過安全距離的那一點重新起算，畫面才不會「啪」地跳一段
         startY.current += DEAD_ZONE;
-        // 空隙開在內容區上方，位置動態量（見 headerBottom）
-        if (wrapRef.current) wrapRef.current.style.top = `${headerBottom()}px`;
+
+        // 這一趟要定住哪幾條，以及空隙該從哪裡開始 —— 兩者都在這一刻量
+        const top = navBottom();
+        pinned.current = pinnedBars(top).map((el) => ({
+          el,
+          transform: el.style.transform || '',
+        }));
+        const gapTop = pinned.current.reduce(
+          (acc, { el }) => Math.max(acc, el.getBoundingClientRect().bottom),
+          top,
+        );
+        if (wrapRef.current) wrapRef.current.style.top = `${gapTop}px`;
       }
 
       const dy = raw - DEAD_ZONE;
@@ -245,6 +302,11 @@ export default function PwaPullToRefresh() {
         content.style.transition = '';
         content.style.willChange = '';
       }
+      pinned.current.forEach(({ el, transform }) => {
+        el.style.transform = transform;
+        el.style.transition = '';
+      });
+      pinned.current = [];
     };
   }, []);
 
