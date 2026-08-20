@@ -189,6 +189,19 @@ type StartVerdict =
 function resolveStart(target: EventTarget | null): StartVerdict {
   const main = document.querySelector('main');
   let el = target as HTMLElement | null;
+  /*
+   * 沿路碰到 sticky／fixed 先記著，**不要當場否決**。
+   *
+   * 這個判斷本來是要擋「拉頁面的固定欄（頁頭、tab、導航）」，但它會誤傷
+   * **列表項目自己的 sticky 標頭** —— 抽獎紀錄每一列的 header 就是
+   * `sticky top-0`，從列上起手一路被判 blocked，整頁因此完全沒有下拉刷新
+   *（老闆 2026-08-20 回報）。那種 sticky 是內容的一部分，會跟著捲動容器走，
+   * 跟固定欄是兩回事。
+   *
+   * 分辨方式：繼續往上找，找得到內層捲動容器就用那個容器（代表這個 sticky
+   * 活在可捲動的內容裡）；一路到底都沒有，才是真的頁面固定欄。
+   */
+  let sawFixedOrSticky = false;
   while (el && el !== document.body && el !== document.documentElement) {
     if (el.hasAttribute('data-ptr-content')) return { kind: 'marked' };
     const style = window.getComputedStyle(el);
@@ -200,10 +213,10 @@ function resolveStart(target: EventTarget | null): StartVerdict {
     ) {
       return { kind: 'inner', el };
     }
-    if (style.position === 'fixed' || style.position === 'sticky') return { kind: 'blocked' };
+    if (style.position === 'fixed' || style.position === 'sticky') sawFixedOrSticky = true;
     el = el.parentElement;
   }
-  return { kind: 'main' };
+  return sawFixedOrSticky ? { kind: 'blocked' } : { kind: 'main' };
 }
 
 function startedInScrollable(target: EventTarget | null): boolean {
@@ -386,6 +399,27 @@ export default function PwaPullToRefresh() {
           marked = [verdict.el];
         }
 
+        /*
+         * 球要沉在內容底下、還是浮在內容上面，取決於**這一趟拖的是誰**。
+         *
+         *   拖 <main>        → 沉下去（zIndex 0）
+         *     內容整片下移，頂部讓出來的空隙沒有東西擋著，球照樣看得見；
+         *     回彈時被內容蓋住，看起來像從版面底下鑽出來再縮回去。
+         *     情報頁的分類 tab 也就自然擋在球前面（老闆 2026-08-20 要的）。
+         *
+         *   拖內層容器／標記區塊 → 浮上來（zIndex 30）
+         *     這兩種情況 <main> 完全沒動，球沉下去等於被整片內容蓋死 ——
+         *     設定頁、我的倉庫、我的關注、我的優惠券、排行榜就是這樣整個
+         *     看不到動畫，只剩震動跟刷新（老闆 2026-08-20 回報）。
+         *
+         * ⚠️ 不要改成「把球調低、把 tab 調高」那種比大小的做法：拖 <main> 時
+         * 它帶著 transform，會開一個新的 stacking context 把 tab 的 z-20 關在
+         * 裡面，外面怎麼調都比不到。層級只能靠「沉下去或浮上來」二選一。
+         */
+        if (wrapRef.current) {
+          wrapRef.current.style.zIndex = marked.length ? '30' : '0';
+        }
+
         if (marked.length) {
           // 只拖被標記的區塊：其餘（tab、背景、返回鈕）原地不動，不需要任何抵銷。
           // 空隙開在被拖區塊的最上緣；版面特殊（排行榜的榜單 grid 起點其實在
@@ -560,18 +594,7 @@ export default function PwaPullToRefresh() {
         left: '50%',
         transform: `translate3d(-50%, ${-ICON}px, 0)`,
         opacity: 0,
-        /*
-         * 沉在 <main> 底下（跟上面那條底色帶同層）。
-         *
-         * 下拉時內容被往下推，頂部空出來的那塊沒有內容擋著，球照樣看得見；
-         * 放開回彈時球會被內容蓋住，看起來就像**從版面底下鑽出來、再縮回去**
-         * （老闆 2026-08-20：情報頁的球要在分類 tab 後面）。
-         *
-         * ⚠️ 不要改成「把球調低、把 tab 調高」那種比大小的做法 ——
-         * 下拉時 <main> 帶著 transform，那會開一個新的 stacking context，
-         * 把 tab 的 z-20 關在裡面，外面怎麼調都比不到。唯一有效的是讓球
-         * 整個沉到 <main> 之下，也就是這裡不要有比 0 大的 z-index。
-         */
+        // 起始值；實際層級在每趟手勢開始時依「拖的是誰」決定（見 onMove 的 engage）
         zIndex: 0,
         pointerEvents: 'none',
       }}
