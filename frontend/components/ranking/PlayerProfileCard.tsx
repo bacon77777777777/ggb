@@ -232,7 +232,8 @@ interface Props {
 
 // Figma design reference: 960 × 877 px
 const DESIGN_W = 960;
-const DESIGN_H = 877;
+/* 877 → 979：徽章牆上方多了一區累計數據（48 數字 + 8 間距 + 24 標籤 + 24 上距） */
+const DESIGN_H = 979;
 
 export default function PlayerProfileCard({ userId, nickname: propNickname, avatarUrl: propAvatarUrl, titleFromRanking, onWorship, onClose, isPlaceholder }: Props) {
   const { showAlert } = useAlert();
@@ -451,18 +452,6 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                       >
                         {loading ? '...' : displayName}
                       </p>
-                      {/* 轉蛋次數 / 被膜拜次數：併成一行並縮小，
-                          原本各佔一行、字級與暱稱太接近，四行擠在一起 */}
-                      {/* 縮到 24px 並允許截斷：這行與右側「膜拜大神」共用同一列，
-                          次數大的帳號會直接頂到按鈕上（老闆 2026-08-20 附圖「黏在一起」）。
-                          w-full + truncate 讓它最多吃到自己欄位的寬，絕不越界 */}
-                      {!loading && (
-                        <p className="text-[#888] whitespace-nowrap overflow-hidden text-ellipsis w-full" style={{ fontSize: 24, fontWeight: 400 }}>
-                          累計轉蛋 {(profile?.total_draws ?? 0).toLocaleString()} 次
-                          <span className="text-[#ccc]" style={{ margin: '0 8px' }}>·</span>
-                          被膜拜 {(profile?.worship_count ?? 0).toLocaleString()} 次
-                        </p>
-                      )}
                     </div>
                   </div>
 
@@ -482,6 +471,49 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                       膜拜大神
                     </p>
                   </button>
+                </div>
+
+                {/*
+                  Frame5：累計數據（兩欄，數字大、標籤小）
+
+                  ── 為什麼搬到這裡、又為什麼不是一行文字 ──
+                  這兩個數字本來擠在暱稱底下，跟右邊的「膜拜大神」共用一列，
+                  所以只能一路縮到 24px（全卡最小的字）還是會頂到按鈕。
+                  搬到徽章牆上方就跟按鈕徹底脫鉤，想多大就多大。
+
+                  但**只是搬家還不夠**（老闆 2026-08-20：「未來數字多，治標不治本」）——
+                  排成一行文字的話，寬度會跟著位數一起長，數字大到某個程度又擠回去。
+                  改成兩欄各自獨立：每欄固定 320px，數字獨佔一行、標籤在下，
+                  一邊變長不會推擠另一邊。再加上字級隨位數自動降級（下面的 sizeFor），
+                  就算有人抽到十位數也塞得進自己那一欄，不會溢出、不會截斷。
+                */}
+                <div className="relative flex items-start justify-center shrink-0 w-full mt-[24px]">
+                  {[
+                    { label: '累計轉蛋', value: profile?.total_draws ?? 0 },
+                    { label: '被膜拜', value: profile?.worship_count ?? 0 },
+                  ].map(stat => {
+                    const text = loading ? '—' : stat.value.toLocaleString();
+                    /* 320px 的欄寬在 48px 字級下約放得下 13 個字元（含千分位逗號），
+                       也就是十位數。再長就降級，寧可小一點也不要被切掉 */
+                    const sizeFor = (t: string) => (t.length <= 13 ? 48 : t.length <= 17 ? 40 : 32);
+                    return (
+                      <div
+                        key={stat.label}
+                        className="flex flex-col items-center gap-[8px]"
+                        style={{ width: 320 }}
+                      >
+                        <p
+                          className="text-[#141414] leading-none whitespace-nowrap tabular-nums"
+                          style={{ fontSize: sizeFor(text), fontWeight: 600 }}
+                        >
+                          {text}
+                        </p>
+                        <p className="text-[#888] leading-none whitespace-nowrap" style={{ fontSize: 24 }}>
+                          {stat.label}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Frame6：徽章牆 分隔線 */}

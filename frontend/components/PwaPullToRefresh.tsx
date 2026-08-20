@@ -560,8 +560,19 @@ export default function PwaPullToRefresh() {
         left: '50%',
         transform: `translate3d(-50%, ${-ICON}px, 0)`,
         opacity: 0,
-        // 比導航列（z-50）低：轉圈屬於內容區，不該蓋在框上面
-        zIndex: 30,
+        /*
+         * 沉在 <main> 底下（跟上面那條底色帶同層）。
+         *
+         * 下拉時內容被往下推，頂部空出來的那塊沒有內容擋著，球照樣看得見；
+         * 放開回彈時球會被內容蓋住，看起來就像**從版面底下鑽出來、再縮回去**
+         * （老闆 2026-08-20：情報頁的球要在分類 tab 後面）。
+         *
+         * ⚠️ 不要改成「把球調低、把 tab 調高」那種比大小的做法 ——
+         * 下拉時 <main> 帶著 transform，那會開一個新的 stacking context，
+         * 把 tab 的 z-20 關在裡面，外面怎麼調都比不到。唯一有效的是讓球
+         * 整個沉到 <main> 之下，也就是這裡不要有比 0 大的 z-index。
+         */
+        zIndex: 0,
         pointerEvents: 'none',
       }}
     >

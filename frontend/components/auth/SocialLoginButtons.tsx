@@ -80,13 +80,36 @@ export function SocialLoginButtons() {
 
   useEffect(() => stopPolling, []);
 
-  // 切回偽 app 的瞬間立刻問一次，不用等下一個 2 秒
+  // 切回來的瞬間立刻問一次，不用空等下一個 2 秒
   useEffect(() => {
+    const claimNow = () => { if (stateRef.current) void claimTicket(); };
     const onVisible = () => {
-      if (document.visibilityState === 'visible' && stateRef.current) void claimTicket();
+      if (document.visibilityState === 'visible') claimNow();
     };
     document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+
+    /*
+     * 原生 App 還要多聽一個 appStateChange。
+     *
+     * 授權頁開在 in-app browser（SFSafariViewController），它關掉回到 webview 時
+     * **visibilitychange 不一定會觸發** —— webview 從頭到尾沒被蓋住，document
+     * 的可見性在 iOS 看來沒變過。少了這個，玩家回到 App 只能乾等下一輪輪詢，
+     * 就是老闆回報的「回到登入頁，過一秒多才跳首頁」。
+     */
+    let removeListener: (() => void) | null = null;
+    void (async () => {
+      const handle = (await native.plugin('App')?.addListener?.('appStateChange', ((s: {
+        isActive?: boolean;
+      }) => {
+        if (s?.isActive) claimNow();
+      }) as unknown as never)) as { remove?: () => void } | null;
+      removeListener = () => { void handle?.remove?.(); };
+    })();
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      removeListener?.();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -143,6 +166,23 @@ export function SocialLoginButtons() {
    */
   const startNativeLineLogin = async (state: string) => {
     setWaiting(true);
+
+    /*
+     * 退回瀏覽器授權時要留下原因，不然事後只看得到「玩家被丟去 access.line.me」
+     * 卻分不出是外掛沒裝、還是裝了卻呼叫失敗（老闆 2026-08-20 回報登入不順，
+     * 查了半天就是卡在這個分不清楚）。Capacitor 的 console 會轉到原生 log，
+     * 接上手機就看得到。
+     */
+    if (typeof native.plugin('LineLogin')?.login !== 'function') {
+      console.warn(
+        '[LINE] 原生外掛不在，退回瀏覽器授權。目前可用的外掛：',
+        Object.keys(
+          (window as unknown as { Capacitor?: { Plugins?: Record<string, unknown> } }).Capacitor
+            ?.Plugins ?? {},
+        ).join(', '),
+      );
+    }
+
     try {
       const r = (await native.call('LineLogin', 'login')) as
         | { accessToken?: string }

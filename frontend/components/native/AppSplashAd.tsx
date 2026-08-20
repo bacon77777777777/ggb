@@ -30,6 +30,18 @@
  * 換圖的代價是慢一輪：後台換圖 → 玩家這次還是看到舊的 → 下次啟動才是新的。
  * 後台下架 → 快取清掉 → 下次就不再出現（不打斷正在看的那一次）。
  *
+ * 快取分兩層，因為這兩件事的成功率差很多：
+ *
+ *   ① 網址（src / link）　一定存得進去
+ *   ② 圖本身（data URL）　盡力而為
+ *
+ * 只有 ② 需要把圖 `fetch()` 成 bytes，而圖在 R2 的公開網域、**那裡沒有回
+ * CORS 標頭**（`<img src>` 不受影響，fetch 就被擋）。第一版把兩層混在一起，
+ * 結果是快取永遠寫不進去、開屏永遠不跳（老闆 2026-08-20 回報「設了圖卻都
+ * 沒看到」）。現在 ② 改走同源代理 /api/app-splash?image=1；就算它還是失敗，
+ * 有 ① 就能退回「用網址直接顯示」—— 慢個幾百毫秒，但那段時間系統啟動畫面
+ * 還蓋著，玩家看不到差別。
+ *
  * ── 什麼時候跳（老闆 2026-08-20 定）──
  * 冷啟動，以及離開超過 5 分鐘再回來。換頁、下拉更新一律不跳。
  * 實作上統一成一條規則：**距離上次跳過開屏不到 5 分鐘就不跳**。
@@ -38,9 +50,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { native } from '@/lib/native/bridge';
-import { filterBannersBySchedule } from '@/lib/schedule';
 import { isInternalUrl, toInternalPath } from '@/lib/internalUrl';
 import { openExternal } from '@/lib/native/browser';
 
@@ -60,8 +70,14 @@ const COOLDOWN_MS = 5 * 60 * 1000;
  */
 const MAX_CACHE_BYTES = 3_000_000;
 
-/** 快取的是圖本身（data URL），`src` 記來源網址用來比對後台換圖了沒 */
-type Cached = { src: string; image: string; link: string };
+/**
+ * `src` 是來源網址（一定有，用來比對後台換圖了沒，也是退路的顯示來源），
+ * `image` 是存進手機的 data URL（可能沒有，見檔頭說明）
+ */
+type Cached = { src: string; link: string; image?: string };
+
+/** 走網路載圖時等多久就放棄（放棄＝這次不跳廣告，直接進首頁） */
+const NETWORK_TIMEOUT_MS = 2500;
 
 /**
  * 原生啟動畫面只能收一次。
@@ -83,7 +99,10 @@ function readCache(): Cached | null {
     const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
     const v = JSON.parse(raw) as Cached;
-    return v?.image?.startsWith('data:') ? v : null;
+    if (!v?.src) return null;
+    // 存壞的 data URL 就當作沒有，退回用網址顯示
+    if (v.image && !v.image.startsWith('data:')) return { src: v.src, link: v.link };
+    return v;
   } catch {
     return null;
   }
@@ -98,9 +117,20 @@ function withinCooldown(): boolean {
   }
 }
 
-/** 把圖抓下來轉成 data URL，存起來給**下一次**啟動用 */
-async function cacheImage(src: string, link: string): Promise<void> {
-  const res = await fetch(src, { cache: 'force-cache' });
+function writeCache(v: Cached): void {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(v));
+  } catch {
+    /* 空間不足或無痕模式：放棄快取，不影響這次啟動 */
+  }
+}
+
+/**
+ * 把圖抓下來轉成 data URL，存起來給**下一次**啟動用。
+ * 走同源代理而不是 R2 原網址 —— R2 沒有 CORS，直接 fetch 會被擋。
+ */
+async function cacheImage(v: Cached): Promise<void> {
+  const res = await fetch('/api/app-splash?image=1', { cache: 'no-store' });
   if (!res.ok) return;
   const blob = await res.blob();
   if (blob.size > MAX_CACHE_BYTES * 0.75) return;      // base64 會再脹三分之一
@@ -113,10 +143,21 @@ async function cacheImage(src: string, link: string): Promise<void> {
   });
   if (!dataUrl.startsWith('data:') || dataUrl.length > MAX_CACHE_BYTES) return;
 
+  writeCache({ ...v, image: dataUrl });
+}
+
+/** 載到能畫為止；逾時或載不起來回 false（這次就不跳廣告） */
+async function preload(src: string, timeoutMs: number): Promise<boolean> {
+  const img = new Image();
+  img.src = src;
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ src, image: dataUrl, link } satisfies Cached));
+    await Promise.race([
+      img.decode(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),
+    ]);
+    return true;
   } catch {
-    /* 空間不足或無痕模式：放棄快取，不影響這次啟動 */
+    return false;
   }
 }
 
@@ -154,19 +195,17 @@ export default function AppSplashAd() {
       // 沒快取（第一次安裝）或還在冷卻時間內 → 不跳，交給呼叫端收掉第一層
       if (!cached || withinCooldown()) return false;
 
-      try {
-        /*
-         * 先把圖解碼好再顯示。data URL 解碼是幾毫秒的事，但「解碼完成」是
-         * 唯一能保證下一幀畫得出來的信號 —— 少了它，收掉第一層的瞬間可能
-         * 是一塊白的。
-         */
-        const img = new Image();
-        img.src = cached.image;
-        await img.decode();
-      } catch {
-        return false;
-      }
-      if (!alive) return false;
+      /*
+       * 先把圖解碼好再顯示。「解碼完成」是唯一能保證下一幀畫得出來的信號 ——
+       * 少了它，收掉第一層的瞬間可能是一塊白的。
+       *
+       * 存進手機的 data URL 解碼是幾毫秒的事；退回走網路時就得等下載，
+       * 所以給 2.5 秒上限 —— 網路太慢就放棄這次廣告直接進首頁，
+       * 不能為了一張廣告把玩家鎖在啟動畫面上。
+       */
+      const source = cached.image || cached.src;
+      const ok = await preload(source, cached.image ? 4000 : NETWORK_TIMEOUT_MS);
+      if (!ok || !alive) return false;
 
       try { localStorage.setItem(LAST_SHOWN_KEY, String(Date.now())); } catch { /* 同上 */ }
       setSplash(cached);
@@ -182,41 +221,37 @@ export default function AppSplashAd() {
       return true;
     };
 
-    /** 背景更新：問後台現在該放哪張，把圖存好給下次啟動用 */
+    /** 背景更新：問後台現在該放哪張，把網址與圖存好給下次啟動用 */
     const refreshCache = async () => {
       try {
-        const supabase = createClient();
-        const { data } = await supabase
-          .from('banners')
-          .select('id, image_url, link_url, start_at, end_at, events(start_at, end_at)')
-          .eq('is_active', true)
-          .eq('page', 'app_splash')
-          .order('sort_order', { ascending: true });
+        const res = await fetch('/api/app-splash', { cache: 'no-store' });
+        if (!res.ok) return;
+        const next = (await res.json()) as { src?: string; link?: string } | null;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const live = filterBannersBySchedule((data ?? []) as any[]);
-        const first = live[0] as { image_url?: string; link_url?: string | null } | undefined;
-
-        if (!first?.image_url) {
+        if (!next?.src) {
           // 後台沒有、已下架或過檔期：清快取，下次就不跳（不打斷正在看的這次）
           try { localStorage.removeItem(CACHE_KEY); } catch { /* 無痕模式寫不了 */ }
           return;
         }
 
-        const link = first.link_url || '';
         const cached = readCache();
-        // 圖沒換就只更新連結，省一次下載
-        if (cached?.src === first.image_url) {
-          if (cached.link !== link) {
-            try {
-              localStorage.setItem(CACHE_KEY, JSON.stringify({ ...cached, link } satisfies Cached));
-            } catch { /* 同上 */ }
-          }
-          return;
-        }
-        await cacheImage(first.image_url, link);
+        const sameImage = cached?.src === next.src;
+        const entry: Cached = {
+          src: next.src,
+          link: next.link || '',
+          // 換圖了就把舊的 data URL 丟掉，不然下次會秀到上一張
+          image: sameImage ? cached?.image : undefined,
+        };
+
+        /*
+         * 先把網址寫下去 —— 這一步不需要 CORS，一定成功。
+         * 就算下面存圖失敗，下次啟動也還能用網址把廣告顯示出來。
+         */
+        writeCache(entry);
+
+        if (!entry.image) await cacheImage(entry);
       } catch {
-        /* 查不到就沿用上次快取的那張，開屏廣告不該擋住任何人進站 */
+        /* 問不到就沿用上次快取的那張，開屏廣告不該擋住任何人進站 */
       }
     };
 
@@ -292,7 +327,7 @@ export default function AppSplashAd() {
           走最佳化沒有意義。 */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={splash.image}
+        src={splash.image || splash.src}
         alt=""
         onClick={go}
         className="h-full w-full object-cover"
