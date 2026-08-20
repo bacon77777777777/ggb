@@ -20,10 +20,11 @@
  *      所以要對它們下一個等量的反向位移抵銷掉 —— 視覺上就是釘住不動
  *      （老闆 2026-08-20：「tab 不要跟著被拉下去，這樣體感不好」）。
  *   3. **指示器出現在內容上方那道空隙裡**（老闆 2026-08-20 指定的樣式）：
- *      灰底上一顆**轉蛋球**（主題色上蓋＋白色下蓋的膠囊）＋「下拉刷新頁面」；
- *      持續拉，球像被捏著往下扯 —— 拉長變形；拉過門檻變形彈回、
- *      文字變「放開立即更新」；**放開後球往上拋、落地壓扁回彈幾下到停住**
- *      （老闆的參考動畫），文字「頁面更新中」，動畫收尾才換新頁面。
+ *      灰底上一顆**轉蛋球**（主題色上蓋＋白色下蓋的膠囊）；
+ *      持續拉，球像被捏著往下扯 —— 拉長變形；拉過門檻變形彈回；
+ *      **放開後球往上拋、落地壓扁回彈幾下到停住**（老闆的參考動畫），
+ *      動畫收尾才換新頁面。不配任何文字（老闆 2026-08-20：小灰字移除），
+ *      階段全靠球的變形與震動表達。
  *      起始位置是「所有釘住的東西的最下緣」，動態量出來的 ——
  *      寫死 57px 的話，情報頁那種底下還有一排 tab 的版面就會被蓋住。
  *      空隙鋪一層底色（`stripRef`）：淺色頁鋪灰（body 是白的，轉圈浮在白上
@@ -247,7 +248,6 @@ export default function PwaPullToRefresh() {
   const stripTop = useRef(0);
   const gapTop = useRef(0);
   const dotRef = useRef<HTMLDivElement>(null);
-  const labelRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     if (!isStandaloneMode()) return;
@@ -307,7 +307,6 @@ export default function PwaPullToRefresh() {
         dotRef.current.style.transition = '';
         dotRef.current.style.transform = '';
       }
-      if (labelRef.current) labelRef.current.textContent = '下拉刷新頁面';
       // 位移歸零之後才能清空清單，不然那幾條會停在被抵銷的位置
       const restore = pinned.current;
       pinned.current = [];
@@ -432,7 +431,7 @@ export default function PwaPullToRefresh() {
       const progress = Math.min(dy / THRESHOLD, 1);
 
       setShift(shift, false);
-      if (dotRef.current && labelRef.current) {
+      if (dotRef.current) {
         if (progress < 1) {
           /*
            * 拉的過程：球像被捏著中下緣往下扯 —— 直向拉長、橫向略縮
@@ -443,12 +442,10 @@ export default function PwaPullToRefresh() {
           dotRef.current.style.transition = 'none';
           dotRef.current.style.transform =
             `scaleY(${(1 + progress * 0.5).toFixed(3)}) scaleX(${(1 - progress * 0.18).toFixed(3)})`;
-          labelRef.current.textContent = '下拉刷新頁面';
         } else if (!armed.current) {
           // 過門檻的瞬間：變形帶一點過衝地彈回原形，提示可以放手了
           dotRef.current.style.transition = 'transform .22s cubic-bezier(.34,1.56,.64,1)';
           dotRef.current.style.transform = '';
-          labelRef.current.textContent = '放開立即更新';
         }
       }
 
@@ -478,7 +475,6 @@ export default function PwaPullToRefresh() {
       // 滿格：停在看得見的位置顯示「頁面更新中」，然後刷新
       refreshing.current = true;
       setShift(REST_PULL, true);
-      if (labelRef.current) labelRef.current.textContent = '頁面更新中';
       if (dotRef.current) {
         // 放開：球往上拋 → 落地壓扁 → 回彈幾下到停住（keyframes 在 globals.css）
         dotRef.current.style.transition = 'none';
@@ -545,20 +541,12 @@ export default function PwaPullToRefresh() {
         變形用 transform（origin 在頂端 = 上緣被捏住、下緣被扯的感覺）；
         放開後的拋接動畫在 .ptr-toss。格子高度留出上拋與落地的空間。
       */}
-      <div className="flex flex-col items-center gap-[4px]">
-        <div className="flex h-[26px] items-start justify-center">
-          <div
-            ref={dotRef}
-            className="ptr-ball"
-            style={{ width: 20, height: 20, transformOrigin: 'center top' }}
-          />
-        </div>
-        <span
-          ref={labelRef}
-          className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 whitespace-nowrap leading-none"
-        >
-          下拉刷新頁面
-        </span>
+      <div className="flex h-[26px] items-start justify-center">
+        <div
+          ref={dotRef}
+          className="ptr-ball"
+          style={{ width: 20, height: 20, transformOrigin: 'center top' }}
+        />
       </div>
     </div>
     </>
