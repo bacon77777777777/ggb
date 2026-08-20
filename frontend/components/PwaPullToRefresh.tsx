@@ -87,6 +87,27 @@ function isAtTop(): boolean {
 }
 
 /**
+ * 讓球浮在「被拖的那個東西所在的層」之上，回傳該用的 z-index。
+ *
+ * 會員中心那批覆蓋層是 `fixed inset-0 z-[60]`（我的倉庫、抽獎紀錄、配送訂單、
+ * 修改個人資訊…），另外還有 z-[90] 與 z-[100] 的。球寫死 30 的話會被整片蓋掉，
+ * 那些頁面就只剩震動跟刷新、看不到動畫（老闆 2026-08-20 截圖）。
+ *
+ * 沿著祖先鏈取最大的 z-index 再加一，就不必為每個覆蓋層 hardcode 數字，
+ * 之後有人加新的覆蓋層也不會再踩到。
+ */
+function stackAbove(el: HTMLElement, floor: number): number {
+  let z = floor;
+  let cur: HTMLElement | null = el;
+  while (cur && cur !== document.body && cur !== document.documentElement) {
+    const v = parseInt(window.getComputedStyle(cur).zIndex, 10);
+    if (Number.isFinite(v) && v >= z) z = v + 1;
+    cur = cur.parentElement;
+  }
+  return z;
+}
+
+/**
  * 全站導航列（`<main>` 外面那條）的下緣，沒有就是 0。
  *
  * 為什麼要量而不是寫死 57：導航列在部分頁面是隱藏的，安全區內縮也可能讓它下移。
@@ -423,17 +444,19 @@ export default function PwaPullToRefresh() {
          *     回彈時被內容蓋住，看起來像從版面底下鑽出來再縮回去。
          *     情報頁的分類 tab 也就自然擋在球前面（老闆 2026-08-20 要的）。
          *
-         *   拖內層容器／標記區塊 → 浮上來（zIndex 30）
-         *     這兩種情況 <main> 完全沒動，球沉下去等於被整片內容蓋死 ——
-         *     設定頁、我的倉庫、我的關注、我的優惠券、排行榜就是這樣整個
-         *     看不到動畫，只剩震動跟刷新（老闆 2026-08-20 回報）。
+         *   拖內層容器／標記區塊 → 浮到那一層之上（stackAbove）
+         *     這兩種情況 <main> 完全沒動，球沉下去等於被整片內容蓋死。
+         *     而且不能只給個 30 —— 會員中心那批覆蓋層是 z-[60]／z-[90]／z-[100]，
+         *     30 照樣被蓋掉。要沿祖先鏈量出實際層級再往上疊一層。
          *
          * ⚠️ 不要改成「把球調低、把 tab 調高」那種比大小的做法：拖 <main> 時
          * 它帶著 transform，會開一個新的 stacking context 把 tab 的 z-20 關在
          * 裡面，外面怎麼調都比不到。層級只能靠「沉下去或浮上來」二選一。
          */
         if (wrapRef.current) {
-          wrapRef.current.style.zIndex = marked.length ? '30' : '0';
+          wrapRef.current.style.zIndex = marked.length
+            ? String(stackAbove(marked[0], 30))
+            : '0';
         }
 
         if (marked.length) {

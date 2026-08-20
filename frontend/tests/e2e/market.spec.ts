@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ALL_FLAGS_ON, isFeatureFlagsUrl } from './helpers';
 
 test.describe('Exchange page - offers render with mocked Supabase', () => {
   test.beforeEach(async ({ page }) => {
@@ -31,6 +32,11 @@ test.describe('Exchange page - offers render with mocked Supabase', () => {
         return;
       }
 
+      // 交易所關著的話整頁進不去，下面的斷言全部落空
+      if (isFeatureFlagsUrl(url)) {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(ALL_FLAGS_ON) });
+        return;
+      }
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
     });
   });
@@ -38,7 +44,8 @@ test.describe('Exchange page - offers render with mocked Supabase', () => {
   test('renders mocked exchange offer', async ({ page }) => {
     await page.goto('/exchange');
     await expect(page.getByText('@alice').first()).toBeVisible();
-    await expect(page.getByText('我想要').first()).toBeVisible();
-    await expect(page.getByText('我拿出').first()).toBeVisible();
+    // 文案改過：「我想要／我拿出」→「你拿到／你給出」（站在瀏覽者的角度說話）
+    await expect(page.getByText('你拿到').first()).toBeVisible();
+    await expect(page.getByText('你給出').first()).toBeVisible();
   });
 });

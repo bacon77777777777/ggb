@@ -43,6 +43,9 @@ backend/public/images/item/
 
 # Playwright 產出
 backend/test-results/
+# Playwright 產物（截圖、影片、報告）：每次跑測試都會變，不進版控
+frontend/test-results/
+frontend/playwright-report/
 # 老闆給的廠商實際清單，不進版控
 frontend/public/test/
 

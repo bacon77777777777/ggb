@@ -1,8 +1,9 @@
 /**
  * 商品資訊欄位順序與內容驗證（轉蛋商品）
- *   順序：類別 → 廠商 → 代理商 → 產品編號
+ *   順序：類別 → 廠商 → 代理商 → 條碼
  */
 import { test, expect } from '@playwright/test';
+import { ALL_FLAGS_ON, isFeatureFlagsUrl } from './helpers';
 
 const PRODUCT_ID = 9902;
 
@@ -20,7 +21,7 @@ const mockProduct = {
   product_code: 'BNDAI-2026-001',
   category: '轉蛋',
   is_hot: false,
-  barcode: null,
+  barcode: '4573102661234',
   release_date: null,
   description: null,
   machine_theme: null,
@@ -33,6 +34,25 @@ const prizes = [
   { id: 10, product_id: PRODUCT_ID, name: 'A賞', level: 'A', remaining: 5, total: 10, image_url: null, probability: 0.5, decompose_type: null, decompose_value: null },
   { id: 11, product_id: PRODUCT_ID, name: 'B賞', level: 'B', remaining: 5, total: 10, image_url: null, probability: 0.5, decompose_type: null, decompose_value: null },
 ];
+
+/**
+ * 商品資訊區塊裡的欄位列。
+ *
+ * ⚠️ 從「商品資訊」這個標題往上兩層再往下找，不要用 class 選擇器碰運氣。
+ * 原本寫的是 `.grid .flex span:first-child`，但這個區塊的實際結構是
+ * `divide-y` 而不是 `grid` —— 版面改過而測試沒跟上。那個選擇器會匹配到
+ * 頁面其他地方的元素（品項總覽那些），於是斷言收到 "Received: hidden"，
+ * 看起來像功能壞了，其實是選錯東西（2026-08-20 查 CI 長期紅燈時發現）。
+ *
+ * `getByRole` 只會匹配 accessibility tree 裡的元素，所以手機版／桌機版
+ * 兩套版面中隱藏的那一套自然被排除，不必再自己篩可見性。
+ */
+function infoLabels(page: import('@playwright/test').Page) {
+  return page
+    .getByRole('heading', { name: '商品資訊' })
+    .locator('xpath=../..')
+    .locator('div > div > span:first-child');
+}
 
 test.describe('Product info section', () => {
   test.beforeEach(async ({ page }) => {
@@ -51,6 +71,11 @@ test.describe('Product info section', () => {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(prizes) });
         return;
       }
+      // 沒有這段的話類別會走「預設關閉」，商品頁直接顯示「商品關閉中」
+      if (isFeatureFlagsUrl(url)) {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(ALL_FLAGS_ON) });
+        return;
+      }
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
     });
 
@@ -61,39 +86,41 @@ test.describe('Product info section', () => {
   });
 
   test('shows 類別 as first info field', async ({ page }) => {
-    const labels = page.locator('.grid .flex span:first-child');
+    const labels = infoLabels(page);
     await expect(labels.filter({ hasText: '類別' }).first()).toBeVisible();
     // type=gacha → 顯示「轉蛋」
     await expect(labels.filter({ hasText: '類別' }).first().locator('..').locator('span:last-child')).toBeVisible();
   });
 
   test('shows 廠商 with supplier name', async ({ page }) => {
-    const labels = page.locator('.grid .flex span:first-child');
+    const labels = infoLabels(page);
     await expect(labels.filter({ hasText: '廠商' }).first()).toBeVisible();
     await expect(page.locator('text=萬代南夢宮').first()).toBeVisible();
   });
 
   test('shows 代理商', async ({ page }) => {
-    const labels = page.locator('.grid .flex span:first-child');
+    const labels = infoLabels(page);
     await expect(labels.filter({ hasText: '代理商' }).first()).toBeVisible();
     await expect(page.locator('text=萬代代理商').first()).toBeVisible();
   });
 
-  test('shows 產品編號', async ({ page }) => {
-    const labels = page.locator('.grid .flex span:first-child');
-    await expect(labels.filter({ hasText: '產品編號' }).first()).toBeVisible();
-    await expect(page.locator('text=BNDAI-2026-001').first()).toBeVisible();
+  /* 這一列在改版時從「產品編號」（product_code）換成「條碼」（barcode），
+     測試沒跟著改，於是永遠找不到元素 */
+  test('shows 條碼', async ({ page }) => {
+    const labels = infoLabels(page);
+    await expect(labels.filter({ hasText: '條碼' }).first()).toBeVisible();
+    await expect(page.locator('text=4573102661234').first()).toBeVisible();
   });
 
-  test('info fields appear in correct order: 類別 → 廠商 → 代理商 → 產品編號', async ({ page }) => {
-    const labels = await page.locator('.grid .flex span:first-child').allTextContents();
-    const infoLabels = labels.filter(l => ['類別', '廠商', '代理商', '產品編號'].includes(l.trim()));
-    expect(infoLabels.map(l => l.trim())).toEqual(['類別', '廠商', '代理商', '產品編號']);
+  test('info fields appear in correct order: 類別 → 廠商 → 代理商 → 條碼', async ({ page }) => {
+    const labels = await infoLabels(page).allTextContents();
+    const matched = labels.filter(l => ['類別', '廠商', '代理商', '條碼'].includes(l.trim()));
+    expect(matched.map(l => l.trim())).toEqual(['類別', '廠商', '代理商', '條碼']);
   });
 
   test('does NOT show deprecated fields (上市時間, 稀有度)', async ({ page }) => {
     // 確認舊欄位不在商品資訊 grid 的 label 清單中
-    const labels = await page.locator('.grid .flex span:first-child').allTextContents();
+    const labels = await infoLabels(page).allTextContents();
     const labelTexts = labels.map(l => l.trim());
     expect(labelTexts).not.toContain('上市時間');
     expect(labelTexts).not.toContain('稀有度');
