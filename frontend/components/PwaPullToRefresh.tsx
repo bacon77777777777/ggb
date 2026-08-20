@@ -122,17 +122,35 @@ function pinnedBars(top: number): HTMLElement[] {
 }
 
 /**
- * 空隙的底色：淺色模式淡灰、深色模式深灰，固定值。
+ * 空隙的底色：看「被拖的區塊坐在什麼底上」——往它的祖先找第一個不透明背景。
  *
- * 曾做過「採樣空隙位置的背景色」的版本 —— 情報頁採到輪播圖的黑，整條空隙
- * 跟著變黑（老闆 2026-08-20 回報「黑底應該要是淡灰色」）。空隙的底色屬於
- * 「框」，該跟著全站主題走，不該跟著剛好排在頁面頂端的內容走。
- * 深色版面的頁（排行榜）用 data-ptr-content 只拖內容，自己的深色背景不動、
- * 蓋在這條上面，所以也不需要為它們特判。
+ * 底夠白（一般頁面）→ 鋪淡灰 `#e8e8e8`（#f5f5f5 在白 tab 旁看起來就是另一塊白）；
+ * 底本來就深（排行榜的 #232429）→ 沿用那個深色，鋪灰會變成一條突兀的亮帶。
+ *
+ * ⚠️ 不可用 elementFromPoint 對「空隙位置的內容」採樣 —— 那會採到剛好排在
+ * 頁面頂端的內容（情報頁採到輪播圖的黑，整條空隙跟著變黑）。
+ * 底色屬於「框」，跟頁面的底走，不跟內容走。
  */
-function stripColor(): string {
-  // #f5f5f5 在白色 tab 旁邊看起來就是另一塊白，要更灰一點才讀得出是「底」
-  return document.documentElement.classList.contains('dark') ? '#171717' : '#e8e8e8';
+function stripColor(from: HTMLElement | null): string {
+  const fallback = document.documentElement.classList.contains('dark') ? '#171717' : '#e8e8e8';
+  let el = from?.parentElement ?? null;
+  while (el && el !== document.documentElement) {
+    const bg = window.getComputedStyle(el).backgroundColor;
+    const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(bg);
+    if (m && (m[4] === undefined || parseFloat(m[4]) > 0.5)) {
+      const luma = (0.299 * Number(m[1]) + 0.587 * Number(m[2]) + 0.114 * Number(m[3])) / 255;
+      return luma > 0.8 ? fallback : bg;
+    }
+    el = el.parentElement;
+  }
+  return fallback;
+}
+
+/** 元素身上的縮放倍率（排行榜畫布是 scale() 過的） */
+function scaleOf(el: HTMLElement): number {
+  const h = el.offsetHeight;
+  if (!h) return 1;
+  return el.getBoundingClientRect().height / h || 1;
 }
 
 
@@ -163,8 +181,9 @@ export default function PwaPullToRefresh() {
   const refreshing = useRef(false);
   /** 這一趟要「定住」的 sticky 列，連同原本的 inline transform（結束要還原） */
   const pinned = useRef<{ el: HTMLElement; transform: string }[]>([]);
-  /** 這一趟實際被拖的元素：預設 <main>，頁面下了 data-ptr-content 就只拖那一塊 */
-  const dragEl = useRef<HTMLElement | null>(null);
+  /** 這一趟實際被拖的元素們：預設 [<main>]；頁面下了 data-ptr-content 就只拖那幾塊。
+      scale：縮放畫布（排行榜）裡的元素，位移會被父層 scale() 放大，要先除回去 */
+  const dragEls = useRef<{ el: HTMLElement; scale: number }[]>([]);
   const wrapRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
   /** 空隙底色帶的頂端（= 導航列下緣），高度蓋到 gapTop + 位移量 */
@@ -180,12 +199,11 @@ export default function PwaPullToRefresh() {
     const setShift = (px: number, animate: boolean) => {
       const wrap = wrapRef.current;
       const t = animate ? 'transform .28s cubic-bezier(.22,1,.36,1)' : 'none';
-      const content = dragEl.current;
-      if (content) {
-        content.style.transition = t;
-        content.style.transform = px ? `translate3d(0, ${px}px, 0)` : '';
-        content.style.willChange = px ? 'transform' : '';
-      }
+      dragEls.current.forEach(({ el, scale }) => {
+        el.style.transition = t;
+        el.style.transform = px ? `translate3d(0, ${px / scale}px, 0)` : '';
+        el.style.willChange = px ? 'transform' : '';
+      });
       /*
        * 釘在頂端的 sticky 列：下一個等量的反向位移，抵銷掉 `<main>` 的位移。
        * 它們是 `<main>` 的子孫，會繼承那個 transform；不抵銷的話 tab 會跟著
@@ -272,29 +290,47 @@ export default function PwaPullToRefresh() {
          * <main>，把已貼頂的 sticky 列反向抵銷。
          */
         const main = document.querySelector('main') as HTMLElement | null;
-        const marked = main?.querySelector<HTMLElement>('[data-ptr-content]') ?? null;
-        dragEl.current = marked ?? main;
+        const marked = main ? Array.from(main.querySelectorAll<HTMLElement>('[data-ptr-content]')) : [];
 
-        if (marked) {
+        if (marked.length) {
+          // 只拖被標記的區塊：其餘（tab、背景、返回鈕）原地不動，不需要任何抵銷。
+          // 空隙開在被拖區塊的最上緣；版面特殊（排行榜的榜單 grid 起點其實在
+          // 畫布最上緣，tab 都是絕對定位不佔流）可另下 data-ptr-gap 指定
+          // 「空隙從這個元素的上緣開」。
+          dragEls.current = marked.map((el) => ({ el, scale: scaleOf(el) }));
           pinned.current = [];
-          gapTop.current = Math.max(0, marked.getBoundingClientRect().top);
-          stripTop.current = gapTop.current;
+          const gapEl = main?.querySelector<HTMLElement>('[data-ptr-gap]') ?? null;
+          gapTop.current = Math.max(
+            0,
+            gapEl
+              ? gapEl.getBoundingClientRect().top
+              : Math.min(...marked.map((el) => el.getBoundingClientRect().top)),
+          );
         } else {
+          dragEls.current = main ? [{ el: main, scale: 1 }] : [];
           const top = navBottom();
           pinned.current = pinnedBars(top).map((el) => ({
             el,
             transform: el.style.transform || '',
           }));
-          gapTop.current = pinned.current.reduce(
-            (acc, { el }) => Math.max(acc, el.getBoundingClientRect().bottom),
-            top,
-          );
-          stripTop.current = top;
+          /*
+           * 空隙從「不透明的頂欄」下緣開始。透明的浮動鈕（文章內頁、排行榜的
+           * 返回鈕：pointer-events-none 的整寬 wrapper，背景全透明）雖然也要
+           * 定住，但它是「浮在內容上」不是「壓著內容的欄」—— 拿它的下緣當
+           * 空隙起點，轉圈會被推到空隙外面，看起來就是沒有轉圈
+           * （老闆 2026-08-20：「文章內頁下拉缺失圖標」）。
+           */
+          gapTop.current = pinned.current.reduce((acc, { el }) => {
+            const bg = window.getComputedStyle(el).backgroundColor;
+            const transparent = bg === 'transparent' || /rgba\(.+,\s*0\)$/.test(bg);
+            return transparent ? acc : Math.max(acc, el.getBoundingClientRect().bottom);
+          }, top);
         }
+        stripTop.current = marked.length ? gapTop.current : navBottom();
         if (wrapRef.current) wrapRef.current.style.top = `${gapTop.current}px`;
         if (stripRef.current) {
           stripRef.current.style.top = `${stripTop.current}px`;
-          stripRef.current.style.background = stripColor();
+          stripRef.current.style.background = stripColor(dragEls.current[0]?.el ?? null);
         }
       }
 
@@ -351,11 +387,11 @@ export default function PwaPullToRefresh() {
       document.removeEventListener('touchstart', onStart);
       document.removeEventListener('touchmove', onMove);
       document.removeEventListener('touchend', onEnd);
-      if (dragEl.current) {
-        dragEl.current.style.transform = '';
-        dragEl.current.style.transition = '';
-        dragEl.current.style.willChange = '';
-      }
+      dragEls.current.forEach(({ el }) => {
+        el.style.transform = '';
+        el.style.transition = '';
+        el.style.willChange = '';
+      });
       pinned.current.forEach(({ el, transform }) => {
         el.style.transform = transform;
         el.style.transition = '';

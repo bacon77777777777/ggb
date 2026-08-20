@@ -316,6 +316,10 @@ export default function NewsPage() {
           </Tabs>
         </div>
 
+        {/* data-ptr-content：下拉更新只拖這一塊。原本拖整個 <main> 再反向抵銷
+            sticky tab，tab 空出來的位置會露出頁面的白底（老闆截圖的「白色塊」）；
+            改成 tab 根本不在拖曳範圍裡，就沒有洞可以露 */}
+        <div data-ptr-content>
         {isLoading ? <LoadingSkeleton /> : (
           <div>
             {carousel.length > 0 && <Carousel items={carousel} />}
@@ -330,6 +334,7 @@ export default function NewsPage() {
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* 電腦端暫不開放 */}

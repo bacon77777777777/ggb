@@ -439,7 +439,9 @@ type RankingTimeTabsProps = {
 
 export function RankingTimeTabs({ activeTab, onTabChange }: RankingTimeTabsProps) {
   return (
-    <div className="absolute z-10 bg-[rgba(0,0,0,0.2)] left-[200px] rounded-[78.125px] top-[114.06px]" data-name="tabs">
+    /* data-ptr-content：下拉更新時這顆膠囊跟著內容一起被拖（老闆 2026-08-20：
+       「日榜週榜要往下」；上面的賞金狂人／轉蛋魔人才是固定的框） */
+    <div data-ptr-content data-ptr-gap className="absolute z-10 bg-[rgba(0,0,0,0.2)] left-[200px] rounded-[78.125px] top-[114.06px]" data-name="tabs">
       <div className="content-stretch flex items-center justify-center overflow-clip relative rounded-[inherit]">
         <div 
           className="h-[53.125px] relative shrink-0 w-[175px] cursor-pointer" 
