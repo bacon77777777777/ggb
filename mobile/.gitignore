@@ -15,3 +15,7 @@ android/app/google-services.json
 *.p12
 *.mobileprovision
 twa/android.keystore
+
+# Xcode／SPM 的本機暫存（每台電腦不同，不進版控）
+.swiftpm/
+plugins/*/.swiftpm/

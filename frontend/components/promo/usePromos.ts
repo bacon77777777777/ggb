@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { scheduleState } from '@/lib/schedule';
 import { isHiddenToday } from '@/lib/promoDismiss';
+import { isJustRefreshed } from '@/lib/contentRefresh';
 import { useAuth } from '@/contexts/AuthContext';
 import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns';
 
@@ -72,6 +73,18 @@ export function usePromos(placement: string) {
   useEffect(() => {
     // 等登入狀態確定再查，否則會先用「未登入」判一次、登入後又閃一次
     if (isAuthLoading) return;
+
+    /*
+     * 下拉更新造成的重掛不算「進首頁」。
+     *
+     * 刷新是玩家要看新內容，不是要再看一次公告；每刷一次跳一次會讓人不敢刷
+     * （老闆 2026-08-20）。導航進來仍然照跳 —— 這裡擋的只有刷新那一次。
+     */
+    if (isJustRefreshed()) {
+      setIsLoaded(true);
+      return;
+    }
+
     let cancelled = false;
 
     const load = async () => {

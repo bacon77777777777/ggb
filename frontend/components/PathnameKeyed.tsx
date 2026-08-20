@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { markContentRefresh } from '@/lib/contentRefresh';
 
 export default function PathnameKeyed({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -31,6 +32,9 @@ export default function PathnameKeyed({ children }: { children: React.ReactNode 
      * router.refresh() 順帶把 server component 的部分也換新。
      */
     const refreshHandler = () => {
+      // 先標記再重掛：底下的頁面元件要能分辨「這是刷新，不是玩家剛進來」，
+      // 首頁彈窗與開屏才不會每刷一次就跳一次
+      markContentRefresh();
       setVersion((v) => v + 1);
       try { router.refresh(); } catch { /* no-op */ }
     };

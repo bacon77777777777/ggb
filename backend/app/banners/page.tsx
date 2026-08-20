@@ -243,6 +243,8 @@ export default function BannersPage() {
         uploadForm.append('file', file)
         uploadForm.append('bucket', 'banners')
         uploadForm.append('path', fileName)
+        // 開屏是直式滿版，壓縮尺寸不能吃 banners 的 1200x400（會糊）
+        if (formData.page === 'app_splash') uploadForm.append('preset', 'app_splash')
 
         const uploadRes = await fetch('/api/admin/upload', {
           method: 'POST',
@@ -620,8 +622,10 @@ export default function BannersPage() {
               {formData.page === 'app_splash' && (
                 <p className="mt-1 text-xs text-neutral-400">
                   玩家開 App 時蓋滿整個畫面、停留 3 秒（右上角有倒數可跳過）。
-                  圖請用直式滿版（建議 1080×1920），會裁切填滿；
+                  圖請用直式滿版（建議 1290×2796，這是最大機型的實體像素），會裁切填滿；
                   同時有多張時只顯示排序最前面那一張。網頁版看不到這張。
+                  換圖後玩家要下次開 App 才會看到新的（開屏圖會先存在手機裡，
+                  才能一開 App 就秀出來不用等網路）。
                 </p>
               )}
             </div>

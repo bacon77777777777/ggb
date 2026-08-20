@@ -36,7 +36,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ publicUrl })
     }
 
-    const compressed = await compressToWebP(buf, bucket)
+    /*
+     * 壓縮參數預設看 bucket，但可以用 preset 覆蓋 —— 存放位置與壓縮尺寸是
+     * 兩件事。App 開屏圖就是這種：檔案存在 banners/ 底下（同一個後台頁管理），
+     * 尺寸卻要用直式滿版的 app_splash，不能吃 banners 的 1200x400。
+     */
+    const preset = String(form.get('preset') || '') || bucket
+    const compressed = await compressToWebP(buf, preset)
     const noExt = filePath.replace(/\.[^.]+$/, '')
     const key = `${bucket}/${noExt}.webp`
     const publicUrl = await r2Upload(key, compressed, 'image/webp')

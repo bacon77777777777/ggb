@@ -84,6 +84,28 @@ const config: CapacitorConfig = {
     LineLogin: {
       channelId: '2011007121',
     },
+    /*
+     * 系統啟動畫面（第一層）。
+     *
+     * `launchAutoHide: false` 是整套開屏的關鍵 —— 預設行為是「App 一啟動完
+     * 就自己收掉」，但那時 webview 還在載網頁，玩家會看到白屏 → 首頁 →
+     * 才被開屏廣告蓋住（老闆 2026-08-20 回報的「先顯示首頁，過一兩秒才蓋圖」）。
+     *
+     * 改成不自動收之後，改由網頁決定什麼時候收：
+     *   要放廣告 → 廣告確定畫上去了才 hide()，兩層在同一幀交接，首頁不會露臉
+     *   不放廣告 → 立刻 hide()，直接看到首頁
+     * 見 frontend/components/native/AppSplashAd.tsx。
+     *
+     * ⚠️ 沒有人呼叫 hide() 的話它會一直蓋著，所以斷網／網頁掛掉時要有保險 ——
+     * 保險寫在 ios/App/App/AppDelegate.swift（最長 8 秒一定收）。
+     */
+    SplashScreen: {
+      launchAutoHide: false,
+      backgroundColor: '#ffffff',
+      showSpinner: false,
+      // 淡出交給網頁那層做，原生這裡直接切掉才不會兩段動畫疊在一起
+      launchFadeOutDuration: 0,
+    },
     StatusBar: {
       // 狀態列不覆蓋 webview —— 配合上面的 contentInset，
       // 網頁不必處理瀏海／動態島的內縮
