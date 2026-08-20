@@ -410,22 +410,50 @@ img {
 }
 
 
-/* 下拉更新：圓點變形彈回後換成的旋轉圖標（見 components/PwaPullToRefresh.tsx）。
-   inline style 寫不了 keyframes，所以放這裡。
-   實心圓點 → 空心圓環（頂端缺口色深）+ 旋轉，就是通用的載入轉圈。 */
-@keyframes ptr-rotate {
-  to { transform: rotate(360deg); }
+/* 下拉更新：轉蛋球（見 components/PwaPullToRefresh.tsx）。
+   主題色上蓋 + 細縫線 + 白色下蓋，內陰影收個立體感。 */
+.ptr-ball {
+  border-radius: 50%;
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--primary)) 0%,
+    rgb(var(--primary)) 47%,
+    rgba(0, 0, 0, 0.12) 47%,
+    rgba(0, 0, 0, 0.12) 53%,
+    #ffffff 53%,
+    #ffffff 100%
+  );
+  box-shadow: inset -2px -3px 4px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.15);
 }
-.ptr-dot.ptr-spinning {
-  background: transparent !important;
-  border: 2px solid rgba(0, 0, 0, 0.14);
-  border-top-color: #737373;
-  animation: ptr-rotate 0.7s linear infinite;
+.dark .ptr-ball {
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--primary)) 0%,
+    rgb(var(--primary)) 47%,
+    rgba(0, 0, 0, 0.3) 47%,
+    rgba(0, 0, 0, 0.3) 53%,
+    #d4d4d4 53%,
+    #d4d4d4 100%
+  );
 }
-.dark .ptr-dot.ptr-spinning {
-  border-color: rgba(255, 255, 255, 0.16);
-  border-top-color: #a3a3a3;
+
+/* 放開後：往上拋 → 落地壓扁 → 回彈幾下到停住（老闆的參考動畫）。
+   「地面」= 格子底（+6px）；落地格帶 squash、離地格恢復圓形。 */
+@keyframes ptr-toss {
+  0%   { transform: translateY(0); }
+  28%  { transform: translateY(-30px); }
+  46%  { transform: translateY(6px) scaleY(0.78) scaleX(1.18); }
+  54%  { transform: translateY(2px) scaleY(1); }
+  68%  { transform: translateY(-12px); }
+  80%  { transform: translateY(6px) scaleY(0.88) scaleX(1.1); }
+  86%  { transform: translateY(3px) scaleY(1); }
+  93%  { transform: translateY(-4px); }
+  100% { transform: translateY(6px); }
+}
+.ptr-ball.ptr-toss {
+  transform-origin: center bottom !important;
+  animation: ptr-toss 1s cubic-bezier(0.3, 0.2, 0.4, 1) forwards;
 }
 @media (prefers-reduced-motion: reduce) {
-  .ptr-dot.ptr-spinning { animation: none; }
+  .ptr-ball.ptr-toss { animation: none; }
 }

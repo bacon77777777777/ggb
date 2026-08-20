@@ -20,9 +20,10 @@
  *      所以要對它們下一個等量的反向位移抵銷掉 —— 視覺上就是釘住不動
  *      （老闆 2026-08-20：「tab 不要跟著被拉下去，這樣體感不好」）。
  *   3. **指示器出現在內容上方那道空隙裡**（老闆 2026-08-20 指定的樣式）：
- *      灰底上一顆深灰**圓點**＋「下拉刷新頁面」；持續拉，圓點像被捏著
- *      往下扯 —— 拉長變形（水滴感）；拉過門檻（或放開）變形**彈回**原形、
- *      接著換成**旋轉圖標**，文字依階段變「放開立即更新」→「頁面更新中」。
+ *      灰底上一顆**轉蛋球**（主題色上蓋＋白色下蓋的膠囊）＋「下拉刷新頁面」；
+ *      持續拉，球像被捏著往下扯 —— 拉長變形；拉過門檻變形彈回、
+ *      文字變「放開立即更新」；**放開後球往上拋、落地壓扁回彈幾下到停住**
+ *      （老闆的參考動畫），文字「頁面更新中」，動畫收尾才換新頁面。
  *      起始位置是「所有釘住的東西的最下緣」，動態量出來的 ——
  *      寫死 57px 的話，情報頁那種底下還有一排 tab 的版面就會被蓋住。
  *      空隙鋪一層底色（`stripRef`）：淺色頁鋪灰（body 是白的，轉圈浮在白上
@@ -302,10 +303,9 @@ export default function PwaPullToRefresh() {
       stopIdx.current = 0;
       setShift(0, animate);
       if (dotRef.current) {
-        dotRef.current.classList.remove('ptr-spinning');
+        dotRef.current.classList.remove('ptr-toss');
         dotRef.current.style.transition = '';
-        dotRef.current.style.height = '';
-        dotRef.current.style.width = '';
+        dotRef.current.style.transform = '';
       }
       if (labelRef.current) labelRef.current.textContent = '下拉刷新頁面';
       // 位移歸零之後才能清空清單，不然那幾條會停在被抵銷的位置
@@ -435,25 +435,19 @@ export default function PwaPullToRefresh() {
       if (dotRef.current && labelRef.current) {
         if (progress < 1) {
           /*
-           * 拉的過程：圓點像被捏著中下緣往下扯 —— 高度隨拉動拉長、寬度略縮
-           *（水滴被拉的變形感，老闆指定）。跟著手指走的階段不能有 transition，
-           * 不然會慢半拍。
+           * 拉的過程：球像被捏著中下緣往下扯 —— 直向拉長、橫向略縮
+           *（水滴被拉的變形感，老闆指定）。用 transform 不動寬高：
+           * 球身是上下蓋的漸層，改高度會把蓋子比例改掉。
+           * 跟著手指走的階段不能有 transition，不然會慢半拍。
            */
-          dotRef.current.classList.remove('ptr-spinning');
           dotRef.current.style.transition = 'none';
-          dotRef.current.style.height = `${(11 + progress * 15).toFixed(1)}px`;
-          dotRef.current.style.width = `${(11 - progress * 2.5).toFixed(1)}px`;
+          dotRef.current.style.transform =
+            `scaleY(${(1 + progress * 0.5).toFixed(3)}) scaleX(${(1 - progress * 0.18).toFixed(3)})`;
           labelRef.current.textContent = '下拉刷新頁面';
         } else if (!armed.current) {
-          // 過門檻的瞬間：變形帶一點過衝地彈回原形，接著換成旋轉圖標
-          const dot = dotRef.current;
-          dot.style.transition =
-            'height .22s cubic-bezier(.34,1.56,.64,1), width .22s cubic-bezier(.34,1.56,.64,1)';
-          dot.style.height = '11px';
-          dot.style.width = '11px';
-          window.setTimeout(() => {
-            if (armed.current && dot.isConnected) dot.classList.add('ptr-spinning');
-          }, 220);
+          // 過門檻的瞬間：變形帶一點過衝地彈回原形，提示可以放手了
+          dotRef.current.style.transition = 'transform .22s cubic-bezier(.34,1.56,.64,1)';
+          dotRef.current.style.transform = '';
           labelRef.current.textContent = '放開立即更新';
         }
       }
@@ -485,8 +479,14 @@ export default function PwaPullToRefresh() {
       refreshing.current = true;
       setShift(REST_PULL, true);
       if (labelRef.current) labelRef.current.textContent = '頁面更新中';
-      dotRef.current?.classList.add('ptr-spinning'); // 已在轉就維持
-      window.setTimeout(() => window.location.reload(), 360);
+      if (dotRef.current) {
+        // 放開：球往上拋 → 落地壓扁 → 回彈幾下到停住（keyframes 在 globals.css）
+        dotRef.current.style.transition = 'none';
+        dotRef.current.style.transform = '';
+        dotRef.current.classList.add('ptr-toss');
+      }
+      // 等球落定再換頁 —— 動畫 1s，多留一拍
+      window.setTimeout(() => window.location.reload(), 1100);
     };
 
     document.addEventListener('touchstart', onStart, { passive: true });
@@ -540,16 +540,17 @@ export default function PwaPullToRefresh() {
       }}
     >
       {/*
-        深灰圓點＋文字（老闆指定的樣式）。灰底由 stripRef 那條底色帶負責。
-        圓點固定在 20px 高的格子頂端往下長 —— 視覺上就是「上緣被捏住、
-        下緣被拉走」的水滴變形；彈回與旋轉樣式在 globals.css 的 .ptr-spinning。
+        轉蛋球＋文字（老闆指定的樣式）。灰底由 stripRef 那條底色帶負責。
+        球是純 CSS：主題色上蓋＋細縫線＋白色下蓋（.ptr-ball，globals.css），
+        變形用 transform（origin 在頂端 = 上緣被捏住、下緣被扯的感覺）；
+        放開後的拋接動畫在 .ptr-toss。格子高度留出上拋與落地的空間。
       */}
       <div className="flex flex-col items-center gap-[4px]">
-        <div className="flex h-[20px] items-start justify-center">
+        <div className="flex h-[26px] items-start justify-center">
           <div
             ref={dotRef}
-            className="ptr-dot rounded-full bg-neutral-400 dark:bg-neutral-500"
-            style={{ width: 11, height: 11 }}
+            className="ptr-ball"
+            style={{ width: 20, height: 20, transformOrigin: 'center top' }}
           />
         </div>
         <span
