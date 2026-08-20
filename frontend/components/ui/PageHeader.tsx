@@ -52,6 +52,11 @@ export default function PageHeader({
 }) {
   return (
     <div
+      /* 下拉刷新要靠這個標記找到「頁面自己的頂欄」，把空隙開在它下面。
+         這一列不是 sticky（它在 flex 版面裡佔位），所以 PwaPullToRefresh
+         的 navBottom() 光看 position 認不出來 —— 認不出來就會把轉蛋球畫到
+         畫面最頂端，被這條白底蓋掉大半（老闆 2026-08-20 登入頁截圖）。 */
+      data-page-header=""
       className={cn(
         'bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0',
         className,

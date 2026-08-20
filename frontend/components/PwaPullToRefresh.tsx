@@ -93,12 +93,28 @@ function isAtTop(): boolean {
  */
 function navBottom(): number {
   let bottom = 0;
+  const consider = (el: Element) => {
+    const r = el.getBoundingClientRect();
+    // 貼齊畫面頂端、而且真的畫得出來（隱藏的導航列 rect 全是 0）
+    if (r.height > 0 && r.top <= 1 && r.bottom > bottom) bottom = r.bottom;
+  };
+
   document.querySelectorAll('nav, header').forEach((el) => {
     const pos = window.getComputedStyle(el).position;
     if (pos !== 'sticky' && pos !== 'fixed') return;
-    const r = el.getBoundingClientRect();
-    if (r.top <= 1 && r.bottom > bottom) bottom = r.bottom;
+    consider(el);
   });
+
+  /*
+   * 頁面自己的頂欄（components/ui/PageHeader）。
+   *
+   * 它是 flex 版面裡的一列、**不是 sticky**，所以上面那輪光看 position 抓不到。
+   * 但它在畫面上的角色就是固定頂欄，空隙必須開在它下面 —— 少了這段，
+   * 全站導航列隱藏的頁面（登入頁那類）會量出 0，轉蛋球被畫到畫面最頂端，
+   * 讓這條白底蓋掉大半，只露出一點點（老闆 2026-08-20 截圖）。
+   */
+  document.querySelectorAll('[data-page-header]').forEach(consider);
+
   return bottom;
 }
 
