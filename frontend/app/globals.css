@@ -410,16 +410,22 @@ img {
 }
 
 
-/* 下拉更新：「頁面更新中」時箭頭的輕微浮動（見 components/PwaPullToRefresh.tsx）。
-   inline style 寫不了 keyframes，所以放這裡。箭頭此時已 rotate(180deg)（朝上），
-   keyframes 會蓋掉 inline transform，所以浮動的每一格都要帶著旋轉。 */
-@keyframes ptr-float {
-  0%, 100% { transform: rotate(180deg) translateY(0); }
-  50% { transform: rotate(180deg) translateY(3px); }
+/* 下拉更新：圓點變形彈回後換成的旋轉圖標（見 components/PwaPullToRefresh.tsx）。
+   inline style 寫不了 keyframes，所以放這裡。
+   實心圓點 → 空心圓環（頂端缺口色深）+ 旋轉，就是通用的載入轉圈。 */
+@keyframes ptr-rotate {
+  to { transform: rotate(360deg); }
 }
-.ptr-float {
-  animation: ptr-float .9s ease-in-out infinite;
+.ptr-dot.ptr-spinning {
+  background: transparent !important;
+  border: 2px solid rgba(0, 0, 0, 0.14);
+  border-top-color: #737373;
+  animation: ptr-rotate 0.7s linear infinite;
+}
+.dark .ptr-dot.ptr-spinning {
+  border-color: rgba(255, 255, 255, 0.16);
+  border-top-color: #a3a3a3;
 }
 @media (prefers-reduced-motion: reduce) {
-  .ptr-float { animation: none; }
+  .ptr-dot.ptr-spinning { animation: none; }
 }

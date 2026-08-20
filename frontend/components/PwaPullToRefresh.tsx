@@ -20,9 +20,9 @@
  *      所以要對它們下一個等量的反向位移抵銷掉 —— 視覺上就是釘住不動
  *      （老闆 2026-08-20：「tab 不要跟著被拉下去，這樣體感不好」）。
  *   3. **指示器出現在內容上方那道空隙裡**（老闆 2026-08-20 指定的樣式）：
- *      灰底上一支深灰**向下箭頭**＋「下拉刷新頁面」；持續拉箭頭會被拉長；
- *      拉過門檻箭頭彈回並翻成**朝上**、文字變「放開立即更新」；
- *      放手後文字變「頁面更新中」、箭頭輕微浮動直到刷新完成。
+ *      灰底上一顆深灰**圓點**＋「下拉刷新頁面」；持續拉，圓點像被捏著
+ *      往下扯 —— 拉長變形（水滴感）；拉過門檻（或放開）變形**彈回**原形、
+ *      接著換成**旋轉圖標**，文字依階段變「放開立即更新」→「頁面更新中」。
  *      起始位置是「所有釘住的東西的最下緣」，動態量出來的 ——
  *      寫死 57px 的話，情報頁那種底下還有一排 tab 的版面就會被蓋住。
  *      空隙鋪一層底色（`stripRef`）：淺色頁鋪灰（body 是白的，轉圈浮在白上
@@ -245,7 +245,7 @@ export default function PwaPullToRefresh() {
   /** 空隙底色帶的頂端（= 導航列下緣），高度蓋到 gapTop + 位移量 */
   const stripTop = useRef(0);
   const gapTop = useRef(0);
-  const arrowRef = useRef<SVGSVGElement>(null);
+  const dotRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
@@ -301,9 +301,11 @@ export default function PwaPullToRefresh() {
       armed.current = false;
       stopIdx.current = 0;
       setShift(0, animate);
-      if (arrowRef.current) {
-        arrowRef.current.style.transform = '';
-        arrowRef.current.classList.remove('ptr-float');
+      if (dotRef.current) {
+        dotRef.current.classList.remove('ptr-spinning');
+        dotRef.current.style.transition = '';
+        dotRef.current.style.height = '';
+        dotRef.current.style.width = '';
       }
       if (labelRef.current) labelRef.current.textContent = '下拉刷新頁面';
       // 位移歸零之後才能清空清單，不然那幾條會停在被抵銷的位置
@@ -430,15 +432,28 @@ export default function PwaPullToRefresh() {
       const progress = Math.min(dy / THRESHOLD, 1);
 
       setShift(shift, false);
-      if (arrowRef.current && labelRef.current) {
+      if (dotRef.current && labelRef.current) {
         if (progress < 1) {
-          // 拉的過程：箭頭朝下、隨拉動被「拉長」（老闆指定的手感）
-          arrowRef.current.style.transition = 'transform .15s';
-          arrowRef.current.style.transform = `scaleY(${(1 + progress * 0.45).toFixed(3)})`;
+          /*
+           * 拉的過程：圓點像被捏著中下緣往下扯 —— 高度隨拉動拉長、寬度略縮
+           *（水滴被拉的變形感，老闆指定）。跟著手指走的階段不能有 transition，
+           * 不然會慢半拍。
+           */
+          dotRef.current.classList.remove('ptr-spinning');
+          dotRef.current.style.transition = 'none';
+          dotRef.current.style.height = `${(11 + progress * 15).toFixed(1)}px`;
+          dotRef.current.style.width = `${(11 - progress * 2.5).toFixed(1)}px`;
           labelRef.current.textContent = '下拉刷新頁面';
-        } else {
-          // 過門檻：箭頭彈回並翻成朝上 —— 給玩家「可以放手了」的訊號
-          arrowRef.current.style.transform = 'rotate(180deg)';
+        } else if (!armed.current) {
+          // 過門檻的瞬間：變形帶一點過衝地彈回原形，接著換成旋轉圖標
+          const dot = dotRef.current;
+          dot.style.transition =
+            'height .22s cubic-bezier(.34,1.56,.64,1), width .22s cubic-bezier(.34,1.56,.64,1)';
+          dot.style.height = '11px';
+          dot.style.width = '11px';
+          window.setTimeout(() => {
+            if (armed.current && dot.isConnected) dot.classList.add('ptr-spinning');
+          }, 220);
           labelRef.current.textContent = '放開立即更新';
         }
       }
@@ -470,10 +485,7 @@ export default function PwaPullToRefresh() {
       refreshing.current = true;
       setShift(REST_PULL, true);
       if (labelRef.current) labelRef.current.textContent = '頁面更新中';
-      if (arrowRef.current) {
-        arrowRef.current.style.transform = 'rotate(180deg)';
-        arrowRef.current.classList.add('ptr-float'); // 輕微浮動，表示還活著
-      }
+      dotRef.current?.classList.add('ptr-spinning'); // 已在轉就維持
       window.setTimeout(() => window.location.reload(), 360);
     };
 
@@ -528,19 +540,18 @@ export default function PwaPullToRefresh() {
       }}
     >
       {/*
-        深灰向下箭頭＋文字（老闆指定的樣式）。灰底由 stripRef 那條底色帶負責。
-        箭頭用 SVG 畫而不是文字符號：「↓」不在中文字型的 unicode-range 內，
-        部分 WebKit 會畫成豆腐方塊。
+        深灰圓點＋文字（老闆指定的樣式）。灰底由 stripRef 那條底色帶負責。
+        圓點固定在 20px 高的格子頂端往下長 —— 視覺上就是「上緣被捏住、
+        下緣被拉走」的水滴變形；彈回與旋轉樣式在 globals.css 的 .ptr-spinning。
       */}
-      <div className="flex flex-col items-center gap-[3px]">
-        <svg
-          ref={arrowRef}
-          width="16" height="20" viewBox="0 0 16 20" fill="none"
-          className="text-neutral-500 dark:text-neutral-400"
-          style={{ display: 'block', transformOrigin: 'center', transition: 'transform .15s' }}
-        >
-          <path d="M8 1v14M2.5 10.5 8 16l5.5-5.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+      <div className="flex flex-col items-center gap-[4px]">
+        <div className="flex h-[20px] items-start justify-center">
+          <div
+            ref={dotRef}
+            className="ptr-dot rounded-full bg-neutral-400 dark:bg-neutral-500"
+            style={{ width: 11, height: 11 }}
+          />
+        </div>
         <span
           ref={labelRef}
           className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 whitespace-nowrap leading-none"
