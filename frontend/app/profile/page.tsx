@@ -2333,12 +2333,12 @@ function ProfileContent() {
                       setActiveWarehouseTab('all');
                       setActiveWarehouseCategory('all');
                     }
-                  }} className="text-neutral-900 dark:text-white -ml-2 p-2">
+                  }} className="flex items-center gap-3 text-neutral-900 dark:text-white -ml-2 p-2 active:opacity-70 transition-opacity">
                     <ChevronLeft className="w-6 h-6" />
-                  </button>
                   <span className="text-[18px] font-black text-neutral-900 dark:text-white">
                     {activeWarehouseTab === 'all' ? '我的倉庫' : '分解紀錄'}
                   </span>
+                  </button>
                 </div>
                 {activeWarehouseTab === 'all' && (
                   <div className="flex items-center gap-3">
@@ -3726,12 +3726,12 @@ function ProfileContent() {
             <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
-                  <button onClick={() => activeMarketTab === 'listing' ? router.push('/profile', { scroll: false }) : setActiveMarketTab('listing')} className="text-neutral-900 dark:text-white -ml-2 p-2">
+                  <button onClick={() => activeMarketTab === 'listing' ? router.push('/profile', { scroll: false }) : setActiveMarketTab('listing')} className="flex items-center gap-3 text-neutral-900 dark:text-white -ml-2 p-2 active:opacity-70 transition-opacity">
                     <ChevronLeft className="w-6 h-6" />
-                  </button>
                   <span className="text-[18px] font-black text-neutral-900 dark:text-white">
                     {activeMarketTab === 'listing' ? '交易所管理' : '交易紀錄'}
                   </span>
+                  </button>
                 </div>
                 {activeMarketTab === 'listing' && (
                   <button 
@@ -4315,12 +4315,12 @@ function ProfileContent() {
             <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
-                  <button onClick={() => router.push('/profile', { scroll: false })} className="text-neutral-900 dark:text-white -ml-2 p-2">
+                  <button onClick={() => router.push('/profile', { scroll: false })} className="flex items-center gap-3 text-neutral-900 dark:text-white -ml-2 p-2 active:opacity-70 transition-opacity">
                     <ChevronLeft className="w-6 h-6" />
-                  </button>
                   <span className="text-[18px] font-black text-neutral-900 dark:text-white">
                     配送訂單
                   </span>
+                  </button>
                 </div>
               </div>
 
@@ -4744,12 +4744,12 @@ function ProfileContent() {
             <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
-                  <button onClick={() => router.push('/profile', { scroll: false })} className="text-neutral-900 dark:text-white -ml-2 p-2">
+                  <button onClick={() => router.push('/profile', { scroll: false })} className="flex items-center gap-3 text-neutral-900 dark:text-white -ml-2 p-2 active:opacity-70 transition-opacity">
                     <ChevronLeft className="w-6 h-6" />
-                  </button>
                   <span className="text-[18px] font-black text-neutral-900 dark:text-white">
                     抽獎紀錄
                   </span>
+                  </button>
                 </div>
               </div>
 
@@ -5104,12 +5104,12 @@ function ProfileContent() {
             <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
-                  <button onClick={() => router.push('/profile')} className="text-neutral-900 dark:text-white -ml-2 p-2">
+                  <button onClick={() => router.push('/profile')} className="flex items-center gap-3 text-neutral-900 dark:text-white -ml-2 p-2 active:opacity-70 transition-opacity">
                     <ChevronLeft className="w-6 h-6" />
-                  </button>
                   <span className="text-[18px] font-black text-neutral-900 dark:text-white">
                     儲值紀錄
                   </span>
+                  </button>
                 </div>
               </div>
 
@@ -5354,12 +5354,12 @@ function ProfileContent() {
             <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
-                  <button onClick={() => router.push('/profile', { scroll: false })} className="text-neutral-900 dark:text-white -ml-2 p-2">
+                  <button onClick={() => router.push('/profile', { scroll: false })} className="flex items-center gap-3 text-neutral-900 dark:text-white -ml-2 p-2 active:opacity-70 transition-opacity">
                     <ChevronLeft className="w-6 h-6" />
-                  </button>
                   <span className="text-[18px] font-black text-neutral-900 dark:text-white">
                     我的關注
                   </span>
+                  </button>
                 </div>
               </div>
 
@@ -5612,12 +5612,12 @@ function ProfileContent() {
             <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
-                  <button onClick={() => router.push('/profile', { scroll: false })} className="text-neutral-900 dark:text-white -ml-2 p-2">
+                  <button onClick={() => router.push('/profile', { scroll: false })} className="flex items-center gap-3 text-neutral-900 dark:text-white -ml-2 p-2 active:opacity-70 transition-opacity">
                     <ChevronLeft className="w-6 h-6" />
-                  </button>
                   <span className="text-[18px] font-black text-neutral-900 dark:text-white">
                     我的優惠券
                   </span>
+                  </button>
                 </div>
                 <button 
                   onClick={() => setIsCouponModalOpen(true)}
@@ -5934,12 +5934,12 @@ function ProfileContent() {
             <div className="md:hidden fixed inset-0 z-[60] bg-neutral-100 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
-                  <button onClick={() => router.push('/profile', { scroll: false })} className="text-neutral-900 dark:text-white -ml-2 p-2">
+                  <button onClick={() => router.push('/profile', { scroll: false })} className="flex items-center gap-3 text-neutral-900 dark:text-white -ml-2 p-2 active:opacity-70 transition-opacity">
                     <ChevronLeft className="w-6 h-6" />
-                  </button>
                   <span className="text-[18px] font-black text-neutral-900 dark:text-white">
                     修改個人資訊
                   </span>
+                  </button>
                 </div>
               </div>
 
@@ -7245,7 +7245,8 @@ function ProfileContent() {
               >
                 <ChevronLeft className="w-6 h-6 stroke-[3]" />
               </button>
-              <h2 className="flex-1 text-center text-[17px] font-medium text-neutral-900 dark:text-white mr-8">我的地址</h2>
+              {/* 標題也能按返回（全站統一） */}
+              <button onClick={() => setShowAddressBook(false)} className="flex-1 text-center text-[17px] font-medium text-neutral-900 dark:text-white mr-8 active:opacity-70">我的地址</button>
             </div>
 
             <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-4 hidden">
@@ -7532,7 +7533,8 @@ function ProfileContent() {
               >
                 <ChevronLeft className="w-6 h-6" />
               </button>
-              <h2 className="flex-1 text-center text-[17px] font-medium text-neutral-900 dark:text-white mr-8">編輯地址</h2>
+              {/* 標題也能按返回（全站統一） */}
+              <button onClick={() => setShowEditRecipient(false)} className="flex-1 text-center text-[17px] font-medium text-neutral-900 dark:text-white mr-8 active:opacity-70">編輯地址</button>
             </div>
 
             {/* Content */}

@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase/client';
 import {
   RankingListItem,
   RankingTop3,
-  RankingCategoryTabs,
   RankingTimeTabs,
   RankingListContainer,
   RankingItemData
@@ -18,6 +17,7 @@ import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useSwipeTabs } from '@/lib/useSwipeTabs';
 
 interface RankingRpcItem {
@@ -42,6 +42,18 @@ export default function RankingPage() {
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly'>('daily')
   const swipeTabs = useSwipeTabs(['daily', 'weekly'] as const, activeTab, setActiveTab);
   const [activeCategory, setActiveCategory] = useState<'reward' | 'draws'>('reward');
+  /*
+   * 頂部導航（賞金狂人／轉蛋魔人）在頁面頂端時是透明的、浮在主視覺上；
+   * 往下滑就墊一層深藍色模糊透明底（老闆 2026-08-20 指定），不然白字會
+   * 跟榜單內容打架。
+   */
+  const [navScrolled, setNavScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setNavScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
   const [rankingData, setRankingData] = useState<RankingItemData[]>([]);
   const [loading, setLoading] = useState(false);
   const [direction, setDirection] = useState(0);
@@ -231,7 +243,39 @@ export default function RankingPage() {
 
   return (
     <>
-    {/* 頂部導航（同文章內頁風格）*/}
+    {/*
+      固定頂部導航（老闆 2026-08-20 指定）：賞金狂人／轉蛋魔人從縮放畫布裡
+      搬出來，變成真正 fixed 的頂欄 —— 捲動時不跟著走，下拉更新時也不動
+      （這頁用 data-ptr-content 只拖內容，<main> 沒有 transform，fixed 才靠得住）。
+      頁面頂端時透明、浮在主視覺上；往下滑墊深藍色模糊透明底。
+    */}
+    <div
+      className={cn(
+        'fixed top-0 left-0 right-0 z-10 pt-[env(safe-area-inset-top)] transition-colors duration-200',
+        navScrolled ? 'bg-[#1b2148]/80 backdrop-blur-md border-b border-white/10' : 'bg-transparent',
+      )}
+    >
+      <div className="flex h-[52px] items-center justify-center gap-12">
+        {([
+          { id: 'reward', label: '賞金狂人' },
+          { id: 'draws', label: '轉蛋魔人' },
+        ] as const).map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => handleCategoryChange(tab.id)}
+            className="relative flex h-full items-center text-[16px] font-black transition-colors"
+          >
+            <span className={activeCategory === tab.id ? 'text-white' : 'text-white/50'}>
+              {tab.label}
+            </span>
+            {activeCategory === tab.id && (
+              <span className="absolute inset-x-0 bottom-[7px] mx-auto h-[3px] w-9 rounded-full bg-[#577fe5]" />
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+    {/* 返回鈕疊在頂欄上層，維持可按 */}
     <div className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between pt-[env(safe-area-inset-top)] pointer-events-none">
       <Link href="/"
         className="pointer-events-auto m-[10px] w-[38px] h-[38px] bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
@@ -269,7 +313,7 @@ export default function RankingPage() {
             />
           </div>
           
-          <RankingCategoryTabs activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
+          {/* 賞金狂人／轉蛋魔人已搬到頁面層級的固定頂欄（見上方），畫布裡只剩日榜／週榜 */}
           <RankingTimeTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
           {/* data-ptr-content：下拉更新只拖這一塊（榜單本體）。tab 與背景是

@@ -650,20 +650,32 @@ function NavbarInner() {
                   <span className="text-[18px] font-black truncate">{getPageTitle()}</span>
                 </button>
               )
+            ) : showBackButton && !isHomePage ? (
+              /*
+               * 返回鈕與標題合成同一顆按鈕（老闆 2026-08-20 指定，全站統一）：
+               * 按箭頭或按標題文字都能返回 —— 商品內頁本來就是這個做法，
+               * 其他內頁（會員中心底下每一頁、儲值、公告…）跟上。
+               * 標題只是「順便也能按」，不做 hover 底色，跟內頁樣式一致。
+               */
+              <button
+                onClick={handleBack}
+                className="flex items-center gap-0.5 -ml-2 pl-1 pr-3 py-2 rounded-xl text-neutral-900 dark:text-neutral-100 active:opacity-70 transition-opacity min-w-0 flex-1 md:hidden"
+              >
+                <ChevronLeft className="w-7 h-7 stroke-[2.5] shrink-0" />
+                <span className="text-[18px] font-black truncate">{getPageTitle()}</span>
+              </button>
             ) : (
               <>
-                <div className="flex items-center overflow-hidden shrink-0 md:hidden">
-                  {showBackButton && (
-                    <button
-                      onClick={handleBack}
-                      className="pl-2.5 pr-0 py-2 -ml-2 text-neutral-900 dark:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl transition-colors flex items-center gap-0 shrink-0 md:hidden"
-                    >
-                      <ChevronLeft className="w-7 h-7 stroke-[2.5]" />
-                    </button>
-                  )}
-                </div>
+                {showBackButton && (
+                  <button
+                    onClick={handleBack}
+                    className="pl-2.5 pr-0 py-2 -ml-2 text-neutral-900 dark:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl transition-colors flex items-center gap-0 shrink-0 md:hidden"
+                  >
+                    <ChevronLeft className="w-7 h-7 stroke-[2.5]" />
+                  </button>
+                )}
 
-                {/* Mobile Page Title */}
+                {/* Mobile Page Title（沒有返回鈕的頁面才是純文字） */}
                 {!isHomePage && (
                   <div className="flex items-center min-w-0 flex-1 md:hidden">
                     <div className="text-[18px] font-black text-neutral-900 dark:text-white truncate">

@@ -179,8 +179,13 @@ export default function PwaPullToRefresh() {
   const armed = useRef(false);      // 已滿格
   const stopIdx = useRef(0);        // 下一個要觸發的震動節點
   const refreshing = useRef(false);
-  /** 這一趟要「定住」的 sticky 列，連同原本的 inline transform（結束要還原） */
-  const pinned = useRef<{ el: HTMLElement; transform: string }[]>([]);
+  /** 這一趟要「定住」的 sticky 列，連同原本的 inline 樣式（結束要還原）。
+      opaque：不透明的欄（tab 列）在被抵銷後，文件流裡空出來的位置會露出頁面
+      底色 —— 用一條「往下的實心 box-shadow」把那個洞蓋成空隙的底色。
+      transform 在 <main> 上時整個子樹自成堆疊層，蓋在 fixed 底色帶上面，
+      所以這個洞只能從子樹**裡面**蓋，shadow 掛在被定住的欄身上剛剛好。 */
+  const pinned = useRef<{ el: HTMLElement; transform: string; shadow: string; opaque: boolean }[]>([]);
+  const stripBg = useRef('');
   /** 這一趟實際被拖的元素們：預設 [<main>]；頁面下了 data-ptr-content 就只拖那幾塊。
       scale：縮放畫布（排行榜）裡的元素，位移會被父層 scale() 放大，要先除回去 */
   const dragEls = useRef<{ el: HTMLElement; scale: number }[]>([]);
@@ -210,9 +215,13 @@ export default function PwaPullToRefresh() {
        * 被拉下去，空隙開在 tab 上面 —— 老闆說那個體感不對，正確的是
        * 「框（含 tab）不動，只有底下的內容被拖」。
        */
-      pinned.current.forEach(({ el, transform }) => {
+      pinned.current.forEach(({ el, transform, shadow, opaque }) => {
         el.style.transition = t;
         el.style.transform = px ? `${transform} translate3d(0, ${-px}px, 0)`.trim() : transform;
+        if (opaque) {
+          // 蓋住欄被定住後空出來的洞（見 pinned ref 的說明）
+          el.style.boxShadow = px ? `0 ${px}px 0 0 ${stripBg.current}` : shadow;
+        }
       });
       if (stripRef.current) {
         // 底色帶從導航列下緣鋪到位移的最底 —— 蓋住透明 tab 背後露出來的 body，
@@ -239,10 +248,11 @@ export default function PwaPullToRefresh() {
       const restore = pinned.current;
       pinned.current = [];
       window.setTimeout(() => {
-        restore.forEach(({ el, transform }) => {
+        restore.forEach(({ el, transform, shadow }) => {
           // 已經被下一趟接手的就別動，不然會把進行中的抵銷清掉
           if (pinned.current.some((p) => p.el === el)) return;
           el.style.transform = transform;
+          el.style.boxShadow = shadow;
           el.style.transition = '';
         });
       }, animate ? 300 : 0);
@@ -309,10 +319,16 @@ export default function PwaPullToRefresh() {
         } else {
           dragEls.current = main ? [{ el: main, scale: 1 }] : [];
           const top = navBottom();
-          pinned.current = pinnedBars(top).map((el) => ({
-            el,
-            transform: el.style.transform || '',
-          }));
+          pinned.current = pinnedBars(top).map((el) => {
+            const bg = window.getComputedStyle(el).backgroundColor;
+            const transparent = bg === 'transparent' || /rgba\(.+,\s*0\)$/.test(bg);
+            return {
+              el,
+              transform: el.style.transform || '',
+              shadow: el.style.boxShadow || '',
+              opaque: !transparent,
+            };
+          });
           /*
            * 空隙從「不透明的頂欄」下緣開始。透明的浮動鈕（文章內頁、排行榜的
            * 返回鈕：pointer-events-none 的整寬 wrapper，背景全透明）雖然也要
@@ -320,17 +336,17 @@ export default function PwaPullToRefresh() {
            * 空隙起點，轉圈會被推到空隙外面，看起來就是沒有轉圈
            * （老闆 2026-08-20：「文章內頁下拉缺失圖標」）。
            */
-          gapTop.current = pinned.current.reduce((acc, { el }) => {
-            const bg = window.getComputedStyle(el).backgroundColor;
-            const transparent = bg === 'transparent' || /rgba\(.+,\s*0\)$/.test(bg);
-            return transparent ? acc : Math.max(acc, el.getBoundingClientRect().bottom);
-          }, top);
+          gapTop.current = pinned.current.reduce(
+            (acc, { el, opaque }) => (opaque ? Math.max(acc, el.getBoundingClientRect().bottom) : acc),
+            top,
+          );
         }
         stripTop.current = marked.length ? gapTop.current : navBottom();
         if (wrapRef.current) wrapRef.current.style.top = `${gapTop.current}px`;
+        stripBg.current = stripColor(dragEls.current[0]?.el ?? null);
         if (stripRef.current) {
           stripRef.current.style.top = `${stripTop.current}px`;
-          stripRef.current.style.background = stripColor(dragEls.current[0]?.el ?? null);
+          stripRef.current.style.background = stripBg.current;
         }
       }
 
@@ -392,8 +408,9 @@ export default function PwaPullToRefresh() {
         el.style.transition = '';
         el.style.willChange = '';
       });
-      pinned.current.forEach(({ el, transform }) => {
+      pinned.current.forEach(({ el, transform, shadow }) => {
         el.style.transform = transform;
+        el.style.boxShadow = shadow;
         el.style.transition = '';
       });
       pinned.current = [];

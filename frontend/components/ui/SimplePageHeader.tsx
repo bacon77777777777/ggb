@@ -44,9 +44,14 @@ export default function SimplePageHeader({
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
-        <span className="flex-1 text-center text-[17px] font-black text-neutral-900 dark:text-white">
+        {/* 標題也能按返回（老闆 2026-08-20 指定，全站統一）：
+            視覺不變，只是把可按範圍從箭頭擴大到整條標題 */}
+        <button
+          onClick={onBack}
+          className="flex-1 text-center text-[17px] font-black text-neutral-900 dark:text-white active:opacity-70 transition-opacity truncate"
+        >
           {title}
-        </span>
+        </button>
         {right != null ? (
           <div className="flex items-center shrink-0">{right}</div>
         ) : (
