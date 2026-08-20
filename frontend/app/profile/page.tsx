@@ -6609,17 +6609,7 @@ function ProfileContent() {
                   color: 'text-accent-emerald',
                   onClick: () => handleTabChange('delivery'),
                 },
-                ...(flags.sell && !inApp
-                  ? ([
-                      {
-                        id: 'sell-manage',
-                        label: '商城管理',
-                        icon: Box,
-                        color: 'text-accent-red',
-                        onClick: () => router.push('/sell/manage'),
-                      },
-                    ] as any[])
-                  : []),
+                // 商城管理入口已移除（老闆 2026-08-20）：首頁懸浮選單已有商城入口
                 ...(flags.market && !inApp
                   ? ([
                       {
@@ -6866,27 +6856,7 @@ function ProfileContent() {
                 </div>
               </div>
               
-              {flags.sell && !inApp && (
-                <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 overflow-hidden">
-                  <div className="space-y-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isGuest) {
-                          router.push(loginHref);
-                          return;
-                        }
-                        router.push('/sell/manage');
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black transition-all group text-left text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white"
-                    >
-                      <Box className="w-5 h-5 stroke-[2.5] text-neutral-300 group-hover:text-primary transition-colors" />
-                      <span className="truncate">商城管理</span>
-                      <ChevronRight className="ml-auto w-4 h-4 transition-transform hidden sm:block text-neutral-200 group-hover:text-neutral-400" />
-                    </button>
-                  </div>
-                </div>
-              )}
+              {/* 商城管理入口已移除（老闆 2026-08-20）：首頁懸浮選單已有商城入口 */}
 
               <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 overflow-hidden">
               <div className="space-y-1">
