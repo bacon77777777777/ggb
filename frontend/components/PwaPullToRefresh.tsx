@@ -252,6 +252,18 @@ export default function PwaPullToRefresh() {
   useEffect(() => {
     if (!isStandaloneMode()) return;
 
+    /*
+     * 關掉 iOS 的原生橡皮筋（老闆 2026-08-20 偽 app 截圖的病根）：
+     * 系統的過捲會把**整頁**（含頂部導航）一起拉下去、露出 body 的白底，
+     * 跟我們的下拉疊在一起變成雙重位移。偽 app 與原生殼都由這支全權接管
+     * 下拉，所以在這兩個環境把系統那套關掉（iOS 16+ 支援；一般瀏覽器
+     * 不進這個 effect，原生下拉不受影響）。
+     */
+    const prevHtmlOverscroll = document.documentElement.style.overscrollBehaviorY;
+    const prevBodyOverscroll = document.body.style.overscrollBehaviorY;
+    document.documentElement.style.overscrollBehaviorY = 'none';
+    document.body.style.overscrollBehaviorY = 'none';
+
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
     const setShift = (px: number, animate: boolean) => {
@@ -472,7 +484,7 @@ export default function PwaPullToRefresh() {
         return;
       }
 
-      // 滿格：停在看得見的位置顯示「頁面更新中」，然後刷新
+      // 滿格：球開始拋接，同時停在看得見的位置
       refreshing.current = true;
       setShift(REST_PULL, true);
       if (dotRef.current) {
@@ -481,8 +493,18 @@ export default function PwaPullToRefresh() {
         dotRef.current.style.transform = '';
         dotRef.current.classList.add('ptr-toss');
       }
-      // 等球落定再換頁 —— 動畫 1s，多留一拍
-      window.setTimeout(() => window.location.reload(), 1100);
+      /*
+       * 球落定後**只重掛內容區**，不整頁 reload（老闆 2026-08-20：市面 App
+       * 都是內容區刷新，固定的頂部／底部導航不需要跟著刷）。
+       * PathnameKeyed 收到事件會換 key 重掛 <main> 底下整棵頁面 → 各頁的
+       * 抓資料 effect 重跑 → 內容換新；框與登入態原地不動，也沒有白屏。
+       * 舊的被拖曳元素隨重掛消失，位移自然歸零，這裡只要收掉底色帶與球。
+       */
+      window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('ggb:content-refresh'));
+        refreshing.current = false;
+        reset(true);
+      }, 1050);
     };
 
     document.addEventListener('touchstart', onStart, { passive: true });
@@ -505,6 +527,8 @@ export default function PwaPullToRefresh() {
         el.style.transition = '';
       });
       pinned.current = [];
+      document.documentElement.style.overscrollBehaviorY = prevHtmlOverscroll;
+      document.body.style.overscrollBehaviorY = prevBodyOverscroll;
     };
   }, []);
 

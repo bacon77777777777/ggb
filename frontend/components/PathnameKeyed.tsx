@@ -23,6 +23,19 @@ export default function PathnameKeyed({ children }: { children: React.ReactNode 
     };
     window.addEventListener('pageshow', handler);
 
+    /*
+     * 下拉更新（PwaPullToRefresh）發的事件：只重掛內容區，不整頁 reload。
+     * key 一換，<main> 底下的頁面元件整棵重新掛載 → 各頁的抓資料 effect
+     * 重跑一次 → 內容換新；Navbar、底部導航、AuthContext 全在這棵樹外面，
+     * 原地不動（老闆 2026-08-20：市面 App 都是內容區刷新，框不需要刷）。
+     * router.refresh() 順帶把 server component 的部分也換新。
+     */
+    const refreshHandler = () => {
+      setVersion((v) => v + 1);
+      try { router.refresh(); } catch { /* no-op */ }
+    };
+    window.addEventListener('ggb:content-refresh', refreshHandler);
+
     // const visibilityHandler = () => {
     //   if (document.visibilityState === 'visible') {
     //     router.refresh();
@@ -32,6 +45,7 @@ export default function PathnameKeyed({ children }: { children: React.ReactNode 
 
     return () => {
       window.removeEventListener('pageshow', handler);
+      window.removeEventListener('ggb:content-refresh', refreshHandler);
       // document.removeEventListener('visibilitychange', visibilityHandler);
     };
   }, [router]);
