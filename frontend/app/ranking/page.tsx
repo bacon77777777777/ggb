@@ -272,7 +272,10 @@ export default function RankingPage() {
           <RankingCategoryTabs activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
           <RankingTimeTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-          <div className="grid grid-cols-1 grid-rows-1">
+          {/* data-ptr-content：下拉更新只拖這一塊（榜單本體）。tab 與背景是
+              絕對定位在縮放畫布裡的，拖整個 <main> 再反向抵銷會被畫布的
+              overflow-hidden 裁掉 —— 所以反過來，讓它們原地不動 */}
+          <div className="grid grid-cols-1 grid-rows-1" data-ptr-content>
             <AnimatePresence initial={false} custom={direction}>
               <motion.div
                 key={activeCategory}

@@ -25,8 +25,12 @@
  *      空隙鋪一層底色（`stripRef`）：淺色頁鋪灰（body 是白的，轉圈浮在白上
  *      看起來像破了一塊 —— 老闆 2026-08-20 附圖），深色頁（排行榜）取頁面
  *      自己的底色，不會出現一條突兀的灰。
- *   3b. 版面不是 sticky 的頁面（排行榜的 tab 是絕對定位在縮放畫布裡）可以下
- *      `data-ptr-pin` 屬性宣告「這塊要定住」，縮放比例會自動換算。
+ *   3b. 版面特殊的頁面（排行榜：tab 絕對定位在一塊 overflow-hidden 的縮放畫布裡）
+ *      可以下 `data-ptr-content` 宣告「只拖這一塊」—— 那一頁改成位移這個元素，
+ *      tab、背景、返回鈕全都原地不動。
+ *      ⚠️ 不要試圖用反向位移去定住畫布裡的元素：位移會把它推出畫布的
+ *      overflow-hidden 邊界，直接被裁掉（2026-08-20 試過，老闆截圖回報
+ *      「狂人跟魔人被黑黑的遮住」）。
  *   4. **蓄力才刷新**。未滿格彈回去，滿格才刷新；過程分段輕震、間距愈往後愈密，
  *      滿格給一下明顯較重的，不用看畫面就知道可以放手了。
  *
@@ -114,47 +118,23 @@ function pinnedBars(top: number): HTMLElement[] {
     if (r.height <= 0 || r.height > window.innerHeight * 0.4) return; // 太高的不是頂欄
     if (r.top <= top + 2) found.push(el);
   });
-  /*
-   * `data-ptr-pin`：版面不是 sticky 的頁面用這個屬性宣告「這塊在下拉時要定住」。
-   * 排行榜的 tab 是絕對定位在一塊 scale() 縮放的 750px 畫布裡，上面那套
-   * sticky 偵測抓不到它，也不該為了下拉更新去改整頁版型。
-   */
-  main.querySelectorAll<HTMLElement>('[data-ptr-pin]').forEach((el) => {
-    if (el.getBoundingClientRect().height > 0) found.push(el);
-  });
   return found.filter((el, i) => found.indexOf(el) === i && !found.some((o) => o !== el && o.contains(el)));
 }
 
 /**
- * 空隙的底色：取內容區頂端實際畫著的顏色。
+ * 空隙的底色：淺色模式淡灰、深色模式深灰，固定值。
  *
- * 淺色頁（情報頁）鋪灰 —— body 是白的，直接露出來的話轉圈像浮在一塊破洞上；
- * 深色頁（排行榜的 #232429）就用它自己的底色，鋪灰反而變成一條突兀的亮帶。
- * 判斷方式：從空隙的位置往上找第一個不透明的背景色，夠亮就換成灰，
- * 深的就照用。找不到就看全站深淺色模式給預設值。
+ * 曾做過「採樣空隙位置的背景色」的版本 —— 情報頁採到輪播圖的黑，整條空隙
+ * 跟著變黑（老闆 2026-08-20 回報「黑底應該要是淡灰色」）。空隙的底色屬於
+ * 「框」，該跟著全站主題走，不該跟著剛好排在頁面頂端的內容走。
+ * 深色版面的頁（排行榜）用 data-ptr-content 只拖內容，自己的深色背景不動、
+ * 蓋在這條上面，所以也不需要為它們特判。
  */
-function stripColor(probeY: number): string {
-  const fallback = document.documentElement.classList.contains('dark') ? '#171717' : '#f5f5f5';
-  let el = document.elementFromPoint(window.innerWidth / 2, probeY) as HTMLElement | null;
-  while (el && el !== document.documentElement) {
-    const bg = window.getComputedStyle(el).backgroundColor;
-    const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(bg);
-    if (m && (m[4] === undefined || parseFloat(m[4]) > 0.5)) {
-      const [r, g, b] = [Number(m[1]), Number(m[2]), Number(m[3])];
-      const luma = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-      return luma > 0.85 ? fallback : bg; // 白得發亮 → 鋪灰；本來就深 → 照用
-    }
-    el = el.parentElement;
-  }
-  return fallback;
+function stripColor(): string {
+  // #f5f5f5 在白色 tab 旁邊看起來就是另一塊白，要更灰一點才讀得出是「底」
+  return document.documentElement.classList.contains('dark') ? '#171717' : '#e8e8e8';
 }
 
-/** 元素身上的縮放倍率（排行榜畫布是 scale() 過的，位移量要除回去才會準） */
-function scaleOf(el: HTMLElement): number {
-  const h = el.offsetHeight;
-  if (!h) return 1;
-  return el.getBoundingClientRect().height / h || 1;
-}
 
 /**
  * 觸控起點是否落在會自己捲動的容器裡（橫向輪播、彈層內的清單…）。
@@ -181,8 +161,10 @@ export default function PwaPullToRefresh() {
   const armed = useRef(false);      // 已滿格
   const stopIdx = useRef(0);        // 下一個要觸發的震動節點
   const refreshing = useRef(false);
-  /** 這一趟要「定住」的 sticky 列，連同原本的 inline transform（結束要還原）與縮放倍率 */
-  const pinned = useRef<{ el: HTMLElement; transform: string; scale: number }[]>([]);
+  /** 這一趟要「定住」的 sticky 列，連同原本的 inline transform（結束要還原） */
+  const pinned = useRef<{ el: HTMLElement; transform: string }[]>([]);
+  /** 這一趟實際被拖的元素：預設 <main>，頁面下了 data-ptr-content 就只拖那一塊 */
+  const dragEl = useRef<HTMLElement | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
   /** 空隙底色帶的頂端（= 導航列下緣），高度蓋到 gapTop + 位移量 */
@@ -194,13 +176,11 @@ export default function PwaPullToRefresh() {
     if (!isStandaloneMode()) return;
 
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    // 內容區才位移。整個 body 動的話 position:fixed 的導航列與底部操作欄
-    // 會因為 transform 產生新的 containing block 而跟著跑掉
-    const content = document.querySelector('main') as HTMLElement | null;
 
     const setShift = (px: number, animate: boolean) => {
       const wrap = wrapRef.current;
       const t = animate ? 'transform .28s cubic-bezier(.22,1,.36,1)' : 'none';
+      const content = dragEl.current;
       if (content) {
         content.style.transition = t;
         content.style.transform = px ? `translate3d(0, ${px}px, 0)` : '';
@@ -212,10 +192,9 @@ export default function PwaPullToRefresh() {
        * 被拉下去，空隙開在 tab 上面 —— 老闆說那個體感不對，正確的是
        * 「框（含 tab）不動，只有底下的內容被拖」。
        */
-      pinned.current.forEach(({ el, transform, scale }) => {
+      pinned.current.forEach(({ el, transform }) => {
         el.style.transition = t;
-        // 縮放畫布裡的元素，位移會被父層的 scale() 放大，先除回去螢幕上才會剛好抵銷
-        el.style.transform = px ? `${transform} translate3d(0, ${-px / scale}px, 0)`.trim() : transform;
+        el.style.transform = px ? `${transform} translate3d(0, ${-px}px, 0)`.trim() : transform;
       });
       if (stripRef.current) {
         // 底色帶從導航列下緣鋪到位移的最底 —— 蓋住透明 tab 背後露出來的 body，
@@ -285,22 +264,37 @@ export default function PwaPullToRefresh() {
         // 從跨過安全距離的那一點重新起算，畫面才不會「啪」地跳一段
         startY.current += DEAD_ZONE;
 
-        // 這一趟要定住哪幾條，以及空隙該從哪裡開始 —— 都在這一刻量
-        const top = navBottom();
-        pinned.current = pinnedBars(top).map((el) => ({
-          el,
-          transform: el.style.transform || '',
-          scale: scaleOf(el),
-        }));
-        gapTop.current = pinned.current.reduce(
-          (acc, { el }) => Math.max(acc, el.getBoundingClientRect().bottom),
-          top,
-        );
-        stripTop.current = top;
+        /*
+         * 這一趟要拖誰、定住哪幾條、空隙從哪裡開始 —— 都在這一刻量。
+         *
+         * 頁面下了 data-ptr-content（排行榜）就只拖那一塊：tab、背景、返回鈕
+         * 全在它外面，自然不動，也不需要任何反向位移。沒下的走預設：拖整個
+         * <main>，把已貼頂的 sticky 列反向抵銷。
+         */
+        const main = document.querySelector('main') as HTMLElement | null;
+        const marked = main?.querySelector<HTMLElement>('[data-ptr-content]') ?? null;
+        dragEl.current = marked ?? main;
+
+        if (marked) {
+          pinned.current = [];
+          gapTop.current = Math.max(0, marked.getBoundingClientRect().top);
+          stripTop.current = gapTop.current;
+        } else {
+          const top = navBottom();
+          pinned.current = pinnedBars(top).map((el) => ({
+            el,
+            transform: el.style.transform || '',
+          }));
+          gapTop.current = pinned.current.reduce(
+            (acc, { el }) => Math.max(acc, el.getBoundingClientRect().bottom),
+            top,
+          );
+          stripTop.current = top;
+        }
         if (wrapRef.current) wrapRef.current.style.top = `${gapTop.current}px`;
         if (stripRef.current) {
-          stripRef.current.style.top = `${top}px`;
-          stripRef.current.style.background = stripColor(gapTop.current + 4);
+          stripRef.current.style.top = `${stripTop.current}px`;
+          stripRef.current.style.background = stripColor();
         }
       }
 
@@ -357,10 +351,10 @@ export default function PwaPullToRefresh() {
       document.removeEventListener('touchstart', onStart);
       document.removeEventListener('touchmove', onMove);
       document.removeEventListener('touchend', onEnd);
-      if (content) {
-        content.style.transform = '';
-        content.style.transition = '';
-        content.style.willChange = '';
+      if (dragEl.current) {
+        dragEl.current.style.transform = '';
+        dragEl.current.style.transition = '';
+        dragEl.current.style.willChange = '';
       }
       pinned.current.forEach(({ el, transform }) => {
         el.style.transform = transform;
