@@ -25,11 +25,13 @@
  *      空隙鋪一層底色（`stripRef`）：淺色頁鋪灰（body 是白的，轉圈浮在白上
  *      看起來像破了一塊 —— 老闆 2026-08-20 附圖），深色頁（排行榜）取頁面
  *      自己的底色，不會出現一條突兀的灰。
- *   2b. **整頁覆蓋層的頁面（會員中心的倉庫／配送／各種紀錄）自動只拖內層捲動區**。
- *      那批頁面是 fixed inset-0 的覆蓋層、頁頭是裡面的一般元素（不是 sticky），
- *      偵測不到；但它們的內容都放在一個 overflow-y-auto 的容器裡 ——
- *      手勢起點落在這種容器裡就拖它，頁頭在容器外面，自然不動
- *      （老闆 2026-08-20：「下拉時頂部導航要固定，不被拖拉」）。
+ *   2b. **觸發區只有「內容捲動區」，一條規則管全站**（老闆 2026-08-20：
+ *      「正常用戶只會拉內容區，頂部區塊拉了不要有作用」）。
+ *      從手勢起點往上找，**最近的一層**決定這一趟怎麼走：
+ *        - 碰到 data-ptr-content（排行榜、情報頁宣告的內容塊）→ 拖那一批
+ *        - 碰到夠大的 overflow-y-auto 容器（會員中心覆蓋層的清單）→ 只拖它
+ *        - 碰到 fixed／sticky（頁頭、tab 列、導航）→ **整趟不觸發**
+ *        - 一路到底都沒碰到 → 一般頁面，拖 <main>（sticky 頂欄反向定住）
  *   3b. 版面特殊的頁面（排行榜：tab 絕對定位在一塊 overflow-hidden 的縮放畫布裡）
  *      可以下 `data-ptr-content` 宣告「只拖這一塊」—— 那一頁改成位移這個元素，
  *      tab、背景、返回鈕全都原地不動。
@@ -168,24 +170,41 @@ function scaleOf(el: HTMLElement): number {
  * 會員中心那批整頁覆蓋層的內容都放在這種容器裡 —— 拖它而不是拖整個 <main>，
  * 覆蓋層的頁頭與 tab 就自然定住。找不到回 null，走一般路徑。
  */
-function innerScrollable(target: EventTarget | null): HTMLElement | null {
+/**
+ * 手勢起點的裁決：從起點往上走，**最近的一層**說了算。
+ *
+ * - `{ kind: 'marked' }`：碰到 data-ptr-content —— 用頁面宣告的那批
+ * - `{ kind: 'inner', el }`：碰到夠大的 overflow-y-auto 容器 —— 只拖它。
+ *   不檢查內容有沒有超出高度（空清單也算捲動區，看版型不看內容），
+ *   用「佔滿四成螢幕」的門檻擋掉下拉選單這類小元件
+ * - `{ kind: 'blocked' }`：碰到 fixed／sticky（頁頭、tab、導航）——
+ *   整趟不觸發。正常用戶只會拉內容區，固定區塊拉了不該有作用
+ * - `{ kind: 'main' }`：一路到底 —— 一般頁面，拖 <main>
+ */
+type StartVerdict =
+  | { kind: 'marked' }
+  | { kind: 'inner'; el: HTMLElement }
+  | { kind: 'blocked' }
+  | { kind: 'main' };
+
+function resolveStart(target: EventTarget | null): StartVerdict {
   const main = document.querySelector('main');
   let el = target as HTMLElement | null;
-  while (el && el !== document.body) {
-    if (main && !main.contains(el)) return null;
+  while (el && el !== document.body && el !== document.documentElement) {
+    if (el.hasAttribute('data-ptr-content')) return { kind: 'marked' };
     const style = window.getComputedStyle(el);
     const oy = style.overflowY;
-    /*
-     * ⚠️ 不檢查 scrollHeight > clientHeight：清單空的時候內容沒超出高度，
-     * 檢查了會把「我的關注（尚無商品）」這種頁判成不可捲、退回拖整個畫面，
-     * 頁頭又跟著被拉（老闆 2026-08-20 截圖）。它是不是「頁面的捲動區」
-     * 看的是版型，不是當下有多少內容 —— 改用高度門檻擋掉小型元件
-     * （下拉選單、彈層裡的小清單），佔不到四成螢幕的不算。
-     */
-    if ((oy === 'auto' || oy === 'scroll') && el.clientHeight >= window.innerHeight * 0.4) return el;
+    if (
+      (oy === 'auto' || oy === 'scroll') &&
+      el.clientHeight >= window.innerHeight * 0.4 &&
+      main?.contains(el)
+    ) {
+      return { kind: 'inner', el };
+    }
+    if (style.position === 'fixed' || style.position === 'sticky') return { kind: 'blocked' };
     el = el.parentElement;
   }
-  return null;
+  return { kind: 'main' };
 }
 
 function startedInScrollable(target: EventTarget | null): boolean {
@@ -333,12 +352,17 @@ export default function PwaPullToRefresh() {
          * <main>，把已貼頂的 sticky 列反向抵銷。
          */
         const main = document.querySelector('main') as HTMLElement | null;
-        let marked = main ? Array.from(main.querySelectorAll<HTMLElement>('[data-ptr-content]')) : [];
-        if (!marked.length) {
-          // 沒有頁面自己宣告的拖曳範圍，看手勢是不是從內層捲動容器起手
-          //（會員中心那批整頁覆蓋層）—— 是就只拖那個容器，頁頭自然定住
-          const inner = innerScrollable(startTarget.current);
-          if (inner) marked = [inner];
+        const verdict = resolveStart(startTarget.current);
+        if (verdict.kind === 'blocked') {
+          // 起點在固定區塊（頁頭、tab、導航）：整趟不觸發
+          tracking.current = false;
+          return;
+        }
+        let marked: HTMLElement[] = [];
+        if (verdict.kind === 'marked') {
+          marked = main ? Array.from(main.querySelectorAll<HTMLElement>('[data-ptr-content]')) : [];
+        } else if (verdict.kind === 'inner') {
+          marked = [verdict.el];
         }
 
         if (marked.length) {
