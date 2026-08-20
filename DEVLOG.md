@@ -4,6 +4,23 @@
 
 ---
 
+## v2026.08.20k｜2026-08-20｜修正：儲值關閉付款頁後，全站頂進狀態列底下
+
+老闆回報：App 內開瀏覽器儲值、關閉後，幾乎所有頁面都跑到 iPhone 時間下面。
+
+原因：`StatusBar.setOverlaysWebView(false)` 的設定**會被 in-app browser 洗掉** ——
+SFSafariViewController 關閉時 iOS 重新排版，webview 又漲回整個螢幕。
+開機套一次不夠，改成三個時機都補：
+
+1. 開機（原本就有）
+2. **Browser `browserFinished`**（付款頁、外部連結關閉時）
+3. **App 回前景**（`appStateChange` isActive）
+
+補的時機延後 400ms —— VC 的 dismiss 動畫收完再套，不然又被蓋掉。
+付款回程 deep link（`ggbapp://payment-return`）收掉瀏覽器後也補一次。
+
+---
+
 ## v2026.08.20j｜2026-08-20｜頂部導航全站一致化：標題可按返回；下拉定住通用化；排行榜固定頂欄
 
 老闆實測 App 後的一致性要求：「頂部導航組件一樣、下拉組件一樣、操作都一致」。

@@ -114,6 +114,10 @@ export default function NativeAppBootstrap() {
         void closeInAppBrowser();
         void refreshProfile?.();
         retry = window.setTimeout(() => void refreshProfile?.(), 2200);
+        // 瀏覽器收掉後狀態列設定會被 iOS 洗掉，補一次（同上面的說明）
+        window.setTimeout(() => {
+          void native.call('StatusBar', 'setOverlaysWebView', { overlay: false });
+        }, 500);
 
         // 目的地由落地頁帶過來（儲值是儲值紀錄、商城訂單是訂單頁）
         let to = '/profile?tab=topup-history';
@@ -146,16 +150,57 @@ export default function NativeAppBootstrap() {
    * 設成 false 之後 webview 會從狀態列底下開始，網頁完全不必處理瀏海內縮。
    *
    * 樣式跟著深淺色模式走：深色底配深色圖示會整片看不見。
+   *
+   * ⚠️ 這個設定**會被 in-app browser 洗掉**：SFSafariViewController 關閉時
+   * iOS 重新排版，webview 又漲回整個螢幕，所有頁面都頂進時間底下
+   * （老闆 2026-08-20 回報「儲值完關閉後幾乎全部頁面都跑到 iPhone 時間下面」）。
+   * 所以除了開機套一次，還要在「瀏覽器關閉」與「App 回前景」時各補一次；
+   * 補的時機延後一拍（400ms），等 VC 的 dismiss 動畫收完再套才不會又被蓋掉。
    */
   useEffect(() => {
     if (!native.isNativePlatform()) return;
-    void native.call('StatusBar', 'setOverlaysWebView', { overlay: false });
-    const dark = theme === 'dark';
-    void native.call('StatusBar', 'setStyle', { style: dark ? 'DARK' : 'LIGHT' });
-    // Android 才需要設背景色；iOS 的狀態列背景是由底下的 view 決定
-    if (native.nativePlatform() === 'android') {
-      void native.call('StatusBar', 'setBackgroundColor', { color: dark ? '#0a0a0a' : '#ffffff' });
-    }
+
+    const apply = () => {
+      void native.call('StatusBar', 'setOverlaysWebView', { overlay: false });
+      const dark = theme === 'dark';
+      void native.call('StatusBar', 'setStyle', { style: dark ? 'DARK' : 'LIGHT' });
+      // Android 才需要設背景色；iOS 的狀態列背景是由底下的 view 決定
+      if (native.nativePlatform() === 'android') {
+        void native.call('StatusBar', 'setBackgroundColor', { color: dark ? '#0a0a0a' : '#ffffff' });
+      }
+    };
+    apply();
+
+    const timers: number[] = [];
+    const applyLater = () => timers.push(window.setTimeout(apply, 400));
+    const handles: { remove?: () => void }[] = [];
+
+    const listen = (pluginName: string, event: string) => {
+      const plugin = native.plugin(pluginName);
+      if (!plugin || typeof plugin.addListener !== 'function') return;
+      try {
+        const add = plugin.addListener as unknown as (
+          ev: string,
+          cb: (e?: { isActive?: boolean }) => void
+        ) => { remove?: () => void };
+        handles.push(
+          add(event, (e) => {
+            // appStateChange 只在回前景時補；browserFinished 一律補
+            if (event === 'appStateChange' && !e?.isActive) return;
+            applyLater();
+          }),
+        );
+      } catch (err) {
+        console.warn(`[native] ${pluginName}.${event} 掛載失敗`, err);
+      }
+    };
+    listen('Browser', 'browserFinished');
+    listen('App', 'appStateChange');
+
+    return () => {
+      handles.forEach((h) => h.remove?.());
+      timers.forEach(clearTimeout);
+    };
   }, [theme]);
 
   /*
