@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/Toast';
 import { native } from '@/lib/native/bridge';
+import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { closeInAppBrowser, openPayment } from '@/lib/native/browser';
 
 /**
@@ -65,6 +66,16 @@ export function SocialLoginButtons() {
   const router = useRouter();
   const { showToast } = useToast();
   const [waiting, setWaiting] = useState(false);
+  /*
+   * 拿到 LINE 的 accessToken 之後、真正登入完成之前的那段。
+   *
+   * 這段要跑兩趟往返：後端拿 token 去打 LINE 的 verify + profile 換身份，
+   * 再用換回來的 tokenHash 建立 Supabase session —— 實機約兩秒
+   * （老闆 2026-08-20：「回到登入頁，等了快兩秒才導去首頁」）。
+   * 原生 SDK 授權完是直接回到登入頁的，這兩秒畫面上什麼都沒有，
+   * 看起來就像按了沒反應，所以蓋一張載入畫面。
+   */
+  const [exchanging, setExchanging] = useState(false);
   const stateRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const deadlineRef = useRef(0);
@@ -188,6 +199,7 @@ export function SocialLoginButtons() {
         | { accessToken?: string }
         | null;
       if (r?.accessToken) {
+        setExchanging(true);
         const res = await fetch('/api/auth/line', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -211,6 +223,7 @@ export function SocialLoginButtons() {
             return;
           }
         }
+        setExchanging(false);
         showToast(json.error || '登入失敗，請重試一次', 'error');
         stopPolling();
         return;
@@ -222,6 +235,7 @@ export function SocialLoginButtons() {
       }
     } catch {
       // 玩家取消授權或 SDK 出錯：安靜收掉，讓他要重試自己再按
+      setExchanging(false);
       stopPolling();
       return;
     }
@@ -276,6 +290,14 @@ export function SocialLoginButtons() {
    * 切回來，需要文字說明。原生 App 的授權視窗直接蓋在整個畫面上，這塊字
    * 沒人看得到，登入頁保持原樣即可（老闆 2026-08-20：「不要再多一堆廢話字」）。
    */
+  /*
+   * 換發 session 中：蓋滿整個畫面。
+   *
+   * 這張要壓在最前面判斷 —— 原生 SDK 授權完人已經回到登入頁了，
+   * 底下的按鈕再顯示出來只會讓玩家以為可以再按一次。
+   */
+  if (exchanging) return <ProductLoadingScreen />;
+
   if (waiting && !native.isNativePlatform()) {
     return (
       <div className="flex w-full flex-col items-center gap-2 rounded-xl border border-neutral-200 px-4 py-3">

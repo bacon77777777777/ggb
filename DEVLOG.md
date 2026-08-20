@@ -4,6 +4,61 @@
 
 ---
 
+## v2026.08.20aj｜2026-08-20｜LINE 登入查清楚了：原生 SDK 早就生效，卡的是免費帳號
+
+老闆回報 LINE 登入不絲滑：許可後要按「確定」、再按「打開」，回到登入頁還等快兩秒。
+接實機抓 log 查完，結論跟原本的假設**相反**。
+
+**① 原生 SDK 其實一直是通的**
+
+log 的完整鏈路：
+
+```
+To Native ->  LineLogin login                                  ← 外掛被叫到
+TO JS {"isActive":false}                                       ← 切去 LINE App
+TO JS {"url":"line3rdp.tw.com.ggb.app://authorize/?code=..."}  ← app-to-app 回程
+TO JS {"pictureUrl":"...","accessToken":"e..."}                ← SDK 拿到 token
+[AuthContext] Auth state changed: SIGNED_IN                    ← 登入完成
+```
+
+整段 log 裡 `Browser open`、`access.line.me`、「原生外掛不在」的計數都是 **0**，
+完全沒走瀏覽器退路。先前判斷「跑的是 web OAuth」是錯的 —— 那是老闆測到舊版 App
+（外掛還沒編進去）留下的印象。
+
+**② 那兩個確認窗跟走不走 SDK 無關**
+
+老闆提供的彈窗網址 `access.line.me/oauth2/v2.1/redirect/confirm` 是關鍵：
+那是 LINE 的**回程確認頁**，出現的原因是回程走 custom scheme
+（`line3rdp.tw.com.ggb.app://`）。LINE 先問一次，iOS 再對 custom scheme 問一次，
+就是玩家按的那兩下。
+
+要消掉得把回程換成 Universal Link（`https://www.ggb.com.tw/...`）——
+LINE SDK 有這個參數（`LoginManager.setup(channelID:universalLinkURL:)`，
+目前傳 nil），但它需要 **Associated Domains** entitlement。
+
+**③ 卡點在帳號，不在程式**
+
+驗 provisioning profile：`CreationDate 2026-08-19 / ExpirationDate 2026-08-26`
+—— **7 天效期＝免費 Apple Developer 帳號**，開不了 Associated Domains。
+
+老闆 2026-08-20 決定**先不買**（公司登記還沒下來）。連帶影響：
+
+| 想做的事 | 現況 |
+|----------|------|
+| 消掉兩個確認窗（Universal Link） | 等付費帳號 |
+| App 上架 / TestFlight | 等付費帳號 |
+| 目前這支 Debug build | **2026-08-26 過期打不開**，屆時重簽重裝即可 |
+
+**④ 能修的那段：回到 App 之後空等兩秒**
+
+原生 SDK 授權完人直接回到登入頁，但還要跑兩趟往返（後端拿 accessToken 打
+LINE 的 verify + profile 換身份、再用 tokenHash 建 Supabase session），
+這兩秒畫面上什麼都沒有，看起來像按了沒反應。
+拿到 token 就蓋 `ProductLoadingScreen`，一路蓋到首頁出現；
+授權失敗或取消會收掉，不會把玩家鎖在載入畫面。
+
+---
+
 ## v2026.08.20ai｜2026-08-20｜公告彈窗等底圖再上字；開屏埋診斷；啟動頁版本號再往上
 
 **① 公告彈窗文字先出來、底圖後到**
