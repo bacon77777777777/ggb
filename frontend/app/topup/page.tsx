@@ -27,7 +27,6 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { native } from '@/lib/native/bridge';
-import { openPayment } from '@/lib/native/browser';
 
 const TOPUP_PLANS = [
   { id: 'p1', amount: 100, points: 100, bonus: 0, isHot: false },
@@ -117,66 +116,17 @@ export default function TopupPage() {
     submittedTradeNo.current = tradeNo;
 
     /*
-     * App 版不能直接在 webview 導去綠界：3D 驗證會跳到各家銀行的網域，
-     * `allowNavigation` 白名單列不完，一跳就被丟到系統瀏覽器，
-     * 玩家在那邊付完款，App 這頭卻完全不知道發生什麼事。
+     * App 與網頁走同一條路：表單直接送去綠界，整個流程在**同一個畫面**裡走完
+     *（webview／瀏覽器換頁），付完由綠界把人導回儲值紀錄 —— 同一個 webview，
+     * 登入態原地都在，零彈窗、零跳轉、零確認框（老闆 2026-08-20：儲值要絲滑）。
      *
-     * 改成用 in-app browser 開一個帶簽章的交接頁（見 lib/paymentHandoff.ts）。
-     * 入帳本來就是綠界打到後端的 server-to-server callback，跟瀏覽器無關，
-     * 所以這裡只要在使用者關掉付款頁時把餘額重讀一次即可。
+     * 舊版在 App 裡開 in-app browser + 簽章交接頁 + ggbapp:// 彈回，那是
+     * `allowNavigation` 還鎖白名單時代的產物（3D 驗證的銀行網域列不完，
+     * webview 一跳就被丟去 Safari）。白名單放開（v2026.08.20b）之後 webview
+     * 直走就是通的 —— 偽 app 的玩家從頭到尾走的都是這條，實證沒問題。
+     * 交接頁（/payment/go）與 ggbapp://payment-return 保留：
+     * 已發出去的舊版頁面可能還會用到，而且是無害的死路。
      */
-    if (native.isNativePlatform()) {
-      let cancelled = false;
-      (async () => {
-        try {
-          const res = await fetch('/api/payment/handoff', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: paymentData.action, fields: paymentData.fields }),
-          });
-          if (!res.ok) throw new Error('handoff failed');
-          const { token } = await res.json();
-          if (cancelled) return;
-
-          // 一定要絕對網址：Capacitor 的 Browser.open 不吃相對路徑
-          const goUrl = `${window.location.origin}/payment/go?t=${encodeURIComponent(token)}`;
-          const opened = await openPayment(goUrl, () => {
-            // 使用者關掉付款頁就回來了 —— 付成功與否由後端 callback 決定，
-            // 這裡只負責把畫面上的餘額換成最新的
-            void refreshProfileRef.current?.();
-            setPaymentData(null);
-            setIsProcessing(false);
-            isProcessingRef.current = false;
-          });
-          if (opened) return;
-          /*
-           * in-app browser 開不起來就讓 webview 自己走。
-           * capacitor.config.ts 的 allowNavigation 已改為 '*'，綠界與 3D 驗證的
-           * 銀行頁都留在 webview 裡，跟偽 app 的行為一致 —— 那條路是通的。
-           */
-          if (!cancelled) window.location.href = goUrl;
-          return;
-        } catch (err) {
-          console.error('[topup] App 付款交接失敗', err);
-        }
-        /*
-         * ⚠️ 這裡**不能**退回 formRef.submit()。
-         * 那會讓 webview 導去綠界，而 Capacitor 把站外網址交給 Safari 時是 GET —— 
-         * POST 參數整包遺失，玩家看到的是綠界的 MobileErrorHandle 錯誤頁。
-         * 寧可讓他重按一次，也不要把人丟到一個死掉的付款頁。
-         */
-        if (!cancelled) {
-          showToast('付款頁開啟失敗，請再試一次', 'error');
-          setPaymentData(null);
-          setIsProcessing(false);
-          isProcessingRef.current = false;
-        }
-      })();
-      return () => {
-        cancelled = true;
-      };
-    }
-
     formRef.current?.submit();
   }, [paymentData]);
 

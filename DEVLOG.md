@@ -4,6 +4,29 @@
 
 ---
 
+## v2026.08.20o｜2026-08-20｜儲值改主畫面直走；修瀏覽器關閉後版面被裁切
+
+### 1. 儲值：App 與網頁走同一條路，零彈窗零跳轉
+
+App 的儲值不再開 in-app browser：表單直接送去綠界，整個流程在**同一個畫面**
+走完（webview 換頁），付完綠界導回儲值紀錄 —— 同一個 webview 登入態都在，
+不需要交接頁、不需要 ggbapp:// 彈回、沒有任何確認框（老闆：儲值要絲滑）。
+
+in-app browser 那套是 `allowNavigation` 鎖白名單時代的產物；白名單放開
+（v2026.08.20b）後 webview 直走就是通的，偽 app 玩家一直走的就是這條。
+交接頁（/payment/go）與 ggbapp://payment-return 保留當無害死路
+（已發出去的舊版頁面可能還會用）。
+
+### 2. SFSafariViewController 關閉後，頁面被「捲」進頁頭底下
+
+LINE 授權視窗按「完成」關閉後，登入頁的內容被裁切（老闆附圖）——
+WKWebView 的捲動偏移在 sheet 關閉後卡在超出範圍的位置。
+修法：瀏覽器關閉／回前景時把捲動位置**夾回合法範圍**再往返 1px 逼原生
+捲動層同步；合法範圍內（玩家自己捲的）一律不動。掛在 NativeAppBootstrap
+既有的 browserFinished／appStateChange 補救點上。
+
+---
+
 ## v2026.08.20n｜2026-08-20｜LINE 登入改回 in-app browser；等待文案只留給偽 app
 
 老闆在模擬器測 LINE 登入的兩點：

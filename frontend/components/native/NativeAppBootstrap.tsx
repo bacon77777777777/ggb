@@ -171,8 +171,23 @@ export default function NativeAppBootstrap() {
     };
     apply();
 
+    /*
+     * 捲動位置矯正：SFSafariViewController 關閉時，WKWebView 的捲動偏移
+     * 可能卡在超出範圍的位置 —— 頁面明明不足一屏也被「捲」下去一截，
+     * 內容頂進頁頭底下（老闆 2026-08-20 附圖：關閉 LINE 授權後登入鈕被裁切）。
+     * 把位置夾回合法範圍再往返 1px 逼原生捲動層同步；
+     * 合法範圍內的（玩家自己捲的）一律不動。
+     */
+    const nudgeScroll = () => {
+      const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      const y = Math.min(window.scrollY, max);
+      window.scrollTo(0, y + 1);
+      window.scrollTo(0, y);
+    };
+
     const timers: number[] = [];
-    const applyLater = () => timers.push(window.setTimeout(apply, 400));
+    const applyLater = () =>
+      timers.push(window.setTimeout(() => { apply(); nudgeScroll(); }, 400));
     const handles: { remove?: () => void }[] = [];
 
     const listen = (pluginName: string, event: string) => {
