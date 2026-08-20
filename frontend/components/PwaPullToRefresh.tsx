@@ -276,8 +276,14 @@ export default function PwaPullToRefresh() {
         }
       });
       if (stripRef.current) {
-        // 底色帶從導航列下緣鋪到位移的最底 —— 蓋住透明 tab 背後露出來的 body，
-        // 也讓空隙裡的轉圈有底色可以坐
+        /*
+         * 底色帶從導航列下緣鋪到位移的最底 —— 蓋住透明 tab 背後露出來的 body，
+         * 也讓空隙裡的指示器有底色可以坐。
+         * 高度要跟內容用**同一條回彈動畫**收：內容滑回去、底色帶卻瞬間歸零的話，
+         * 回彈那零點幾秒空隙會露出頁面的白底，放開就閃一下白
+         * （老闆 2026-08-20 情報頁截圖）。
+         */
+        stripRef.current.style.transition = animate ? 'height .28s cubic-bezier(.22,1,.36,1)' : 'none';
         stripRef.current.style.height = px ? `${gapTop.current - stripTop.current + px}px` : '0px';
       }
       if (wrap) {
