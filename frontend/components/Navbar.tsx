@@ -115,6 +115,10 @@ function NavbarInner() {
     : null;
   const isNewsDetailPage = /^\/news\/[^/]+$/.test(pathname);
   const isAnnouncementDetailPage = /^\/announcements\/[^/]+$/.test(pathname);
+  /* 公告列表與內頁：右上角不放搜尋（老闆 2026-08-20）。
+     公告是「平台要講的話」，看公告的人不是來找商品的，
+     擺一顆放大鏡只是把注意力帶走 */
+  const isAnnouncementsArea = pathname === '/announcements' || isAnnouncementDetailPage;
   const isFairnessPage = pathname.startsWith('/fairness');
   const isExchangeDetailPage =
     pathname !== '/exchange/new' && pathname !== '/exchange/manage' && /^\/exchange\/[^/]+$/.test(pathname);
@@ -1031,7 +1035,7 @@ function NavbarInner() {
                   {/* 未登入搜尋圖標（手機，登入按鈕左邊）。
                       首頁不放這顆 —— 首頁的搜尋已經排在鈴鐺前面了，
                       兩顆都渲染會變成一列有兩個放大鏡 */}
-                  {!isHomePage && (
+                  {!isHomePage && !isAnnouncementsArea && (
                     <Link
                       href="/search?focus=1"
                       onClick={startKeyboardRelay}
