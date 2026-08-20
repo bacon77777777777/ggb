@@ -428,6 +428,19 @@ function ProfileContent() {
   const [supabase] = useState(() => createClient());
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const { flags, states: featureStates } = useFeatureFlags();
+  /*
+   * App 裡不可出現 C2C 入口（商城管理／交易所管理／交換管理）：
+   * middleware 已把 /sell、/market、/exchange 擋成 404（Apple 5.3 合規，
+   * 見 lib/nativeApp.ts），選單留著入口等於帶玩家去撞 404（老闆 2026-08-20）。
+   * 用 effect 設值避免 SSR/hydration 不一致。
+   */
+  const [inApp, setInApp] = useState(false);
+  useEffect(() => {
+    setInApp(
+      (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } })
+        .Capacitor?.isNativePlatform?.() === true,
+    );
+  }, []);
   // 儲值維護中時，餘額卡的「儲值」不換頁、改跳提示
   const rechargeState = featureStates.recharge;
 
@@ -2661,7 +2674,7 @@ function ProfileContent() {
                           >
                             分解 ({selectedForDelivery.length})
                           </button>
-                          {flags.market && (() => {
+                          {flags.market && !inApp && (() => {
                             if (selectedForDelivery.length > 10) return null;
                             if (selectedForDelivery.length !== 1) return null;
                             const item = warehouseItems.find(i => i.id === selectedForDelivery[0]);
@@ -6596,7 +6609,7 @@ function ProfileContent() {
                   color: 'text-accent-emerald',
                   onClick: () => handleTabChange('delivery'),
                 },
-                ...(flags.sell
+                ...(flags.sell && !inApp
                   ? ([
                       {
                         id: 'sell-manage',
@@ -6607,7 +6620,7 @@ function ProfileContent() {
                       },
                     ] as any[])
                   : []),
-                ...(flags.market
+                ...(flags.market && !inApp
                   ? ([
                       {
                         id: 'market',
@@ -6618,7 +6631,7 @@ function ProfileContent() {
                       },
                     ] as any[])
                   : []),
-                ...(flags.exchange
+                ...(flags.exchange && !inApp
                   ? ([
                       {
                         id: 'exchange-manage',
@@ -6853,7 +6866,7 @@ function ProfileContent() {
                 </div>
               </div>
               
-              {flags.sell && (
+              {flags.sell && !inApp && (
                 <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 overflow-hidden">
                   <div className="space-y-1">
                     <button
@@ -6944,7 +6957,7 @@ function ProfileContent() {
                     </button>
                   )}
 
-                  {flags.exchange && (
+                  {flags.exchange && !inApp && (
                     <button
                       type="button"
                       onClick={() => {
