@@ -128,11 +128,12 @@ function LineCallbackInner() {
            * 原生 App：導向自訂 scheme 把玩家帶回去，不必自己切。
            * iOS 通常會先問一句「要打開吉吉比嗎」，所以是一鍵而非零操作；
            * 要完全免確認得用 Universal Links（需要付費帳號的 Associated Domains）。
-           * 延遲一拍再導：讓「登入完成」的畫面先畫出來，
-           * 萬一導向被系統擋掉，玩家至少看得到成功訊息與下面那顆按鈕。
+           * 立刻導（老闆 2026-08-20：流程要絲滑）：React 這一輪 render 會先把
+           * 「登入完成」畫出來，setTimeout(0) 之後才跳 —— 被擋掉時畫面已經在，
+           * 玩家照樣看得到成功訊息與那顆按鈕，不需要為此多等 0.6 秒。
            */
           if (fromApp) {
-            setTimeout(() => { window.location.href = APP_SCHEME_URL }, 600)
+            setTimeout(() => { window.location.href = APP_SCHEME_URL }, 50)
           }
           return
         }

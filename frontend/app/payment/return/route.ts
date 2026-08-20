@@ -63,9 +63,9 @@ export async function GET(req: Request) {
     `if(document.cookie.indexOf('${COOKIE}=1')<0&&ls!=='1'){location.replace(to);return;}` +
     `try{document.cookie='${COOKIE}=; path=/; max-age=0; samesite=lax';` +
     `localStorage.removeItem('${COOKIE}')}catch(e){}` +
-    `document.documentElement.setAttribute('data-app','1');` +
-    // 延遲一拍：導向被擋掉時，玩家至少先看得到「付款流程已結束」
-    `setTimeout(function(){location.href=back},600);` +
+    // 立刻跳，不停留（老闆 2026-08-20：不要先看到一頁網頁再回 App）——
+    // 這一頁只在跳轉失敗時才會被看見（下面 1.2 秒後才顯示的保險 UI）
+    `location.href=back;` +
     /*
      * 自訂 scheme 打不開的退路。
      *
@@ -81,10 +81,13 @@ export async function GET(req: Request) {
     `document.addEventListener('visibilitychange',function(){if(document.hidden)gone=true});` +
     `window.addEventListener('pagehide',function(){gone=true});` +
     `setTimeout(function(){if(gone)return;` +
+    // 1.2 秒還在這裡＝跳轉被擋（或舊版 App 沒註冊 scheme），這時才把畫面亮出來
+    `document.documentElement.setAttribute('data-app','1');},1200);` +
+    `setTimeout(function(){if(gone)return;` +
     `var t=document.getElementById('ptitle'),d=document.getElementById('pdesc'),h=document.getElementById('phint');` +
     `if(t)t.textContent='儲值完成了';` +
     `if(d)d.textContent='請按左上角的 ✕ 關掉這個視窗，就會回到吉吉比，代幣已經在你的餘額裡。';` +
-    `if(h)h.textContent='下面那顆需要新版 App 才有作用';},2000);` +
+    `if(h)h.textContent='下面那顆需要新版 App 才有作用';},3000);` +
     `})();`
 
   return new Response(
