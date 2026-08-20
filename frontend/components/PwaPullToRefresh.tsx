@@ -175,7 +175,14 @@ function innerScrollable(target: EventTarget | null): HTMLElement | null {
     if (main && !main.contains(el)) return null;
     const style = window.getComputedStyle(el);
     const oy = style.overflowY;
-    if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) return el;
+    /*
+     * ⚠️ 不檢查 scrollHeight > clientHeight：清單空的時候內容沒超出高度，
+     * 檢查了會把「我的關注（尚無商品）」這種頁判成不可捲、退回拖整個畫面，
+     * 頁頭又跟著被拉（老闆 2026-08-20 截圖）。它是不是「頁面的捲動區」
+     * 看的是版型，不是當下有多少內容 —— 改用高度門檻擋掉小型元件
+     * （下拉選單、彈層裡的小清單），佔不到四成螢幕的不算。
+     */
+    if ((oy === 'auto' || oy === 'scroll') && el.clientHeight >= window.innerHeight * 0.4) return el;
     el = el.parentElement;
   }
   return null;
