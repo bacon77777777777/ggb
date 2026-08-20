@@ -25,6 +25,11 @@
  *      空隙鋪一層底色（`stripRef`）：淺色頁鋪灰（body 是白的，轉圈浮在白上
  *      看起來像破了一塊 —— 老闆 2026-08-20 附圖），深色頁（排行榜）取頁面
  *      自己的底色，不會出現一條突兀的灰。
+ *   2b. **整頁覆蓋層的頁面（會員中心的倉庫／配送／各種紀錄）自動只拖內層捲動區**。
+ *      那批頁面是 fixed inset-0 的覆蓋層、頁頭是裡面的一般元素（不是 sticky），
+ *      偵測不到；但它們的內容都放在一個 overflow-y-auto 的容器裡 ——
+ *      手勢起點落在這種容器裡就拖它，頁頭在容器外面，自然不動
+ *      （老闆 2026-08-20：「下拉時頂部導航要固定，不被拖拉」）。
  *   3b. 版面特殊的頁面（排行榜：tab 絕對定位在一塊 overflow-hidden 的縮放畫布裡）
  *      可以下 `data-ptr-content` 宣告「只拖這一塊」—— 那一頁改成位移這個元素，
  *      tab、背景、返回鈕全都原地不動。
@@ -158,6 +163,24 @@ function scaleOf(el: HTMLElement): number {
  * 觸控起點是否落在會自己捲動的容器裡（橫向輪播、彈層內的清單…）。
  * 不擋掉的話，在那些地方往下滑會同時觸發下拉更新。
  */
+/**
+ * 觸控起點所在的內層捲動容器（在 <main> 裡、直向、內容超出可捲的那個）。
+ * 會員中心那批整頁覆蓋層的內容都放在這種容器裡 —— 拖它而不是拖整個 <main>，
+ * 覆蓋層的頁頭與 tab 就自然定住。找不到回 null，走一般路徑。
+ */
+function innerScrollable(target: EventTarget | null): HTMLElement | null {
+  const main = document.querySelector('main');
+  let el = target as HTMLElement | null;
+  while (el && el !== document.body) {
+    if (main && !main.contains(el)) return null;
+    const style = window.getComputedStyle(el);
+    const oy = style.overflowY;
+    if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) return el;
+    el = el.parentElement;
+  }
+  return null;
+}
+
 function startedInScrollable(target: EventTarget | null): boolean {
   let el = target as HTMLElement | null;
   while (el && el !== document.body) {
@@ -179,6 +202,8 @@ export default function PwaPullToRefresh() {
   const armed = useRef(false);      // 已滿格
   const stopIdx = useRef(0);        // 下一個要觸發的震動節點
   const refreshing = useRef(false);
+  /** 手勢起點的元素：engage 時用它找內層捲動容器 */
+  const startTarget = useRef<EventTarget | null>(null);
   /** 這一趟要「定住」的 sticky 列，連同原本的 inline 樣式（結束要還原）。
       opaque：不透明的欄（tab 列）在被抵銷後，文件流裡空出來的位置會露出頁面
       底色 —— 用一條「往下的實心 box-shadow」把那個洞蓋成空隙的底色。
@@ -263,6 +288,7 @@ export default function PwaPullToRefresh() {
       if (!isAtTop() || startedInScrollable(e.target)) return;
       startY.current = e.touches[0].clientY;
       startX.current = e.touches[0].clientX;
+      startTarget.current = e.target;
       tracking.current = true;
       engaged.current = false;
       armed.current = false;
@@ -300,7 +326,13 @@ export default function PwaPullToRefresh() {
          * <main>，把已貼頂的 sticky 列反向抵銷。
          */
         const main = document.querySelector('main') as HTMLElement | null;
-        const marked = main ? Array.from(main.querySelectorAll<HTMLElement>('[data-ptr-content]')) : [];
+        let marked = main ? Array.from(main.querySelectorAll<HTMLElement>('[data-ptr-content]')) : [];
+        if (!marked.length) {
+          // 沒有頁面自己宣告的拖曳範圍，看手勢是不是從內層捲動容器起手
+          //（會員中心那批整頁覆蓋層）—— 是就只拖那個容器，頁頭自然定住
+          const inner = innerScrollable(startTarget.current);
+          if (inner) marked = [inner];
+        }
 
         if (marked.length) {
           // 只拖被標記的區塊：其餘（tab、背景、返回鈕）原地不動，不需要任何抵銷。

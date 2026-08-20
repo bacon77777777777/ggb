@@ -453,10 +453,13 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                       </p>
                       {/* 轉蛋次數 / 被膜拜次數：併成一行並縮小，
                           原本各佔一行、字級與暱稱太接近，四行擠在一起 */}
+                      {/* 縮到 24px 並允許截斷：這行與右側「膜拜大神」共用同一列，
+                          次數大的帳號會直接頂到按鈕上（老闆 2026-08-20 附圖「黏在一起」）。
+                          w-full + truncate 讓它最多吃到自己欄位的寬，絕不越界 */}
                       {!loading && (
-                        <p className="text-[#888] whitespace-nowrap" style={{ fontSize: 28, fontWeight: 400 }}>
+                        <p className="text-[#888] whitespace-nowrap overflow-hidden text-ellipsis w-full" style={{ fontSize: 24, fontWeight: 400 }}>
                           累計轉蛋 {(profile?.total_draws ?? 0).toLocaleString()} 次
-                          <span className="text-[#ccc]" style={{ margin: '0 12px' }}>·</span>
+                          <span className="text-[#ccc]" style={{ margin: '0 8px' }}>·</span>
                           被膜拜 {(profile?.worship_count ?? 0).toLocaleString()} 次
                         </p>
                       )}
@@ -466,16 +469,16 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                   {/* Component2：膜拜大神按鈕 */}
                   <button
                     onClick={onWorship ?? worshipSelf}
-                    className="relative flex items-center justify-center shrink-0 px-[48px]"
+                    className="relative flex items-center justify-center shrink-0 px-[28px]"
                     style={{
-                      height: 108,
+                      height: 96,
                       marginTop: -10,   // 與左側暱稱那組視覺對齊
                       background: 'rgba(255,228,228,0.4)',
                       border: '2px solid rgba(255,255,255,0.4)',
                       borderRadius: 100,
                     }}
                   >
-                    <p className="text-[#cb6e6e] text-[36px] font-semibold leading-none whitespace-nowrap">
+                    <p className="text-[#cb6e6e] text-[32px] font-semibold leading-none whitespace-nowrap">
                       膜拜大神
                     </p>
                   </button>
