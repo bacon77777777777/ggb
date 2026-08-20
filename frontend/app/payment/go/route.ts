@@ -57,10 +57,14 @@ export async function GET(req: Request) {
    * in-app browser 裡 —— 那邊沒有 webview 的登入 cookie，導去需要登入的頁面
    * 只會看到「請先登入」（老闆回報「跑到那一個未登錄頁面」）。
    *
-   * in-app browser（SFSafariViewController）跟 Safari 共用 cookie jar，
-   * 整條付款流程都在同一個 jar 裡，所以這張 cookie 在回程頁讀得到，
-   * 前台就知道要把玩家導回 ggbapp://。一般網頁付款不會有這張 cookie，
-   * 行為完全不受影響。
+   * 整條付款流程（交接頁 → 綠界 → 3D 驗證 → 回程）都在**同一個
+   * SFSafariViewController**裡跑完，儲存空間從頭到尾是同一份，所以這張標記
+   * 在回程頁讀得到，前台就知道要把玩家導回 ggbapp://。
+   * 一般網頁付款不會有這張標記，行為完全不受影響。
+   *
+   * ⚠️ 回程頁只能用 `document.cookie` 讀它，不能在伺服器端看 Cookie 標頭 ——
+   * 那趟是跨站轉址鏈，`SameSite=Lax` 的 cookie 不會被送出去（見
+   * app/payment/return/route.ts 的說明）。
    *
    * 30 分鐘後自動失效：付款流程不會比這更久，過期了也不該再彈回 App。
    */
@@ -70,7 +74,9 @@ export async function GET(req: Request) {
       `<form id="ecpay" action="${esc(payload.action)}" method="POST">${inputs}</form>` +
       // 沒有 JS 也要能付款：按鈕是 <noscript> 的退路
       `<noscript><div style="text-align:center"><button type="submit" form="ecpay">前往付款</button></div></noscript>` +
-      `<script>document.cookie='ggb_pay_app=1; path=/; max-age=1800; samesite=lax';` +
+      // localStorage 是保險：cookie 若被隱私設定擋掉，回程頁還有第二個依據可看
+      `<script>try{document.cookie='ggb_pay_app=1; path=/; max-age=1800; samesite=lax';` +
+      `localStorage.setItem('ggb_pay_app','1')}catch(e){}` +
       `document.getElementById('ecpay').submit();</script>` +
       `</body>`,
   )

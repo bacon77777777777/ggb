@@ -92,9 +92,29 @@ export default function TopupPage() {
     fields: Record<string, string>;
   } | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  /*
+   * 同一筆訂單只准送出一次。
+   *
+   * 底下那支 effect 原本把 `refreshProfile` 放進相依陣列，而它在 AuthContext
+   * 裡是每次 render 重新宣告的普通函式 —— 也就是說**只要 AuthProvider 重繪**
+   * （session 續期、App 從背景回前景、餘額更新…），effect 就整個重跑一次。
+   * 付款頁還開著的時候重跑，等於拿同一個 MerchantTradeNo 再開一次綠界，
+   * 綠界回「訂單編號重覆，建立失敗」，而那頁就疊在原本的付款頁上面 ——
+   * 老闆關掉第一層之後看到的就是它（2026-08-20 回報）。
+   *
+   * 改成用 ref 記住已經送出的交易編號，並把 refreshProfile 從相依陣列拿掉
+   * （改用 ref 取最新的），effect 只跟著 paymentData 走。
+   */
+  const submittedTradeNo = useRef<string | null>(null);
+  const refreshProfileRef = useRef(refreshProfile);
+  refreshProfileRef.current = refreshProfile;
 
   useEffect(() => {
     if (!paymentData) return;
+
+    const tradeNo = paymentData.fields?.MerchantTradeNo || '';
+    if (tradeNo && submittedTradeNo.current === tradeNo) return;
+    submittedTradeNo.current = tradeNo;
 
     /*
      * App 版不能直接在 webview 導去綠界：3D 驗證會跳到各家銀行的網域，
@@ -123,7 +143,7 @@ export default function TopupPage() {
           const opened = await openPayment(goUrl, () => {
             // 使用者關掉付款頁就回來了 —— 付成功與否由後端 callback 決定，
             // 這裡只負責把畫面上的餘額換成最新的
-            void refreshProfile?.();
+            void refreshProfileRef.current?.();
             setPaymentData(null);
             setIsProcessing(false);
             isProcessingRef.current = false;
@@ -158,7 +178,7 @@ export default function TopupPage() {
     }
 
     formRef.current?.submit();
-  }, [paymentData, refreshProfile]);
+  }, [paymentData]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
