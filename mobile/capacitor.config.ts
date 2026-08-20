@@ -77,6 +77,13 @@ const config: CapacitorConfig = {
     FirebaseMessaging: {
       presentationOptions: ['badge', 'sound', 'alert'],
     },
+    /*
+     * 原生 LINE 登入（plugins/line-login）。channelId 是公開值（本來就會出現在
+     * 授權網址上），hardcode 無妨；channel secret 只存在後端。
+     */
+    LineLogin: {
+      channelId: '2011007121',
+    },
     StatusBar: {
       // 狀態列不覆蓋 webview —— 配合上面的 contentInset，
       // 網頁不必處理瀏海／動態島的內縮

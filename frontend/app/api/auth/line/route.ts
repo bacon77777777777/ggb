@@ -5,6 +5,7 @@ import {
   isAllowedRedirect,
   serviceClient,
   syntheticEmail,
+  verifyAccessToken,
 } from '@/lib/lineAuth'
 
 /**
@@ -32,18 +33,32 @@ import {
  */
 export async function POST(request: Request) {
   try {
-    const { code, redirectUri, mode, state, intent } = await request.json()
-    if (!code || !redirectUri) {
-      return NextResponse.json({ error: '缺少授權碼' }, { status: 400 })
-    }
-    if (!isAllowedRedirect(redirectUri)) {
-      return NextResponse.json({ error: '轉址位置不合法' }, { status: 400 })
-    }
-    if (mode === 'ticket' && (typeof state !== 'string' || state.length < 16)) {
-      return NextResponse.json({ error: '缺少驗證碼' }, { status: 400 })
+    const { code, redirectUri, mode, state, intent, accessToken } = await request.json()
+
+    /*
+     * mode:'native' —— 原生 App 用 LINE SDK 拿到 access token 直接送來
+     *（app-to-app 授權，沒有授權碼也沒有回呼頁）。呼叫端跟 webview 是
+     * 同一個情境，驗完直接回 tokenHash，跟（無 mode）direct 一樣。
+     */
+    if (mode === 'native') {
+      if (typeof accessToken !== 'string' || !accessToken) {
+        return NextResponse.json({ error: '缺少授權資訊' }, { status: 400 })
+      }
+    } else {
+      if (!code || !redirectUri) {
+        return NextResponse.json({ error: '缺少授權碼' }, { status: 400 })
+      }
+      if (!isAllowedRedirect(redirectUri)) {
+        return NextResponse.json({ error: '轉址位置不合法' }, { status: 400 })
+      }
+      if (mode === 'ticket' && (typeof state !== 'string' || state.length < 16)) {
+        return NextResponse.json({ error: '缺少驗證碼' }, { status: 400 })
+      }
     }
 
-    const line = await exchangeAndVerify(code, redirectUri)
+    const line = mode === 'native'
+      ? await verifyAccessToken(accessToken)
+      : await exchangeAndVerify(code, redirectUri)
     if (!line) return NextResponse.json({ error: 'LINE 授權失敗，請重試一次' }, { status: 401 })
 
     const admin = serviceClient()

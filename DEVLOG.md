@@ -4,6 +4,40 @@
 
 ---
 
+## v2026.08.20p｜2026-08-20｜原生 LINE SDK 整合：app-to-app 登入（老闆：一次到位）
+
+App 的 LINE 登入接上官方 LINE SDK —— 裝了 LINE 的手機點登入直接切 LINE App
+按「允許」就回來，**零瀏覽器、零中繼頁、零確認框**；沒裝 LINE 的由 SDK
+自動退回內嵌網頁授權，一樣不離開 App。
+
+### 原生端（mobile/）
+
+- 新增本地 Capacitor 外掛 `plugins/line-login`（npm `file:` 依賴，
+  `cap sync` 自動納入 CapApp-SPM），`jsName: 'LineLogin'`、方法 `login`
+- LINE App 的回程（`line3rdp.tw.com.ggb.app` scheme）靠監聽 Capacitor 的
+  `capacitorOpenURL` 廣播轉交給 SDK，**不用動 AppDelegate**
+- Info.plist 加第二組 CFBundleURLTypes（line3rdp scheme）；
+  `LSApplicationQueriesSchemes` 本來就有 line／lineauth2
+- channelId 放 `capacitor.config.ts` 的 `plugins.LineLogin`（公開值）
+- ⚠️ LineSDK 鎖 **5.11.2**：5.17 用 Swift 6 並行語法，Xcode 15.4 編不過；
+  升 Xcode 26 後可解鎖
+- LINE Developers 後台的 iOS bundle id 已由老闆自行設定
+
+### 前後端
+
+- `mode:'native'`：SDK 給的是 access token（不是授權碼）。後端
+  `verifyAccessToken()` 兩步驗：verify 端點比對 client_id ＝ 我們的 Channel
+  → profile 端點拿 userId —— 與 id_token 驗法同信任等級，不信前端自報身份。
+  驗完走同一條開帳號／magiclink 路，回 tokenHash 直接登入
+- 前端 `startNativeLineLogin`：先試 SDK 外掛；**舊版殼沒有外掛時自動退回
+  in-app browser 的 OAuth 流程**（v2026.08.20n 那條），新舊殼都能登
+- 玩家在 LINE 取消授權：安靜收掉，不彈錯誤
+
+模擬器已裝新殼可測（模擬器沒有 LINE App，會看到 SDK 的內嵌網頁授權；
+app-to-app 那段要實機驗）。
+
+---
+
 ## v2026.08.20o｜2026-08-20｜儲值改主畫面直走；修瀏覽器關閉後版面被裁切
 
 ### 1. 儲值：App 與網頁走同一條路，零彈窗零跳轉

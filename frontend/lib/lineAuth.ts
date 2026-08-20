@@ -70,6 +70,37 @@ export async function exchangeAndVerify(code: string, redirectUri: string): Prom
   return { sub: p.sub, name: p.name ?? null, picture: p.picture ?? null }
 }
 
+/**
+ * 原生 LINE SDK 模式：驗 access token，回這個 LINE 是誰。
+ *
+ * SDK 在 App 內拿到的是 access token（不是授權碼），驗法照 LINE 官方：
+ * 1. verify 端點確認 token 有效**且 client_id 是我們的 Channel** ——
+ *    擋別人拿自己 app 的 token 冒充
+ * 2. 再用 token 打 profile 端點拿 userId（等同 id_token 的 sub）
+ * 兩步都在後端，跟 exchangeAndVerify 同一個信任等級，不信前端自報的身份。
+ */
+export async function verifyAccessToken(accessToken: string): Promise<LineProfile | null> {
+  if (!CHANNEL_ID || !accessToken) return null
+
+  const verifyRes = await fetch(
+    `https://api.line.me/oauth2/v2.1/verify?access_token=${encodeURIComponent(accessToken)}`,
+    { signal: AbortSignal.timeout(10_000) },
+  )
+  if (!verifyRes.ok) return null
+  const v = await verifyRes.json() as { client_id?: string; expires_in?: number }
+  if (v.client_id !== CHANNEL_ID || (v.expires_in ?? 0) <= 0) return null
+
+  const profileRes = await fetch('https://api.line.me/v2/profile', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(10_000),
+  })
+  if (!profileRes.ok) return null
+  const p = await profileRes.json() as { userId?: string; displayName?: string; pictureUrl?: string }
+  if (!p.userId) return null
+
+  return { sub: p.userId, name: p.displayName ?? null, picture: p.pictureUrl ?? null }
+}
+
 // 合成信箱的定義集中在 lib/syntheticEmail（client 與 server 共用），這裡轉出口
 export { SYNTHETIC_EMAIL_SUFFIX, syntheticEmail, isSyntheticEmail } from '@/lib/syntheticEmail'
 

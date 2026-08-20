@@ -131,6 +131,70 @@ export function SocialLoginButtons() {
     } catch { /* 授權期間網路切換是常態，下一輪再問 */ }
   };
 
+  /**
+   * 原生 App 的 LINE 登入。
+   *
+   * 首選：LINE SDK 外掛（新版殼才有）—— app-to-app 授權，裝了 LINE 的手機
+   * 直接切 LINE App 按允許就回來，全程零瀏覽器零中繼頁；沒裝 LINE 的
+   * SDK 自動退回內嵌網頁。拿到 access token 交給後端驗（mode:'native'），
+   * 換 tokenHash 直接登入，跟 Email 登入同一條 session 路。
+   *
+   * 舊版殼沒有外掛（native.call 回 null）→ 退回 in-app browser 的 OAuth 流程。
+   */
+  const startNativeLineLogin = async (state: string) => {
+    setWaiting(true);
+    try {
+      const r = (await native.call('LineLogin', 'login')) as
+        | { accessToken?: string }
+        | null;
+      if (r?.accessToken) {
+        const res = await fetch('/api/auth/line', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode: 'native', accessToken: r.accessToken }),
+        });
+        const json = await res.json();
+        if (res.ok && json.tokenHash) {
+          const supabase = createClient();
+          const { error } = await supabase.auth.verifyOtp({ token_hash: json.tokenHash, type: 'email' });
+          if (!error) {
+            const pending = localStorage.getItem('pending_invite');
+            if (pending) {
+              localStorage.removeItem('pending_invite');
+              void fetch('/api/user/claim-invite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: pending }),
+              }).catch(() => {});
+            }
+            router.replace('/profile');
+            return;
+          }
+        }
+        showToast(json.error || '登入失敗，請重試一次', 'error');
+        stopPolling();
+        return;
+      }
+      if (r !== null) {
+        // 外掛在、但回傳沒有 token（理論上走不到）：安靜收掉
+        stopPolling();
+        return;
+      }
+    } catch {
+      // 玩家取消授權或 SDK 出錯：安靜收掉，讓他要重試自己再按
+      stopPolling();
+      return;
+    }
+
+    // 舊版殼沒有 LINE SDK 外掛：退回 in-app browser 的 OAuth 授權
+    deadlineRef.current = Date.now() + POLL_TIMEOUT_MS;
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => void claimTicket(), POLL_INTERVAL_MS);
+    void openPayment(authorizeUrl(state), () => stopPolling()).then((opened) => {
+      if (!opened) popupRef.current = window.open(authorizeUrl(state), '_blank');
+    });
+  };
+
   const startLineLogin = () => {
     const isNativeApp = native.isNativePlatform();
     // app. 前綴：回呼頁靠它判斷要不要導回 ggbapp://（見檔頭說明）
@@ -149,28 +213,19 @@ export function SocialLoginButtons() {
       return;
     }
 
-    // 偽 app／原生 App：主視窗留在這裡輪詢，授權開在另一個視窗
+    if (isNativeApp) {
+      // SDK 路徑不需要輪詢；stateRef 先放著，退回瀏覽器授權的 fallback 才用得到
+      stateRef.current = state;
+      void startNativeLineLogin(state);
+      return;
+    }
+
+    // 偽 app：window.open 開覆蓋視窗去授權，主視窗留在這裡輪詢
     stateRef.current = state;
     deadlineRef.current = Date.now() + POLL_TIMEOUT_MS;
     setWaiting(true);
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => void claimTicket(), POLL_INTERVAL_MS);
-
-    if (isNativeApp) {
-      /*
-       * 原生 App：開 in-app browser（全螢幕 SFSafariViewController）。
-       * openPayment 的「關閉時回呼」正好拿來收尾 —— 玩家自己把授權視窗關掉
-       * 就停止等待；登入成功那條路是 claimTicket 主動 closeInAppBrowser，
-       * stopPolling 早跑過了，這裡再跑一次無害。
-       */
-      void openPayment(authorizeUrl(state), () => stopPolling()).then((opened) => {
-        // 外掛不在（不該發生）就退回系統瀏覽器，至少流程走得完
-        if (!opened) popupRef.current = window.open(authorizeUrl(state), '_blank');
-      });
-      return;
-    }
-
-    // 偽 app：window.open 開覆蓋視窗去授權，主視窗留在這裡輪詢
     popupRef.current = window.open(authorizeUrl(state), '_blank');
   };
 
