@@ -19,7 +19,7 @@ import ThemePanel from './ThemePanel'
 
 // `sell_escrow`（商城平台代收，接藍新 MPL）已於 2026-08-13 移除：
 // 玩家商城定調雙方自理，平台不碰錢，這個旗標永遠是關的。
-type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'exchange' | 'market' | 'recharge' | 'register'
+type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'exchange' | 'market' | 'recharge' | 'register' | 'phone_verify'
 
 type LinePushKey =
   | 'line_push_daily' | 'line_push_cfo' | 'line_push_cmo' | 'line_push_supply'
@@ -92,6 +92,13 @@ const CATEGORY_ITEMS: { key: FeatureKey; label: string; desc?: string }[] = [
 const TRADE_ITEMS: { key: FeatureKey; label: string; desc: string }[] = [
   { key: 'exchange', label: '卡牌交換', desc: '玩家之間卡牌一對一交換。' },
   { key: 'market',   label: '交易所', desc: '倉庫裡還沒配送、而且是大賞的品項可以上架，賣掉換成 G 幣。' },
+  {
+    key: 'phone_verify',
+    label: '手機驗證',
+    // 開之前一定要先在 Supabase 接好簡訊供應商，否則玩家按下去只會收到錯誤
+    desc: '會員中心的手機號碼驗證（簡訊驗證碼）。⚠️ 需先在 Supabase 接好簡訊供應商才能開，'
+        + '否則發送驗證碼一定失敗。關閉時前台不顯示這個入口，也不會催玩家去設定。',
+  },
 ]
 
 const DEFAULT_FLAGS: Record<FeatureKey, boolean> = {
@@ -108,6 +115,8 @@ const DEFAULT_FLAGS: Record<FeatureKey, boolean> = {
   slot: true,
   exchange: true,
   market: false,
+  // 沒接簡訊供應商之前開了也只會壞，預設關
+  phone_verify: false,
 }
 
 export default function FeatureFlagsPage() {

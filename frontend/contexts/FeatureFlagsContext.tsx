@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useNativeAppState } from '@/lib/useIsNativeApp';
 import { createClient } from '@/lib/supabase/client';
 
-export type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'exchange' | 'market' | 'recharge' | 'register';
+export type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'exchange' | 'market' | 'recharge' | 'register' | 'phone_verify';
 
 export type FeatureFlags = Record<FeatureKey, boolean>;
 
@@ -40,6 +40,8 @@ const DEFAULT_FLAGS: FeatureFlags = {
   slot: false,
   exchange: false,
   market: false,
+  // 「開了才顯示」的那一類：沒接簡訊供應商時開了只會讓玩家撞牆
+  phone_verify: false,
 };
 
 const SAFE_FALLBACK_FLAGS: FeatureFlags = {

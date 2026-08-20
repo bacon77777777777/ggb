@@ -2288,9 +2288,15 @@ function ProfileContent() {
 
   const isGuest = !user;
 
-  // 設定頁的五個必填項（對應各列的「立即設定」）；有任一未完成 → 齒輪顯示紅點
+  /*
+   * 設定頁的必填項（對應各列的「立即設定」）；有任一未完成 → 齒輪顯示紅點。
+   *
+   * 手機驗證只在功能開著時才算 —— 沒接簡訊供應商的期間，發驗證碼一定失敗，
+   * 掛著紅點等於一直催玩家去撞一道打不開的門（老闆 2026-08-20）。
+   */
+  const phoneVerifyEnabled = flags.phone_verify;
   const settingsIncomplete = !isGuest && !!user && (
-    !user.name || !user.is_phone_verified || !user.email ||
+    !user.name || (phoneVerifyEnabled && !user.is_phone_verified) || !user.email ||
     !settingsForm.gender || !settingsForm.birthday
   );
 
@@ -6002,6 +6008,9 @@ function ProfileContent() {
                   <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm overflow-hidden divide-y divide-neutral-100 dark:divide-neutral-800">
                     <EmailBindRow email={user?.email} />
                     <LineBindRow />
+                    {/* 手機驗證關閉時整列不顯示 —— 留一個點不動的入口只會吊人胃口。
+                        已經驗過的老帳號仍然看得到自己的號碼 */}
+                    {(phoneVerifyEnabled || user?.is_phone_verified) && (
                     <div 
                       className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
                       onClick={() => {
@@ -6017,6 +6026,7 @@ function ProfileContent() {
                         <ChevronRight className="w-4 h-4 text-neutral-300" />
                       </div>
                     </div>
+                    )}
                     {user?.email && !isSyntheticEmail(user.email) && (
                       <div 
                         className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
@@ -6190,6 +6200,8 @@ function ProfileContent() {
                 <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm overflow-hidden divide-y divide-neutral-100 dark:divide-neutral-800">
                   <EmailBindRow email={user?.email} />
                   <LineBindRow />
+                  {/* 同上：功能關閉時整列不顯示 */}
+                  {(phoneVerifyEnabled || user?.is_phone_verified) && (
                   <div 
                     className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
                     onClick={() => {
@@ -6205,6 +6217,7 @@ function ProfileContent() {
                       <ChevronRight className="w-4 h-4 text-neutral-300" />
                     </div>
                   </div>
+                  )}
                   {user?.email && !isSyntheticEmail(user.email) && (
                     <div 
                       className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
