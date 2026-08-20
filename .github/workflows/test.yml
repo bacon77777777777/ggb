@@ -66,9 +66,17 @@ jobs:
 
       - name: Run Playwright tests
         run: npm run test:e2e
+        # E2E 在 CI 跑的是 production build（見 playwright.config 的說明）。
+        # build 階段會載入每支 API route 的模組，而它們在模組層就建立
+        # Supabase client —— 少一個 key 就是 "supabaseKey is required"，
+        # 整個 build 掛掉。所以這裡要給齊，值是假的沒關係：
+        # 測試全走 route mock，不會真的連出去。
         env:
           NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co'
           NEXT_PUBLIC_SUPABASE_ANON_KEY: 'ci-test-anon-key'
+          SUPABASE_SERVICE_ROLE_KEY: 'ci-test-service-role-key'
+          UPSTASH_REDIS_REST_URL: 'https://test.upstash.io'
+          UPSTASH_REDIS_REST_TOKEN: 'ci-test-redis-token'
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
