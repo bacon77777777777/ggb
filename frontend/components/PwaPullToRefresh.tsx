@@ -22,6 +22,11 @@
  *   3. **轉圈出現在內容上方那道空隙裡**，不是畫面最上緣。
  *      起始位置是「所有釘住的東西的最下緣」，動態量出來的 ——
  *      寫死 57px 的話，情報頁那種底下還有一排 tab 的版面就會被蓋住。
+ *      空隙鋪一層底色（`stripRef`）：淺色頁鋪灰（body 是白的，轉圈浮在白上
+ *      看起來像破了一塊 —— 老闆 2026-08-20 附圖），深色頁（排行榜）取頁面
+ *      自己的底色，不會出現一條突兀的灰。
+ *   3b. 版面不是 sticky 的頁面（排行榜的 tab 是絕對定位在縮放畫布裡）可以下
+ *      `data-ptr-pin` 屬性宣告「這塊要定住」，縮放比例會自動換算。
  *   4. **蓄力才刷新**。未滿格彈回去，滿格才刷新；過程分段輕震、間距愈往後愈密，
  *      滿格給一下明顯較重的，不用看畫面就知道可以放手了。
  *
@@ -109,7 +114,46 @@ function pinnedBars(top: number): HTMLElement[] {
     if (r.height <= 0 || r.height > window.innerHeight * 0.4) return; // 太高的不是頂欄
     if (r.top <= top + 2) found.push(el);
   });
-  return found.filter((el) => !found.some((o) => o !== el && o.contains(el)));
+  /*
+   * `data-ptr-pin`：版面不是 sticky 的頁面用這個屬性宣告「這塊在下拉時要定住」。
+   * 排行榜的 tab 是絕對定位在一塊 scale() 縮放的 750px 畫布裡，上面那套
+   * sticky 偵測抓不到它，也不該為了下拉更新去改整頁版型。
+   */
+  main.querySelectorAll<HTMLElement>('[data-ptr-pin]').forEach((el) => {
+    if (el.getBoundingClientRect().height > 0) found.push(el);
+  });
+  return found.filter((el, i) => found.indexOf(el) === i && !found.some((o) => o !== el && o.contains(el)));
+}
+
+/**
+ * 空隙的底色：取內容區頂端實際畫著的顏色。
+ *
+ * 淺色頁（情報頁）鋪灰 —— body 是白的，直接露出來的話轉圈像浮在一塊破洞上；
+ * 深色頁（排行榜的 #232429）就用它自己的底色，鋪灰反而變成一條突兀的亮帶。
+ * 判斷方式：從空隙的位置往上找第一個不透明的背景色，夠亮就換成灰，
+ * 深的就照用。找不到就看全站深淺色模式給預設值。
+ */
+function stripColor(probeY: number): string {
+  const fallback = document.documentElement.classList.contains('dark') ? '#171717' : '#f5f5f5';
+  let el = document.elementFromPoint(window.innerWidth / 2, probeY) as HTMLElement | null;
+  while (el && el !== document.documentElement) {
+    const bg = window.getComputedStyle(el).backgroundColor;
+    const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(bg);
+    if (m && (m[4] === undefined || parseFloat(m[4]) > 0.5)) {
+      const [r, g, b] = [Number(m[1]), Number(m[2]), Number(m[3])];
+      const luma = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      return luma > 0.85 ? fallback : bg; // 白得發亮 → 鋪灰；本來就深 → 照用
+    }
+    el = el.parentElement;
+  }
+  return fallback;
+}
+
+/** 元素身上的縮放倍率（排行榜畫布是 scale() 過的，位移量要除回去才會準） */
+function scaleOf(el: HTMLElement): number {
+  const h = el.offsetHeight;
+  if (!h) return 1;
+  return el.getBoundingClientRect().height / h || 1;
 }
 
 /**
@@ -137,9 +181,13 @@ export default function PwaPullToRefresh() {
   const armed = useRef(false);      // 已滿格
   const stopIdx = useRef(0);        // 下一個要觸發的震動節點
   const refreshing = useRef(false);
-  /** 這一趟要「定住」的 sticky 列，連同它們原本的 inline transform（結束要還原） */
-  const pinned = useRef<{ el: HTMLElement; transform: string }[]>([]);
+  /** 這一趟要「定住」的 sticky 列，連同原本的 inline transform（結束要還原）與縮放倍率 */
+  const pinned = useRef<{ el: HTMLElement; transform: string; scale: number }[]>([]);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  /** 空隙底色帶的頂端（= 導航列下緣），高度蓋到 gapTop + 位移量 */
+  const stripTop = useRef(0);
+  const gapTop = useRef(0);
   const iconRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
@@ -164,10 +212,16 @@ export default function PwaPullToRefresh() {
        * 被拉下去，空隙開在 tab 上面 —— 老闆說那個體感不對，正確的是
        * 「框（含 tab）不動，只有底下的內容被拖」。
        */
-      pinned.current.forEach(({ el, transform }) => {
+      pinned.current.forEach(({ el, transform, scale }) => {
         el.style.transition = t;
-        el.style.transform = px ? `${transform} translate3d(0, ${-px}px, 0)`.trim() : transform;
+        // 縮放畫布裡的元素，位移會被父層的 scale() 放大，先除回去螢幕上才會剛好抵銷
+        el.style.transform = px ? `${transform} translate3d(0, ${-px / scale}px, 0)`.trim() : transform;
       });
+      if (stripRef.current) {
+        // 底色帶從導航列下緣鋪到位移的最底 —— 蓋住透明 tab 背後露出來的 body，
+        // 也讓空隙裡的轉圈有底色可以坐
+        stripRef.current.style.height = px ? `${gapTop.current - stripTop.current + px}px` : '0px';
+      }
       if (wrap) {
         // 轉圈停在空隙的正中間：空隙高度是 px，轉圈高 ICON
         wrap.style.transition = animate ? `${t}, opacity .2s` : 'opacity .2s';
@@ -231,17 +285,23 @@ export default function PwaPullToRefresh() {
         // 從跨過安全距離的那一點重新起算，畫面才不會「啪」地跳一段
         startY.current += DEAD_ZONE;
 
-        // 這一趟要定住哪幾條，以及空隙該從哪裡開始 —— 兩者都在這一刻量
+        // 這一趟要定住哪幾條，以及空隙該從哪裡開始 —— 都在這一刻量
         const top = navBottom();
         pinned.current = pinnedBars(top).map((el) => ({
           el,
           transform: el.style.transform || '',
+          scale: scaleOf(el),
         }));
-        const gapTop = pinned.current.reduce(
+        gapTop.current = pinned.current.reduce(
           (acc, { el }) => Math.max(acc, el.getBoundingClientRect().bottom),
           top,
         );
-        if (wrapRef.current) wrapRef.current.style.top = `${gapTop}px`;
+        stripTop.current = top;
+        if (wrapRef.current) wrapRef.current.style.top = `${gapTop.current}px`;
+        if (stripRef.current) {
+          stripRef.current.style.top = `${top}px`;
+          stripRef.current.style.background = stripColor(gapTop.current + 4);
+        }
       }
 
       const dy = raw - DEAD_ZONE;
@@ -311,6 +371,17 @@ export default function PwaPullToRefresh() {
   }, []);
 
   return (
+    <>
+    {/*
+      空隙的底色帶：fixed、排在 <main> 之前，所以畫在內容底下、body 背景上面。
+      淺色頁是灰的（老闆指定：轉圈要坐在灰底上，不是一塊白的），
+      深色頁取頁面自己的底色。高度跟著位移走，沒在拉的時候是 0。
+    */}
+    <div
+      ref={stripRef}
+      aria-hidden
+      style={{ position: 'fixed', left: 0, right: 0, top: 0, height: 0, zIndex: 0, pointerEvents: 'none' }}
+    />
     <div
       ref={wrapRef}
       aria-hidden
@@ -349,5 +420,6 @@ export default function PwaPullToRefresh() {
         ))}
       </svg>
     </div>
+    </>
   );
 }

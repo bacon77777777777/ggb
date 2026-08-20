@@ -405,7 +405,9 @@ type RankingCategoryTabsProps = {
 
 export function RankingCategoryTabs({ activeCategory, onCategoryChange }: RankingCategoryTabsProps) {
   return (
-    <div className="absolute z-10 top-[18.75px] left-[37.5px] content-stretch flex h-[80px] items-center shrink-0 w-[675px] justify-between px-8">
+    /* data-ptr-pin：下拉更新時這排 tab 要定住不動（PwaPullToRefresh 會抵銷位移；
+       這頁的 tab 是絕對定位在縮放畫布裡，sticky 偵測抓不到，所以用屬性宣告） */
+    <div data-ptr-pin className="absolute z-10 top-[18.75px] left-[37.5px] content-stretch flex h-[80px] items-center shrink-0 w-[675px] justify-between px-8">
       {[
         { id: 'reward', label: '賞金狂人' },
         { id: 'draws', label: '轉蛋魔人' }
@@ -439,7 +441,7 @@ type RankingTimeTabsProps = {
 
 export function RankingTimeTabs({ activeTab, onTabChange }: RankingTimeTabsProps) {
   return (
-    <div className="absolute z-10 bg-[rgba(0,0,0,0.2)] left-[200px] rounded-[78.125px] top-[114.06px]" data-name="tabs">
+    <div data-ptr-pin className="absolute z-10 bg-[rgba(0,0,0,0.2)] left-[200px] rounded-[78.125px] top-[114.06px]" data-name="tabs">
       <div className="content-stretch flex items-center justify-center overflow-clip relative rounded-[inherit]">
         <div 
           className="h-[53.125px] relative shrink-0 w-[175px] cursor-pointer" 
