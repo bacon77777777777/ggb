@@ -524,7 +524,9 @@ function ProfileContent() {
   const [desktopCouponsPageSize, setDesktopCouponsPageSize] = useState(10);
   const [activeDismantleTimeTab, setActiveDismantleTimeTab] = useState<'today' | '7days' | '30days'>('today');
   const [activeSoldTimeTab, setActiveSoldTimeTab] = useState<'today' | '7days' | '30days'>('today');
-  const [activeTopupTimeTab, setActiveTopupTimeTab] = useState<'today' | '7days' | '30days'>('today');
+  // 手機版儲值紀錄不再有日期 tab，固定顯示近 30 天（老闆 2026-08-20）；
+  // 桌機版仍有下拉可切，預設同樣近 30 天
+  const [activeTopupTimeTab, setActiveTopupTimeTab] = useState<'today' | '7days' | '30days'>('30days');
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [couponCode, setCouponCode] = useState('');
   const [isRedeemingCoupon, setIsRedeemingCoupon] = useState(false);
@@ -5113,30 +5115,7 @@ function ProfileContent() {
                 </div>
               </div>
 
-              {/* Mobile Sticky Tabs (Using Tabs Component style) */}
-              <div className="sticky top-0 z-30 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
-                <div className="max-w-7xl mx-auto space-y-2 pt-0 pb-0">
-                    <Tabs 
-                      key={activeTopupTimeTab} // Force re-render on tab change to ensure underline updates
-                      defaultValue={activeTopupTimeTab}
-                      value={activeTopupTimeTab} 
-                      onValueChange={(val) => setActiveTopupTimeTab(val as 'today' | '7days' | '30days')}
-                      className="w-full"
-                    >
-                      <TabsList className="bg-transparent dark:bg-transparent px-0 justify-start mb-0 border-b-0 pb-0">
-                        {[
-                          { id: 'today', label: '今天' },
-                          { id: '7days', label: '近7天' },
-                          { id: '30days', label: '近30天' }
-                        ].map((tab) => (
-                          <TabsTrigger key={tab.id} value={tab.id}>
-                            {tab.label}
-                          </TabsTrigger>
-                        ))}
-                      </TabsList>
-                    </Tabs>
-                </div>
-              </div>
+              {/* 日期 tab 已移除（老闆 2026-08-20）：固定顯示近 30 天 */}
 
               {/* Mobile List Style (Unified 3-Layer Structure) */}
               <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950">
