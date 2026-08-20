@@ -76,6 +76,11 @@ const MAX_CACHE_BYTES = 3_000_000;
  */
 type Cached = { src: string; link: string; image?: string };
 
+/** 診斷用。開屏是低頻事件（一次啟動最多一次），常態留著不吵 */
+function log(...args: unknown[]) {
+  console.log('[splash]', ...args);
+}
+
 /** 走網路載圖時等多久就放棄（放棄＝這次不跳廣告，直接進首頁） */
 const NETWORK_TIMEOUT_MS = 2500;
 
@@ -99,6 +104,13 @@ function readCache(): Cached | null {
     const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
     const v = JSON.parse(raw) as Cached;
+    /*
+     * 相容最初版本的格式：那時存的是 { image: 網址, link }，沒有 src 欄位。
+     * 不認的話，手機上那份舊快取會被當成「沒有快取」而白白浪費一次啟動。
+     */
+    if (!v?.src && v?.image && !v.image.startsWith('data:')) {
+      return { src: v.image, link: v.link || '' };
+    }
     if (!v?.src) return null;
     // 存壞的 data URL 就當作沒有，退回用網址顯示
     if (v.image && !v.image.startsWith('data:')) return { src: v.src, link: v.link };
@@ -179,6 +191,7 @@ export default function AppSplashAd() {
 
   useEffect(() => {
     if (!native.isNativePlatform()) return;      // 網頁版與 PWA 完全不受影響
+    log('啟動');
     if (started.current) return;
     started.current = true;
 
@@ -192,8 +205,10 @@ export default function AppSplashAd() {
      */
     const maybeShow = async (trigger: 'launch' | 'resume'): Promise<boolean> => {
       const cached = readCache();
+      const cooling = withinCooldown();
+      log(trigger, '快取=', cached ? (cached.image ? '有圖' : '只有網址') : '無', '冷卻中=', cooling);
       // 沒快取（第一次安裝）或還在冷卻時間內 → 不跳，交給呼叫端收掉第一層
-      if (!cached || withinCooldown()) return false;
+      if (!cached || cooling) return false;
 
       /*
        * 先把圖解碼好再顯示。「解碼完成」是唯一能保證下一幀畫得出來的信號 ——
@@ -205,6 +220,7 @@ export default function AppSplashAd() {
        */
       const source = cached.image || cached.src;
       const ok = await preload(source, cached.image ? 4000 : NETWORK_TIMEOUT_MS);
+      log('預載', ok ? '成功' : '失敗/逾時', cached.image ? '(用手機裡的圖)' : '(走網路)');
       if (!ok || !alive) return false;
 
       try { localStorage.setItem(LAST_SHOWN_KEY, String(Date.now())); } catch { /* 同上 */ }
@@ -225,6 +241,7 @@ export default function AppSplashAd() {
     const refreshCache = async () => {
       try {
         const res = await fetch('/api/app-splash', { cache: 'no-store' });
+        log('問後台', res.status);
         if (!res.ok) return;
         const next = (await res.json()) as { src?: string; link?: string } | null;
 
@@ -248,10 +265,14 @@ export default function AppSplashAd() {
          * 就算下面存圖失敗，下次啟動也還能用網址把廣告顯示出來。
          */
         writeCache(entry);
+        log('已存網址', entry.src.slice(-28));
 
-        if (!entry.image) await cacheImage(entry);
-      } catch {
-        /* 問不到就沿用上次快取的那張，開屏廣告不該擋住任何人進站 */
+        if (!entry.image) {
+          await cacheImage(entry);
+          log('存圖', readCache()?.image ? '成功' : '失敗（下次走網路顯示）');
+        }
+      } catch (e) {
+        log('更新快取出錯', String(e));
       }
     };
 

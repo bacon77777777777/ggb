@@ -109,8 +109,17 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
    * 必須放在下面那行提前 return 之前 —— hooks 不能條件式呼叫，
    * 放在 return 之後 lint 會直接報 rules-of-hooks（build 會失敗）。
    */
-  const wantsBg = current?.layout === 'new_arrival';
+  /*
+   * 只有「純圖」版型不需要等 —— 它整則就是一張圖，沒有要疊上去的東西。
+   * 最新上架與公告卡片版都是「底圖 + 文字疊上去」，兩個都要等底圖到位
+   * （老闆 2026-08-20：公告文字都出來了，底圖還沒出來）。
+   */
+  const wantsBg = !!current && !(current.layout === 'image' && !!current.image_url);
   const [bgReady, setBgReady] = useState(false);
+
+  // 換下一則時重新等一次 —— 兩種版型用的底圖不同，不能沿用上一則的狀態
+  useEffect(() => { setBgReady(false); }, [current?.id]);
+
   useEffect(() => {
     if (!wantsBg || bgReady) return;
     const t = setTimeout(() => setBgReady(true), 1200);
@@ -284,16 +293,19 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                   priority
                   className="object-contain select-none pointer-events-none"
                   unoptimized
+                  onLoad={() => setBgReady(true)}
+                  onError={() => setBgReady(true)}
                 />
 
                 {/* 文字區：米白內板往內縮，下緣停在按鈕上方。
                     標題固定不捲動，內文吃剩餘高度並自行捲動 ——
                     整塊一起捲的話，標題會被捲出畫面，玩家就不知道在講什麼 */}
                 <div
-                  className="absolute flex flex-col"
+                  className="absolute flex flex-col transition-opacity duration-300"
                   /* top 用百分比而非固定 24px：卡片在小螢幕會等比縮小，
                      寫死 px 的話留白會相對變大 */
-                  style={{ left: '9%', right: '9%', top: '27.9%', bottom: '17.5%' }}
+                  style={{ left: '9%', right: '9%', top: '27.9%', bottom: '17.5%', opacity: bgReady ? 1 : 0 }}
+                  aria-hidden={!bgReady}
                 >
                   {promo.title && (
                     <h2
@@ -319,8 +331,8 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                   <Link
                     href={promo.cta_href || '#'}
                     onClick={go(promo.cta_href)}
-                    className="absolute flex items-center justify-center text-white text-[15px] font-black active:scale-[0.97] transition-transform"
-                    style={{ left: '22.38%', top: '85.95%', width: '55.25%', height: '8.49%' }}
+                    className="absolute flex items-center justify-center text-white text-[15px] font-black active:scale-[0.97] transition-transform duration-300"
+                    style={{ left: '22.38%', top: '85.95%', width: '55.25%', height: '8.49%', opacity: bgReady ? 1 : 0 }}
                   >
                     {promo.cta_text}
                   </Link>
