@@ -7,19 +7,21 @@
  * UIRefreshControl。而 App 沒有網址列、沒有重新整理鈕 —— 頁面卡住時這是玩家
  * 唯一的自救方式，所以必須自己做。
  *
- * 跟 Threads 對齊的三件事：
- *   1. **不震動**。原本拉的過程分九段震、滿格再重震一下，每次震動都要叫一次
- *      Taptic Engine，主執行緒被卡住 → 內容位移直接掉幀，「有回饋但畫面在頓」。
- *      Threads 全程無震動，滑起來反而更順。
- *   2. **iOS 原生風格的十二格轉圈**，灰色、沒有白底藥丸也沒有陰影 ——
- *      就是內容上方空出來的那一小塊裡的一顆小轉圈。
- *   3. **內容跟著手指走**，位移用阻尼曲線，愈拉愈沉（這點原本就對，保留）。
+ * 改了外觀，手感照舊：
+ *   1. **iOS 原生風格的十二格轉圈**，灰色、沒有白底藥丸也沒有陰影 ——
+ *      就是內容上方空出來的那一小塊裡的一顆小轉圈。原本那顆白色藥丸＋陰影
+ *      在深色模式下是一塊突兀的白點。
+ *   2. **內容跟著手指走**，位移用阻尼曲線，愈拉愈沉。
  *      放手才決定：未滿格彈回去，滿格才刷新，中途反悔不會誤觸發。
+ *   3. **震動蓄力保留**（老闆 2026-08-20 指定）：拉的過程分段輕震，間距愈往後
+ *      愈密，滿格給一下明顯較重的，不用看畫面就知道可以放手了。
+ *      這趟整段才九下，跟卡包 SKIP 那種 55ms 一張的密度不是同一回事，不會掉幀。
  *
  * 只在 standalone／原生殼啟用：一般瀏覽器有自己的下拉更新，兩套疊在一起會打架。
  */
 
 import { useEffect, useRef } from 'react';
+import { hapticLight, hapticMedium } from '@/lib/haptics';
 
 /** 拉到這個距離（未阻尼的原始位移）就算滿格 */
 const THRESHOLD = 90;
@@ -27,6 +29,12 @@ const THRESHOLD = 90;
 const MAX_PULL = 78;
 /** 刷新時內容停在這個位置，讓轉圈看得見 */
 const REST_PULL = 56;
+
+/**
+ * 蓄力的震動節點（progress 0~1）。
+ * 間距刻意由疏到密 —— 等距的話手感是平的，密起來才有「快滿了」的感覺。
+ */
+const HAPTIC_STOPS = [0.18, 0.34, 0.48, 0.6, 0.7, 0.78, 0.85, 0.91, 0.96];
 
 /** 十二格轉圈的每一格（iOS UIActivityIndicator 的樣子） */
 const SPOKES = Array.from({ length: 12 }, (_, i) => i);
@@ -67,6 +75,7 @@ export default function PwaPullToRefresh() {
   const startY = useRef(0);
   const pulling = useRef(false);
   const armed = useRef(false);      // 已滿格
+  const stopIdx = useRef(0);        // 下一個要觸發的震動節點
   const refreshing = useRef(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const iconRef = useRef<SVGSVGElement>(null);
@@ -74,6 +83,7 @@ export default function PwaPullToRefresh() {
   useEffect(() => {
     if (!isStandaloneMode()) return;
 
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     // 內容區才位移。整個 body 動的話 position:fixed 的導航列與底部操作欄
     // 會因為 transform 產生新的 containing block 而跟著跑掉
     const content = document.querySelector('main') as HTMLElement | null;
@@ -96,6 +106,7 @@ export default function PwaPullToRefresh() {
     const reset = (animate = true) => {
       pulling.current = false;
       armed.current = false;
+      stopIdx.current = 0;
       setShift(0, animate);
       if (iconRef.current) iconRef.current.style.transform = '';
     };
@@ -106,6 +117,7 @@ export default function PwaPullToRefresh() {
       startY.current = e.touches[0].clientY;
       pulling.current = true;
       armed.current = false;
+      stopIdx.current = 0;
     };
 
     const onMove = (e: TouchEvent) => {
@@ -130,8 +142,18 @@ export default function PwaPullToRefresh() {
         iconRef.current.style.opacity = String(0.3 + progress * 0.7);
       }
 
-      // 滿格只改變外觀，不震動（Threads 全程無觸覺回饋）
-      if (!armed.current && progress >= 1) armed.current = true;
+      if (reduceMotion) return;
+
+      // 蓄力：跨過一個節點震一下，間距愈後面愈密
+      while (stopIdx.current < HAPTIC_STOPS.length && progress >= HAPTIC_STOPS[stopIdx.current]) {
+        stopIdx.current++;
+        hapticLight();
+      }
+      // 滿格：給一下明顯較重的，玩家不用看畫面就知道可以放手
+      if (!armed.current && progress >= 1) {
+        armed.current = true;
+        hapticMedium();
+      }
     };
 
     const onEnd = () => {

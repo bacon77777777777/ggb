@@ -38,12 +38,23 @@ const TOPUP_PLANS = [
   { id: 'p6', amount: 100000, points: 100000, bonus: 15000, isHot: false },
 ];
 
+/**
+ * 付款方式
+ *
+ * `desc` 不是裝飾：兩個超商選項只差一個字（代碼／條碼）、圖示又都是超商，
+ * 掃過去會被當成同一個東西列了兩次（老闆 2026-08-20 回報「有兩個超商代碼繳費」）。
+ * 寫清楚「在機台上操作」與「拿去櫃檯掃」，差別才看得出來。
+ *
+ * `desktopOnly`：網路 ATM 要讀卡機，綠界在手機／平板上直接回
+ * 「因網路ATM付款不支援手機版操作，請改用桌機」的錯誤頁 —— 那不是我們的 bug，
+ * 但把一個必定失敗的選項擺在那邊給人按，跟自己壞掉沒兩樣。
+ */
 const PAYMENT_METHODS = [
-  { id: 'credit_card', name: '信用卡 / 金融卡', icon: <CreditCard className="w-5 h-5" /> },
-  { id: 'webatm', name: 'WebATM', icon: <Globe className="w-5 h-5" /> },
-  { id: 'vacc', name: 'ATM 轉帳', icon: <Banknote className="w-5 h-5" /> },
-  { id: 'cvs', name: '超商代碼繳費', icon: <Store className="w-5 h-5" /> },
-  { id: 'barcode', name: '超商條碼繳費', icon: <Barcode className="w-5 h-5" /> },
+  { id: 'credit_card', name: '信用卡 / 金融卡', desc: '刷卡完直接入帳', icon: <CreditCard className="w-5 h-5" /> },
+  { id: 'webatm', name: 'WebATM', desc: '需要讀卡機，只能用電腦', desktopOnly: true, icon: <Globe className="w-5 h-5" /> },
+  { id: 'vacc', name: 'ATM 轉帳', desc: '拿到一組虛擬帳號，轉帳後入帳', icon: <Banknote className="w-5 h-5" /> },
+  { id: 'cvs', name: '超商代碼繳費', desc: '拿到繳費代碼，到 ibon／FamiPort 機台操作', icon: <Store className="w-5 h-5" /> },
+  { id: 'barcode', name: '超商條碼繳費', desc: '產生繳費條碼，直接拿到超商櫃檯結帳', icon: <Barcode className="w-5 h-5" /> },
 ];
 
 export default function TopupPage() {
@@ -56,6 +67,22 @@ export default function TopupPage() {
   
   const [selectedPlan, setSelectedPlan] = useState(TOPUP_PLANS[2]);
   const [selectedMethod, setSelectedMethod] = useState(PAYMENT_METHODS[0].id);
+
+  /*
+   * WebATM 只在桌機瀏覽器出現（見 PAYMENT_METHODS 的 desktopOnly）。
+   *
+   * 初值 false、掛載後才判斷：伺服器端沒有 window，先當作手機才不會在手機上
+   * 閃一下又消失。判斷看的是「有沒有滑鼠指標」而不是螢幕寬度 ——
+   * 平板橫放也很寬，但一樣插不了讀卡機。
+   */
+  const [isDesktopBrowser, setIsDesktopBrowser] = useState(false);
+  useEffect(() => {
+    if (native.isNativePlatform()) return; // App 裡一定是手機／平板
+    setIsDesktopBrowser(window.matchMedia?.('(hover: hover) and (pointer: fine)').matches === true);
+  }, []);
+  const paymentMethods = isDesktopBrowser
+    ? PAYMENT_METHODS
+    : PAYMENT_METHODS.filter((m) => !m.desktopOnly);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const isProcessingRef = useRef(false);
@@ -361,7 +388,7 @@ export default function TopupPage() {
                   </h2>
                 </div>
                 <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                  {PAYMENT_METHODS.map((method) => (
+                  {paymentMethods.map((method) => (
                     <button
                       key={method.id}
                       onClick={() => setSelectedMethod(method.id)}
@@ -379,12 +406,18 @@ export default function TopupPage() {
                         )}>
                           {React.cloneElement(method.icon as React.ReactElement, { className: 'w-4 h-4 md:w-5 md:h-5' })}
                         </div>
-                        <span className={cn(
-                          "text-[14px] md:text-base font-bold",
-                          selectedMethod === method.id ? "text-primary" : "text-neutral-500 dark:text-neutral-400"
-                        )}>
-                          {method.name}
-                        </span>
+                        <div className="flex flex-col items-start text-left">
+                          <span className={cn(
+                            "text-[14px] md:text-base font-bold",
+                            selectedMethod === method.id ? "text-primary" : "text-neutral-500 dark:text-neutral-400"
+                          )}>
+                            {method.name}
+                          </span>
+                          {/* 兩個超商選項就是靠這一行分辨的，不要為了版面拿掉 */}
+                          <span className="text-[11.5px] md:text-xs font-medium text-neutral-400 dark:text-neutral-500 leading-snug">
+                            {method.desc}
+                          </span>
+                        </div>
                       </div>
                       <div className={cn(
                         "w-5 h-5 md:w-6 md:h-6 rounded-full border flex items-center justify-center transition-all",
