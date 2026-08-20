@@ -58,9 +58,12 @@ export async function GET(req: Request) {
   const decide =
     `(function(){` +
     `var to=${JSON.stringify(to)},back=${JSON.stringify(back)};` +
-    // cookie 為主、localStorage 為輔：隱私設定擋掉其中一個時還有另一個
+    // app=1（訂單自帶的記號，見後端 CustomField1）為準；
+    // cookie／localStorage 是舊版流程的備援 —— SFSafariVC 的儲存讀不到
+    // 曾讓玩家掉進未登入頁（2026-08-20），所以不能只靠它們
+    `var fromApp=${JSON.stringify(url.searchParams.get('app') === '1')};` +
     `var ls=null;try{ls=localStorage.getItem('${COOKIE}')}catch(e){}` +
-    `if(document.cookie.indexOf('${COOKIE}=1')<0&&ls!=='1'){location.replace(to);return;}` +
+    `if(!fromApp&&document.cookie.indexOf('${COOKIE}=1')<0&&ls!=='1'){location.replace(to);return;}` +
     `try{document.cookie='${COOKIE}=; path=/; max-age=0; samesite=lax';` +
     `localStorage.removeItem('${COOKIE}')}catch(e){}` +
     // 立刻跳，不停留（老闆 2026-08-20：不要先看到一頁網頁再回 App）——

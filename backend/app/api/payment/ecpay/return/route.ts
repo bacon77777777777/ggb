@@ -22,12 +22,17 @@ export async function POST(req: Request) {
    * 落地頁會判斷這趟是不是從 App 出發，是就把人導回 ggbapp://，
    * 不是就 302 去原本的目的地 —— 網頁版的體驗完全不變。
    */
-  const landing = (path: string) => `${FrontendUrl}/payment/return?to=${encodeURIComponent(path)}`
+  let fromApp = false
+  const landing = (path: string) =>
+    `${FrontendUrl}/payment/return?to=${encodeURIComponent(path)}${fromApp ? '&app=1' : ''}`
 
   try {
     const formData = await req.formData()
     const params: Record<string, string> = {}
     formData.forEach((v, k) => { params[k] = String(v) })
+    // 建單時寫進 CustomField1 的「來自 App」記號（簽章涵蓋），
+    // 落地頁看到 app=1 就直接把玩家導回 ggbapp://，不再靠瀏覽器儲存
+    fromApp = params.CustomField1 === 'app'
 
     const HashKey = process.env.ECPAY_HASH_KEY!
     const HashIV = process.env.ECPAY_HASH_IV!

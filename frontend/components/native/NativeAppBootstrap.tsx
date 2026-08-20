@@ -131,7 +131,6 @@ export default function NativeAppBootstrap() {
             if (decoded.startsWith('/') && !decoded.startsWith('//')) to = decoded;
           } catch { /* 解不開就用預設值 */ }
         }
-        router.push(to);
 
         /*
          * 儲值成功的提示（老闆 2026-08-20：小卡收起 → 儲值紀錄 → 跳
@@ -152,6 +151,14 @@ export default function NativeAppBootstrap() {
             showToast('已取得繳費資訊，完成繳費後入帳', 'info');
           }
         } catch { /* sessionStorage 不可用就不跳，無害 */ }
+
+        /*
+         * 導頁前把 status 參數摘掉：會員中心有一個通用的「付款成功！」toast
+         * 也在看它，不摘的話玩家會同時看到兩條提示（老闆 2026-08-20 截圖）。
+         * 提示由上面那條負責就好。
+         */
+        to = to.replace(/([?&])status=[^&]*&?/, '$1').replace(/[?&]$/, '');
+        router.push(to);
       });
     } catch (err) {
       console.warn('[native] appUrlOpen 掛載失敗', err);

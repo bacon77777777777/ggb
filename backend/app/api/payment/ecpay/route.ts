@@ -57,6 +57,9 @@ export async function POST(req: Request) {
       }
     }
     const paymentMethod = String(body?.paymentMethod || '')
+    // App 出發的訂單：寫進 CustomField1（簽章涵蓋、綠界會原樣送回），
+    // 回程路由靠它判斷要不要把玩家導回 App，不依賴任何瀏覽器儲存
+    const fromApp = String(body?.client || '') === 'app'
     const amountRaw = body?.amount
     const orderIdRaw = body?.orderId
 
@@ -115,7 +118,7 @@ export async function POST(req: Request) {
        * 會叫玩家登入（老闆 2026-08-20 附圖）。落地頁會判斷是不是從 App 出發，
        * 是就導回 ggbapp://，不是就 302 回 `/topup`，網頁版行為不變。
        */
-      clientBackUrl = `${FrontendUrl}/payment/return?to=${encodeURIComponent('/topup')}`
+      clientBackUrl = `${FrontendUrl}/payment/return?to=${encodeURIComponent('/topup')}${fromApp ? '&app=1' : ''}`
     } else if (kind === 'shop') {
       // 官方商城（B2C）。跟 sell_escrow 不同：這筆錢是收進平台的，
       // 訂單在 shop_orders，付款成功由 callback 呼叫 shop_order_mark_paid 入帳
@@ -202,6 +205,7 @@ export async function POST(req: Request) {
       EncryptType: '1',
       ClientBackURL: clientBackUrl,
     }
+    if (fromApp) params.CustomField1 = 'app'
 
     if (!isOffline) {
       params.OrderResultURL = isLocalDev

@@ -148,42 +148,15 @@ export default function TopupPage() {
           const goUrl = `${window.location.origin}/payment/go?t=${encodeURIComponent(token)}`;
 
           /*
-           * 首選：自製原生付款小卡（新殼才有）。
-           * 只有一條「綠界安全付款 ✕」標題列，付款完成由原生層攔截回程、
-           * 自動收卡並把回程網址交回來 —— 這裡負責導頁與跳提示。
-           */
-          const sheet = (await native.call('PaymentSheet', 'open', {
-            url: goUrl,
-            title: '綠界安全付款',
-            returnPrefix: '/payment/return',
-          })) as { returnUrl?: string; cancelled?: boolean } | null;
-          if (sheet) {
-            void refreshProfileRef.current?.();
-            setPaymentData(null);
-            setIsProcessing(false);
-            isProcessingRef.current = false;
-            if (sheet.returnUrl) {
-              // 回程網址長 /payment/return?to=<目的地>，目的地裡帶 status
-              let to = '/profile?tab=topup-history';
-              try {
-                const raw = new URL(sheet.returnUrl).searchParams.get('to');
-                if (raw && raw.startsWith('/') && !raw.startsWith('//')) to = raw;
-              } catch { /* 解不開用預設 */ }
-              const gained = selectedPlanRef.current.points + selectedPlanRef.current.bonus;
-              if (to.includes('status=success')) {
-                showToast(`儲值成功，G幣 +${gained.toLocaleString()}`, 'success');
-              } else if (to.includes('status=waiting_payment')) {
-                showToast('已取得繳費資訊，完成繳費後入帳', 'info');
-              }
-              router.push(to);
-            }
-            // cancelled：留在儲值頁，玩家要重試自己再按
-            return;
-          }
-
-          /*
-           * 舊殼沒有付款小卡外掛：退回 SFSafariViewController（有完成鈕可關）。
-           * 回程 toast 的金額先記著，由 NativeAppBootstrap 在 ggbapp:// 落地時讀走。
+           * 系統原生付款彈窗（SFSafariViewController 的 pageSheet）。
+           * 老闆 2026-08-20：潮玩家用的就是它 —— iOS 26 上是那種乾淨的原生
+           * 彈窗新皮；模擬器的 iOS 17.5 才會看到上下兩條舊 chrome，同一個元件。
+           * 回程靠訂單自帶的 CustomField 記號（見上面 client:'app'），
+           * 落地頁看到就跳 ggbapp://，小卡收起、落在儲值紀錄。
+           * toast 金額先記著，由 NativeAppBootstrap 在 ggbapp:// 落地時讀走。
+           *
+           * （自製小卡外掛 PaymentSheet 保留在殼裡沒接 —— 若系統彈窗在部分
+           * 機型有問題可一行切回去。）
            */
           try {
             sessionStorage.setItem(
@@ -319,7 +292,10 @@ export default function TopupPage() {
         body: JSON.stringify({
           amount: selectedPlan.amount,
           planId: selectedPlan.id,
-          paymentMethod: selectedMethod
+          paymentMethod: selectedMethod,
+          // App 出發的訂單：後端寫進 ECPay 的 CustomField1，付款完成的回程
+          // 就帶著確定性的記號，不用再靠瀏覽器儲存猜「是不是從 App 來的」
+          client: native.isNativePlatform() ? 'app' : 'web',
         })
       });
 
