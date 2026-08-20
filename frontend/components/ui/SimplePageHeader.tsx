@@ -29,6 +29,12 @@ export default function SimplePageHeader({
 }: SimplePageHeaderProps) {
   return (
     <div
+      /* 下拉刷新要靠這個標記找到「頁面自己的頂欄」，把空隙開在它下面。
+         它是 <div> 不是 <nav>/<header>，PwaPullToRefresh 的 navBottom()
+         光看標籤認不出來 —— 認不出來就會把轉蛋球畫到畫面最頂端、被這條
+         白底裁掉大半（老闆 2026-08-20 登入頁截圖）。
+         同樣的標記也在 components/ui/PageHeader。 */
+      data-page-header=""
       className={cn(
         'fixed top-0 left-0 right-0 h-14 bg-white border-b border-neutral-100 dark:border-neutral-800 z-50',
         'safe-top',

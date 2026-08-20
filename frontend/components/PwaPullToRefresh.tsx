@@ -290,6 +290,8 @@ export default function PwaPullToRefresh() {
       scale：縮放畫布（排行榜）裡的元素，位移會被父層 scale() 放大，要先除回去 */
   const dragEls = useRef<{ el: HTMLElement; scale: number }[]>([]);
   const wrapRef = useRef<HTMLDivElement>(null);
+  /** 球本體。wrapRef 只當「空隙形狀的裁切框」，位移由這一層負責 */
+  const ballRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
   /** 空隙底色帶的頂端（= 導航列下緣），高度蓋到 gapTop + 位移量 */
   const stripTop = useRef(0);
@@ -347,11 +349,24 @@ export default function PwaPullToRefresh() {
         stripRef.current.style.height = px ? `${gapTop.current - stripTop.current + px}px` : '0px';
       }
       if (wrap) {
+        /*
+         * wrap 是「空隙形狀的裁切框」：高度跟著空隙走、overflow hidden。
+         *
+         * 球本身高 ICON(26px)，但空隙剛拉開時只有十幾 px —— 置中之後上半截
+         * 會溢出到頂欄上面。以前球沉在內容底下看不見所以沒人發現，改成浮起來
+         * 之後就露餡了（老闆 2026-08-20：「蓋到頂部導航或頂部 tab」）。
+         * 有了裁切框，溢出的部分自然被切掉，球看起來就是從頂欄底下長出來的。
+         */
+        wrap.style.transition = animate ? 'height .28s cubic-bezier(.22,1,.36,1)' : 'none';
+        wrap.style.height = `${Math.max(0, px)}px`;
+      }
+      const ball = ballRef.current;
+      if (ball) {
         // 轉圈停在空隙的正中間：空隙高度是 px，轉圈高 ICON
-        wrap.style.transition = animate ? `${t}, opacity .2s` : 'opacity .2s';
-        wrap.style.transform = `translate3d(-50%, ${(px - ICON) / 2}px, 0)`;
+        ball.style.transition = animate ? `${t}, opacity .2s` : 'opacity .2s';
+        ball.style.transform = `translate3d(-50%, ${(px - ICON) / 2}px, 0)`;
         // 空隙還塞不下指示器之前先不要露臉，不然會看到半截卡在導航列邊上
-        wrap.style.opacity = px > ICON * 0.55 ? '1' : '0';
+        ball.style.opacity = px > ICON * 0.55 ? '1' : '0';
       }
     };
 
@@ -630,26 +645,39 @@ export default function PwaPullToRefresh() {
         position: 'fixed',
         // 起始值只是預設，實際位置在手指跨過安全距離時才量（見 headerBottom）
         top: 0,
-        left: '50%',
-        transform: `translate3d(-50%, ${-ICON}px, 0)`,
-        opacity: 0,
+        left: 0,
+        right: 0,
+        height: 0,
+        // 只讓球在空隙範圍內露臉，溢出的部分切掉（見上面 update 的說明）
+        overflow: 'hidden',
         // 起始值；實際層級在每趟手勢開始時依「拖的是誰」決定（見 onMove 的 engage）
         zIndex: 0,
         pointerEvents: 'none',
       }}
     >
+      <div
+        ref={ballRef}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: '50%',
+          transform: `translate3d(-50%, ${-ICON}px, 0)`,
+          opacity: 0,
+        }}
+      >
       {/*
         轉蛋球＋文字（老闆指定的樣式）。灰底由 stripRef 那條底色帶負責。
         球是純 CSS：主題色上蓋＋細縫線＋白色下蓋（.ptr-ball，globals.css），
         變形用 transform（origin 在頂端 = 上緣被捏住、下緣被扯的感覺）；
         放開後的拋接動畫在 .ptr-toss。格子高度留出上拋與落地的空間。
       */}
-      <div className="flex h-[26px] items-start justify-center">
-        <div
-          ref={dotRef}
-          className="ptr-ball"
-          style={{ width: 20, height: 20 }}
-        />
+        <div className="flex h-[26px] items-start justify-center">
+          <div
+            ref={dotRef}
+            className="ptr-ball"
+            style={{ width: 20, height: 20 }}
+          />
+        </div>
       </div>
     </div>
     </>
