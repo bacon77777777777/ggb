@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/Toast';
 import { native } from '@/lib/native/bridge';
-import { closeInAppBrowser } from '@/lib/native/browser';
+import { closeInAppBrowser, openPayment } from '@/lib/native/browser';
 
 /**
  * 社群登入
@@ -16,13 +16,15 @@ import { closeInAppBrowser } from '@/lib/native/browser';
  * **一般瀏覽器**：整頁導去 LINE 授權（會跳 LINE app 一鍵允許），
  * 回程落在同一個瀏覽器，/auth/line/callback 當場完成登入。
  *
- * **原生 App（Capacitor）**：授權頁必須開在**系統 Safari**，不能用 in-app browser
- * ——後者不會觸發 Universal Link 去開啟 LINE App，玩家只會看到帳號密碼表單
- * （老闆回報）。`window.open(url, '_blank')` 在 Capacitor iOS 會走
- * `createWebViewWith`，那支無條件呼叫 `UIApplication.open()`，也就是系統 Safari
- * ——不受 allowNavigation 影響，正好是我們要的。
+ * **原生 App（Capacitor）**：授權頁開在 **in-app browser**（SFSafariViewController）。
+ * 曾改成系統 Safari（那邊會自動觸發 Universal Link 開 LINE App），但整個人被
+ * 丟出 App 的體感太差（老闆 2026-08-20：「怎麼又跑去 safari 了」）——
+ * 改回內彈窗的代價是：SFSafariViewController 不會**自動**開 LINE App，
+ * 裝了 LINE 的玩家要在頁面上多按一下「使用LINE應用程式登入」（使用者手勢的
+ * Universal Link 是通的）；沒裝 LINE 的玩家直接在內彈窗輸入帳密，不會離開 App。
+ * 真正的零跳轉要等原生 LINE SDK（見 DEVLOG v2026.08.20l 的限制表）。
  *
- * 回程一樣落在 Safari（iOS 不讓別的 app 直接把網址開回來），所以：
+ * 回程落在 Safari（LINE App 授權完把 https 回呼交給系統瀏覽器開），所以：
  *   1. state 加 `app.` 前綴，讓回呼頁知道這趟是從 App 出發的
  *   2. 回呼頁存完票之後導向 `ggbapp://`（Info.plist 註冊的自訂 scheme），
  *      iOS 就會把玩家帶回吉吉比
@@ -154,13 +156,32 @@ export function SocialLoginButtons() {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => void claimTicket(), POLL_INTERVAL_MS);
 
-    // 原生 App 與偽 app 都是 window.open —— 在 Capacitor 裡它等於「用系統 Safari 開」
+    if (isNativeApp) {
+      /*
+       * 原生 App：開 in-app browser（全螢幕 SFSafariViewController）。
+       * openPayment 的「關閉時回呼」正好拿來收尾 —— 玩家自己把授權視窗關掉
+       * 就停止等待；登入成功那條路是 claimTicket 主動 closeInAppBrowser，
+       * stopPolling 早跑過了，這裡再跑一次無害。
+       */
+      void openPayment(authorizeUrl(state), () => stopPolling()).then((opened) => {
+        // 外掛不在（不該發生）就退回系統瀏覽器，至少流程走得完
+        if (!opened) popupRef.current = window.open(authorizeUrl(state), '_blank');
+      });
+      return;
+    }
+
+    // 偽 app：window.open 開覆蓋視窗去授權，主視窗留在這裡輪詢
     popupRef.current = window.open(authorizeUrl(state), '_blank');
   };
 
   if (!LINE_CHANNEL_ID) return null;
 
-  if (waiting) {
+  /*
+   * 「等待授權中…」那塊只給偽 app 看 —— 它的授權開在另一個視窗，玩家要自己
+   * 切回來，需要文字說明。原生 App 的授權視窗直接蓋在整個畫面上，這塊字
+   * 沒人看得到，登入頁保持原樣即可（老闆 2026-08-20：「不要再多一堆廢話字」）。
+   */
+  if (waiting && !native.isNativePlatform()) {
     return (
       <div className="flex w-full flex-col items-center gap-2 rounded-xl border border-neutral-200 px-4 py-3">
         <div className="flex items-center gap-2 text-sm font-medium text-neutral-600">
