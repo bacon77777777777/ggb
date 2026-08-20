@@ -21,10 +21,13 @@
  *      （老闆 2026-08-20：「tab 不要跟著被拉下去，這樣體感不好」）。
  *   3. **指示器出現在內容上方那道空隙裡**（老闆 2026-08-20 指定的樣式）：
  *      灰底上一顆**轉蛋球**（主題色上蓋＋白色下蓋的膠囊）；
- *      持續拉，球像被捏著往下扯 —— 拉長變形；拉過門檻變形彈回；
- *      **放開後球往上拋、落地壓扁回彈幾下到停住**（老闆的參考動畫），
- *      動畫收尾才換新頁面。不配任何文字（老闆 2026-08-20：小灰字移除），
- *      階段全靠球的變形與震動表達。
+ *      持續拉，球被**慢慢壓扁**（愈拉愈扁，貼著地）；拉過門檻（或放開）
+ *      才**往上彈** —— 放開後播完整拋接：上拋、落地壓扁、回彈到停住，
+ *      動畫收尾才換新內容。不配任何文字，階段全靠變形與震動表達。
+ *   4b. 震動節奏（老闆 2026-08-20）：**拉動中是持續的細微滴答**
+ *      （selection tick，每 4.5% 進度一下）、滿格一記中震；
+ *      **放開後只有球碰地的兩下微震**，其餘安靜。
+ *      安全距離內（DEAD_ZONE 18px）完全不震也不動。
  *      起始位置是「所有釘住的東西的最下緣」，動態量出來的 ——
  *      寫死 57px 的話，情報頁那種底下還有一排 tab 的版面就會被蓋住。
  *      空隙鋪一層底色（`stripRef`）：淺色頁鋪灰（body 是白的，轉圈浮在白上
@@ -50,7 +53,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { hapticLight, hapticMedium } from '@/lib/haptics';
+import { hapticLight, hapticMedium, hapticSelection } from '@/lib/haptics';
 
 /**
  * 安全距離：手指要先往下移這麼多，這支才開始接管。
@@ -67,12 +70,6 @@ const MAX_PULL = 78;
 const REST_PULL = 56;
 /** 指示器（箭頭＋文字）整組的高度，位置計算用 */
 const ICON = 40;
-
-/**
- * 蓄力的震動節點（progress 0~1）。
- * 間距刻意由疏到密 —— 等距的話手感是平的，密起來才有「快滿了」的感覺。
- */
-const HAPTIC_STOPS = [0.18, 0.34, 0.48, 0.6, 0.7, 0.78, 0.85, 0.91, 0.96];
 
 function isStandaloneMode() {
   if (typeof window === 'undefined') return false;
@@ -228,7 +225,7 @@ export default function PwaPullToRefresh() {
   const tracking = useRef(false);   // 手指按著、起點合格，但還沒跨過安全距離
   const engaged = useRef(false);    // 已跨過安全距離，開始接管
   const armed = useRef(false);      // 已滿格
-  const stopIdx = useRef(0);        // 下一個要觸發的震動節點
+  const lastTick = useRef(0);       // 上一次細微滴答時的進度（持續微震用）
   const refreshing = useRef(false);
   /** 手勢起點的元素：engage 時用它找內層捲動容器 */
   const startTarget = useRef<EventTarget | null>(null);
@@ -312,7 +309,7 @@ export default function PwaPullToRefresh() {
       tracking.current = false;
       engaged.current = false;
       armed.current = false;
-      stopIdx.current = 0;
+      lastTick.current = 0;
       setShift(0, animate);
       if (dotRef.current) {
         dotRef.current.classList.remove('ptr-toss');
@@ -342,7 +339,7 @@ export default function PwaPullToRefresh() {
       tracking.current = true;
       engaged.current = false;
       armed.current = false;
-      stopIdx.current = 0;
+      lastTick.current = 0;
     };
 
     const onMove = (e: TouchEvent) => {
@@ -452,21 +449,24 @@ export default function PwaPullToRefresh() {
            * 跟著手指走的階段不能有 transition，不然會慢半拍。
            */
           dotRef.current.style.transition = 'none';
+          dotRef.current.style.transformOrigin = 'center bottom';
+          // 慢慢被壓扁：直向縮、橫向脹，貼著地（老闆 2026-08-20）
           dotRef.current.style.transform =
-            `scaleY(${(1 + progress * 0.5).toFixed(3)}) scaleX(${(1 - progress * 0.18).toFixed(3)})`;
+            `scaleY(${(1 - progress * 0.45).toFixed(3)}) scaleX(${(1 + progress * 0.35).toFixed(3)})`;
         } else if (!armed.current) {
-          // 過門檻的瞬間：變形帶一點過衝地彈回原形，提示可以放手了
-          dotRef.current.style.transition = 'transform .22s cubic-bezier(.34,1.56,.64,1)';
-          dotRef.current.style.transform = '';
+          // 過門檻的瞬間：壓扁的球「往上彈」回圓（帶過衝），提示可以放手了
+          dotRef.current.style.transition = 'transform .25s cubic-bezier(.34,1.56,.64,1)';
+          dotRef.current.style.transform = 'translateY(-6px)';
         }
       }
 
       if (reduceMotion) return;
 
-      // 蓄力：跨過一個節點震一下，間距愈後面愈密
-      while (stopIdx.current < HAPTIC_STOPS.length && progress >= HAPTIC_STOPS[stopIdx.current]) {
-        stopIdx.current++;
-        hapticLight();
+      // 拉動中：持續的細微滴答（每 4.5% 進度一下）—— 安全距離內根本進不到
+      // 這裡（DEAD_ZONE 擋掉），不會拉 1px 就震
+      if (progress < 1 && Math.abs(progress - lastTick.current) >= 0.045) {
+        lastTick.current = progress;
+        hapticSelection();
       }
       // 滿格：給一下明顯較重的，玩家不用看畫面就知道可以放手
       if (!armed.current && progress >= 1) {
@@ -492,6 +492,12 @@ export default function PwaPullToRefresh() {
         dotRef.current.style.transition = 'none';
         dotRef.current.style.transform = '';
         dotRef.current.classList.add('ptr-toss');
+      }
+      // 放開後只有「碰地」的兩下微震（對齊 ptr-toss 的 46%、80% 落地格），
+      // 其餘安靜（老闆 2026-08-20）
+      if (!reduceMotion) {
+        window.setTimeout(() => { if (refreshing.current) hapticLight(); }, 460);
+        window.setTimeout(() => { if (refreshing.current) hapticLight(); }, 800);
       }
       /*
        * 球落定後**只重掛內容區**，不整頁 reload（老闆 2026-08-20：市面 App
@@ -569,7 +575,7 @@ export default function PwaPullToRefresh() {
         <div
           ref={dotRef}
           className="ptr-ball"
-          style={{ width: 20, height: 20, transformOrigin: 'center top' }}
+          style={{ width: 20, height: 20 }}
         />
       </div>
     </div>
