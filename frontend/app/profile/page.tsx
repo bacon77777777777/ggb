@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Box, Truck, Trophy, Settings, LogOut, ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, HelpCircle, Info, FileText, Shield, RefreshCcw, RefreshCw, Wallet, Heart, User, ChevronDown, X, Loader2, CreditCard, Copy, Ticket, Store, History, MessageCircle, Star, UserPlus } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
+import PageHeader from '@/components/ui/PageHeader';
 
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -2326,23 +2327,18 @@ function ProfileContent() {
             {/* Mobile Layout */}
             <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
               {/* Top Nav */}
-              <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
-                  <button onClick={() => {
+                            {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
+              <PageHeader
+                title={activeWarehouseTab === 'all' ? '我的倉庫' : '分解紀錄'}
+                onBack={() => {
                     if (activeWarehouseTab === 'all') {
                       router.push('/profile', { scroll: false });
                     } else {
                       setActiveWarehouseTab('all');
                       setActiveWarehouseCategory('all');
                     }
-                  }} className="flex items-center gap-3 text-neutral-900 dark:text-white -ml-2 p-2 active:opacity-70 transition-opacity">
-                    <ChevronLeft className="w-6 h-6" />
-                  <span className="text-[18px] font-black text-neutral-900 dark:text-white">
-                    {activeWarehouseTab === 'all' ? '我的倉庫' : '分解紀錄'}
-                  </span>
-                  </button>
-                </div>
-                {activeWarehouseTab === 'all' && (
+                  }}
+                right={<>{activeWarehouseTab === 'all' && (
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => {
@@ -2354,8 +2350,8 @@ function ProfileContent() {
                       分解紀錄
                     </button>
                   </div>
-                )}
-              </div>
+                )}</>}
+              />
 
               {/* Sticky Tabs */}
               {(activeWarehouseTab === 'all' || activeWarehouseTab === 'dismantled') && (
@@ -3726,24 +3722,19 @@ function ProfileContent() {
           <>
             {/* Mobile Layout */}
             <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col">
-              <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
-                  <button onClick={() => activeMarketTab === 'listing' ? router.push('/profile', { scroll: false }) : setActiveMarketTab('listing')} className="flex items-center gap-3 text-neutral-900 dark:text-white -ml-2 p-2 active:opacity-70 transition-opacity">
-                    <ChevronLeft className="w-6 h-6" />
-                  <span className="text-[18px] font-black text-neutral-900 dark:text-white">
-                    {activeMarketTab === 'listing' ? '交易所管理' : '交易紀錄'}
-                  </span>
-                  </button>
-                </div>
-                {activeMarketTab === 'listing' && (
+                            {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
+              <PageHeader
+                title={activeMarketTab === 'listing' ? '交易所管理' : '交易紀錄'}
+                onBack={() => activeMarketTab === 'listing' ? router.push('/profile', { scroll: false }) : setActiveMarketTab('listing')}
+                right={<>{activeMarketTab === 'listing' && (
                   <button 
                     onClick={() => setActiveMarketTab('sold_records')}
                     className="text-[13px] font-bold text-neutral-500"
                   >
                     交易紀錄
                   </button>
-                )}
-              </div>
+                )}</>}
+              />
 
               <div className="relative shrink-0 z-40 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 -mx-0">
                 <div className="max-w-7xl mx-auto space-y-2 pt-0 pb-0">
@@ -4315,16 +4306,11 @@ function ProfileContent() {
           <div className="pb-24 md:pb-0">
             {/* Mobile Header & Tabs */}
             <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
-              <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
-                  <button onClick={() => router.push('/profile', { scroll: false })} className="flex items-center gap-3 text-neutral-900 dark:text-white -ml-2 p-2 active:opacity-70 transition-opacity">
-                    <ChevronLeft className="w-6 h-6" />
-                  <span className="text-[18px] font-black text-neutral-900 dark:text-white">
-                    配送訂單
-                  </span>
-                  </button>
-                </div>
-              </div>
+                            {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
+              <PageHeader
+                title="配送訂單"
+                onBack={() => router.push('/profile', { scroll: false })}
+              />
 
               {/* Mobile Sticky Tabs (Using Tabs Component style) */}
               <div className="sticky top-0 z-30 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
@@ -4744,16 +4730,11 @@ function ProfileContent() {
           <div className="pb-20 md:pb-0">
             {/* Mobile Header & Tabs */}
             <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
-              <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
-                  <button onClick={() => router.push('/profile', { scroll: false })} className="flex items-center gap-3 text-neutral-900 dark:text-white -ml-2 p-2 active:opacity-70 transition-opacity">
-                    <ChevronLeft className="w-6 h-6" />
-                  <span className="text-[18px] font-black text-neutral-900 dark:text-white">
-                    抽獎紀錄
-                  </span>
-                  </button>
-                </div>
-              </div>
+                            {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
+              <PageHeader
+                title="抽獎紀錄"
+                onBack={() => router.push('/profile', { scroll: false })}
+              />
 
               {/* Mobile List */}
               <div
@@ -5104,16 +5085,11 @@ function ProfileContent() {
           <div className="pb-24 md:pb-0">
             {/* Mobile Header & Tabs */}
             <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
-              <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
-                  <button onClick={() => router.push('/profile')} className="flex items-center gap-3 text-neutral-900 dark:text-white -ml-2 p-2 active:opacity-70 transition-opacity">
-                    <ChevronLeft className="w-6 h-6" />
-                  <span className="text-[18px] font-black text-neutral-900 dark:text-white">
-                    儲值紀錄
-                  </span>
-                  </button>
-                </div>
-              </div>
+                            {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
+              <PageHeader
+                title="儲值紀錄"
+                onBack={() => router.push('/profile')}
+              />
 
               {/* 日期 tab 已移除（老闆 2026-08-20）：固定顯示近 30 天 */}
 
@@ -5331,16 +5307,11 @@ function ProfileContent() {
           <>
             {/* Mobile Layout */}
             <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col">
-              <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
-                  <button onClick={() => router.push('/profile', { scroll: false })} className="flex items-center gap-3 text-neutral-900 dark:text-white -ml-2 p-2 active:opacity-70 transition-opacity">
-                    <ChevronLeft className="w-6 h-6" />
-                  <span className="text-[18px] font-black text-neutral-900 dark:text-white">
-                    我的關注
-                  </span>
-                  </button>
-                </div>
-              </div>
+                            {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
+              <PageHeader
+                title="我的關注"
+                onBack={() => router.push('/profile', { scroll: false })}
+              />
 
               <div className="relative shrink-0 z-40 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 -mx-0">
                 <div className="max-w-7xl mx-auto space-y-2 pt-0 pb-0">
@@ -5589,22 +5560,17 @@ function ProfileContent() {
           <div className="pb-24 md:pb-0">
             {/* Mobile Header */}
             <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
-              <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
-                  <button onClick={() => router.push('/profile', { scroll: false })} className="flex items-center gap-3 text-neutral-900 dark:text-white -ml-2 p-2 active:opacity-70 transition-opacity">
-                    <ChevronLeft className="w-6 h-6" />
-                  <span className="text-[18px] font-black text-neutral-900 dark:text-white">
-                    我的優惠券
-                  </span>
-                  </button>
-                </div>
-                <button 
+                            {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
+              <PageHeader
+                title="我的優惠券"
+                onBack={() => router.push('/profile', { scroll: false })}
+                right={<><button 
                   onClick={() => setIsCouponModalOpen(true)}
                   className="text-[13px] font-black text-primary px-3 py-1.5 bg-primary/5 rounded-lg border border-primary/10"
                 >
                   輸入優惠代碼
-                </button>
-              </div>
+                </button></>}
+              />
 
               {/* Mobile List */}
               <div className="flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-950 pb-24">
@@ -5911,16 +5877,11 @@ function ProfileContent() {
           <div className="pb-24 md:pb-0 bg-neutral-100 dark:bg-neutral-950 min-h-screen">
             {/* Mobile Header */}
             <div className="md:hidden fixed inset-0 z-[60] bg-neutral-100 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
-              <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
-                  <button onClick={() => router.push('/profile', { scroll: false })} className="flex items-center gap-3 text-neutral-900 dark:text-white -ml-2 p-2 active:opacity-70 transition-opacity">
-                    <ChevronLeft className="w-6 h-6" />
-                  <span className="text-[18px] font-black text-neutral-900 dark:text-white">
-                    修改個人資訊
-                  </span>
-                  </button>
-                </div>
-              </div>
+                            {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
+              <PageHeader
+                title="修改個人資訊"
+                onBack={() => router.push('/profile', { scroll: false })}
+              />
 
               {/* overscroll-y-none：內容塞得下時 iOS 仍會給橡皮筋彈跳，
                   滾動條就無中生有地現形（實機回報）。關掉過捲，
@@ -7217,16 +7178,8 @@ function ProfileContent() {
             className="fixed inset-0 z-[100] bg-neutral-100 dark:bg-neutral-950 flex flex-col"
           >
             {/* Header */}
-            <div className="bg-white dark:bg-neutral-900 h-[57px] flex items-center px-2 border-b border-neutral-100 dark:border-neutral-800 shrink-0">
-              <button 
-                onClick={() => setShowAddressBook(false)} 
-                className="p-2 -ml-2 text-primary"
-              >
-                <ChevronLeft className="w-6 h-6 stroke-[3]" />
-              </button>
-              {/* 標題也能按返回（全站統一） */}
-              <button onClick={() => setShowAddressBook(false)} className="flex-1 text-center text-[17px] font-medium text-neutral-900 dark:text-white mr-8 active:opacity-70">我的地址</button>
-            </div>
+            {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
+            <PageHeader title="我的地址" onBack={() => setShowAddressBook(false)} />
 
             <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-4 hidden">
               <div className="flex">
@@ -7505,16 +7458,8 @@ function ProfileContent() {
             className="fixed inset-0 z-[100] bg-neutral-100 dark:bg-neutral-950 flex flex-col"
           >
             {/* Header */}
-            <div className="bg-white dark:bg-neutral-900 h-[57px] flex items-center px-2 border-b border-neutral-100 dark:border-neutral-800 shrink-0">
-              <button 
-                onClick={() => setShowEditRecipient(false)} 
-                className="p-2 -ml-2 text-neutral-900 dark:text-white"
-              >
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-              {/* 標題也能按返回（全站統一） */}
-              <button onClick={() => setShowEditRecipient(false)} className="flex-1 text-center text-[17px] font-medium text-neutral-900 dark:text-white mr-8 active:opacity-70">編輯地址</button>
-            </div>
+            {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
+            <PageHeader title="編輯地址" onBack={() => setShowEditRecipient(false)} />
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto">

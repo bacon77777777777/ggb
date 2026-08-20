@@ -6,6 +6,7 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { PageHeaderBack } from '@/components/ui/PageHeader';
 import { createClient } from '@/lib/supabase/client';
 import { Search, Bell, MessageCircle, LogOut, User as UserIcon, ChevronDown, ChevronLeft, X, History, Flame, Heart, CheckCircle2, Share2, Copy, MoreVertical, Flag, BookOpen } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
@@ -642,28 +643,13 @@ function NavbarInner() {
           <>
             {(isProductDetailPage || isAnnouncementDetailPage) ? (
               showBackButton && (
-                <button
-                  onClick={handleBack}
-                  className="flex items-center gap-0.5 -ml-2 pl-1 pr-3 py-2 rounded-xl text-neutral-900 dark:text-neutral-100 active:opacity-70 transition-opacity min-w-0 flex-1"
-                >
-                  <ChevronLeft className="w-7 h-7 stroke-[2.5] shrink-0" />
-                  <span className="text-[18px] font-black truncate">{getPageTitle()}</span>
-                </button>
+                /* 統一元件：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */
+                <PageHeaderBack title={getPageTitle()} onBack={handleBack} className="flex-1" />
               )
             ) : showBackButton && !isHomePage ? (
-              /*
-               * 返回鈕與標題合成同一顆按鈕（老闆 2026-08-20 指定，全站統一）：
-               * 按箭頭或按標題文字都能返回 —— 商品內頁本來就是這個做法，
-               * 其他內頁（會員中心底下每一頁、儲值、公告…）跟上。
-               * 標題只是「順便也能按」，不做 hover 底色，跟內頁樣式一致。
-               */
-              <button
-                onClick={handleBack}
-                className="flex items-center gap-0.5 -ml-2 pl-1 pr-3 py-2 rounded-xl text-neutral-900 dark:text-neutral-100 active:opacity-70 transition-opacity min-w-0 flex-1 md:hidden"
-              >
-                <ChevronLeft className="w-7 h-7 stroke-[2.5] shrink-0" />
-                <span className="text-[18px] font-black truncate">{getPageTitle()}</span>
-              </button>
+              /* 統一元件（老闆 2026-08-20：全站同一顆，按文字也能返回）：
+                 樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */
+              <PageHeaderBack title={getPageTitle()} onBack={handleBack} className="flex-1 md:hidden" />
             ) : (
               <>
                 {showBackButton && (
