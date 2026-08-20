@@ -19,7 +19,8 @@ let package = Package(
         .package(name: "CapacitorHaptics", path: "../../../node_modules/@capacitor/haptics"),
         .package(name: "CapacitorShare", path: "../../../node_modules/@capacitor/share"),
         .package(name: "CapacitorStatusBar", path: "../../../node_modules/@capacitor/status-bar"),
-        .package(name: "GgbLineLogin", path: "../../../plugins/line-login")
+        .package(name: "GgbLineLogin", path: "../../../plugins/line-login"),
+        .package(name: "GgbPaymentSheet", path: "../../../plugins/payment-sheet")
     ],
     targets: [
         .target(
@@ -34,7 +35,8 @@ let package = Package(
                 .product(name: "CapacitorHaptics", package: "CapacitorHaptics"),
                 .product(name: "CapacitorShare", package: "CapacitorShare"),
                 .product(name: "CapacitorStatusBar", package: "CapacitorStatusBar"),
-                .product(name: "GgbLineLogin", package: "GgbLineLogin")
+                .product(name: "GgbLineLogin", package: "GgbLineLogin"),
+                .product(name: "GgbPaymentSheet", package: "GgbPaymentSheet")
             ]
         )
     ]

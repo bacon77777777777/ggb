@@ -1,0 +1,12 @@
+{
+  "name": "ggb-payment-sheet",
+  "version": "1.0.0",
+  "description": "吉吉比原生付款小卡（自製 WKWebView sheet，付款完成自動收起）",
+  "main": "dist/plugin.js",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  },
+  "files": ["ios/Sources", "Package.swift", "dist/"]
+}

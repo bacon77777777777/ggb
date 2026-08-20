@@ -144,19 +144,55 @@ export default function TopupPage() {
           const { token } = await res.json();
           if (cancelled) return;
 
-          // 回程 toast 用：這一筆會入帳多少 G（本金＋贈點）。
-          // 由 NativeAppBootstrap 在 ggbapp://payment-return 落地時讀走
+          // 一定要絕對網址：原生外掛不吃相對路徑
+          const goUrl = `${window.location.origin}/payment/go?t=${encodeURIComponent(token)}`;
+
+          /*
+           * 首選：自製原生付款小卡（新殼才有）。
+           * 只有一條「綠界安全付款 ✕」標題列，付款完成由原生層攔截回程、
+           * 自動收卡並把回程網址交回來 —— 這裡負責導頁與跳提示。
+           */
+          const sheet = (await native.call('PaymentSheet', 'open', {
+            url: goUrl,
+            title: '綠界安全付款',
+            returnPrefix: '/payment/return',
+          })) as { returnUrl?: string; cancelled?: boolean } | null;
+          if (sheet) {
+            void refreshProfileRef.current?.();
+            setPaymentData(null);
+            setIsProcessing(false);
+            isProcessingRef.current = false;
+            if (sheet.returnUrl) {
+              // 回程網址長 /payment/return?to=<目的地>，目的地裡帶 status
+              let to = '/profile?tab=topup-history';
+              try {
+                const raw = new URL(sheet.returnUrl).searchParams.get('to');
+                if (raw && raw.startsWith('/') && !raw.startsWith('//')) to = raw;
+              } catch { /* 解不開用預設 */ }
+              const gained = selectedPlanRef.current.points + selectedPlanRef.current.bonus;
+              if (to.includes('status=success')) {
+                showToast(`儲值成功，G幣 +${gained.toLocaleString()}`, 'success');
+              } else if (to.includes('status=waiting_payment')) {
+                showToast('已取得繳費資訊，完成繳費後入帳', 'info');
+              }
+              router.push(to);
+            }
+            // cancelled：留在儲值頁，玩家要重試自己再按
+            return;
+          }
+
+          /*
+           * 舊殼沒有付款小卡外掛：退回 SFSafariViewController（有完成鈕可關）。
+           * 回程 toast 的金額先記著，由 NativeAppBootstrap 在 ggbapp:// 落地時讀走。
+           */
           try {
             sessionStorage.setItem(
               'ggb_pending_topup',
               String(selectedPlanRef.current.points + selectedPlanRef.current.bonus),
             );
           } catch { /* 無痕模式寫不了就沒有金額，toast 會退回通用文案 */ }
-
-          // 一定要絕對網址：Capacitor 的 Browser.open 不吃相對路徑
-          const goUrl = `${window.location.origin}/payment/go?t=${encodeURIComponent(token)}`;
           const opened = await openPayment(goUrl, () => {
-            // 玩家自己把小卡關掉：付成功與否由後端 callback 決定，
+            // 玩家自己把付款頁關掉：付成功與否由後端 callback 決定，
             // 這裡只負責把畫面上的餘額換成最新的
             void refreshProfileRef.current?.();
             setPaymentData(null);

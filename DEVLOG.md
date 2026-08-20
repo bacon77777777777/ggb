@@ -4,6 +4,28 @@
 
 ---
 
+## v2026.08.20r｜2026-08-20｜自製原生付款小卡：一條標題列＋✕，付款完成原生攔截自動收卡
+
+v2026.08.20q 用 SFSafariViewController 的 pageSheet，老闆實測兩個問題：
+上下各一條系統工具列「又擠又雜」；回程標記在 SFSafariVC 讀不到，
+OTP 完又掉進未登入頁。老闆：「如何做到跟潮玩家一模一樣？」
+
+新外掛 `mobile/plugins/payment-sheet`（自製 UIViewController + WKWebView）：
+
+- **只有一條標題列**（「綠界安全付款」＋ ✕），沒有網址列、沒有底部工具列
+- **共用登入 session**：WKWebView 用預設 WKWebsiteDataStore，跟主 webview
+  同一個 cookie 倉 —— 未登入問題從根本消失
+- **原生攔截回程**：導航一碰到 `/payment/return` 就取消載入、收起小卡、
+  把回程網址 resolve 回 JS。玩家看到的是：OTP 轉完 → 小卡自動收起 →
+  儲值紀錄 → toast「儲值成功，G幣 +N」。零中繼頁、零 scheme 跳轉、零確認框
+- ✕ 或下滑拉掉小卡＝取消：留在儲值頁、餘額重讀
+- target=_blank（綠界條款連結）留在同一個 webview 開
+
+前端：首選 PaymentSheet 外掛；舊殼沒有 → 退回 SFSafariVC 流程（sessionStorage
+記金額、ggbapp:// 彈回）；再沒有 → webview 直走。三層備援，新舊殼都能付。
+
+---
+
 ## v2026.08.20q｜2026-08-20｜儲值改「付款小卡」：底部滑出、完成自動收起、跳入帳提示
 
 v2026.08.20o 的 webview 直走流程通了，但綠界頁**完全沒有返回鈕**，玩家反悔
