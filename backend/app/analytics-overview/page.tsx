@@ -204,6 +204,7 @@ export default function AnalyticsOverviewPage() {
     const monthEnd = new Date(y, m + 1, 0) // last day of current month
     return [
       { label: '今日', start: toDS(today), end: toDS(today) },
+      { label: '昨日', start: toDS(new Date(today.getTime() - 86400_000)), end: toDS(new Date(today.getTime() - 86400_000)) },
       { label: '本週', start: toDS(mondayOf(today)), end: toDS(sundayOf(today)) },
       { label: '本月', start: `${y}-${String(m + 1).padStart(2, '0')}-01`, end: toDS(monthEnd) },
       { label: '本年', start: `${y}-01-01`, end: `${y}-12-31` },
