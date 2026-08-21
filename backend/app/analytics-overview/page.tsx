@@ -97,6 +97,7 @@ interface AnalyticsData {
     spark: { x: number; date: string; sales: number; draws: number; visits: number }[]
     keywords: { rank: number; keyword: string; count: number; growth: number }[]
     topProducts: { name: string; value: number }[]
+    peakHours: { hour: number; label: string; draws: number }[]
     categories: { type: string; label: string; count: number; amount: number }[]
     suppliers: { id: string; name: string; rank: number; draws: number; sales: number; visits: number; salesPct: number; drawsPct: number; visitsPct: number; convRate: number }[]
   }
@@ -600,6 +601,71 @@ export default function AnalyticsOverviewPage() {
               )}
             </div>
 
+          </div>
+        </div>
+
+        {/* ── 高峰時段（左 24 小時圖 + 右時段排行，獨立一行）────────────── */}
+        <div className="bg-white rounded-lg border border-[#f0f0f0] overflow-hidden">
+          <div className="flex items-center border-b border-[#f0f0f0]" style={{ padding: '14px 24px' }}>
+            <span className="flex-1 min-w-0 truncate font-semibold text-base" style={{ color: 'rgba(0,0,0,0.88)' }}>高峰時段</span>
+            <InfoIcon width={320} text={'把這段期間的抽獎依「當天的第幾個小時」分桶（台灣時間），看一天裡哪幾個時段最熱。\n左邊是 0～23 點各時段的抽獎筆數分布，右邊是抽最多的前十個時段。\n用來決定推播、限時活動、補貨要壓在幾點。已排除機器人。'} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr' }}>
+            {/* 左：24 小時圖 */}
+            <div style={{ padding: '24px 32px', borderRight: '1px solid #f0f0f0' }}>
+              {loading ? (
+                <div className="h-[300px] bg-neutral-50 rounded animate-pulse" />
+              ) : !c?.peakHours?.some(h => h.draws > 0) ? (
+                <div className="h-[300px] flex items-center justify-center text-sm text-neutral-400">本期無抽獎紀錄</div>
+              ) : (
+                <ColumnChart
+                  data={c.peakHours}
+                  xField="label"
+                  yField="draws"
+                  height={300}
+                  autoFit
+                  style={{ fill: '#1677ff', opacity: 0.85 } as any}
+                  axis={{
+                    x: { label: { style: { fontSize: 11, fill: 'rgba(0,0,0,0.45)' }, formatter: (v: string) => (parseInt(v) % 3 === 0 ? v : '') } },
+                    y: { labelFormatter: (v: number) => v.toLocaleString() },
+                  } as any}
+                  tooltip={{ title: (d: any) => d.label, items: [{ channel: 'y', name: '抽獎筆數' }] } as any}
+                />
+              )}
+            </div>
+            {/* 右：時段排行前十 */}
+            <div style={{ padding: '0 32px 32px 32px' }}>
+              <h4 style={{ margin: '24px 0 0', fontSize: 14, fontWeight: 500, color: 'rgba(0,0,0,0.85)' }}>熱門時段排行（前十）</h4>
+              {loading ? (
+                <div style={{ marginTop: 25 }} className="space-y-4">
+                  {[1,2,3,4,5,6,7,8,9,10].map(i => <div key={i} className="h-5 bg-neutral-100 rounded animate-pulse" />)}
+                </div>
+              ) : !c?.peakHours?.some(h => h.draws > 0) ? (
+                <div className="flex items-center justify-center text-sm text-neutral-400" style={{ marginTop: 40 }}>暫無資料</div>
+              ) : (
+                <ul style={{ margin: '25px 0 0', padding: 0, listStyle: 'none' }}>
+                  {[...c.peakHours]
+                    .sort((a, b) => b.draws - a.draws)
+                    .slice(0, 10)
+                    .map((h, i) => (
+                      <li key={h.hour} style={{ display: 'flex', alignItems: 'center', marginTop: 13 }}>
+                        <span style={{
+                          display: 'inline-block', width: 20, height: 20, marginRight: 16,
+                          fontWeight: 600, fontSize: 12, lineHeight: '20px', textAlign: 'center',
+                          borderRadius: 20, flexShrink: 0,
+                          ...(i < 3 ? { background: 'rgba(0,0,0,0.85)', color: '#fff' } : { background: 'rgba(0,0,0,0.04)', color: 'rgba(0,0,0,0.65)' }),
+                        }}>{i + 1}</span>
+                        <span style={{ flex: 1, marginRight: 8, fontSize: 14, color: 'rgba(0,0,0,0.85)' }}>
+                          {h.label}–{String((h.hour + 1) % 24).padStart(2, '0')}:00
+                        </span>
+                        <span style={{ fontSize: 14, color: 'rgba(0,0,0,0.85)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                          {h.draws.toLocaleString()}
+                        </span>
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
 

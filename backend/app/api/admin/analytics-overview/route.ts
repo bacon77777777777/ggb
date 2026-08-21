@@ -257,6 +257,19 @@ export async function GET(req: NextRequest) {
     const maxDraws = suppliers.reduce((m, s) => Math.max(m, s.draws), 0) || 1
     const maxVisits = suppliers.reduce((m, s) => Math.max(m, s.visits), 0) || 1
 
+    // 高峰時段（老闆 2026-08-21）：把整段期間的抽獎依「台灣時間的小時(0-23)」分桶，
+    // 看一天裡哪幾個時段最熱。左邊 24 小時圖用全部、右邊排行前十由前端排序取。
+    const peakBuckets: number[] = new Array(24).fill(0)
+    draws.forEach((d: any) => {
+      const dt = new Date(new Date(d.created_at).getTime() + TW)
+      peakBuckets[dt.getUTCHours()]++
+    })
+    const peakHours = peakBuckets.map((draws, hour) => ({
+      hour,
+      label: `${String(hour).padStart(2, '0')}:00`,
+      draws,
+    }))
+
     const convRate = totalVisits > 0 ? Math.round(totalDrawCount / totalVisits * 100) : 0
     const prevConvRate = prevVisits > 0 ? Math.round(prevDrawCount / prevVisits * 100) : 0
 
@@ -282,7 +295,7 @@ export async function GET(req: NextRequest) {
         totalSales, totalDrawCount, totalRecharges, totalVisits,
         todaySales, todayDrawCount, todayVisits, todayRecharges,
         yesterdaySales, yesterdayDrawCount, yesterdayVisits, yesterdayRecharges,
-        convRate, bars, spark, keywords, categories, topProducts,
+        convRate, bars, spark, keywords, categories, topProducts, peakHours,
         suppliers: suppliers.map((s, i) => ({
           ...s, rank: i + 1,
           salesPct: Math.round(s.sales / maxSales * 100),
