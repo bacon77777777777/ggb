@@ -322,7 +322,10 @@ SUPABASE_SERVICE_ROLE_KEY    # 前台 API routes（留言/讚）讀寫需要 ser
 **觸發條件**：老闆明確說「清全站資料」才執行，不可主動執行。執行前必須列出清單讓老闆確認。
 
 ### 清除（TRUNCATE / DELETE）
-- 商品/廠商/輪播圖：`products`、`product_prizes`、`suppliers`、`banners`
+- 商品/廠商：`products`、`product_prizes`、`suppliers`
+- **輪播圖管理四個 tab 全清**：`banners`（首頁/挑戰/App 開屏三個 tab）＋ `site_promos`（首頁彈窗 tab）
+- **機台（老虎機）全清**：`slot_machines`、`slot_themes`、`slot_theme_prizes`、`slot_prizes`、`slot_pool_items`、`slot_sessions`、`slot_spin_logs`（`slot_danmaku_bots` 是機器人彈幕，**保留**）
+- **活動頁**：`DELETE FROM events WHERE slug <> 'fairness'`（`event_sections` 隨 FK CASCADE 一起刪）—— **抽獎公平性頁 `slug='fairness'` 保留**
 - 所有真實用戶的交易記錄：`draw_records`、`recharge_records`、`orders`、`order_items`、`token_adjustments`
 - 用戶行為：`user_event_logs`、`user_events`、`visit_logs`、`search_logs`、`notifications` 等
 - 用戶進度：`user_badges`、`user_coupons`、`user_titles`、`referrals`、`daily_check_ins` 等
@@ -330,12 +333,18 @@ SUPABASE_SERVICE_ROLE_KEY    # 前台 API routes（留言/讚）讀寫需要 ser
 - `webhook_events`（ECPay 冪等記錄）、`leaderboard_bot_daily_stats`（機器人排行榜分數，重上線後自動補回）
 - 所有真實用戶帳號（`is_bot IS NULL OR is_bot = false`），只保留機器人帳號
 
+> ⚠️ **首頁「測試階段公告」彈窗也在 `site_promos`，會被一起清掉。** 清資料＝全新開張，
+> 清完要在後台重上：免責/開幕彈窗、輪播圖、商品。不是「保留部分內容」。
+
 ### 永不清除（保留）
 - `admins`（管理員清單與權限）
 - `dev_logs`（開發日誌，永久保存）
 - `feature_flags`、`platform_settings`（設定）
 - `users WHERE is_bot = true`（機器人帳號本身保留，排行榜用）
-- ⚠️ `draw_records`（機器人抽獎記錄**會被清除**，因 products CASCADE）
+- **`news` / `news_comments` / `news_likes`（情報文章＋機器人留言按讚，全部保留）** —— 真人留言隨帳號刪除消失，文章與機器人互動留著
+- **`events WHERE slug='fairness'`（抽獎公平性頁，常駐頁）** —— 後台已改成**不可刪除**（API 擋 403 ＋ 列表隱藏刪除鍵），清資料也用 `slug <> 'fairness'` 排除它
+- `slot_danmaku_bots`（機器人彈幕，保留）
+- ⚠️ `draw_records`（真人抽獎記錄會被清除；機器人的保留，維持排行榜）
 - **AI 記憶與經驗（全部保留，養 AI 的資產）**：
   - `line_conversations`（GB哥對話記憶）、`agent_events`（事件歷史）
   - `action_logs`（稽核軌跡）、`content_drafts`（AI 文案）
