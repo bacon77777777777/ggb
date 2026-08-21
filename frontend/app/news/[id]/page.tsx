@@ -301,6 +301,137 @@ function CommentSheet({
   );
 }
 
+// ─── 桌機內嵌留言區 ────────────────────────────────────────────────────────────
+// 手機用底部抽屜（CommentSheet），桌機沒有貼底 bar，改成內容區最下方的內嵌留言。
+// 預設顯示 5 筆 →「顯示更多留言」展開一次載 10、之後滑到底再自動 +10（資料早已
+// 全數載入，這裡只是前端分批揭露，不再打 API）。
+function DesktopComments({
+  comments, totalCount,
+  onLike, onDelete, onSubmit, submitting, isLoggedIn,
+  liked, likeCount, onArticleLike, likeAnim, onShare,
+}: {
+  comments: Comment[];
+  totalCount: number;
+  onLike: (id: string) => void;
+  onDelete: (id: string) => void;
+  onSubmit: (text: string) => Promise<void>;
+  submitting: boolean;
+  isLoggedIn: boolean;
+  liked: boolean;
+  likeCount: number;
+  onArticleLike: () => void;
+  likeAnim: boolean;
+  onShare: () => void;
+}) {
+  const [text, setText] = useState('');
+  const [visible, setVisible] = useState(5);
+  const [autoLoad, setAutoLoad] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // 展開後：滑到底自動再載 10 筆
+  useEffect(() => {
+    if (!autoLoad) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) setVisible(v => Math.min(comments.length, v + 10));
+    }, { rootMargin: '200px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [autoLoad, comments.length, visible]);
+
+  const handleSend = async () => {
+    const t = text.trim();
+    if (!t || submitting) return;
+    setText('');
+    await onSubmit(t);
+  };
+
+  const shown = comments.slice(0, visible);
+  const remaining = comments.length - visible;
+
+  return (
+    <section className="hidden md:block md:max-w-3xl md:mx-auto px-6 mt-10 pt-8 border-t border-neutral-100 dark:border-neutral-800">
+      {/* 讚 + 分享 */}
+      <div className="flex items-center gap-5 mb-7">
+        <button onClick={onArticleLike}
+          className={cn('flex items-center gap-1.5 transition-colors',
+            liked ? 'text-primary' : 'text-neutral-400 dark:text-neutral-500 hover:text-primary')}>
+          <ThumbUpIcon filled={liked} className={cn('w-6 h-6 transition-transform duration-200', likeAnim && 'scale-[1.4]')} />
+          <span className="text-[15px] font-black tabular-nums">{likeCount}</span>
+        </button>
+        <button onClick={onShare}
+          className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 hover:text-primary transition-colors">
+          <Share2 className="w-5 h-5" />
+          <span className="text-[14px] font-bold">分享</span>
+        </button>
+      </div>
+
+      {/* 標題 */}
+      <h3 className="text-[18px] font-black text-neutral-900 dark:text-white mb-4">
+        留言 <span className="text-neutral-400">{totalCount}</span>
+      </h3>
+
+      {/* 輸入框 */}
+      <div className="flex items-center gap-2 mb-6">
+        <input
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !(e.nativeEvent as any).isComposing) handleSend(); }}
+          disabled={!isLoggedIn}
+          placeholder={isLoggedIn ? '說點什麼...' : '請先登入才能留言唷'}
+          className="flex-1 bg-neutral-100 dark:bg-neutral-800 rounded-full px-4 py-2.5 text-[14px] text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
+        />
+        <button onClick={handleSend} disabled={!isLoggedIn || !text.trim() || submitting}
+          className="w-10 h-10 rounded-full bg-primary flex items-center justify-center flex-shrink-0 transition-opacity disabled:opacity-25">
+          <Send className="w-4 h-4 text-white" />
+        </button>
+      </div>
+
+      {/* 列表 */}
+      {comments.length === 0 ? (
+        <div className="py-12 text-center text-neutral-400 text-sm font-bold">還沒有留言，來搶沙發！</div>
+      ) : (
+        <div>
+          {shown.map(c => (
+            <div key={c.id} className="group flex items-start gap-3 py-3 border-b border-neutral-50 dark:border-neutral-800/50">
+              <Avatar src={c.user.avatar_url} name={c.user.name} size={36} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[14px] font-black text-neutral-900 dark:text-white">{c.user.name}</span>
+                  <span className="text-[12px] text-neutral-400">{timeAgo(c.created_at)}</span>
+                  {c.is_own && (
+                    <button onClick={() => onDelete(c.id)}
+                      className="text-[12px] text-neutral-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                      刪除
+                    </button>
+                  )}
+                </div>
+                <p className="text-[14px] text-neutral-700 dark:text-neutral-300 leading-relaxed break-words mt-1">{c.content}</p>
+              </div>
+              <button onClick={() => onLike(c.id)}
+                className={cn('flex items-center gap-1 flex-shrink-0 self-center', c.is_liked ? 'text-primary' : 'text-neutral-400 hover:text-primary')}>
+                <ThumbUpIcon filled={c.is_liked} className="w-4 h-4" />
+                <span className="text-[12px] font-bold tabular-nums">{c.likes_count}</span>
+              </button>
+            </div>
+          ))}
+
+          {/* 顯示更多 → 展開後滑到底自動再載 */}
+          {remaining > 0 && !autoLoad && (
+            <button
+              onClick={() => { setAutoLoad(true); setVisible(v => Math.min(comments.length, v + 10)); }}
+              className="w-full mt-4 py-2.5 text-[14px] font-bold text-primary hover:bg-primary/5 rounded-lg transition-colors">
+              顯示更多留言（還有 {remaining} 則）
+            </button>
+          )}
+          {remaining > 0 && autoLoad && <div ref={sentinelRef} className="h-6" />}
+        </div>
+      )}
+    </section>
+  );
+}
+
 // ─── 主頁 ─────────────────────────────────────────────────────────────────────
 export default function NewsDetailPage() {
   const params  = useParams();
@@ -482,7 +613,7 @@ export default function NewsDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-neutral-950 pb-[calc(88px+env(safe-area-inset-bottom))]">
+    <div className="min-h-screen bg-white dark:bg-neutral-950 pb-[calc(88px+env(safe-area-inset-bottom))] md:pb-16">
 
       {/* ── 頂部操作列（絕對定位在圖片上方）── */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-20 flex items-center justify-between pt-[env(safe-area-inset-top)] pointer-events-none">
@@ -541,8 +672,24 @@ export default function NewsDetailPage() {
 
       </article>
 
-      {/* ── 固定底部 bar ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 flex items-center gap-3 px-4 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))] md:max-w-3xl md:mx-auto md:px-0 md:rounded-t-none">
+      {/* ── 桌機內嵌留言區（手機走底部抽屜）── */}
+      <DesktopComments
+        comments={comments}
+        totalCount={commentCount ?? comments.length}
+        onLike={handleCommentLike}
+        onDelete={handleCommentDelete}
+        onSubmit={handleSubmit}
+        submitting={submitting}
+        isLoggedIn={!!user}
+        liked={liked}
+        likeCount={likeCount}
+        onArticleLike={handleLike}
+        likeAnim={likeAnim}
+        onShare={handleShare}
+      />
+
+      {/* ── 固定底部 bar（僅手機；桌機用上方內嵌留言區，避免蓋到 footer）── */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 flex items-center gap-3 px-4 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))]">
         {/* 按讚 */}
         <button
           onClick={handleLike}
