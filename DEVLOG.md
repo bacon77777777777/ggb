@@ -4,6 +4,23 @@
 
 ---
 
+## v2026.08.21j｜2026-08-21｜電子發票預留（儲值時開，開關式）＋修營運趨勢圖不顯示
+
+### 電子發票預留（等統編＋金鑰即可啟用）
+老闆 2026-08-21：先鋪好，統編下來填金鑰就開，不臨上線趕。政策＝儲值時開票。
+- migration 599：recharge_records 加 invoice_number/status/issued_at/random/
+  buyer_tax_id/carrier/error 欄位（已 PROD+STG 執行）
+- `backend/lib/ecpayInvoice.ts`：綠界 B2C 發票，**開關式**——沒設
+  ECPAY_INVOICE_MERCHANT_ID/HASH_KEY/HASH_IV 就 no-op（同推播/LINE 做法）；
+  金額＝實付台幣(amount)、5% 內含、贈點不開票
+- 綠界 callback 儲值成功點掛 fire-and-forget 開票（失敗不擋入帳）
+- AES 加解密與欄位對映備好，實際欄位等測試帳號到手再依 API 版本微調
+
+### 修營運趨勢圖不顯示
+v2026.08.21h 把 height 拿掉改 autoFit，在 flex 容器量到 0 高度→有數據卻沒圖
+（老闆回報）。改用 ResizeObserver 量容器高度傳給 ColumnChart，既顯示又滿高。
+---
+
 ## v2026.08.21i｜2026-08-21｜數據分析＋廠商儀表板 日期快選也加「昨日」
 
 儀表板加過昨日快選後，數據分析（analytics-overview）與廠商儀表板

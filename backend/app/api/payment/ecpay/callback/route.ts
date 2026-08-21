@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { verifyCheckMacValue } from '@/lib/ecpay'
 import { isAlreadyProcessed, logWebhookEvent } from '@/lib/webhookIdempotency'
 import { rechargeRiskCounter } from '@/lib/ratelimit'
+import { issueInvoiceForRecharge } from '@/lib/ecpayInvoice'
 import { calcEcpayFee } from '@/lib/ecpayFees'
 
 const LINE_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ''
@@ -119,9 +120,21 @@ export async function POST(req: Request) {
 
       const { data: recharge } = await supabase
         .from('recharge_records')
-        .select('user_id, amount')
+        .select('user_id, amount, buyer_tax_id, invoice_carrier')
         .eq('order_number', tradeNo)
         .single()
+
+      // 儲值時開電子發票（老闆 2026-08-21）—— 開關式：沒設綠界發票金鑰就 no-op。
+      // fire-and-forget：發票開失敗不影響入帳（錢已進，發票補得回來）。
+      if (recharge) {
+        void issueInvoiceForRecharge({
+          order_number: tradeNo,
+          amount: Number(recharge.amount ?? amt),
+          buyer_tax_id: (recharge as any).buyer_tax_id,
+          invoice_carrier: (recharge as any).invoice_carrier,
+        }).catch(() => {})
+      }
+
       if (recharge?.user_id) {
         const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
         await supabase.from('user_event_logs').insert({

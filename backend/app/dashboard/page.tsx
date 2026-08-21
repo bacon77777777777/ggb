@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import AdminLayout from '@/components/AdminLayout'
@@ -130,6 +130,22 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [metric, setMetric] = useState<typeof TREND_METRICS[number]['key']>('revenue')
+
+  // 營運趨勢圖的高度：量測容器實際高度傳給圖表（autoFit 在 flex 容器會量到 0
+  // 而畫不出來——老闆 2026-08-21「有數據但沒圖」）。ResizeObserver 跟著右邊
+  // 健康度卡變高一起長，達成滿高。
+  const trendWrapRef = useRef<HTMLDivElement>(null)
+  const [trendH, setTrendH] = useState(280)
+  useEffect(() => {
+    const el = trendWrapRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => {
+      const h = el.clientHeight
+      if (h > 0) setTrendH(Math.max(240, h))
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const PRESETS = useMemo(() => {
     const y = today.getFullYear(), m = today.getMonth()
@@ -318,13 +334,13 @@ export default function DashboardPage() {
                 {/* h-full：讓圖撐滿卡片高度 —— 右邊健康度卡加了系統健康四燈變高，
                     grid 會把這張卡拉到一樣高，圖要跟著滿高才不會下方留一塊白
                     （老闆 2026-08-21）。min-h 保底，autoFit 吃滿容器 */}
-                <div className="h-full min-h-[280px]">
+                <div ref={trendWrapRef} className="h-full min-h-[280px]">
                   {loading ? (
                     <div className="h-full bg-neutral-50 rounded animate-pulse" />
                   ) : !data?.trend.length ? (
                     <div className="h-full flex items-center justify-center text-sm text-neutral-400">本期無資料</div>
                   ) : (
-                    <ColumnChart data={data.trend} xField="label" yField={metric} autoFit
+                    <ColumnChart height={trendH} data={data.trend} xField="label" yField={metric}
                       style={{ fill: currentMetric.color, opacity: 0.85 } as any}
                       axis={{ y: { labelFormatter: (v: number) => v.toLocaleString() } }}
                       tooltip={{ title: (d: any) => d.label, items: [{ channel: 'y', name: currentMetric.label }] } as any} />
