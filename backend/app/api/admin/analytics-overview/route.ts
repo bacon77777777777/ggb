@@ -227,18 +227,35 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => b.amount - a.amount)
 
     // Suppliers
-    const supMap: Record<string, { id: string; name: string; draws: number; sales: number }> = {}
+    const supMap: Record<string, { id: string; name: string; draws: number; sales: number; visits: number }> = {}
     draws.forEach((d: any) => {
       const sup = d.product?.supplier
       if (!sup) return
       const k = String(sup.id)
-      if (!supMap[k]) supMap[k] = { id: k, name: sup.name, draws: 0, sales: 0 }
+      if (!supMap[k]) supMap[k] = { id: k, name: sup.name, draws: 0, sales: 0, visits: 0 }
       supMap[k].draws++
       supMap[k].sales += d.product?.price ?? d.points_used ?? 0
     })
-    const suppliers = Object.values(supMap).sort((a, b) => b.sales - a.sales).slice(0, 10)
-    const maxSales = suppliers[0]?.sales ?? 1
-    const maxDraws = suppliers[0]?.draws ?? 1
+
+    // 每廠商訪問量：商品瀏覽事件（product_view_events）依 product→supplier 彙總，
+    // 讓右邊排行能切到「廠商訪問量排名」（老闆 2026-08-21）
+    const pvRows = await fetchAllRows<any>(() => inR(
+      noBot(db.from('product_view_events').select('product:products(supplier:suppliers(id, name))')),
+      curStart, curEnd,
+    ))
+    ;(pvRows ?? []).forEach((v: any) => {
+      const sup = v.product?.supplier
+      if (!sup) return
+      const k = String(sup.id)
+      if (!supMap[k]) supMap[k] = { id: k, name: sup.name, draws: 0, sales: 0, visits: 0 }
+      supMap[k].visits++
+    })
+
+    // 回全部廠商（家數不多），前端依當前模式(sales/visits)自己排序＋取前段
+    const suppliers = Object.values(supMap).sort((a, b) => b.sales - a.sales).slice(0, 20)
+    const maxSales = suppliers.reduce((m, s) => Math.max(m, s.sales), 0) || 1
+    const maxDraws = suppliers.reduce((m, s) => Math.max(m, s.draws), 0) || 1
+    const maxVisits = suppliers.reduce((m, s) => Math.max(m, s.visits), 0) || 1
 
     const convRate = totalVisits > 0 ? Math.round(totalDrawCount / totalVisits * 100) : 0
     const prevConvRate = prevVisits > 0 ? Math.round(prevDrawCount / prevVisits * 100) : 0
@@ -270,6 +287,7 @@ export async function GET(req: NextRequest) {
           ...s, rank: i + 1,
           salesPct: Math.round(s.sales / maxSales * 100),
           drawsPct: Math.round(s.draws / maxDraws * 100),
+          visitsPct: Math.round(s.visits / maxVisits * 100),
           convRate: totalDrawCount > 0
             ? Math.min(99, Math.round((s.draws / totalDrawCount) * Math.max(convRate, 10)))
             : 0,

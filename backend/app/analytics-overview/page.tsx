@@ -27,7 +27,7 @@ const PieChart = dynamic(
 
 const ColumnChart = dynamic(
   () => import('@ant-design/charts').then(m => ({ default: m.Column })),
-  { ssr: false, loading: () => <div className="h-[200px] bg-neutral-50 rounded animate-pulse" /> }
+  { ssr: false, loading: () => <div className="h-[260px] bg-neutral-50 rounded animate-pulse" /> }
 )
 
 const LineChart = dynamic(
@@ -98,7 +98,7 @@ interface AnalyticsData {
     keywords: { rank: number; keyword: string; count: number; growth: number }[]
     topProducts: { name: string; value: number }[]
     categories: { type: string; label: string; count: number; amount: number }[]
-    suppliers: { id: string; name: string; rank: number; draws: number; sales: number; salesPct: number; drawsPct: number; convRate: number }[]
+    suppliers: { id: string; name: string; rank: number; draws: number; sales: number; visits: number; salesPct: number; drawsPct: number; visitsPct: number; convRate: number }[]
   }
   growth: {
     sales: number; draws: number; recharges: number; visits: number
@@ -487,7 +487,7 @@ export default function AnalyticsOverviewPage() {
 
           {/* AntD-style large tabs */}
           <div className="border-b border-[#f0f0f0]" style={{ padding: '0 16px' }}>
-            <div className="flex" style={{ marginBottom: -1 }}>
+            <div className="flex items-center" style={{ marginBottom: -1 }}>
               {(['sales', 'visits'] as const).map(m => (
                 <button key={m} onClick={() => setChartMode(m)}
                   style={{
@@ -505,6 +505,10 @@ export default function AnalyticsOverviewPage() {
                   {m === 'sales' ? '銷售額' : '訪問量'}
                 </button>
               ))}
+              {/* 說明移到 tab 最右邊（老闆 2026-08-21），一次講清楚切換會連動排行 */}
+              <div style={{ marginLeft: 'auto', paddingRight: 4 }}>
+                <InfoIcon width={320} text={'上方兩個頁籤切換時，左邊的長條圖與右邊的排行榜會一起換：\n・銷售額＝這段期間各廠商被玩家花掉的金額（1G=1元），排行就是廠商銷售額由高到低。\n・訪問量＝各廠商的商品被點進來瀏覽的次數（同一人重複看重複算），排行就是廠商訪問量由高到低。\n兩者都已排除機器人帳號。銷售額高代表真的賺到，訪問量高但銷售額低通常是「看得多、下手少」，要檢查價格或獎品內容。'} />
+              </div>
             </div>
           </div>
 
@@ -526,7 +530,7 @@ export default function AnalyticsOverviewPage() {
                   data={c.bars}
                   xField="label"
                   yField={chartMode}
-                  height={300}
+                  height={330}
                   autoFit
                   style={{ fill: '#1783ff', radius: [4, 4, 0, 0] } as any}
                   padding={[8, 8, 8, 52]}
@@ -555,8 +559,7 @@ export default function AnalyticsOverviewPage() {
             {/* Ranking */}
             <div style={{ padding: '0 32px 32px 32px' }}>
               <h4 style={{ margin: '24px 0 0', fontSize: 14, fontWeight: 500, color: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center' }}>
-                <span style={{ flex: 1, minWidth: 0 }}>廠商銷售額排名</span>
-                <InfoIcon text={'這段期間各廠商的銷售額由高到低排。\n長條的長度是相對於第一名的比例。'} />
+                <span style={{ flex: 1, minWidth: 0 }}>{chartMode === 'sales' ? '廠商銷售額排名' : '廠商訪問量排名'}</span>
               </h4>
               {loading ? (
                 <div style={{ marginTop: 25 }} className="space-y-4">
@@ -566,7 +569,10 @@ export default function AnalyticsOverviewPage() {
                 <div className="flex items-center justify-center text-sm text-neutral-400" style={{ marginTop: 40 }}>暫無資料</div>
               ) : (
                 <ul style={{ margin: '25px 0 0', padding: 0, listStyle: 'none' }}>
-                  {c.suppliers.slice(0, 7).map((sup, i) => (
+                  {[...c.suppliers]
+                    .sort((a, b) => (chartMode === 'visits' ? (b.visits ?? 0) - (a.visits ?? 0) : b.sales - a.sales))
+                    .slice(0, 7)
+                    .map((sup, i) => (
                     <li key={sup.id} style={{ display: 'flex', alignItems: 'center', marginTop: 16 }}>
                       <span style={{
                         display: 'inline-block',
@@ -586,7 +592,7 @@ export default function AnalyticsOverviewPage() {
                         {sup.name}
                       </span>
                       <span style={{ fontSize: 14, color: 'rgba(0,0,0,0.85)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                        {sup.sales.toLocaleString()}
+                        {(chartMode === 'visits' ? (sup.visits ?? 0) : sup.sales).toLocaleString()}
                       </span>
                     </li>
                   ))}
@@ -651,7 +657,7 @@ export default function AnalyticsOverviewPage() {
                 yField="value"
                 colorField="type"
                 scale={{ color: { range: ['#1677ff', '#722ed1'] } } as any}
-                height={200}
+                height={260}
                 autoFit
                 padding={[4, 8, 4, 40]}
                 insetTop={12}
