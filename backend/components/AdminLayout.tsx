@@ -576,6 +576,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/reports/dismantled': 'reports_dismantled',
     '/reports/adjustments': 'reports_adjustments',
     '/reports/settlement': 'reports_settlement',
+    '/reports/accounting-guide': 'reports_settlement',
     '/settlement-snapshots': 'settlement_snapshots',
     // 抽獎管理
     '/products': 'products',
@@ -710,6 +711,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '手動調整明細', path: '/reports/adjustments', icon: IconSliders },
           { name: '廠商結算', path: '/reports/settlement', icon: IconReceipt },
           { name: '廠商月結管理', path: '/settlement-snapshots', icon: IconLedger },
+          { name: '會計對接說明', path: '/reports/accounting-guide', icon: IconReceipt },
         ],
       },
       {
