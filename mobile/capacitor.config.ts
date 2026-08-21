@@ -46,14 +46,13 @@ const config: CapacitorConfig = {
   ios: {
     appendUserAgent: 'GGBApp/1.0 (ios)',
     /*
-     * 'never' + StatusBar overlaysWebView(true)（NativeAppBootstrap 執行期呼叫）
-     * ＝滿版：webview 延伸到動態島／狀態列底下，彩色頁頭與滿版圖直接畫到
-     * 螢幕頂（老闆 2026-08-21 指定）。版面的內縮改由網頁自己用
-     * env(safe-area-inset-top) 處理 —— Navbar／PageHeader／各 sticky 子欄
-     * 已全數補上（v2026.08.21c）。
-     * 先前用 'automatic' 是為了不動版面（見 git 歷史），滿版需求出現後翻案。
+     * 'automatic'（安全預設）：webview 從安全區底下開始，內容不會被動態島裁到。
+     * 2026-08-21 曾改 'never' 做全出血，但代價是每個自繪頂部的頁面都要逐一補
+     * 安全區、補不完又難驗（會員/排行/商品/邀請都被裁），故改回。
+     * 真正要出血的表面（啟動頁、App 開屏）本來就是全螢幕覆蓋，不受此設定影響。
+     * 網頁端保留的 env(safe-area-inset-top) 內距在此模式下自動為 0、無害。
      */
-    contentInset: 'never',
+    contentInset: 'automatic',
     limitsNavigationsToAppBoundDomains: false,
     backgroundColor: '#ffffff',
   },
@@ -107,8 +106,8 @@ const config: CapacitorConfig = {
       launchFadeOutDuration: 0,
     },
     StatusBar: {
-      // 覆蓋 webview（滿版）：網頁自己用 env(safe-area-inset-top) 處理內縮
-      overlaysWebView: true,
+      // 安全預設：webview 從安全區下開始，內容不會被動態島裁到
+      overlaysWebView: false,
       style: 'DEFAULT',
       backgroundColor: '#ffffff',
     },
