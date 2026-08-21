@@ -4,6 +4,18 @@
 
 ---
 
+## v2026.08.21d｜2026-08-21｜上線前資安：/api/upload/image 越權覆寫修補
+
+上線前資安審查發現的唯一 HIGH：`/api/upload/image` 的 bucket、path 完全由前端
+決定，任何登入玩家可傳 `bucket=products` + 某商品主圖的 key，覆蓋掉全站商品／
+輪播圖（R2 是 PROD/STG 共用＝直接改到正式店面）。
+
+修：bucket 只允許 avatars／marketplace（後台才寫的 products/banners 一律 403）；
+path 強制以呼叫者自己的 user.id 為前綴。兩個既有呼叫端（商城上架表單）本來
+就送 marketplace + `${user.id}/...`，不受影響。
+
+---
+
 ## v2026.08.21c｜2026-08-21｜App 滿版（延伸到動態島）；欄位規則收緊；推薦頁刷新洗牌
 
 ### 1. App 滿版模式（老闆指定，網頁與偽 app 完全無感）
