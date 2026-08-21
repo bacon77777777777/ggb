@@ -551,6 +551,17 @@ export async function GET(request: NextRequest) {
       const clickTotal = clickSet.size
       const conversionRate = clickTotal > 0 ? Math.round((converted / clickTotal) * 1000) / 10 : 0
 
+      // 試試看（draw_trial）：進商品頁按「試試看」試抽 —— 好奇/試運氣的指標。
+      // 次數＝按了幾次、人數＝多少不同玩家按過。
+      const trialEvents = await fetchAllRows<any>(() => applyBehaviorDate(
+        supabase
+          .from('user_events')
+          .select('user_id')
+          .eq('event_type', 'draw_trial')
+      ))
+      const trialTotal = (trialEvents ?? []).length
+      const trialUsers = new Set((trialEvents ?? []).filter((e: any) => e.user_id).map((e: any) => e.user_id)).size
+
       // 每日活躍用戶數（DAU）
       const { data: dauEvents } = await applyBehaviorDate(
         supabase
@@ -568,7 +579,7 @@ export async function GET(request: NextRequest) {
         .sort((a, b) => a[0].localeCompare(b[0]))
         .map(([date, users]) => ({ date, count: users.size }))
 
-      return NextResponse.json({ topSearches, topSeries, conversionRate, clickTotal, converted, dailyActiveUsers })
+      return NextResponse.json({ topSearches, topSeries, conversionRate, clickTotal, converted, trialTotal, trialUsers, dailyActiveUsers })
     }
 
     // ── 分解明細 ────────────────────────────────────────────────────────────

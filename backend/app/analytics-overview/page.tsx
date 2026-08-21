@@ -117,6 +117,7 @@ interface MergedData {
     topSearches: { query: string; count: number }[]
     topSeries: { series: string; count: number }[]
     conversionRate: number; clickTotal: number; converted: number
+    trialTotal?: number; trialUsers?: number
   }
 }
 
@@ -718,7 +719,7 @@ export default function AnalyticsOverviewPage() {
             <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
               style={{ color: 'rgba(0,0,0,0.88)' }}>
               <span className="flex-1 min-w-0 truncate">點擊行為</span>
-              <InfoIcon width={300} text={'玩家點進商品之後有沒有真的抽。\n點擊後成功抽獎＝同一個人點過某件商品、後來也抽了那件商品。\n轉換率低代表商品頁看得到、但不吸引人下手。'} />
+              <InfoIcon width={300} text={'玩家點進商品之後有沒有真的抽。\n點擊後成功抽獎＝同一個人點過某件商品、後來也抽了那件商品。\n轉換率低代表商品頁看得到、但不吸引人下手。\n試試看＝進商品頁按「試試看」試抽的次數與人數，反映好奇與試運氣的熱度。'} />
             </div>
             <div className="p-6 grid grid-cols-2 gap-y-5">
               {[
@@ -726,6 +727,8 @@ export default function AnalyticsOverviewPage() {
                 { label: '點擊後成功抽獎', value: merged.behavior ? merged.behavior.converted.toLocaleString() : '—' },
                 { label: '點擊→抽獎轉換率', value: merged.behavior ? `${merged.behavior.conversionRate}%` : '—' },
                 { label: '新會員付費轉換率', value: merged.funnel ? `${merged.funnel.newUserConversionRate}%` : '—' },
+                { label: '試試看次數', value: merged.behavior?.trialTotal != null ? merged.behavior.trialTotal.toLocaleString() : '—' },
+                { label: '試試看人數', value: merged.behavior?.trialUsers != null ? merged.behavior.trialUsers.toLocaleString() : '—' },
               ].map(x => (
                 <div key={x.label}>
                   <p className="text-xs text-neutral-500 mb-1">{x.label}</p>

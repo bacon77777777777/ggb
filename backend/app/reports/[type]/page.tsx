@@ -274,6 +274,8 @@ export default function ReportPage() {
     conversionRate: number
     clickTotal: number
     converted: number
+    trialTotal?: number
+    trialUsers?: number
     dailyActiveUsers: { date: string; count: number }[]
   } | null>(null)
 
@@ -794,6 +796,8 @@ export default function ReportPage() {
                   <KpiCard label="點擊商品數（去重）" value={String(behaviorData.clickTotal)} color="text-primary" />
                   <KpiCard label="點擊後成功抽獎" value={String(behaviorData.converted)} color="text-green-600" />
                   <KpiCard label="點擊 → 抽轉化率" value={`${behaviorData.conversionRate}%`} color="text-amber-600" />
+                  <KpiCard label="試試看次數" value={behaviorData.trialTotal != null ? String(behaviorData.trialTotal) : '—'} sub="進商品頁按試試看試抽" color="text-purple-600" />
+                  <KpiCard label="試試看人數" value={behaviorData.trialUsers != null ? String(behaviorData.trialUsers) : '—'} sub="多少不同玩家試過" color="text-purple-600" />
                 </div>
 
                 {/* 每日活躍用戶 */}

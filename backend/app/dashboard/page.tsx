@@ -135,6 +135,7 @@ export default function DashboardPage() {
     const y = today.getFullYear(), m = today.getMonth()
     return [
       { label: '今日', start: toDS(today), end: toDS(today) },
+      { label: '昨日', start: toDS(new Date(today.getTime() - 86400_000)), end: toDS(new Date(today.getTime() - 86400_000)) },
       { label: '本週', start: toDS(mondayOf(today)), end: toDS(sundayOf(today)) },
       { label: '本月', start: `${y}-${String(m + 1).padStart(2, '0')}-01`, end: toDS(new Date(y, m + 1, 0)) },
       { label: '本年', start: `${y}-01-01`, end: `${y}-12-31` },
@@ -314,16 +315,21 @@ export default function DashboardPage() {
                   </div>
                 }
               >
-                {loading ? (
-                  <div className="h-[280px] bg-neutral-50 rounded animate-pulse" />
-                ) : !data?.trend.length ? (
-                  <div className="h-[280px] flex items-center justify-center text-sm text-neutral-400">本期無資料</div>
-                ) : (
-                  <ColumnChart height={280} data={data.trend} xField="label" yField={metric} autoFit
-                    style={{ fill: currentMetric.color, opacity: 0.85 } as any}
-                    axis={{ y: { labelFormatter: (v: number) => v.toLocaleString() } }}
-                    tooltip={{ title: (d: any) => d.label, items: [{ channel: 'y', name: currentMetric.label }] } as any} />
-                )}
+                {/* h-full：讓圖撐滿卡片高度 —— 右邊健康度卡加了系統健康四燈變高，
+                    grid 會把這張卡拉到一樣高，圖要跟著滿高才不會下方留一塊白
+                    （老闆 2026-08-21）。min-h 保底，autoFit 吃滿容器 */}
+                <div className="h-full min-h-[280px]">
+                  {loading ? (
+                    <div className="h-full bg-neutral-50 rounded animate-pulse" />
+                  ) : !data?.trend.length ? (
+                    <div className="h-full flex items-center justify-center text-sm text-neutral-400">本期無資料</div>
+                  ) : (
+                    <ColumnChart data={data.trend} xField="label" yField={metric} autoFit
+                      style={{ fill: currentMetric.color, opacity: 0.85 } as any}
+                      axis={{ y: { labelFormatter: (v: number) => v.toLocaleString() } }}
+                      tooltip={{ title: (d: any) => d.label, items: [{ channel: 'y', name: currentMetric.label }] } as any} />
+                  )}
+                </div>
               </Panel>
 
               <Panel
