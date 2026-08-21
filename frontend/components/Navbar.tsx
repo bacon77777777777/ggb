@@ -34,8 +34,12 @@ function NavbarInner() {
   /* 機台關閉時整個「挑戰」入口要消失 —— 功能開關頁的說明就是這樣寫的
      （「關閉後挑戰入口與機台頁都會消失」）。首頁的懸浮入口與 /challenge
      頁本身都有擋，只有這裡的頂部導航漏了，桌機關掉還看得到。
-     維護中照常顯示：那是暫時停一下，點進去頁面會說明。 */
-  const slotOff = !isFlagsLoading && categoryState('slot', featureStates, false) === 'off';
+     維護中照常顯示：那是暫時停一下，點進去頁面會說明。
+
+     flag 未載入時是「還不知道」，不能當成「開著」—— 否則刷新時挑戰會先
+     閃出來、flag 一到再收起（看起來像壞掉）。所以只有「確定 slot 開著」
+     才顯示：載入中先不畫，寧可晚淡入、不要先亮再消失。 */
+  const slotOn = !isFlagsLoading && categoryState('slot', featureStates, false) !== 'off';
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMessagesMoreOpen, setIsMessagesMoreOpen] = useState(false);
   const [productName, setProductName] = useState<string | null>(null);
@@ -722,7 +726,7 @@ function NavbarInner() {
                   <span className="absolute inset-x-0 -bottom-1 h-1 rounded-full bg-primary" />
                 )}
               </Link>
-              {!slotOff && (
+              {slotOn && (
                 <Link
                   href="/challenge"
                   className={cn(
