@@ -457,3 +457,75 @@ img {
 @media (prefers-reduced-motion: reduce) {
   .ptr-ball.ptr-toss { animation: none; }
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   程序化背景（取代 rank/topbg.webp、profile/topbg.webp 兩張靜態圖）。
+   全程只動 transform / opacity / border-radius → GPU 合成、低耗電（App 內重要）。
+   視覺刻意克制：慢週期、變化幅度小，跟原本靜態圖差不多，只是動起來。
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* 排行榜：深藍頂部漸層 + 三顆大小不一的紫藍光暈微閃 */
+.rank-aurora {
+  position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+  background: linear-gradient(180deg, #1b2148 0%, rgba(27,33,72,0.35) 55%, rgba(35,36,41,0) 100%);
+}
+.rank-aurora .orb {
+  position: absolute; border-radius: 50%; filter: blur(46px);
+  will-change: transform, opacity;
+}
+.rank-aurora .orb-1 {
+  width: 62%; aspect-ratio: 1; left: -10%; top: -16%;
+  background: radial-gradient(circle, rgba(87,127,229,0.85), rgba(87,127,229,0) 68%);
+  animation: rank-glow 11s ease-in-out infinite;
+}
+.rank-aurora .orb-2 {
+  width: 42%; aspect-ratio: 1; right: -8%; top: 2%;
+  background: radial-gradient(circle, rgba(124,108,231,0.8), rgba(124,108,231,0) 66%);
+  animation: rank-glow 14s ease-in-out infinite 1.8s;
+}
+.rank-aurora .orb-3 {
+  width: 30%; aspect-ratio: 1; left: 34%; top: 30%;
+  background: radial-gradient(circle, rgba(99,142,240,0.72), rgba(99,142,240,0) 64%);
+  animation: rank-glow 9s ease-in-out infinite 3.2s;
+}
+@keyframes rank-glow {
+  0%, 100% { opacity: 0.28; transform: translate3d(0, 0, 0) scale(1); }
+  50%      { opacity: 0.55; transform: translate3d(0, -3%, 0) scale(1.08); }
+}
+
+/* 會員中心：橘色漸層底 + 兩顆透明泡泡不規則變形飄動（一深一淺） */
+.profile-bubbles {
+  position: absolute; inset: 0; overflow: hidden;
+  background: linear-gradient(160deg, #ff9d2f 0%, #ffb347 46%, #ffcf6b 100%);
+}
+.profile-bubbles .bubble {
+  position: absolute; will-change: transform, border-radius; filter: blur(2px);
+}
+.profile-bubbles .bubble-dark {
+  width: 56%; aspect-ratio: 1; left: -6%; top: 6%;
+  background: rgba(176,86,8,0.28);
+  animation: bubble-morph 13s ease-in-out infinite, bubble-float-a 17s ease-in-out infinite;
+}
+.profile-bubbles .bubble-light {
+  width: 46%; aspect-ratio: 1; right: -4%; bottom: -14%;
+  background: rgba(255,255,255,0.22);
+  animation: bubble-morph 11s ease-in-out infinite reverse, bubble-float-b 15s ease-in-out infinite;
+}
+@keyframes bubble-morph {
+  0%, 100% { border-radius: 42% 58% 63% 37% / 45% 43% 57% 55%; }
+  33%      { border-radius: 62% 38% 40% 60% / 58% 62% 38% 42%; }
+  66%      { border-radius: 38% 62% 55% 45% / 40% 50% 50% 60%; }
+}
+@keyframes bubble-float-a {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50%      { transform: translate3d(6%, 4%, 0) rotate(8deg); }
+}
+@keyframes bubble-float-b {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50%      { transform: translate3d(-5%, -5%, 0) rotate(-10deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rank-aurora .orb,
+  .profile-bubbles .bubble { animation: none !important; }
+  .rank-aurora .orb { opacity: 0.4; }
+}

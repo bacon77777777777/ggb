@@ -6406,23 +6406,21 @@ function ProfileContent() {
           
           {/* 1. Mobile Menu View (Only shown on mobile when no tab is active) */}
           <div className={cn("md:hidden col-span-1 space-y-2.5", isMobileDetailOpen && "hidden")}>
-            {/* Mobile Header - RankingTop Style */}
+            {/* Mobile Header - RankingTop Style
+                全出血：外層補一段 pt-[env(safe-area-inset-top)] 的橘色 band 墊在動態島後面，
+                裡面的 aspect 頭圖維持原比例與內部版位、整塊往下移，內容不會被島裁、也不會
+                因為單獨推頭像而撞到下方代幣卡（橘色 #ff9d2f 對齊 .profile-bubbles 漸層頂端）。*/}
+            <div className="bg-[#ff9d2f] pt-[env(safe-area-inset-top)]">
             <div className="relative w-full aspect-[375/195] select-none">
-              {/* Background */}
-              <div className="absolute inset-0 w-full h-full">
-                <Image 
-                  src="/images/profile/topbg.webp" 
-                  alt="Background" 
-                  fill 
-                  className="object-cover pointer-events-none" 
-                  priority
-                  unoptimized
-                />
+              {/* 程序化背景：橘漸層底＋兩顆透明泡泡不規則變形飄動
+                  （取代 profile/topbg.webp，樣式在 globals.css）*/}
+              <div className="profile-bubbles absolute inset-0 w-full h-full pointer-events-none" aria-hidden>
+                <span className="bubble bubble-dark" />
+                <span className="bubble bubble-light" />
               </div>
 
-              {/* Profile Info Section（全出血：背景 inset-0 鋪到動態島，前景內容
-                  往下壓一個安全區，避免頭像/暱稱躲到島下面被裁） */}
-              <div className="absolute top-[calc(8%_+_env(safe-area-inset-top))] left-0 w-full px-[4.2%] flex items-center justify-between">
+              {/* Profile Info Section */}
+              <div className="absolute top-[8%] left-0 w-full px-[4.2%] flex items-center justify-between">
                 <div className="flex-1 flex items-center gap-[2.1%] min-w-0">
                   {/* Avatar */}
                   <div className="relative shrink-0 w-[16%] aspect-square">
@@ -6598,6 +6596,7 @@ function ProfileContent() {
                     </div>
                   </div>
                 </div>
+            </div>
             </div>
 
             {/*

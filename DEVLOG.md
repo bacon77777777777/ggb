@@ -4,6 +4,20 @@
 
 ---
 
+## v2026.08.21s｜2026-08-21｜排行/會員程序化背景（CSS 動態，取代靜態圖）＋修會員頂圖全出血跑版
+
+**程序化背景（純 CSS，取代 rank/profile 兩張 topbg.webp）**
+- 排行榜：深藍頂漸層＋三顆大小不一紫藍光暈微閃（rank-glow，opacity/scale 慢週期）。
+- 會員中心：橘漸層底＋兩顆透明泡泡（一深一淺）border-radius 變形＋飄動。
+- 只動 transform/opacity/border-radius → GPU 合成、低耗電；prefers-reduced-motion 關動畫。
+- 樣式集中在 globals.css（.rank-aurora / .profile-bubbles）。
+
+**修會員中心頂圖全出血跑版**
+- 前一版用 top-[calc(8%+env)] 單推頭像，但頭圖 aspect-[375/195] 高度固定，頭像被推下去
+  撞到 bottom-[14%] 的代幣卡 → 重疊跑版。改為 revert 內部、把整塊 aspect 頭圖包一層
+  bg-[#ff9d2f] + pt-[env(safe-area-inset-top)]：頭圖維持原比例與版位整塊下移，島後補橘色 band。
+---
+
 ## v2026.08.21r｜2026-08-21｜重開全站頂邊出血（正確版）＋PTR 球被灰塊遮住修正＋未登入搜尋鈕收斂
 
 **全出血（重來一次，這次補齊自繪頂部的頁）**

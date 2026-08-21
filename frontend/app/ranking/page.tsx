@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useLayoutEffect, useRef } from 'react';
-import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import {
   RankingListItem,
@@ -300,17 +299,11 @@ export default function RankingPage() {
             // minHeight removed from here, let the content define height, but keep min-h-[1334px] class for background coverage
           }}
         >
-          <div className="absolute top-0 left-0 w-full z-0 pointer-events-none">
-            <Image
-              src="/images/rank/topbg.webp"
-              alt="Ranking Background"
-              width={750}
-              height={561}
-              sizes="(max-width: 750px) 100vw, 750px"
-              className="w-full h-auto mix-blend-overlay"
-              unoptimized
-              priority
-            />
+          {/* 程序化背景：深藍頂＋三顆紫藍光暈微閃（取代 rank/topbg.webp，樣式在 globals.css）*/}
+          <div className="rank-aurora absolute top-0 left-0 w-full h-[561px] z-0 pointer-events-none" aria-hidden>
+            <span className="orb orb-1" />
+            <span className="orb orb-2" />
+            <span className="orb orb-3" />
           </div>
           
           {/* 賞金狂人／轉蛋魔人已搬到頁面層級的固定頂欄（見上方），畫布裡只剩日榜／週榜 */}
