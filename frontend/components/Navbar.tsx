@@ -708,6 +708,20 @@ function NavbarInner() {
                   <span className="absolute inset-x-0 -bottom-1 h-1 rounded-full bg-primary" />
                 )}
               </Link>
+              <Link
+                href="/news"
+                className={cn(
+                  "relative flex items-center h-9 text-[15px] lg:text-[16px] font-black transition-colors",
+                  pathname === '/news' || isNewsDetailPage
+                    ? "text-primary"
+                    : "text-neutral-600 dark:text-neutral-400 hover:text-primary"
+                )}
+              >
+                <span>情報</span>
+                {(pathname === '/news' || isNewsDetailPage) && (
+                  <span className="absolute inset-x-0 -bottom-1 h-1 rounded-full bg-primary" />
+                )}
+              </Link>
               {!slotOff && (
                 <Link
                   href="/challenge"
