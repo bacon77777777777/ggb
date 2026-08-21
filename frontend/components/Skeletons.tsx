@@ -32,7 +32,7 @@ export function ChallengeSkeleton() {
 
 export function ChallengeDetailSkeleton() {
   return (
-    <div className="min-h-screen pt-14 md:pt-0 bg-neutral-50 dark:bg-neutral-950">
+    <div className="min-h-screen pt-[calc(3.5rem+env(safe-area-inset-top))] md:pt-0 bg-neutral-50 dark:bg-neutral-950">
       <div className="block pb-8">
         <div className="bg-white dark:bg-neutral-900 shadow-sm border-b border-neutral-100 dark:border-neutral-800">
           <Skeleton className="w-full rounded-none" style={{ aspectRatio: '4/3' }} />

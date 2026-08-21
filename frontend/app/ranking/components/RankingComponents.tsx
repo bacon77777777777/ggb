@@ -6,7 +6,7 @@ import { imgAvatar, img, imgAvatar1, img1, imgAvatar2, img2 } from '../assets';
 
 // Global G Coin Icon
 const imgGCoin = "/images/gcoin.webp";
-const imgRanking123 = "/images/rank/top123.png";
+const imgRanking123 = "/images/rank/top123.webp";
 const imgDefaultAvatar = "/images/avatar.webp";
 
 const TITLE_STYLES: Record<string, string> = {
@@ -318,19 +318,19 @@ export function RankingBackgroundBlobs() {
 
 export function RankingTopDecorations() {
   return (
-    <div className="absolute left-0 top-[337px] w-[750px]">
+    <div className="absolute left-0 top-[377px] w-[750px]">
       <div className="relative w-full h-auto">
         <Image
           src={imgRanking123}
           alt="Ranking Top 3 Background"
           width={750}
-          height={400}
+          height={252}
           className="w-full h-auto object-cover"
           unoptimized
         />
       </div>
       {/* 原本有一條把台座底部融進舊底色 #23242a 的漸層；改成全螢幕流體背景後
-          那塊會變暗斑，且 top123.png 已是去背乾淨台座，故移除。*/}
+          那塊會變暗斑，且 top123 已是去背乾淨台座，故移除。*/}
     </div>
   );
 }

@@ -328,7 +328,7 @@ export default function FigmaTearScene({
       <Image src="/images/ichiban-tear/bg.webp" alt="" fill className="object-cover" unoptimized priority />
 
       {/* 聲音開關：撕紙聲跟中獎音效都在這個畫面響，位置與轉蛋機台同一套 */}
-      <SoundToggle className="absolute top-4 right-4 z-30" />
+      <SoundToggle safeTop className="absolute top-4 right-4 z-30" />
 
       {/* 場景群組：手 + 票 */}
       <div

@@ -218,7 +218,10 @@ export default function MissionPage() {
      * 內容用 env(safe-area-inset-top) 內縮 —— 動態島背後是橘紅、
      * 簽到畫面本體從安全區下開始。網頁 env=0，跟原本一模一樣。
      */
-    <div className="overflow-x-hidden flex justify-center"
+    /* data-ptr-strip：下拉的空隙鋪同一個紅，不然一拖走就露出 body 的白
+       （老闆 2026-08-21：「簽到頁下拉，背景底色不該跟著動」）—— 底色是畫在
+       這個「會被拖走」的元素身上的，空隙得自己補一條同色的才看不出破綻 */
+    <div className="overflow-x-hidden flex justify-center" data-ptr-strip="#ff2d14"
       style={{ minHeight: '100dvh', background: '#ff2d14', paddingTop: 'env(safe-area-inset-top)' }} {...swipeTabs}>
       <div
         className="overflow-hidden"

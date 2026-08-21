@@ -347,7 +347,7 @@ export default function RankingPage() {
                 onDragEnd={handleDragEnd}
                 className="touch-pan-y col-start-1 row-start-1 w-full"
               >
-                {/* Top 3 Section：podium 底圖（top123.png）先畫、角色疊在上面 */}
+                {/* Top 3 Section：podium 底圖（top123.webp）先畫、角色疊在上面 */}
                 <RankingTopDecorations />
                 <RankingTop3 data={rankingData} onWorship={handleAvatarClick} type={displayType} />
 

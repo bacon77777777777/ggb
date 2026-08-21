@@ -108,9 +108,38 @@ function stackAbove(el: HTMLElement, floor: number): number {
 }
 
 /**
- * 全站導航列（`<main>` 外面那條）的下緣，沒有就是 0。
+ * 動態島／瀏海的高度（`env(safe-area-inset-top)`）。
+ *
+ * 原生殼設了 `contentInset: 'never'`（全出血），畫面 y=0 是**螢幕實體頂邊**，
+ * 不是可用區的頂邊。自繪頂部的頁（會員／排行／邀請／文章內頁／商品頁）沒有
+ * sticky `<nav>` 也沒有 `[data-page-header]`，`navBottom()` 量出 0 →
+ * 空隙與轉蛋球被畫在動態島底下，看起來就是「球跑到動態島」或「根本沒有球」
+ * （老闆 2026-08-21 截圖）。所以量出來的頂端一律不得高於安全區。
+ *
+ * env() 在 JS 讀不到（custom property 裡的 env() getComputedStyle 拿到的是
+ * 原字串），只能靠一顆探針元素量。值只有轉向時會變，量完就快取。
+ */
+let safeTopCache: number | null = null;
+function safeTop(): number {
+  if (safeTopCache !== null) return safeTopCache;
+  const probe = document.createElement('div');
+  probe.style.cssText =
+    'position:fixed;top:0;left:0;width:0;height:env(safe-area-inset-top);visibility:hidden;pointer-events:none';
+  document.body.appendChild(probe);
+  safeTopCache = probe.getBoundingClientRect().height || 0;
+  probe.remove();
+  return safeTopCache;
+}
+
+/**
+ * 全站導航列（`<main>` 外面那條）的下緣，**沒有就是 0**。
  *
  * 為什麼要量而不是寫死 57：導航列在部分頁面是隱藏的，安全區內縮也可能讓它下移。
+ *
+ * 這裡刻意保留「沒有就 0」：底色帶要從 0 開始鋪，才蓋得住動態島那一段
+ * —— 自繪頂部的頁（簽到、邀請）背景色是畫在被拖的元素身上的，一拖走
+ * 島底下那條就露出 body 的白（老闆 2026-08-21：「簽到頁下拉，背景底色不該跟著動」）。
+ * 空隙與球的起點另外用 `contentTop()`（多壓一層安全區下限）。
  */
 function navBottom(): number {
   let bottom = 0;
@@ -137,6 +166,14 @@ function navBottom(): number {
   document.querySelectorAll('[data-page-header]').forEach(consider);
 
   return bottom;
+}
+
+/**
+ * 空隙／轉蛋球的起點：導航列下緣，但**不得高於安全區**。
+ * 全出血下 y=0 是螢幕實體頂邊，球畫在那裡會被動態島吃掉（見 `safeTop()`）。
+ */
+function contentTop(): number {
+  return Math.max(navBottom(), safeTop());
 }
 
 /**
@@ -243,9 +280,23 @@ function resolveStart(target: EventTarget | null): StartVerdict {
     if (el.hasAttribute('data-ptr-content')) return { kind: 'marked' };
     const style = window.getComputedStyle(el);
     const oy = style.overflowY;
+    /*
+     * ⚠️ 高度上限不能省。`overflow-y: auto` 不代表它是捲動區 ——
+     * Tailwind 的 `overflow-x-hidden` 只寫了 x 軸，但 CSS 規範規定一軸是
+     * hidden 時另一軸的 `visible` 要算成 `auto`，所以商品頁那個
+     * `block lg:hidden overflow-x-hidden pb-32 pt-[...]` 容器 computed 出來
+     * 就是 `overflow-y: auto`、clientHeight 1900+。誤判成捲動區的後果是
+     * 空隙改開在它的上緣（y=0），整個空隙與轉蛋球被畫到 z-50 的固定頂欄
+     * 後面 —— 玩家只看到一塊白，看不到球
+     * （老闆 2026-08-21：一番賞／盒玩／抽卡／自製賞全中）。
+     *
+     * 真正的捲動區高度不會超過視窗（超過就輪到頁面捲了），用這條擋掉。
+     * 仍然不看 scrollHeight —— 空清單也算捲動區，那條原則沒變。
+     */
     if (
       (oy === 'auto' || oy === 'scroll') &&
       el.clientHeight >= window.innerHeight * 0.4 &&
+      el.clientHeight <= window.innerHeight + 1 &&
       main?.contains(el)
     ) {
       return { kind: 'inner', el };
@@ -293,9 +344,14 @@ export default function PwaPullToRefresh() {
   /** 球本體。wrapRef 只當「空隙形狀的裁切框」，位移由這一層負責 */
   const ballRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
-  /** 空隙底色帶的頂端（= 導航列下緣），高度蓋到 gapTop + 位移量 */
+  /** 空隙底色帶的頂端（= 導航列下緣；自繪頂部的全出血頁是 0） */
   const stripTop = useRef(0);
+  /** 轉蛋球的位置 = 內容原本的上緣，但不得高於安全區 */
   const gapTop = useRef(0);
+  /** 內容原本的上緣（沒有安全區修正）—— 底色帶的終點靠它算 */
+  const baseTop = useRef(0);
+  /** 抬升量 = gapTop − baseTop。內容多走這麼多，空隙才會整段落到動態島底下 */
+  const liftRef = useRef(0);
   const dotRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -318,10 +374,22 @@ export default function PwaPullToRefresh() {
     const setShift = (px: number, animate: boolean) => {
       const wrap = wrapRef.current;
       const t = animate ? 'transform .28s cubic-bezier(.22,1,.36,1)' : 'none';
+      /*
+       * 內容實際位移 = 手勢位移 + 抬升量。
+       *
+       * 抬升量（`lift`）只有「被拖的東西本來就貼在螢幕頂邊」的頁面才不是 0
+       * —— 簽到、邀請、活動頁（`.lpv` 是 fixed inset:0 的捲動容器）。那些頁
+       * 空隙一拉開就在動態島背後，球放進去等於看不到；所以內容要多走一個
+       * 安全區的距離，把空隙整段推到島底下，球才有地方站。
+       *
+       * 抬升量按比例加進去而不是一開始就補滿，不然手指一碰畫面就「啪」跳一段。
+       */
+      const lift = liftRef.current;
+      const shift = px ? px + lift * Math.min(1, px / MAX_PULL) : 0;
       dragEls.current.forEach(({ el, scale }) => {
         el.style.transition = t;
-        el.style.transform = px ? `translate3d(0, ${px / scale}px, 0)` : '';
-        el.style.willChange = px ? 'transform' : '';
+        el.style.transform = shift ? `translate3d(0, ${shift / scale}px, 0)` : '';
+        el.style.willChange = shift ? 'transform' : '';
       });
       /*
        * 釘在頂端的 sticky 列：下一個等量的反向位移，抵銷掉 `<main>` 的位移。
@@ -331,10 +399,10 @@ export default function PwaPullToRefresh() {
        */
       pinned.current.forEach(({ el, transform, shadow, opaque }) => {
         el.style.transition = t;
-        el.style.transform = px ? `${transform} translate3d(0, ${-px}px, 0)`.trim() : transform;
+        el.style.transform = shift ? `${transform} translate3d(0, ${-shift}px, 0)`.trim() : transform;
         if (opaque) {
           // 蓋住欄被定住後空出來的洞（見 pinned ref 的說明）
-          el.style.boxShadow = px ? `0 ${px}px 0 0 ${stripBg.current}` : shadow;
+          el.style.boxShadow = shift ? `0 ${shift}px 0 0 ${stripBg.current}` : shadow;
         }
       });
       if (stripRef.current) {
@@ -346,7 +414,17 @@ export default function PwaPullToRefresh() {
          * （老闆 2026-08-20 情報頁截圖）。
          */
         stripRef.current.style.transition = animate ? 'height .28s cubic-bezier(.22,1,.36,1)' : 'none';
-        stripRef.current.style.height = px ? `${gapTop.current - stripTop.current + px}px` : '0px';
+        /*
+         * 底色帶蓋的是「本來被內容佔著、現在空出來的那一段」：
+         * 從 stripTop 一路到「內容原本的上緣 + 實際位移」。
+         *
+         * ⚠️ 不可以拿球的位置（gapTop）當終點。全出血的頁面 gapTop 被安全區
+         * 壓到 59，內容卻只走了 px，多算的 59px 會直接壓在 hero 上
+         * （老闆 2026-08-21：「回彈 hero 圖沒貼頂，而且有塊黑色塊遮擋」）。
+         */
+        stripRef.current.style.height = shift
+          ? `${baseTop.current - stripTop.current + shift}px`
+          : '0px';
       }
       if (wrap) {
         /*
@@ -358,15 +436,17 @@ export default function PwaPullToRefresh() {
          * 有了裁切框，溢出的部分自然被切掉，球看起來就是從頂欄底下長出來的。
          */
         wrap.style.transition = animate ? 'height .28s cubic-bezier(.22,1,.36,1)' : 'none';
-        wrap.style.height = `${Math.max(0, px)}px`;
+        // 裁切框從球的位置（gapTop）量到空隙底：抬升的那一段在球上面，要扣掉
+        wrap.style.height = `${Math.max(0, shift - lift)}px`;
       }
       const ball = ballRef.current;
       if (ball) {
         // 轉圈停在空隙的正中間：空隙高度是 px，轉圈高 ICON
         ball.style.transition = animate ? `${t}, opacity .2s` : 'opacity .2s';
-        ball.style.transform = `translate3d(-50%, ${(px - ICON) / 2}px, 0)`;
+        const gap = Math.max(0, shift - lift);
+        ball.style.transform = `translate3d(-50%, ${(gap - ICON) / 2}px, 0)`;
         // 空隙還塞不下指示器之前先不要露臉，不然會看到半截卡在導航列邊上
-        ball.style.opacity = px > ICON * 0.55 ? '1' : '0';
+        ball.style.opacity = gap > ICON * 0.55 ? '1' : '0';
       }
     };
 
@@ -476,15 +556,17 @@ export default function PwaPullToRefresh() {
           dragEls.current = marked.map((el) => ({ el, scale: scaleOf(el) }));
           pinned.current = [];
           const gapEl = main?.querySelector<HTMLElement>('[data-ptr-gap]') ?? null;
-          gapTop.current = Math.max(
+          baseTop.current = Math.max(
             0,
             gapEl
               ? gapEl.getBoundingClientRect().top
               : Math.min(...marked.map((el) => el.getBoundingClientRect().top)),
           );
+          // 球的位置下限是安全區，不是 0 —— 全出血下 0 是動態島背後（見 safeTop()）
+          gapTop.current = Math.max(safeTop(), baseTop.current);
         } else {
           dragEls.current = main ? [{ el: main, scale: 1 }] : [];
-          const top = navBottom();
+          const top = contentTop();
           pinned.current = pinnedBars(top).map((el) => {
             const bg = window.getComputedStyle(el).backgroundColor;
             const transparent = bg === 'transparent' || /rgba\(.+,\s*0\)$/.test(bg);
@@ -502,34 +584,85 @@ export default function PwaPullToRefresh() {
            * 空隙起點，轉圈會被推到空隙外面，看起來就是沒有轉圈
            * （老闆 2026-08-20：「文章內頁下拉缺失圖標」）。
            */
-          gapTop.current = pinned.current.reduce(
+          /*
+           * 內容原本的上緣：有不透明頂欄就取它的下緣，沒有就是導航列下緣
+           * （導航列也沒有的話是 0 —— 簽到、邀請那種自繪頂部的全出血頁）。
+           * 起算值用 `navBottom()` 的原值而不是 `top`（已被安全區墊高過），
+           * 否則全出血頁會誤以為內容本來就從安全區底下開始。
+           */
+          baseTop.current = pinned.current.reduce(
             (acc, { el, opaque }) => (opaque ? Math.max(acc, el.getBoundingClientRect().bottom) : acc),
-            top,
+            navBottom(),
           );
+          gapTop.current = Math.max(safeTop(), baseTop.current);
         }
-        stripTop.current = marked.length ? gapTop.current : navBottom();
         /*
-         * 球該沉還是該浮：
-         *   拖 <main> 且頂部沒有不透明頂欄 → 沉下去（z 0）：空隙沒東西擋，
-         *     回彈時被內容蓋住，像從版面底下鑽出來。
-         *   拖標記區塊（marked）→ 浮到那一層之上（覆蓋層 z-[60/90/100] 也蓋不掉）。
-         *   拖 <main> 但頂部有不透明頂欄（登入頁的 SimplePageHeader）→ 也要浮起來：
-         *     那道補洞用的灰 box-shadow 掛在頂欄（z-50）、屬 <main> 子樹，會蓋在
-         *     z-0 的球上面（老闆截圖「灰塊遮住球、只露一點」）。把球抬到頂欄之上，
-         *     球就落在那道灰底上、完整可見。頂欄本身在球上方 0..h，球在其下的空隙，
-         *     兩者不重疊，抬高不會蓋到頂欄。
+         * 底色帶從「內容原本的上緣之上那道固定的東西」開始鋪：
+         *   拖 <main>          → 導航列下緣（沒有導航列就是 0，鋪到螢幕頂邊）
+         *   拖標記／內層容器   → 就是它自己的上緣
+         * 活動頁的 `.lpv` 是 `position:fixed; inset:0` 的捲動容器，上緣在 0，
+         * 所以底色帶從螢幕頂邊開始 —— 少了這段，它被拖走後動態島那條會露出
+         * body 的底色（老闆 2026-08-21：「回彈後沒有到頂邊」）。
          */
+        stripTop.current = marked.length ? baseTop.current : navBottom();
+        liftRef.current = Math.max(0, gapTop.current - baseTop.current);
+        /*
+         * 球一律**浮在被拖的那一層之上**。
+         *
+         * 以前拖 <main> 時是讓球沉下去（z 0），賭「空隙是空的、沒東西擋」。
+         * 那個賭注在商品頁不成立：商品頁的根是
+         * `min-h-screen bg-neutral-50` **加 paddingTop**（導航列高度做成內距），
+         * 所以它的**背景從 y=0 就開始畫**、藏在導航列後面。往下拖 78px 之後，
+         * 元素上緣才到 y=78，還在導航列（下緣 116）上面 —— 「空隙」整段仍被
+         * 這片背景蓋著，z-0 的球自然看不到
+         * （老闆 2026-08-21：「一番賞商品頁面下拉沒看到轉蛋圖，可能在後面被遮蓋到了」；
+         *  盒玩那句「高度距離短」也是同一件事 —— 位移的前 116px 藏在導航列後面）。
+         *
+         * 浮起來不會蓋到頂欄或 tab：外層 wrap 是「空隙形狀的裁切框」，
+         * 上緣就在頂欄底下，球再高也只能在框內露臉。
+         */
+        const opaqueBar = marked.length ? null : pinned.current.find((p) => p.opaque);
+        const floatZ = stackAbove(
+          (marked.length ? marked[0] : opaqueBar?.el) ?? dragEls.current[0]?.el ?? document.body,
+          30,
+        );
         if (wrapRef.current) {
-          const opaqueBar = marked.length ? null : pinned.current.find((p) => p.opaque);
-          wrapRef.current.style.zIndex = marked.length
-            ? String(stackAbove(marked[0], 30))
-            : opaqueBar
-              ? String(stackAbove(opaqueBar.el, 30))
-              : '0';
+          wrapRef.current.style.zIndex = String(floatZ);
           wrapRef.current.style.top = `${gapTop.current}px`;
         }
-        stripBg.current = stripColor(dragEls.current[0]?.el ?? null);
+        /*
+         * 空隙底色。頁面可以在 `<main>` 裡的任一元素上用 `data-ptr-strip` 指定：
+         *   `none`     不鋪（會員中心：橘色泡泡背景是 fixed 的，本來就會從空隙
+         *              露出來，再鋪一層灰等於把它蓋掉）
+         *   `<色碼>`   鋪指定色（簽到頁的 #ff2d14、邀請頁的白）—— 那兩頁的底色
+         *              畫在**被拖的元素**身上，一拖走頂端就露出 body 的白
+         *              （老闆 2026-08-21：「簽到頁下拉，背景底色不該跟著動」）。
+         * 這裡要往**下**找不是往上找：宣告寫在頁面元件上，而頁面元件是
+         * `<main>`（= dragEls[0]）的子孫。
+         */
+        const declaredStrip = main
+          ?.querySelector('[data-ptr-strip]')
+          ?.getAttribute('data-ptr-strip');
+        /*
+         * `verdict.kind === 'inner'`（活動頁 `.lpv`、會員中心覆蓋層）的底色要取
+         * **它自己的背景** —— 它是滿版捲動容器，那就是玩家看到的頁面底；
+         * 照預設往祖先找會跳過它、拿到 body 的白，活動頁就會鋪出一條突兀的灰。
+         */
+        const bgFrom = dragEls.current[0]?.el ?? null;
+        stripBg.current = declaredStrip
+          ? (declaredStrip === 'none' ? 'transparent' : declaredStrip)
+          : stripColor(verdict.kind === 'inner' && bgFrom ? bgFrom.firstElementChild as HTMLElement ?? bgFrom : bgFrom);
         if (stripRef.current) {
+          /*
+           * 底色帶跟著球一起浮 —— 沉在 z-0 的話會被商品頁那片「從 y=0 開始畫」
+           * 的背景蓋掉，只剩球孤零零浮在頁面底色上。
+           * ⚠️ 有不透明頂欄（tab 列）時**不能浮**：底色帶的範圍是
+           * [navBottom, gapTop+位移]，涵蓋了那條被定住的 tab，浮起來會把它蓋掉。
+           * 那種情況維持沉在下面，tab 自然畫在它前面（原本就是這樣設計的）。
+           */
+          // 與球同層：wrap 排在這條之後，同層時後者畫在上面，球自然壓在底色帶上。
+          // 減 1 會掉到跟 `.lpv`（z-50）同層而排在它前面，被整片蓋掉。
+          stripRef.current.style.zIndex = opaqueBar ? '0' : String(floatZ);
           stripRef.current.style.top = `${stripTop.current}px`;
           stripRef.current.style.background = stripBg.current;
         }
@@ -614,15 +747,22 @@ export default function PwaPullToRefresh() {
       }, 1050);
     };
 
+    // 轉向後安全區換邊（橫向時上緣的 inset 是 0），快取要作廢重量
+    const dropSafeTop = () => { safeTopCache = null; };
+
     document.addEventListener('touchstart', onStart, { passive: true });
     document.addEventListener('touchmove', onMove, { passive: true });
     document.addEventListener('touchend', onEnd, { passive: true });
     document.addEventListener('touchcancel', () => reset(), { passive: true });
+    window.addEventListener('resize', dropSafeTop);
+    window.addEventListener('orientationchange', dropSafeTop);
 
     return () => {
       document.removeEventListener('touchstart', onStart);
       document.removeEventListener('touchmove', onMove);
       document.removeEventListener('touchend', onEnd);
+      window.removeEventListener('resize', dropSafeTop);
+      window.removeEventListener('orientationchange', dropSafeTop);
       dragEls.current.forEach(({ el }) => {
         el.style.transform = '';
         el.style.transition = '';

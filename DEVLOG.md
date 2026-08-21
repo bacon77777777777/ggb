@@ -4,6 +4,58 @@
 
 ---
 
+## v2026.08.21v｜2026-08-21｜下拉更新幾何重寫（全出血下的空隙／球位置）＋動態島遮擋收尾
+
+**下拉更新（PwaPullToRefresh）—— 這次的主軸**
+
+三個獨立的坑，症狀都是「看不到轉蛋球」或「多一塊色塊」：
+
+1. **商品頁的容器被誤判成內層捲動區**。手機版容器寫 `overflow-x-hidden`，
+   CSS 規範規定一軸 hidden 時另一軸的 `visible` 要算成 `auto` → computed
+   `overflow-y: auto`、clientHeight 1900+，`resolveStart()` 把它當成捲動區、
+   空隙改開在它的上緣 y=0，整個空隙與球被畫到 z-50 固定頂欄後面（玩家只看到一塊白）。
+   一番賞／盒玩／抽卡／自製賞／轉蛋全中。判斷加高度上限：真正的捲動區不會高過視窗。
+2. **球與底色帶一律浮在被拖的那層之上**。原本拖 `<main>` 時球是「沉下去」的，
+   賭空隙是空的；但商品頁的根是 `min-h-screen bg-neutral-50` **加 paddingTop**，
+   背景從 y=0 就開始畫、藏在頂欄後，拖 78px 之後那片背景仍蓋著整段空隙。
+   有不透明 tab 列的頁（情報頁）維持沉下去，不然底色帶會蓋掉被定住的 tab。
+3. **幾何重寫**：拆成 `baseTop`（內容原本的上緣）／`gapTop`（球的位置＝
+   `max(baseTop, 安全區)`）／`lift`（兩者之差）。
+   - 底色帶 = `[stripTop, baseTop + 實際位移]`，終點跟著內容走。先前拿 `gapTop`
+     當終點，全出血頁會多算一個安全區、直接壓在 hero 上（黑塊遮擋）。
+   - 內容實際位移 = `手勢位移 + lift × (手勢位移 / MAX_PULL)`。全出血頁多走一個
+     安全區，空隙才會整段落到動態島底下、球有地方站；按比例加入，手指碰到不會跳。
+   - `navBottom()` 回到「沒有導航列就是 0」，底色帶才鋪得到螢幕頂邊；
+     空隙與球另外用 `contentTop()`（壓安全區下限）。
+   - `safeTop()`：env() 在 JS 讀不到，用探針元素量，轉向時作廢重量。
+
+**頁面宣告（新增）**
+- `data-ptr-strip="none|<色碼>"`：空隙底色。會員中心 `none`（橘泡泡背景是 fixed 的，
+  本來就會露出來）、簽到頁 `#ff2d14`、邀請頁 `none`。
+- 內層捲動容器（活動頁 `.lpv` 是 `position:fixed; inset:0; overflow-y:auto`）的
+  底色改取它自己的背景 —— 照預設往祖先找會跳過它拿到 body 的白。
+
+**會員中心**
+- 橘色動態背景改 fixed（只鋪安全區＋52vw 頭圖高度），捲動與下拉都不跟著動；
+  內容包一層 `data-ptr-content`，讓 `<main>` 不吃 transform（有 transform 的祖先
+  會讓 `position:fixed` 退化）。詳細頁開著時不掛標記，退回預設拖 `<main>`。
+
+**動態島遮擋**
+- 盒玩商品頁手機容器 `pt-14`（寫死 56px）→ `pt-[calc(3.5rem+env(safe-area-inset-top))]`，
+  機台不再被頂欄裁掉；`components/Skeletons.tsx` 骨架屏同一個毛病一起補。
+- `SoundToggle` 加 `safeTop` prop（疊 `marginTop: env(safe-area-inset-top)`），
+  套在滿版演出：開卡動畫、對戰演出、撕包場景、選籤流程、item 開場影片。
+
+**其他**
+- 抽卡商品頁卡包拖曳旋轉的 `crinkle()` 音效移除，輪播切換的 `swoosh()` 保留；
+  `unlockPackAudio()` 留著（iOS 的 AudioContext 只能在手勢裡建立）。
+- 排行榜 podium 底圖換新 top123（png→webp，156KB→59KB），位置 337px→377px，
+  intrinsic 高度修正為實際的 252。
+- 公平性驗證頁 hero 換 hero2（png→webp，2.6MB→388KB）。這頁的 hero 在後台活動頁
+  模組資料裡（`events.slug='fairness'` 的 hero section），STG／PROD 兩邊都已更新
+  `bg_image_url`；舊的 hero.png 一併移除。
+---
+
 ## v2026.08.21u｜2026-08-21｜排行 podium 下移＋會員蝦皮橘/泡泡順滑＋邀請換圖與出血自動裁切
 
 **排行榜**

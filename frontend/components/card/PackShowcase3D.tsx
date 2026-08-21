@@ -26,7 +26,7 @@ import { useEffect, useImperativeHandle, useRef, forwardRef, useState } from 're
 import * as THREE from 'three';
 import { createClient } from '@/lib/supabase/client';
 import SoundToggle from '@/components/ui/SoundToggle';
-import { crinkle, swoosh, unlockPackAudio } from '@/lib/packSfx';
+import { swoosh, unlockPackAudio } from '@/lib/packSfx';
 
 export type PackShowcase3DHandle = {
   goToNext: () => void;
@@ -465,7 +465,13 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         dragging = true;
         // iOS 的 AudioContext 要在手勢裡建立，順手在這裡解鎖
         unlockPackAudio();
-        crinkle();
+        /*
+         * 這裡原本會播 crinkle()（鋁箔窸窣）。老闆 2026-08-21：**拖曳旋轉當前
+         * 卡包不要出聲**，只有輪播切換那一下（swoosh）留著 —— 旋轉是連續動作，
+         * 每次按下去都窸窣一聲，滑幾下就變成噪音。
+         * unlockPackAudio() 不能一起拿掉：iOS 的 AudioContext 只能在使用者手勢
+         * 裡建立，這是整頁唯一保證會先發生的手勢，拿掉的話第一次切換沒聲音。
+         */
         lastX = e.clientX ?? 0;
         startX = lastX;
         startT = performance.now();

@@ -6405,18 +6405,40 @@ function ProfileContent() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-8 items-start relative">
           
           {/* 1. Mobile Menu View (Only shown on mobile when no tab is active) */}
-          <div className={cn("md:hidden col-span-1 space-y-2.5", isMobileDetailOpen && "hidden")}>
+          <div className={cn("md:hidden col-span-1", isMobileDetailOpen && "hidden")}>
+            {/* 橘色動態背景：**fixed**，不跟著捲動、也不被下拉更新拖走
+                （老闆 2026-08-21：「往下捲動時橘色動態背景不要跟著被捲動，跟排行榜一樣」）。
+                排行榜的流體背景就是 fixed 當純背景、內容在上面捲，這裡照做，只鋪頭圖
+                那一段高度：安全區 + 頭圖（375:195 → 52vw）。底下的卡片本來就是不透明
+                白底，蓋得住，不需要鋪滿整個視窗。
+                ⚠️ fixed 要成立，祖先就不能有 transform —— 所以底下那層內容掛
+                `data-ptr-content`，讓下拉更新只拖內容、不拖整個 <main>
+                （有 transform 的祖先會讓 position:fixed 退化成相對定位）。*/}
+            <div
+              className="profile-bubbles z-0 pointer-events-none"
+              /* position/inset 走行內樣式：.profile-bubbles 自己就寫了
+                 `position:absolute; inset:0`，用 tailwind 的 .fixed 蓋它要賭
+                 樣式表順序，行內樣式才一定贏 */
+              style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'auto',
+                       height: 'calc(env(safe-area-inset-top) + 52vw)' }}
+              aria-hidden
+            >
+              <span className="bubble bubble-dark" />
+              <span className="bubble bubble-light" />
+            </div>
+            {/* 下拉更新拖這一塊（橘背景留在外面不動）。data-ptr-strip="none"：
+                空隙不鋪灰底，讓後面的橘色露出來，轉蛋球就浮在橘色上（老闆指定）。
+                詳細頁開著時整塊是 hidden，量不到尺寸，這時不要掛標記 —— 讓下拉
+                更新退回預設的拖 <main>。*/}
+            <div
+              className="space-y-2.5"
+              {...(isMobileDetailOpen ? {} : { 'data-ptr-content': '', 'data-ptr-strip': 'none' })}
+            >
             {/* Mobile Header - RankingTop Style
                 全出血：外層 pt-[env] 把 aspect 頭圖整塊壓到動態島下（內容不被島裁、
-                也不會單獨推頭像撞到代幣卡）。動態島那段不再用實心橘 band，改讓程序化
-                泡泡背景鋪滿整個外層（含島下那段）—— .profile-bubbles 移到外層當底、
-                aspect 頭圖 z-[1] 疊在它上面（老闆 2026-08-21）。*/}
+                也不會單獨推頭像撞到代幣卡）。橘底改成上面那層 fixed 的，這裡只留
+                aspect 頭圖（透明去背 PNG），疊在橘底上。*/}
             <div className="relative pt-[env(safe-area-inset-top)]">
-              {/* 底層：程序化橘漸層＋兩顆透明泡泡變形飄動，鋪滿外層(含島下)（globals.css）*/}
-              <div className="profile-bubbles absolute inset-0 w-full h-full z-0 pointer-events-none" aria-hidden>
-                <span className="bubble bubble-dark" />
-                <span className="bubble bubble-light" />
-              </div>
             <div className="relative z-[1] w-full aspect-[375/195] select-none">
               {/* 疊層：原本的去背底圖（深色卡＋星盾＋波紋，透明 PNG），蓋在動態橘底上，
                   頭像/代幣內容再疊在它上面 —— 還原原始外觀、只是底色改成會動的（老闆 2026-08-21）*/}
@@ -6766,6 +6788,7 @@ function ProfileContent() {
               <p className="text-[10px] font-black text-neutral-300 uppercase tracking-widest">
                 © 2025 吉吉比. All Rights Reserved
               </p>
+            </div>
             </div>
           </div>
 

@@ -770,7 +770,7 @@ export default function BlindboxDetailPage() {
         style={!isMachineReady ? { visibility: 'hidden', position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' } : undefined}
       >
         {/* Mobile < 1024px */}
-        <div className="block lg:hidden overflow-x-hidden pb-32 pt-14">
+        <div className="block lg:hidden overflow-x-hidden pb-32 pt-[calc(3.5rem+env(safe-area-inset-top))]">
           <div
             className="relative w-full flex justify-center"
             style={{ marginBottom: Math.round(375 * (932 / 750) * (scale - 1)) }}

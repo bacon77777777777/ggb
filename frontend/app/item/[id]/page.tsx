@@ -2113,7 +2113,7 @@ export default function ProductDetailPage() {
                   onEnded={handleVideoEnd}
                   onError={handleVideoError}
                 />
-                <SoundToggle className="absolute top-4 right-4 z-10" />
+                <SoundToggle safeTop className="absolute top-4 right-4 z-10" />
                 <button
                   type="button"
                   className="absolute bottom-4 right-4 z-10 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em]"

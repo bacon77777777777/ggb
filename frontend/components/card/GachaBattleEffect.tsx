@@ -297,7 +297,7 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
       <div className="relative w-full max-w-[560px] h-full overflow-hidden bg-black shadow-2xl ring-1 ring-white/10">
         {phase !== 'cards' && (
           <>
-            <SoundToggle className="absolute top-4 right-4 z-[1500]" />
+            <SoundToggle safeTop className="absolute top-4 right-4 z-[1500]" />
             <button
               type="button"
               className="absolute bottom-4 right-4 z-[1500] px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em] backdrop-blur-sm transition-transform active:scale-95"

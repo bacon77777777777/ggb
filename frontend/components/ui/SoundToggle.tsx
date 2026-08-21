@@ -60,9 +60,17 @@ export const RAISED_STYLE_MUTED: React.CSSProperties = {
     ' inset 0 0 0 1px rgba(255,255,255,0.14)',
 };
 
-export function SoundToggle({ className, variant = 'raised' }: {
+/**
+ * `safeTop`：這顆鈕浮在**畫面最上緣**的滿版演出上（卡包展示、撕包、開卡動畫、
+ * 選籤流程）時要打開。原生殼是全出血（`contentInset: 'never'`），畫面 y=0 是
+ * 螢幕實體頂邊，`top-3`／`top-4` 會把鈕塞進動態島底下（老闆 2026-08-21 截圖）。
+ * 用 marginTop 疊加而不是改 top：呼叫端的 `top-N` class 各不相同，疊加才不用
+ * 一個個換算。機台在導航列底下的頁（轉蛋／盒玩商品頁）不需要，維持關閉。
+ */
+export function SoundToggle({ className, variant = 'raised', safeTop = false }: {
   className?: string;
   variant?: 'flat' | 'raised';
+  safeTop?: boolean;
 }) {
   const muted = useSoundMuted();
 
@@ -79,7 +87,10 @@ export function SoundToggle({ className, variant = 'raised' }: {
         variant === 'raised' ? 'active:translate-y-[1px]' : 'bg-black/30',
         className,
       )}
-      style={variant === 'raised' ? (muted ? RAISED_STYLE_MUTED : RAISED_STYLE) : undefined}
+      style={{
+        ...(variant === 'raised' ? (muted ? RAISED_STYLE_MUTED : RAISED_STYLE) : null),
+        ...(safeTop ? { marginTop: 'env(safe-area-inset-top)' } : null),
+      }}
     >
       <svg className="w-5 h-5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">

@@ -261,7 +261,9 @@ export default function InvitePage() {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-[calc(96px+env(safe-area-inset-bottom))]">
+    /* data-ptr-strip="none"：下拉的空隙不鋪灰底，轉蛋球直接浮在 hero 圖上
+       （老闆 2026-08-21：「轉蛋圖標直接移到最上面來蓋在 hero 圖上」）*/
+    <div className="min-h-screen bg-white pb-[calc(96px+env(safe-area-inset-bottom))]" data-ptr-strip="none">
       {/* 頂部操作列 —— 文章內頁同款：浮動圓鈕蓋在 hero 上（老闆指定），
           返回＋分享（分享＝複製邀請訊息） */}
       <div className="fixed left-0 right-0 top-0 z-20 flex items-center justify-between pt-[env(safe-area-inset-top)] pointer-events-none">
