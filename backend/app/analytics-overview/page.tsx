@@ -609,7 +609,6 @@ export default function AnalyticsOverviewPage() {
         <div className="bg-white rounded-lg border border-[#f0f0f0] overflow-hidden">
           <div className="border-b border-[#f0f0f0]" style={{ padding: '0 16px' }}>
             <div className="flex items-center" style={{ marginBottom: -1 }}>
-              <span style={{ padding: '12px 16px 12px 0', fontSize: 16, fontWeight: 600, color: 'rgba(0,0,0,0.88)' }}>高峰時段</span>
               {(['draws', 'visits'] as const).map(m => (
                 <button key={m} onClick={() => setPeakMode(m)}
                   style={{
@@ -620,7 +619,7 @@ export default function AnalyticsOverviewPage() {
                     borderBottom: peakMode === m ? '2px solid #1677ff' : '2px solid transparent',
                     background: 'none', cursor: 'pointer', transition: 'color 0.2s',
                   } as React.CSSProperties}>
-                  {m === 'draws' ? '抽獎筆數' : '訪問量'}
+                  {m === 'draws' ? '時段抽獎數' : '時段訪問量'}
                 </button>
               ))}
               <div style={{ marginLeft: 'auto', paddingRight: 4 }}>
