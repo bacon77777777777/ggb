@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminScope } from '@/lib/requireAdmin'
 import { fetchAllRows } from '@/lib/fetchAllRows'
 import { effectiveFeeRate, marginPct, platformMargin } from '@/lib/settlementRates'
+import { checkSystemHealth } from '@/lib/systemHealth'
 
 /**
  * 營運儀表板資料層
@@ -544,8 +545,13 @@ export async function GET(req: NextRequest) {
     // 紅黃在前所以砍掉的一定是優先度最低的那幾則。
     const shownAlerts = alerts.slice(0, 8)
 
+    // 系統健康四燈（RLS / 限流 Redis / 金流環境 / 維護）——失敗不擋主資料
+    let systemHealth: Awaited<ReturnType<typeof checkSystemHealth>> = []
+    try { systemHealth = await checkSystemHealth(db) } catch { /* 燈壞不影響儀表板 */ }
+
     return NextResponse.json({
       updatedAt: new Date().toISOString(),
+      systemHealth,
       sampleEnough: enough,
       minSample: MIN_SAMPLE_DRAWS,
       hasActualFee,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createLinePusher } from '@/lib/linePush'
+import { checkSystemHealth } from '@/lib/systemHealth'
 const pushLine = createLinePusher('line_push_health')
 
 export const dynamic = 'force-dynamic'
@@ -172,6 +173,15 @@ export async function POST(req: NextRequest) {
       }
     } catch { /* Sentry 不可用，不影響平台健康 */ }
   }
+
+  // ── 系統健康四燈：只把「壞掉」的（RLS 關、Redis 掛）推 LINE ──────
+  //    金流環境與維護是刻意狀態，有 pushMsg 才推，所以不會噪音
+  try {
+    const sys = await checkSystemHealth(supabase)
+    for (const item of sys) {
+      if (item.status === 'bad' && item.pushMsg) critical.push({ key: `sys_${item.key}`, msg: item.pushMsg })
+    }
+  } catch { /* 燈檢查失敗不影響其他告警 */ }
 
   // ── 推播（deduplication：同 key 2 小時內不重複推）──────────────
   const allAlerts = [

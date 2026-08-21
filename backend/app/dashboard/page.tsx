@@ -52,6 +52,7 @@ interface Payload {
   spark: { x: number; date: string; revenue: number; recharge: number; spend: number; draws: number }[]
   trend: { label: string; revenue: number; recharge: number; spend: number; refund: number }[]
   health: { key: string; label: string; value: string; delta: number; status: HealthStatus; showDelta?: boolean }[]
+  systemHealth?: { key: string; label: string; value: string; status: 'ok' | 'warn' | 'bad' }[]
   players: { dau: number; newUsers: number; returning: number; paying: number; payRate: number; arppu: number }
   funnel: { key: string; label: string; users: number; rate: number | null }[]
   playTypes: { type: string; label: string; draws: number; spend: number; players: number; sharePct: number; marginPct: number }[]
@@ -347,6 +348,25 @@ export default function DashboardPage() {
                         </span>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* 系統健康四燈（RLS / 限流 / 金流環境 / 維護）—— 老闆 2026-08-21。
+                    跟業務健康共用同一套燈色，但獨立一區、上面一條分隔線 */}
+                {(data?.systemHealth?.length ?? 0) > 0 && (
+                  <div className="mt-4 pt-4 border-t border-neutral-100">
+                    <div className="text-[11px] font-semibold text-neutral-400 mb-2">系統設定健康</div>
+                    <div className="divide-y divide-neutral-100">
+                      {data!.systemHealth!.map(h => (
+                        <div key={h.key} className="flex items-center py-2.5 first:pt-0 last:pb-0">
+                          <span className="text-sm text-neutral-600 w-24 shrink-0">{h.label}</span>
+                          <span className="text-xs text-neutral-500 flex-1 pr-2">{h.value}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-md shrink-0 ${HEALTH_STYLE[h.status].cls}`}>
+                            {HEALTH_STYLE[h.status].label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </Panel>

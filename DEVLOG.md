@@ -4,6 +4,24 @@
 
 ---
 
+## v2026.08.21f｜2026-08-21｜後台系統健康四燈＋GB哥推播（RLS/限流/金流環境/維護）
+
+老闆要一組「持續有用」的資安/設定燈，不另開頁——併進 dashboard 現有健康度卡。
+
+- **共用 lib** `backend/lib/systemHealth.ts`：四項運行狀態
+  1. 敏感表 RLS 是否全開（migration 598 建 `sensitive_tables_rls_status()`
+     SECURITY DEFINER 函數，service_role 專用）—— 關掉＝紅
+  2. 限流 Redis 可達（Upstash ping）—— 掛了＝紅
+  3. 綠界金流環境 stage/production（測試＝黃提醒未切正式、正式＝綠）
+  4. 維護模式（維護中＝黃、關＝綠）
+- **dashboard**：健康度卡底下多一區「系統設定健康」四盞燈，共用同一套燈色
+- **GB哥推播**：health-check cron（每 10 分鐘）呼叫同一支，**只推「壞掉」的**
+  （RLS 關、Redis 掛→🔴 推 LINE、2 小時去重）；金流環境與維護是刻意狀態不推
+- 只放會變/會壞/查得到的項；靜態程式碼事實（SQL 參數化、getUser…）不放燈
+
+migration 598 已在 PROD + STG 執行；實測四燈目前全綠（金流黃＝測試環境，正確）。
+---
+
 ## v2026.08.21e｜2026-08-21｜上線收邊：資安補強、C2C 收尾、清資料範疇校正
 
 ### 資安補強（③）
