@@ -1950,7 +1950,7 @@ export default function ProductDetailPage() {
         {/* Mobile < 1024px；pt 同上，要含警語列高度 */}
         <div
           className="block lg:hidden overflow-x-hidden pb-32"
-          style={{ paddingTop: '3.5rem' }}
+          style={{ paddingTop: 'calc(3.5rem + env(safe-area-inset-top))' }}
         >
           <div
             className="w-full flex justify-center"
@@ -2234,7 +2234,7 @@ export default function ProductDetailPage() {
     // 警語列是 fixed，不留這段內容會被它蓋住
     <div
       className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32"
-      style={{ paddingTop: '3.5rem' }}
+      style={{ paddingTop: 'calc(3.5rem + env(safe-area-inset-top))' }}
     >
       <div className="max-w-7xl mx-auto px-2 py-2 sm:py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 lg:gap-6 items-start">

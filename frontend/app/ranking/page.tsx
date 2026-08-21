@@ -302,7 +302,9 @@ export default function RankingPage() {
         </div>
       )}
       <div
-        className="relative z-[1] overflow-hidden"
+        /* mt-[env]：全出血後 fixed 頂欄多了 pt-[env] 變高，內容也要往下讓一個安全區，
+           否則 top3 會被頂欄蓋到（島上面那段露出流體背景＋頂欄浮著）*/
+        className="relative z-[1] mt-[env(safe-area-inset-top)] overflow-hidden"
         style={{
           width: Math.ceil(750 * scale),
           height: scaledHeight ?? undefined

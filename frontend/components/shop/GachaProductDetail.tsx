@@ -463,7 +463,7 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
   );
 
   return (
-    <div className="min-h-screen pt-14 md:pt-0 bg-neutral-50 dark:bg-neutral-950">
+    <div className="min-h-screen pt-[calc(3.5rem+env(safe-area-inset-top))] md:pt-0 bg-neutral-50 dark:bg-neutral-950">
 
       {/* ── 手機/平板（< 1024px）：原始直式佈局，完全不動 ── */}
       <div className="block lg:hidden overflow-x-hidden pb-32">

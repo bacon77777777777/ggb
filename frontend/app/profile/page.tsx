@@ -6407,17 +6407,17 @@ function ProfileContent() {
           {/* 1. Mobile Menu View (Only shown on mobile when no tab is active) */}
           <div className={cn("md:hidden col-span-1 space-y-2.5", isMobileDetailOpen && "hidden")}>
             {/* Mobile Header - RankingTop Style
-                全出血：外層補一段 pt-[env(safe-area-inset-top)] 的橘色 band 墊在動態島後面，
-                裡面的 aspect 頭圖維持原比例與內部版位、整塊往下移，內容不會被島裁、也不會
-                因為單獨推頭像而撞到下方代幣卡（蝦皮橘 #F26A43 對齊 .profile-bubbles 漸層頂端）。*/}
-            <div className="bg-[#F26A43] pt-[env(safe-area-inset-top)]">
-            <div className="relative w-full aspect-[375/195] select-none">
-              {/* 底層：程序化橘漸層＋兩顆透明泡泡變形飄動（globals.css .profile-bubbles）*/}
-              <div className="profile-bubbles absolute inset-0 w-full h-full pointer-events-none" aria-hidden>
+                全出血：外層 pt-[env] 把 aspect 頭圖整塊壓到動態島下（內容不被島裁、
+                也不會單獨推頭像撞到代幣卡）。動態島那段不再用實心橘 band，改讓程序化
+                泡泡背景鋪滿整個外層（含島下那段）—— .profile-bubbles 移到外層當底、
+                aspect 頭圖 z-[1] 疊在它上面（老闆 2026-08-21）。*/}
+            <div className="relative pt-[env(safe-area-inset-top)]">
+              {/* 底層：程序化橘漸層＋兩顆透明泡泡變形飄動，鋪滿外層(含島下)（globals.css）*/}
+              <div className="profile-bubbles absolute inset-0 w-full h-full z-0 pointer-events-none" aria-hidden>
                 <span className="bubble bubble-dark" />
                 <span className="bubble bubble-light" />
               </div>
-
+            <div className="relative z-[1] w-full aspect-[375/195] select-none">
               {/* 疊層：原本的去背底圖（深色卡＋星盾＋波紋，透明 PNG），蓋在動態橘底上，
                   頭像/代幣內容再疊在它上面 —— 還原原始外觀、只是底色改成會動的（老闆 2026-08-21）*/}
               <Image
