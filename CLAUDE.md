@@ -315,6 +315,38 @@ NEXT_PUBLIC_FRONTEND_URL     # 前台域名（https://www.ggb.com.tw），用於
 SUPABASE_SERVICE_ROLE_KEY    # 前台 API routes（留言/讚）讀寫需要 service role 繞過 RLS
 ```
 
+## 上線前準備（試營運）
+
+老闆說「**上線前準備啟動**」時：**先用文字把清單列出來逐項確認，他說 OK 才整批做**
+（含不可逆的清資料，不可直接執行）。這包包含三塊：
+
+### 一、卡統編，現在做不了的（先告知，不是能解的）
+公司統編還沒下來，以下全部等統編：
+- **綠界正式金流（收真錢）** → 要統編換正式商店代號，現在是測試環境
+  （`ECPAY_API_URL` 含 `stage`）。**第一版只能「代幣無實際價值／測試金流」試營運**，
+  所以**首頁「測試階段公告」要保留**（法律免責）。統編到手換正式金流那天，才是
+  「關測試公告＋接發票＋開始收真錢」的切換點。
+- **電子發票**（開發票要統編）
+- **綠界物流正式**（需公司帳號）
+- **Google 登入**（GCP OAuth 憑證要公司驗證，現在按鈕點了只跳「即將開放」）
+- **手機簡訊驗證**（簡訊商開商業帳號要統編，`phone_verify` flag 維持關）
+
+### 二、清資料
+詳見下方「清全站資料」章節。⚠️不可逆、PROD+STG 都跑、清完＝全新開張
+（商品/輪播圖/彈窗要在後台重上）。
+
+### 三、防護檢查（上線前確認四燈全綠）
+後台 dashboard 健康度卡底下的「系統設定健康」四燈（`backend/lib/systemHealth.ts`）：
+1. **資料權限 RLS** 全開（migration 598 的 `sensitive_tables_rls_status()`）
+2. **限流服務 Redis** 可達（確認 Vercel 前台有設 `UPSTASH_*`）
+3. **金流環境** stage/production（試營運＝測試環境黃燈，正常）
+4. **維護模式** 狀態
+RLS 關掉、Redis 掛掉時 GB哥會自動 LINE 推播（health-check cron）。
+另確認 Vercel 前台 `NEXT_PUBLIC_API_URL` 已設（沒設儲值會壞）。
+資安補強清單見 DEVLOG v2026.08.21e/f。
+
+---
+
 ## 清全站資料（重置腳本）
 
 腳本位置：`backend/db/migrations/288_cleanup_before_launch.sql`
