@@ -85,6 +85,27 @@ export function usePromos(placement: string) {
       return;
     }
 
+    /*
+     * 跨頁返回的冷卻（老闆 2026-08-20）：首頁彈窗看過一輪之後，30 分鐘內
+     * 在站內晃回首頁不再跳 —— 每次回首頁都彈會把人惹毛，但也不逼玩家去勾
+     * 「今日不再顯示」（有人偶爾還想看）。
+     *
+     * 存 sessionStorage：關掉 App／分頁重開是新的一個 session，進站第一次
+     * 照跳；「今日不再顯示」仍是更強的那層（勾了當天都不跳）。
+     * 業界（蝦皮、淘寶這類）多半是「每 session 一次」，30 分鐘冷卻比它
+     * 再寬一點，兼顧「想再看的人」。
+     */
+    const COOLDOWN_MS = 30 * 60_000;
+    if (placement === 'home') {
+      try {
+        const shownAt = Number(sessionStorage.getItem('ggb_home_promo_shown_at') || 0);
+        if (shownAt && Date.now() - shownAt < COOLDOWN_MS) {
+          setIsLoaded(true);
+          return;
+        }
+      } catch { /* 無痕模式讀不到就照常顯示 */ }
+    }
+
     let cancelled = false;
 
     const load = async () => {
@@ -167,6 +188,9 @@ export function usePromos(placement: string) {
       }
 
       if (cancelled) return;
+      if (placement === 'home' && queue.length > 0) {
+        try { sessionStorage.setItem('ggb_home_promo_shown_at', String(Date.now())); } catch { /* 略 */ }
+      }
       setPromos(queue);
       setIsLoaded(true);
     };

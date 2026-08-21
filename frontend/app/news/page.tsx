@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
@@ -294,6 +294,29 @@ export default function NewsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
+  /*
+   * 捲動位置記憶（老闆 2026-08-20）：點進文章前記下列表的捲動位置，
+   * 讀完返回時回到原地。只在「從文章返回」時還原 —— 從底部導航新進來
+   * 沒有存值，照常從頂端開始。存 sessionStorage：換頁時 PathnameKeyed
+   * 會整棵重掛，元件內的 state 活不過去。
+   */
+  const rememberScroll = useCallback(() => {
+    try { sessionStorage.setItem('ggb:news:scroll', String(window.scrollY)); } catch { /* 略 */ }
+  }, []);
+  useEffect(() => {
+    if (isLoading) return;
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem('ggb:news:scroll');
+      sessionStorage.removeItem('ggb:news:scroll');
+    } catch { /* 略 */ }
+    const y = Number(raw);
+    if (y > 0) {
+      // 等這一輪 render 畫完（列表高度就緒）再捲，太早捲會捲不到位
+      requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, y)));
+    }
+  }, [isLoading]);
+
   const filtered = all;
   const carousel = [...filtered].sort((a, b) => b.view_count - a.view_count).slice(0, 5);
   const carouselIds = new Set(carousel.map(c => c.id));
@@ -303,8 +326,8 @@ export default function NewsPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 pb-24">
 
-      {/* 手機端 */}
-      <div className="md:hidden">
+      {/* 手機端（onClickCapture：點任何文章連結前先記下捲動位置） */}
+      <div className="md:hidden" onClickCapture={rememberScroll}>
         {/* 固定 Tab 欄 */}
         <div className="sticky top-0 z-20 bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800 px-2">
           <Tabs value={activeTab} onValueChange={handleTabChange}>
