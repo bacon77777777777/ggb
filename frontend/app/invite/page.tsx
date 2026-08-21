@@ -30,14 +30,14 @@ import { MissionService, type UserMission } from '@/services/mission';
  * 換圖要重掃這幾個數字；CSS 與下載 canvas 共用，只改這裡。
  */
 const HERO_SRC = '/images/invite/invite.webp';
-const QR_CENTER_Y = 0.766;
+const QR_CENTER_Y = 0.7875; // 量自新圖 invite.webp（800x1320）白框中心
 const QR_SIZE = 0.336; // 相對圖寬（= 269px / 800px）
 
 /**
  * QR 下方紅旗緞帶：x 212~595、y 1070~1139 → 中心 (50%, 92.04%)。
  * 旗上疊「邀請碼 XXXXXX＋複製圖標」；下載版只有字不含圖標（老闆指定）。
  */
-const RIBBON_CENTER_Y = 0.929; // 老闆指定 92.9
+const RIBBON_CENTER_Y = 0.9348; // 量自新圖 invite.webp（800x1320）底部紅旗完整上下緣中心
 const CODE_FONT_PX = 28; // 相對 800 寬的 canvas 字級
 const CODE_YELLOW = '#ffe600'; // 會員卡推薦碼同款黃
 
@@ -282,13 +282,20 @@ export default function InvitePage() {
       </div>
 
       {/* 主視覺滿版：手機上左右貼齊瀏覽器邊（老闆指定）；
-          桌機給寬度上限與圓角，不然 800px 的圖會被拉到糊 */}
-      <div className="relative w-full md:mx-auto md:mt-4 md:max-w-md md:overflow-hidden md:rounded-t-3xl">
+          桌機給寬度上限與圓角，不然 800px 的圖會被拉到糊。
+
+          出血段自動裁切（老闆 2026-08-21）：圖頂多的那 120px 是給動態島墊高用的
+          （120/800 = 15vw 渲染高）。用 env(safe-area-inset-top) 當開關——
+            · 瀏覽器分頁 env=0 → 內層上移 15vw，把出血段推出外層裁切框、收乾淨
+            · PWA/App env≈15vw → 上移量歸零，出血段保留、剛好塞進動態島下
+          圖與 QR/邀請碼都在「內層」一起移動，百分比定位完全不受影響。 */}
+      <div className="w-full overflow-hidden md:mx-auto md:mt-4 md:max-w-md md:rounded-t-3xl">
+      <div className="relative w-full [margin-top:min(0px,calc(env(safe-area-inset-top)_-_15vw))] md:!mt-0">
         <Image
           src={HERO_SRC}
           alt="邀請好友"
           width={800}
-          height={1200}
+          height={1320}
           priority
           className="h-auto w-full"
         />
@@ -319,6 +326,7 @@ export default function InvitePage() {
             <Copy className="h-[3vw] w-[3vw] text-white/90 md:h-3.5 md:w-3.5" />
           </button>
         )}
+      </div>
       </div>
 
       {/* ── 進度卡（老闆設計稿：黃粉漸層底、左句右 n/5、亮綠分段條）──

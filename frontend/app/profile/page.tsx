@@ -6409,8 +6409,8 @@ function ProfileContent() {
             {/* Mobile Header - RankingTop Style
                 全出血：外層補一段 pt-[env(safe-area-inset-top)] 的橘色 band 墊在動態島後面，
                 裡面的 aspect 頭圖維持原比例與內部版位、整塊往下移，內容不會被島裁、也不會
-                因為單獨推頭像而撞到下方代幣卡（橘色 #ff9d2f 對齊 .profile-bubbles 漸層頂端）。*/}
-            <div className="bg-[#ff9d2f] pt-[env(safe-area-inset-top)]">
+                因為單獨推頭像而撞到下方代幣卡（蝦皮橘 #F26A43 對齊 .profile-bubbles 漸層頂端）。*/}
+            <div className="bg-[#F26A43] pt-[env(safe-area-inset-top)]">
             <div className="relative w-full aspect-[375/195] select-none">
               {/* 底層：程序化橘漸層＋兩顆透明泡泡變形飄動（globals.css .profile-bubbles）*/}
               <div className="profile-bubbles absolute inset-0 w-full h-full pointer-events-none" aria-hidden>

@@ -493,37 +493,32 @@ img {
   50%      { opacity: 0.55; transform: translate3d(0, -3%, 0) scale(1.08); }
 }
 
-/* 會員中心：橘色漸層底 + 兩顆透明泡泡不規則變形飄動（一深一淺） */
+/* 會員中心：蝦皮橘漸層底（#EE4D2D 系）+ 兩顆透明泡泡不規則變形飄動（一深一淺） */
 .profile-bubbles {
   position: absolute; inset: 0; overflow: hidden;
-  background: linear-gradient(160deg, #ff9d2f 0%, #ffb347 46%, #ffcf6b 100%);
+  background: linear-gradient(160deg, #F26A43 0%, #FF835A 52%, #FFA271 100%);
 }
+/* 泡泡：固定不規則形狀，只用「偏心連續旋轉」讓它邊變形邊飄。
+   只動 transform → GPU 合成、linear 等速 → 完全連續、不重繪、不掉幀跳格
+   （之前動 border-radius 是重繪屬性，大面積+模糊每格重繪才會像影格一格一格跳）。*/
 .profile-bubbles .bubble {
-  position: absolute; will-change: transform, border-radius; filter: blur(2px);
+  position: absolute; will-change: transform; filter: blur(6px);
+  border-radius: 42% 58% 63% 37% / 45% 43% 57% 55%;
 }
 .profile-bubbles .bubble-dark {
-  width: 56%; aspect-ratio: 1; left: -6%; top: 6%;
-  background: rgba(176,86,8,0.28);
-  animation: bubble-morph 13s ease-in-out infinite, bubble-float-a 17s ease-in-out infinite;
+  width: 72%; aspect-ratio: 1; left: -14%; top: -20%;
+  background: rgba(190,70,40,0.26);
+  transform-origin: 60% 55%;
+  animation: bubble-spin-cw 34s linear infinite;
 }
 .profile-bubbles .bubble-light {
-  width: 46%; aspect-ratio: 1; right: -4%; bottom: -14%;
-  background: rgba(255,255,255,0.22);
-  animation: bubble-morph 11s ease-in-out infinite reverse, bubble-float-b 15s ease-in-out infinite;
+  width: 60%; aspect-ratio: 1; right: -12%; bottom: -26%;
+  background: rgba(255,255,255,0.20);
+  transform-origin: 42% 46%;
+  animation: bubble-spin-ccw 42s linear infinite;
 }
-@keyframes bubble-morph {
-  0%, 100% { border-radius: 42% 58% 63% 37% / 45% 43% 57% 55%; }
-  33%      { border-radius: 62% 38% 40% 60% / 58% 62% 38% 42%; }
-  66%      { border-radius: 38% 62% 55% 45% / 40% 50% 50% 60%; }
-}
-@keyframes bubble-float-a {
-  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
-  50%      { transform: translate3d(6%, 4%, 0) rotate(8deg); }
-}
-@keyframes bubble-float-b {
-  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
-  50%      { transform: translate3d(-5%, -5%, 0) rotate(-10deg); }
-}
+@keyframes bubble-spin-cw  { to { transform: rotate(360deg); } }
+@keyframes bubble-spin-ccw { to { transform: rotate(-360deg); } }
 @media (prefers-reduced-motion: reduce) {
   .rank-aurora .orb,
   .profile-bubbles .bubble { animation: none !important; }

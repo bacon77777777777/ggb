@@ -318,7 +318,7 @@ export function RankingBackgroundBlobs() {
 
 export function RankingTopDecorations() {
   return (
-    <div className="absolute left-0 top-[167px] w-[750px]">
+    <div className="absolute left-0 top-[287px] w-[750px]">
       <div className="relative w-full h-auto">
         <Image
           src={imgRanking123}

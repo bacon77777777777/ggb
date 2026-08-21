@@ -4,6 +4,24 @@
 
 ---
 
+## v2026.08.21u｜2026-08-21｜排行 podium 下移＋會員蝦皮橘/泡泡順滑＋邀請換圖與出血自動裁切
+
+**排行榜**
+- podium 底圖(top123.png)下移 120px（top-[167px]→top-[287px]），對齊三名角色腳下。
+
+**會員中心**
+- 底色 golden→蝦皮橘系再調淡（#F26A43 漸層），band 同步。
+- 泡泡改「固定不規則形狀＋偏心連續旋轉」，只動 transform（GPU 合成、linear），
+  修掉之前動 border-radius 重繪造成的「一格一格跳」。
+
+**邀請頁**
+- hero 換新圖 invite.png(800x1320)→轉 webp 覆蓋；QR 白框中心 0.7875、
+  邀請碼紅旗中心 0.9348（sharp 量測）；Image height 1320。
+- 出血段自動裁切：頂部 120px(=15vw) 給動態島墊高，用 env(safe-area-inset-top)
+  當開關——瀏覽器(env=0)上移 15vw 收掉出血段、PWA/App(env>0)保留塞島下；
+  圖與 QR/邀請碼同層一起移動，百分比定位不受影響。下載圖(canvas)仍用完整圖。
+---
+
 ## v2026.08.21t｜2026-08-21｜排行榜全螢幕流體背景（Ink Flow Field, WebGL2）＋podium 換 top123
 
 - 落地 Originkit Ink Flow Field（WebGL2 Navier-Stokes 流體：advection/壓力/渦度，
