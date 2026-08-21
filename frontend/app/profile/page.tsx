@@ -6412,12 +6412,24 @@ function ProfileContent() {
                 因為單獨推頭像而撞到下方代幣卡（橘色 #ff9d2f 對齊 .profile-bubbles 漸層頂端）。*/}
             <div className="bg-[#ff9d2f] pt-[env(safe-area-inset-top)]">
             <div className="relative w-full aspect-[375/195] select-none">
-              {/* 程序化背景：橘漸層底＋兩顆透明泡泡不規則變形飄動
-                  （取代 profile/topbg.webp，樣式在 globals.css）*/}
+              {/* 底層：程序化橘漸層＋兩顆透明泡泡變形飄動（globals.css .profile-bubbles）*/}
               <div className="profile-bubbles absolute inset-0 w-full h-full pointer-events-none" aria-hidden>
                 <span className="bubble bubble-dark" />
                 <span className="bubble bubble-light" />
               </div>
+
+              {/* 疊層：原本的去背底圖（深色卡＋星盾＋波紋，透明 PNG），蓋在動態橘底上，
+                  頭像/代幣內容再疊在它上面 —— 還原原始外觀、只是底色改成會動的（老闆 2026-08-21）*/}
+              <Image
+                src="/images/profile/topbg.png"
+                alt=""
+                fill
+                sizes="(max-width: 768px) 100vw, 375px"
+                className="object-cover pointer-events-none select-none"
+                priority
+                unoptimized
+                aria-hidden
+              />
 
               {/* Profile Info Section */}
               <div className="absolute top-[8%] left-0 w-full px-[4.2%] flex items-center justify-between">
