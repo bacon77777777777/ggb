@@ -320,16 +320,17 @@ export function RankingTopDecorations() {
   return (
     <div className="absolute left-0 top-[167px] w-[750px]">
       <div className="relative w-full h-auto">
-        <Image 
-          src={imgRanking123} 
-          alt="Ranking Top 3 Background" 
+        <Image
+          src={imgRanking123}
+          alt="Ranking Top 3 Background"
           width={750}
           height={400}
           className="w-full h-auto object-cover"
           unoptimized
         />
       </div>
-      <div className="absolute bg-gradient-to-b blur-[1.563px] from-[rgba(35,36,42,0)] h-[78.906px] left-0 to-[#23242a] top-[125.79px] w-[750px]" data-name="image 269" />
+      {/* 原本有一條把台座底部融進舊底色 #23242a 的漸層；改成全螢幕流體背景後
+          那塊會變暗斑，且 top123.png 已是去背乾淨台座，故移除。*/}
     </div>
   );
 }

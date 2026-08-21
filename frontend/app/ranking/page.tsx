@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import {
   RankingListItem,
   RankingTop3,
+  RankingTopDecorations,
   RankingTimeTabs,
   RankingListContainer,
   RankingItemData
@@ -344,7 +345,8 @@ export default function RankingPage() {
                 onDragEnd={handleDragEnd}
                 className="touch-pan-y col-start-1 row-start-1 w-full"
               >
-                {/* Top 3 Section */}
+                {/* Top 3 Section：podium 底圖（top123.png）先畫、角色疊在上面 */}
+                <RankingTopDecorations />
                 <RankingTop3 data={rankingData} onWorship={handleAvatarClick} type={displayType} />
 
                 {/* List Section (4th - 10th) */}
