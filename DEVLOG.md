@@ -4,6 +4,15 @@
 
 ---
 
+## v2026.08.21p｜2026-08-21｜文章內頁底部留白（tags 太貼底部 bar）＋掃其他頁
+
+老闆：手機文章內頁的結尾 tags 太貼底部固定的讚/留言 bar。根容器 `pb-[80px]`
+沒把安全區算進去，home indicator 機型上 tags 幾乎頂到 bar。
+- 文章內頁根 pb → `pb-[calc(88px+env(safe-area-inset-bottom))]`
+- 掃其他有底部固定 bar 的頁：topup 本來就對（calc+safe）；blindbox/item 是
+  pb-32(128px) 夠寬；invite `pb-24` 偏緊，補成 `calc(96px+env(safe-area-inset-bottom))`
+---
+
 ## v2026.08.21o｜2026-08-21｜情報頁電腦端（列表網格＋文章置中欄＋桌機保留 Navbar）
 
 老闆：桌機來的用戶多、很多從文章進站，但情報頁桌機原本只有「僅支援手機」佔位、

@@ -261,7 +261,7 @@ export default function InvitePage() {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-24">
+    <div className="min-h-screen bg-white pb-[calc(96px+env(safe-area-inset-bottom))]">
       {/* 頂部操作列 —— 文章內頁同款：浮動圓鈕蓋在 hero 上（老闆指定），
           返回＋分享（分享＝複製邀請訊息） */}
       <div className="fixed left-0 right-0 top-0 z-20 flex items-center justify-between pt-[env(safe-area-inset-top)] pointer-events-none">

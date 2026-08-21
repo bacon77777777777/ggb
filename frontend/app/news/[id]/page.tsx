@@ -482,7 +482,7 @@ export default function NewsDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-neutral-950 pb-[80px]">
+    <div className="min-h-screen bg-white dark:bg-neutral-950 pb-[calc(88px+env(safe-area-inset-bottom))]">
 
       {/* ── 頂部操作列（絕對定位在圖片上方）── */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-20 flex items-center justify-between pt-[env(safe-area-inset-top)] pointer-events-none">
