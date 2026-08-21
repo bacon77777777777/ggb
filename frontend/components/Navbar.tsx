@@ -621,13 +621,17 @@ function NavbarInner() {
   };
 
   const isRulesPage = /^\/[^/]+\/rules$/.test(pathname);
-  if (pathname === '/news' || isNewsDetailPage || isRulesPage) return null;
+  // 情報列表／文章內頁／規則頁：手機端這些頁自繪頂部，Navbar 收起；
+  // 但桌機要留著 Navbar —— 很多用戶從文章進站，讀完要能導回商城
+  //（老闆 2026-08-21）。所以不是整條 return null，而是桌機才顯示。
+  const desktopOnlyNav = pathname === '/news' || isNewsDetailPage || isRulesPage;
 
   return (
     <>
       <NavbarLayout
         innerClassName={(isProductDetailPage || isAnnouncementDetailPage) ? "max-w-[960px] !px-4" : undefined}
         className={cn(
+          desktopOnlyNav && "hidden md:block",
           isProductDetailPage && "fixed left-0 right-0",
           (
             (pathname === '/profile' && (!activeTab || ['warehouse', 'delivery', 'draw-history', 'topup-history', 'follows', 'market'].includes(activeTab as string))) ||

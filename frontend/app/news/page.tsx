@@ -162,6 +162,50 @@ function ArticleRow({ item, onLike }: { item: NewsItem; onLike: (id: string) => 
   );
 }
 
+// ─── 桌機文章卡（電腦端網格用）───────────────────────────────────────────────
+function ArticleCard({ item, onLike }: { item: NewsItem; onLike: (id: string) => void }) {
+  return (
+    <div className="group relative flex flex-col rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden hover:shadow-card transition-shadow">
+      <Link href={`/news/${item.id}`} className="absolute inset-0 z-0" aria-label={item.title}
+        onClick={() => trackEvent('news_article_click', { meta: { news_id: item.id, category: item.category, title: item.title } })}
+      />
+      {/* 封面 16:9 */}
+      <div className="pointer-events-none relative z-10 w-full aspect-[16/9] bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
+        {item.image_url ? (
+          <Image src={item.image_url} alt={item.title} fill className="object-cover group-hover:scale-[1.03] transition-transform duration-300" unoptimized />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-neutral-300 text-lg font-black">GGB</div>
+        )}
+        {item.category && (
+          <span className="absolute top-2 left-2"><CategoryBadge category={item.category} /></span>
+        )}
+      </div>
+      {/* 文字 */}
+      <div className="pointer-events-none relative z-10 flex flex-1 flex-col p-4">
+        <h3 className="text-[15px] font-bold text-neutral-900 dark:text-white line-clamp-2 leading-[1.5] mb-2">
+          {item.title}
+        </h3>
+        <div className="mt-auto flex items-center justify-between gap-2 text-[12px] text-neutral-400 dark:text-neutral-500">
+          <span className="truncate">{timeAgo(item.created_at)}</span>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="flex items-center gap-1">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+              <span className="tabular-nums font-bold">{item.comments_count}</span>
+            </span>
+            <button
+              onClick={e => { e.preventDefault(); e.stopPropagation(); onLike(item.id); }}
+              className={cn('pointer-events-auto flex items-center gap-1 transition-colors active:scale-110', item.liked ? 'text-primary' : 'hover:text-primary')}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill={item.liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v12M15 5.88L14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z" /></svg>
+              <span className="tabular-nums font-bold">{item.likes_count}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── 骨架屏 ──────────────────────────────────────────────────────────────────
 function LoadingSkeleton() {
   return (
@@ -360,12 +404,38 @@ export default function NewsPage() {
         </div>
       </div>
 
-      {/* 電腦端暫不開放 */}
-      <div className="hidden md:flex items-center justify-center min-h-[60vh] text-neutral-400 dark:text-neutral-500">
-        <div className="text-center">
-          <p className="text-5xl mb-4">📰</p>
-          <p className="font-bold">情報功能目前僅支援手機瀏覽</p>
+      {/* ── 電腦端（老闆 2026-08-21：桌機來的用戶多，很多從文章進站）── */}
+      <div className="hidden md:block max-w-6xl mx-auto px-6 py-8">
+        {/* 分類頁籤 */}
+        <div className="border-b border-neutral-100 dark:border-neutral-800 mb-6">
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
+            <TabsList className="bg-transparent px-0">
+              {CATEGORIES.map(cat => (
+                <TabsTrigger key={cat.key} value={cat.key}>{cat.label}</TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         </div>
+
+        {isLoading ? (
+          <div className="grid grid-cols-3 gap-5">
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} className="rounded-2xl border border-neutral-100 dark:border-neutral-800 overflow-hidden">
+                <Skeleton className="w-full aspect-[16/9]" />
+                <div className="p-4 space-y-2">
+                  <Skeleton className="h-4 w-full rounded" />
+                  <Skeleton className="h-4 w-2/3 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="py-24 text-center text-neutral-400 dark:text-neutral-500 text-sm font-bold">此分類目前沒有文章</div>
+        ) : (
+          <div className="grid grid-cols-3 gap-5">
+            {filtered.map(item => <ArticleCard key={item.id} item={item} onLike={handleLike} />)}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -485,7 +485,7 @@ export default function NewsDetailPage() {
     <div className="min-h-screen bg-white dark:bg-neutral-950 pb-[80px]">
 
       {/* ── 頂部操作列（絕對定位在圖片上方）── */}
-      <div className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between pt-[env(safe-area-inset-top)] pointer-events-none">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-20 flex items-center justify-between pt-[env(safe-area-inset-top)] pointer-events-none">
         <Link href="/news"
           className="pointer-events-auto m-[10px] w-[38px] h-[38px] bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
           <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
@@ -498,12 +498,12 @@ export default function NewsDetailPage() {
 
       {/* ── 主圖 ── */}
       {item.image_url && (
-        <div className="w-full bg-neutral-100 dark:bg-neutral-900">
-          <Image src={item.image_url} alt={item.title} width={800} height={600} className="w-full h-auto" unoptimized />
+        <div className="w-full bg-neutral-100 dark:bg-neutral-900 md:max-w-3xl md:mx-auto md:mt-6 md:rounded-2xl md:overflow-hidden">
+          <Image src={item.image_url} alt={item.title} width={800} height={600} className="w-full h-auto md:max-h-[440px] md:object-cover" unoptimized />
         </div>
       )}
 
-      <article className="px-4 pt-4">
+      <article className="px-4 pt-4 md:max-w-3xl md:mx-auto md:pt-8">
         {/* 分類 + 時間 */}
         <div className="flex items-center gap-2 mb-3">
           {item.category && <CategoryBadge category={item.category} />}
@@ -514,13 +514,13 @@ export default function NewsDetailPage() {
         </div>
 
         {/* 標題 */}
-        <h1 className="text-[20px] font-black text-neutral-900 dark:text-white leading-[1.3] mb-4">
+        <h1 className="text-[20px] md:text-[30px] font-black text-neutral-900 dark:text-white leading-[1.3] mb-4">
           {item.title}
         </h1>
 
         {/* 文章內容（移除舊版 news-agent 殘留的「閱讀原文」連結）*/}
         {item.content ? (
-          <div className="news-content text-[15px] text-neutral-700 dark:text-neutral-300 leading-relaxed"
+          <div className="news-content text-[15px] md:text-[17px] text-neutral-700 dark:text-neutral-300 leading-relaxed md:leading-[1.9]"
             dangerouslySetInnerHTML={{ __html: item.content.replace(/<a\b[^>]*>[^<]*閱讀原文[^<]*<\/a>/gi, '') }} />
         ) : (
           <p className="text-neutral-400 text-sm">暫無內容</p>
@@ -542,7 +542,7 @@ export default function NewsDetailPage() {
       </article>
 
       {/* ── 固定底部 bar ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 flex items-center gap-3 px-4 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))]">
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 flex items-center gap-3 px-4 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))] md:max-w-3xl md:mx-auto md:px-0 md:rounded-t-none">
         {/* 按讚 */}
         <button
           onClick={handleLike}
