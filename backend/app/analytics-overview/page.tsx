@@ -97,7 +97,7 @@ interface AnalyticsData {
     spark: { x: number; date: string; sales: number; draws: number; visits: number }[]
     keywords: { rank: number; keyword: string; count: number; growth: number }[]
     topProducts: { name: string; value: number }[]
-    peakHours: { hour: number; label: string; draws: number }[]
+    peakHours: { hour: number; label: string; draws: number; visits: number }[]
     categories: { type: string; label: string; count: number; amount: number }[]
     suppliers: { id: string; name: string; rank: number; draws: number; sales: number; visits: number; salesPct: number; drawsPct: number; visitsPct: number; convRate: number }[]
   }
@@ -155,6 +155,7 @@ export default function AnalyticsOverviewPage() {
   const [lineChartH, setLineChartH] = useState(300)
   const lineChartContainerRef = React.useRef<HTMLDivElement>(null)
   const [chartMode, setChartMode] = useState<'sales' | 'visits'>('sales')
+  const [peakMode, setPeakMode] = useState<'draws' | 'visits'>('draws')
   /*
    * 「轉換分析」與「點擊分析」原本是選單上的兩個獨立頁面，各自只有幾個數字。
    * 老闆要把營運總覽收成三頁，這兩頁併進來 —— 直接沿用 /api/admin/reports
@@ -606,30 +607,47 @@ export default function AnalyticsOverviewPage() {
 
         {/* ── 高峰時段（左 24 小時圖 + 右時段排行，獨立一行）────────────── */}
         <div className="bg-white rounded-lg border border-[#f0f0f0] overflow-hidden">
-          <div className="flex items-center border-b border-[#f0f0f0]" style={{ padding: '14px 24px' }}>
-            <span className="flex-1 min-w-0 truncate font-semibold text-base" style={{ color: 'rgba(0,0,0,0.88)' }}>高峰時段</span>
-            <InfoIcon width={320} text={'把這段期間的抽獎依「當天的第幾個小時」分桶（台灣時間），看一天裡哪幾個時段最熱。\n左邊是 0～23 點各時段的抽獎筆數分布，右邊是抽最多的前十個時段。\n用來決定推播、限時活動、補貨要壓在幾點。已排除機器人。'} />
+          <div className="border-b border-[#f0f0f0]" style={{ padding: '0 16px' }}>
+            <div className="flex items-center" style={{ marginBottom: -1 }}>
+              <span style={{ padding: '12px 16px 12px 0', fontSize: 16, fontWeight: 600, color: 'rgba(0,0,0,0.88)' }}>高峰時段</span>
+              {(['draws', 'visits'] as const).map(m => (
+                <button key={m} onClick={() => setPeakMode(m)}
+                  style={{
+                    padding: '12px 0', marginRight: 32, fontSize: 15,
+                    fontWeight: peakMode === m ? 600 : 400,
+                    color: peakMode === m ? 'rgba(0,0,0,0.88)' : 'rgba(0,0,0,0.45)',
+                    borderTop: 'none', borderLeft: 'none', borderRight: 'none',
+                    borderBottom: peakMode === m ? '2px solid #1677ff' : '2px solid transparent',
+                    background: 'none', cursor: 'pointer', transition: 'color 0.2s',
+                  } as React.CSSProperties}>
+                  {m === 'draws' ? '抽獎筆數' : '訪問量'}
+                </button>
+              ))}
+              <div style={{ marginLeft: 'auto', paddingRight: 4 }}>
+                <InfoIcon width={320} text={'把這段期間的活動依「當天的第幾個小時」分桶（台灣時間），看一天裡哪幾個時段最熱。\n上方切換：抽獎筆數＝玩家實際掏錢抽的時段熱度；訪問量＝來逛的時段熱度。\n左邊是 0～23 點的分布、右邊是前十個最熱時段。用來決定推播、限時活動、補貨壓在幾點。已排除機器人。'} />
+              </div>
+            </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr' }}>
             {/* 左：24 小時圖 */}
             <div style={{ padding: '24px 32px', borderRight: '1px solid #f0f0f0' }}>
               {loading ? (
                 <div className="h-[300px] bg-neutral-50 rounded animate-pulse" />
-              ) : !c?.peakHours?.some(h => h.draws > 0) ? (
-                <div className="h-[300px] flex items-center justify-center text-sm text-neutral-400">本期無抽獎紀錄</div>
+              ) : !c?.peakHours?.some(h => (peakMode === 'visits' ? h.visits : h.draws) > 0) ? (
+                <div className="h-[300px] flex items-center justify-center text-sm text-neutral-400">本期無{peakMode === 'visits' ? '訪問' : '抽獎'}紀錄</div>
               ) : (
                 <ColumnChart
                   data={c.peakHours}
                   xField="label"
-                  yField="draws"
+                  yField={peakMode}
                   height={300}
                   autoFit
-                  style={{ fill: '#1677ff', opacity: 0.85 } as any}
+                  style={{ fill: peakMode === 'visits' ? '#722ed1' : '#1677ff', opacity: 0.85 } as any}
                   axis={{
                     x: { label: { style: { fontSize: 11, fill: 'rgba(0,0,0,0.45)' }, formatter: (v: string) => (parseInt(v) % 3 === 0 ? v : '') } },
                     y: { labelFormatter: (v: number) => v.toLocaleString() },
                   } as any}
-                  tooltip={{ title: (d: any) => d.label, items: [{ channel: 'y', name: '抽獎筆數' }] } as any}
+                  tooltip={{ title: (d: any) => d.label, items: [{ channel: 'y', name: peakMode === 'visits' ? '訪問量' : '抽獎筆數' }] } as any}
                 />
               )}
             </div>
@@ -640,12 +658,12 @@ export default function AnalyticsOverviewPage() {
                 <div style={{ marginTop: 25 }} className="space-y-4">
                   {[1,2,3,4,5,6,7,8,9,10].map(i => <div key={i} className="h-5 bg-neutral-100 rounded animate-pulse" />)}
                 </div>
-              ) : !c?.peakHours?.some(h => h.draws > 0) ? (
+              ) : !c?.peakHours?.some(h => (peakMode === 'visits' ? h.visits : h.draws) > 0) ? (
                 <div className="flex items-center justify-center text-sm text-neutral-400" style={{ marginTop: 40 }}>暫無資料</div>
               ) : (
                 <ul style={{ margin: '25px 0 0', padding: 0, listStyle: 'none' }}>
                   {[...c.peakHours]
-                    .sort((a, b) => b.draws - a.draws)
+                    .sort((a, b) => (peakMode === 'visits' ? b.visits - a.visits : b.draws - a.draws))
                     .slice(0, 10)
                     .map((h, i) => (
                       <li key={h.hour} style={{ display: 'flex', alignItems: 'center', marginTop: 13 }}>
@@ -659,7 +677,7 @@ export default function AnalyticsOverviewPage() {
                           {h.label}–{String((h.hour + 1) % 24).padStart(2, '0')}:00
                         </span>
                         <span style={{ fontSize: 14, color: 'rgba(0,0,0,0.85)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                          {h.draws.toLocaleString()}
+                          {(peakMode === 'visits' ? h.visits : h.draws).toLocaleString()}
                         </span>
                       </li>
                     ))}

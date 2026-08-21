@@ -259,15 +259,21 @@ export async function GET(req: NextRequest) {
 
     // 高峰時段（老闆 2026-08-21）：把整段期間的抽獎依「台灣時間的小時(0-23)」分桶，
     // 看一天裡哪幾個時段最熱。左邊 24 小時圖用全部、右邊排行前十由前端排序取。
-    const peakBuckets: number[] = new Array(24).fill(0)
+    const peakDrawBuckets: number[] = new Array(24).fill(0)
     draws.forEach((d: any) => {
       const dt = new Date(new Date(d.created_at).getTime() + TW)
-      peakBuckets[dt.getUTCHours()]++
+      peakDrawBuckets[dt.getUTCHours()]++
     })
-    const peakHours = peakBuckets.map((draws, hour) => ({
+    const peakVisitBuckets: number[] = new Array(24).fill(0)
+    ;(visitRows ?? []).forEach((v: any) => {
+      const dt = new Date(new Date(v.created_at).getTime() + TW)
+      peakVisitBuckets[dt.getUTCHours()]++
+    })
+    const peakHours = peakDrawBuckets.map((draws, hour) => ({
       hour,
       label: `${String(hour).padStart(2, '0')}:00`,
       draws,
+      visits: peakVisitBuckets[hour],
     }))
 
     const convRate = totalVisits > 0 ? Math.round(totalDrawCount / totalVisits * 100) : 0
