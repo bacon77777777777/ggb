@@ -920,7 +920,7 @@ export default function EditProductPage() {
                 <div className="flex-1">
                   <label className="block text-xs font-medium text-neutral-500 mb-1">商品名稱 <span className="text-red-500">*</span></label>
                   <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="請輸入商品名稱" required />
+                    placeholder="請輸入商品名稱（30 字內）" maxLength={30} required />
                 </div>
               </div>
 
@@ -1364,7 +1364,8 @@ export default function EditProductPage() {
                               updated[index].name = e.target.value
                               setPrizes(updated)
                             }}
-                            placeholder="例：A賞 草莓大耳狗吊飾"
+                            placeholder="例：A賞 草莓大耳狗吊飾（30 字內）"
+                            maxLength={30}
                           />
                         </div>
                       </div>

@@ -38,8 +38,9 @@ function UpdatePasswordContent() {
     setIsLoading(true)
     setError(null)
 
-    if (password.length < 6) {
-      setError('密碼長度至少需 6 個字元')
+    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      // 8 碼＋至少一個英文字母與一個數字（老闆 2026-08-21 定的規則）
+      setError('密碼至少 8 碼，且需同時包含英文與數字')
       setIsLoading(false)
       return
     }
@@ -116,7 +117,7 @@ function UpdatePasswordContent() {
                 <Input
                   name="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="新密碼 (至少 6 碼)"
+                  placeholder="新密碼（至少 8 碼，含英文與數字）"
                   required
                   className={inputBaseClass}
                   value={password}

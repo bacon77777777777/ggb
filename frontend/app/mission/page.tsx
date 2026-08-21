@@ -213,8 +213,13 @@ export default function MissionPage() {
   }
 
   return (
-    <div className="bg-neutral-50 overflow-x-hidden flex justify-center"
-      style={{ minHeight: '100dvh' }} {...swipeTabs}>
+    /*
+     * App 滿版模式（v2026.08.21c）：外層背景鋪設計稿漸層的頂色 #ff2d14，
+     * 內容用 env(safe-area-inset-top) 內縮 —— 動態島背後是橘紅、
+     * 簽到畫面本體從安全區下開始。網頁 env=0，跟原本一模一樣。
+     */
+    <div className="overflow-x-hidden flex justify-center"
+      style={{ minHeight: '100dvh', background: '#ff2d14', paddingTop: 'env(safe-area-inset-top)' }} {...swipeTabs}>
       <div
         className="overflow-hidden"
         style={{

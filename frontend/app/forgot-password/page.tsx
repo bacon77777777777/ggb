@@ -94,8 +94,8 @@ function ForgotPasswordContent() {
   // Step 3: set new password
   const handleSetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (password.length < 6) {
-      setError('密碼長度至少需 6 個字元')
+    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      setError('密碼至少 8 碼，且需同時包含英文與數字')
       return
     }
     if (/[一-鿿㐀-䶿]/.test(password)) {
@@ -208,7 +208,7 @@ function ForgotPasswordContent() {
                 <Input
                   name="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="新密碼 (至少 6 位元)"
+                  placeholder="新密碼（至少 8 碼，含英文與數字）"
                   required
                   className={inputBaseClass}
                   value={password}

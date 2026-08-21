@@ -46,14 +46,14 @@ const config: CapacitorConfig = {
   ios: {
     appendUserAgent: 'GGBApp/1.0 (ios)',
     /*
-     * 'automatic' 而不是 'never'：讓 webview 從安全區底下開始，
-     * env(safe-area-inset-top) 就會是 0，網頁的版面完全不用動。
-     *
-     * 'never' 可以做出滿版視覺，但代價是站上所有 sticky 子欄的
-     * top-[57px] 偏移都要跟著改（有八處以上），沒有實機很難驗。
-     * 抽獎機台本來就在畫面中段，滿版沒有實質收益。
+     * 'never' + StatusBar overlaysWebView(true)（NativeAppBootstrap 執行期呼叫）
+     * ＝滿版：webview 延伸到動態島／狀態列底下，彩色頁頭與滿版圖直接畫到
+     * 螢幕頂（老闆 2026-08-21 指定）。版面的內縮改由網頁自己用
+     * env(safe-area-inset-top) 處理 —— Navbar／PageHeader／各 sticky 子欄
+     * 已全數補上（v2026.08.21c）。
+     * 先前用 'automatic' 是為了不動版面（見 git 歷史），滿版需求出現後翻案。
      */
-    contentInset: 'automatic',
+    contentInset: 'never',
     limitsNavigationsToAppBoundDomains: false,
     backgroundColor: '#ffffff',
   },
@@ -107,9 +107,8 @@ const config: CapacitorConfig = {
       launchFadeOutDuration: 0,
     },
     StatusBar: {
-      // 狀態列不覆蓋 webview —— 配合上面的 contentInset，
-      // 網頁不必處理瀏海／動態島的內縮
-      overlaysWebView: false,
+      // 覆蓋 webview（滿版）：網頁自己用 env(safe-area-inset-top) 處理內縮
+      overlaysWebView: true,
       style: 'DEFAULT',
       backgroundColor: '#ffffff',
     },

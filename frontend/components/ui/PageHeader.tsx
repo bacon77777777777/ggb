@@ -58,7 +58,9 @@ export default function PageHeader({
          畫面最頂端，被這條白底蓋掉大半（老闆 2026-08-20 登入頁截圖）。 */
       data-page-header=""
       className={cn(
-        'bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0',
+        // pt-[env(...)]＋box-content：App 滿版模式下頁頭白底延伸到動態島，
+        // 內容列維持 57px；網頁 env=0 無感
+        'bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] box-content pt-[env(safe-area-inset-top)] flex items-center justify-between shrink-0',
         className,
       )}
     >

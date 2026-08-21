@@ -528,7 +528,7 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-20 transition-colors">
-      <div className="sticky top-0 z-50 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 md:hidden">
+      <div className="sticky top-0 z-50 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 md:hidden pt-[env(safe-area-inset-top)]">
         <div className="max-w-7xl mx-auto px-2 relative">
           <div className="flex items-center gap-3 h-[57px]">
             <button

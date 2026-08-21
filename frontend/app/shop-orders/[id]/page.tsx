@@ -160,7 +160,7 @@ export default function ShopOrderPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-28">
-      <div className="sticky top-0 z-40 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
+      <div className="sticky top-0 z-40 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 pt-[env(safe-area-inset-top)]">
         <div className="max-w-3xl mx-auto px-2 h-[57px] flex items-center gap-2">
           <button type="button" onClick={() => router.push('/sell')} className="p-2 rounded-full text-neutral-700 dark:text-neutral-200">
             <ArrowLeft className="w-5 h-5" />

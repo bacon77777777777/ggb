@@ -26,7 +26,9 @@ export default function NavbarLayout({
 }: NavbarLayoutProps) {
   return (
     <nav className={cn(
-      "bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 top-0 z-50 transition-colors",
+      /* pt-[env(...)]：App 滿版模式（v2026.08.21c）下導航列白底延伸到動態島，
+         內容從安全區下開始；網頁與偽 app env=0，完全無感 */
+      "bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 top-0 z-50 transition-colors pt-[env(safe-area-inset-top)]",
       isSticky ? "sticky" : "relative",
       className
     )}>

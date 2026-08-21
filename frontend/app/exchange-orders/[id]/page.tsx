@@ -646,7 +646,7 @@ export default function ExchangeOrderFlowPage() {
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24">
       <div className="max-w-3xl mx-auto px-2 sm:px-6">
-        <div className="sticky top-[57px] z-40 -mx-2 sm:-mx-6 -mt-px">
+        <div className="sticky top-[calc(57px+env(safe-area-inset-top))] z-40 -mx-2 sm:-mx-6 -mt-px">
           <Stepper step={step} />
         </div>
 

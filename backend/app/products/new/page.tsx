@@ -547,7 +547,8 @@ export default function NewProductPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
-                  placeholder="請輸入商品名稱"
+                  placeholder="請輸入商品名稱（30 字內）"
+                  maxLength={30}
                   required
                 />
               </div>
@@ -1067,7 +1068,8 @@ export default function NewProductPage() {
                                 setPrizes(updated)
                               }}
                               className="w-full px-2 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                              placeholder="名稱"
+                              placeholder="名稱（30 字內）"
+                              maxLength={30}
                             />
                             {!isSlot && (
                               <SelectField

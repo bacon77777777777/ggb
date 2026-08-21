@@ -6980,14 +6980,14 @@ function ProfileContent() {
           <input
             value={settingsForm.nickname}
             onChange={e => setSettingsForm({...settingsForm, nickname: e.target.value})}
-            maxLength={20}
+            maxLength={10}
             minLength={2}
             placeholder="例：王吉比"
             className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
             autoFocus
           />
         </div>
-        <p className="text-xs text-neutral-400 mb-6">暱稱長度限制 2-20 個字元</p>
+        <p className="text-xs text-neutral-400 mb-6">暱稱長度限制 1-10 個字元</p>
 
         <button
           onClick={() => handleUpdateProfile('nickname', settingsForm.nickname)}

@@ -329,7 +329,7 @@ export default function NewsPage() {
       {/* 手機端（onClickCapture：點任何文章連結前先記下捲動位置） */}
       <div className="md:hidden" onClickCapture={rememberScroll}>
         {/* 固定 Tab 欄 */}
-        <div className="sticky top-0 z-20 bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800 px-2">
+        <div className="sticky top-0 z-20 bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800 px-2 pt-[env(safe-area-inset-top)]">
           <Tabs value={activeTab} onValueChange={handleTabChange}>
             <TabsList className="bg-transparent px-0">
               {CATEGORIES.map(cat => (

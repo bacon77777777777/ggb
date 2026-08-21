@@ -711,6 +711,36 @@ export default function Home() {
     setter(parseInt(raw, 10).toLocaleString());
   };
 
+  /*
+   * 推薦頁的「刷新有新鮮感」機制（老闆 2026-08-21 核准的做法）：
+   *
+   * 1. 頭部固定：分數最高的前 HEAD_KEEP 件照實力排，轉換主力不動
+   * 2. 其餘加權洗牌：每次掛載（導航進來或下拉刷新重掛）發一副新的隨機權重，
+   *    分數高的仍常在前排，但每次刷都有新面孔，尾部商品也輪得到曝光
+   * 3. 看過降權：上一輪排在前面的（幾乎必然被看過）這一輪分數打折往後沉，
+   *    「刷新＝給我沒看過的」才有感。上一輪頭部記在 sessionStorage
+   *
+   * 只動「推薦」頁籤；系列頁籤與價格排序是工具性瀏覽，維持確定性。
+   * jitter 表放 ref：同一次掛載內 sort 要穩定，不能在 comparator 裡擲骰子。
+   */
+  const HEAD_KEEP = 5;
+  const SEEN_DEMOTE = 0.3;
+  const feedJitter = useRef<Map<string, number>>(new Map());
+  const jitterOf = (id: string) => {
+    let v = feedJitter.current.get(id);
+    if (v === undefined) {
+      v = Math.random();
+      feedJitter.current.set(id, v);
+    }
+    return v;
+  };
+  const seenTop = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    try {
+      seenTop.current = new Set(JSON.parse(sessionStorage.getItem('ggb:feed:seen') || '[]'));
+    } catch { /* 讀不到就當沒看過 */ }
+  }, []);
+
   const applySortAndFilter = useCallback(
     (products: ProductRow[]) => {
       const base = filterByPrimaryTab(products);
@@ -772,7 +802,8 @@ export default function Home() {
             return age <= NEW_WINDOW_MS ? Math.max(base, newcomerFloor) : base;
           };
 
-          result.sort((a, b) => {
+          // 先照實力排一次，取頭部；剩下的做「看過降權＋加權洗牌」
+          const byScore = [...result].sort((a, b) => {
             const scoreA = scoreOf(a);
             const scoreB = scoreOf(b);
             if (scoreA !== scoreB) return scoreB - scoreA;
@@ -784,6 +815,29 @@ export default function Home() {
             const db = b.created_at ? new Date(b.created_at).getTime() : 0;
             return db - da;
           });
+          const head = byScore.slice(0, HEAD_KEEP);
+          const tail = byScore.slice(HEAD_KEEP);
+          /*
+           * 加權隨機排序（exponential ranking）：key = jitter^(1/權重)，
+           * 權重取分數＋熱度＋1（全 0 也有基本權重）；看過的整體打折。
+           * 分數高 → key 通常大 → 常在前排，但每次掛載的 jitter 不同，
+           * 排列每刷一次就換一輪。
+           */
+          const rankKey = (p: ProductRow) => {
+            const w =
+              (scoreOf(p) + (productHeat.get(Number(p.id)) || 0) + 1) *
+              (seenTop.current.has(String(p.id)) ? SEEN_DEMOTE : 1);
+            return Math.pow(jitterOf(String(p.id)), 1 / w);
+          };
+          tail.sort((a, b) => rankKey(b) - rankKey(a));
+          result = [...head, ...tail];
+          // 這一輪的前排記下來，下一輪降權（上限 24 筆，別把整站都標成看過）
+          try {
+            sessionStorage.setItem(
+              'ggb:feed:seen',
+              JSON.stringify(result.slice(0, 24).map((p) => String(p.id))),
+            );
+          } catch { /* 無痕模式寫不了就沒有降權，無害 */ }
         } else {
           result.sort((a, b) => {
             const heatA = productHeat.get(Number(a.id)) || 0;
@@ -1653,7 +1707,7 @@ export default function Home() {
         </section>
 
         {hasAnyPrimaryFeature && (
-        <div className="sticky top-[57px] z-40 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 -mx-0">
+        <div className="sticky top-[calc(57px+env(safe-area-inset-top))] z-40 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 -mx-0">
           <div className="max-w-7xl mx-auto pt-0 pb-0 space-y-2">
             {!hidePrimaryTabs && (
               <Tabs 

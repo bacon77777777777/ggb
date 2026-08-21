@@ -169,7 +169,7 @@ export default function AnnouncementsPage() {
     <div className="min-h-screen bg-white dark:bg-neutral-950 pb-24">
 
       {/* 固定 Tab 欄（在 Navbar 57px 下方） */}
-      <div className="sticky top-[57px] z-20 bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800 px-2">
+      <div className="sticky top-[calc(57px+env(safe-area-inset-top))] z-20 bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800 px-2">
         <div className="max-w-2xl mx-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="bg-transparent px-0 gap-0 overflow-visible w-full">

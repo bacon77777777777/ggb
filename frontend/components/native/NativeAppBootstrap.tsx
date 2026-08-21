@@ -118,7 +118,7 @@ export default function NativeAppBootstrap() {
         retry = window.setTimeout(() => void refreshProfile?.(), 2200);
         // 瀏覽器收掉後狀態列設定會被 iOS 洗掉，補一次（同上面的說明）
         window.setTimeout(() => {
-          void native.call('StatusBar', 'setOverlaysWebView', { overlay: false });
+          void native.call('StatusBar', 'setOverlaysWebView', { overlay: true });
         }, 500);
 
         // 目的地由落地頁帶過來（儲值是儲值紀錄、商城訂單是訂單頁）
@@ -173,10 +173,12 @@ export default function NativeAppBootstrap() {
   /*
    * 狀態列。
    *
-   * `setOverlaysWebView(false)` 一定要在執行階段再呼叫一次 ——
-   * 只寫在 capacitor.config.ts 的 plugins.StatusBar 底下沒有生效（老闆回報
-   * 「我的」頁與所有內頁的頂部被時間蓋住），外掛的預設是 overlaysWebView = true。
-   * 設成 false 之後 webview 會從狀態列底下開始，網頁完全不必處理瀏海內縮。
+   * `setOverlaysWebView(true)`（滿版，老闆 2026-08-21）一定要在執行階段呼叫 ——
+   * 只寫在 capacitor.config.ts 的 plugins.StatusBar 底下不可靠（8/20 實測）。
+   * overlay 之後 webview 延伸到動態島底下，內縮由網頁的
+   * env(safe-area-inset-top) 處理（Navbar／PageHeader／sticky 子欄都補了）。
+   * 舊殼（contentInset automatic）收到 true 也安全：系統自動內縮讓 env 歸 0，
+   * 版面不變，只是狀態列背後改畫網頁底色。
    *
    * 樣式跟著深淺色模式走：深色底配深色圖示會整片看不見。
    *
@@ -190,7 +192,7 @@ export default function NativeAppBootstrap() {
     if (!native.isNativePlatform()) return;
 
     const apply = () => {
-      void native.call('StatusBar', 'setOverlaysWebView', { overlay: false });
+      void native.call('StatusBar', 'setOverlaysWebView', { overlay: true });
       const dark = theme === 'dark';
       void native.call('StatusBar', 'setStyle', { style: dark ? 'DARK' : 'LIGHT' });
       // Android 才需要設背景色；iOS 的狀態列背景是由底下的 view 決定
