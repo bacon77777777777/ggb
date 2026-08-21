@@ -4,6 +4,35 @@
 
 ---
 
+## v2026.08.21e｜2026-08-21｜上線收邊：資安補強、C2C 收尾、清資料範疇校正
+
+### 資安補強（③）
+- `/api/upload/image`（前批已修）越權覆寫防護
+- `/api/platform-settings`：改白名單 —— 原本匿名可 dump 全表含
+  **maintenance_bypass_key（維護萬能鑰匙）**、sell_* 內部參數、費率
+- 老虎機 occupy/session/heartbeat/vacate：`getSession()`→`getUser()`
+  （spin/direct 已安全：把真 token 轉 RPC 驗，不動）
+- 情報留言／按讚：加 interactLimiter（30s/10 次）
+- 抽獎 count 加上限 100
+- 金流交接 verifyHandoff：action host 綠界白名單
+
+### 上線收邊（②）
+- sitemap 移除 /exchange（隱藏後會 404）
+- 5 個 C2C 子頁補 useFeatureGate（exchange/new,[id],manage；sell/shop/[id]；shop/[id]）
+- 移除 topup 測試儲值死碼（process_test_topup 分支）
+- 清 console.log（AuthContext/首頁/item/GachaBattleEffect）
+
+### 清資料範疇校正（migration 288，未執行，只更新腳本）
+- **加入清除**：site_promos（輪播圖第四 tab 首頁彈窗）、機台全套
+  （slot_machines/themes/prizes/pool/sessions/spin_logs）、活動頁 events
+- **活動頁保留**：`slug='fairness'`（抽獎公平性頁）—— DELETE 排除它
+- **抽獎公平性頁改不可刪除**：後台 API 擋（403）＋列表隱藏刪除鍵
+- **明確保留**：情報文章＋機器人留言按讚、slot_danmaku_bots
+- 修正 dev_logs 記錄的描述文字（原誤寫「保留商品/廠商」）
+
+⚠️ 清資料只是釐清範疇＋更新腳本，**未執行**。金流仍測試環境（無統編）。
+---
+
 ## v2026.08.21d｜2026-08-21｜上線前資安：/api/upload/image 越權覆寫修補
 
 上線前資安審查發現的唯一 HIGH：`/api/upload/image` 的 bucket、path 完全由前端

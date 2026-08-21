@@ -9,6 +9,7 @@ import { Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
+import { useFeatureGate } from '@/lib/useFeatureGate';
 
 type ExchangeCard = {
   id: string;
@@ -44,6 +45,7 @@ const formatYmd = (ts: number) => {
 };
 
 export default function NewExchangeOfferPage() {
+  useFeatureGate('exchange'); // C2C 隱藏時直接 404（試營運）
   const router = useRouter();
   const { user, isLoading } = useAuth();
   const { showToast } = useToast();

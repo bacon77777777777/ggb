@@ -233,29 +233,9 @@ export default function TopupPage() {
     try {
       if (!user) throw new Error('請先登入後再嘗試');
 
-      if (selectedMethod === 'other') {
-        const { error } = await supabase.rpc('process_test_topup', {
-          p_amount: selectedPlan.amount,
-          p_bonus: selectedPlan.bonus
-        });
-        
-        if (error) throw new Error(error.message);
+      // 測試儲值分支（process_test_topup）已移除（上線清理 2026-08-21）——
+      // PROD 已 revoke authenticated 執行權、UI 也沒有 'other' 選項，屬死碼
 
-        // Fire-and-forget: 任務追蹤 + 成就檢查
-        if (user) {
-          Promise.allSettled([
-            supabase.rpc('track_mission_event', { p_event_type: 'recharge' }),
-            supabase.rpc('track_mission_event', { p_event_type: 'recharge_amount', p_data: { amount: selectedPlan.amount } }),
-          ]).catch(() => {});
-        }
-
-        trackEvent('topup_success', { meta: { amount: selectedPlan.amount } });
-        showToast('儲值成功！', 'success');
-        if (refreshProfile) await refreshProfile();
-        router.push('/profile?tab=topup-history');
-        return;
-      }
-      
       // 確認有有效 Session（避免因未攜帶 JWT 導致 anon 身份）
       const { data: sess } = await supabase.auth.getSession();
       if (!sess?.session) {

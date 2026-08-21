@@ -75,7 +75,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${siteUrl}/`, changeFrequency: 'daily', priority: 1 },
     { url: `${siteUrl}/search`, changeFrequency: 'daily', priority: 0.9 },
     { url: `${siteUrl}/news`, changeFrequency: 'hourly', priority: 0.8 },
-    { url: `${siteUrl}/exchange`, changeFrequency: 'daily', priority: 0.7 },
+    // /exchange 已隨 C2C 隱藏（試營運），不列入 sitemap 免爬蟲撞 404
     { url: `${siteUrl}/ranking`, changeFrequency: 'daily', priority: 0.6 },
     { url: `${siteUrl}/faq`, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${siteUrl}/terms`, changeFrequency: 'yearly', priority: 0.2 },

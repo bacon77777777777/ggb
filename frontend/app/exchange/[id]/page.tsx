@@ -9,6 +9,7 @@ import { ActionBar, Button } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import { useFeatureGate } from '@/lib/useFeatureGate';
 
 type ExchangeCard = {
   id: string;
@@ -90,6 +91,7 @@ function OtpInput({
 }
 
 export default function ExchangeDetailPage() {
+  useFeatureGate('exchange'); // C2C 隱藏時直接 404（試營運）
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = String(params?.id || '');

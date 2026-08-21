@@ -199,8 +199,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const TIMEOUT_MS = 30000;
 
     const initAuth = async () => {
-      console.log('[AuthContext] Initializing auth...');
-      console.log('[AuthContext] Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 20) + '...');
       const startTime = Date.now();
 
       if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -218,7 +216,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           'Auth getSession timeout'
         );
         
-        console.log(`[AuthContext] Get session took ${Date.now() - startTime}ms`);
 
         if (session?.user) {
           setSupabaseUser(session.user);
@@ -245,7 +242,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.warn('[AuthContext] Profile fetch timed out/failed:', profileErr);
             });
         } else {
-          console.log('[AuthContext] No session found');
           setSupabaseUser(null);
           setUser(null);
         }
@@ -255,7 +251,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSupabaseUser(null);
         setUser(null);
       } finally {
-        console.log('[AuthContext] Setting isLoading to false');
         setIsLoading(false);
       }
     };
@@ -265,7 +260,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log(`[AuthContext] Auth state changed: ${_event}`);
       if (session?.user) {
         setSupabaseUser(session.user);
         const email = session.user.email || '';

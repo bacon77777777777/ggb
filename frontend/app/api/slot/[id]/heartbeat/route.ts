@@ -11,8 +11,8 @@ export async function POST(
   if (isNaN(machineId)) return NextResponse.json({ error: '無效機台 ID' }, { status: 400 })
 
   const ssrSupabase = await createSsrClient()
-  const { data: { session } } = await ssrSupabase.auth.getSession()
-  if (!session?.user) return NextResponse.json({ error: '未登入' }, { status: 401 })
+  const { data: { user } } = await ssrSupabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: '未登入' }, { status: 401 })
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,7 +28,7 @@ export async function POST(
     .eq('id', machineId)
     .single()
 
-  if (!machine || machine.occupant_id !== session.user.id) {
+  if (!machine || machine.occupant_id !== user.id) {
     return NextResponse.json({ success: false })
   }
   const expiresAt = machine.occupancy_expires_at ? new Date(machine.occupancy_expires_at).getTime() : 0
@@ -39,7 +39,7 @@ export async function POST(
     .from('slot_machines')
     .update({ occupant_active_until: activeUntil })
     .eq('id', machineId)
-    .eq('occupant_id', session.user.id)
+    .eq('occupant_id', user.id)
 
   return NextResponse.json({ success: true, occupancy_expires_at: machine.occupancy_expires_at })
 }

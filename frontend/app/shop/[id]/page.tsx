@@ -2,8 +2,10 @@
 
 import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useFeatureGate } from '@/lib/useFeatureGate';
 
 export default function LegacyShopRedirectPage() {
+  useFeatureGate('sell'); // C2C 隱藏時直接 404（試營運）
   const params = useParams();
   const router = useRouter();
 

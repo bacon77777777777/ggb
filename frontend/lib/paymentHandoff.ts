@@ -55,6 +55,12 @@ export function verifyHandoff(token: string): HandoffPayload | null {
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString()) as HandoffPayload
     if (!payload?.exp || Date.now() > payload.exp) return null
     if (typeof payload.action !== 'string' || !payload.action.startsWith('https://')) return null
+    // host 白名單（資安審查 2026-08-21）：即使簽章正確，action 的目標網域也只能
+    // 是綠界（縱深防禦，防簽發端日後被繞過或誤用）
+    try {
+      const host = new URL(payload.action).host
+      if (host !== 'payment.ecpay.com.tw' && host !== 'payment-stage.ecpay.com.tw') return null
+    } catch { return null }
     return payload
   } catch {
     return null

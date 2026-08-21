@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     if (!productId || !count) {
       return NextResponse.json({ error: '缺少必要參數' }, { status: 400 })
     }
-    if (!Number.isInteger(count) || count < 1) {
+    if (!Number.isInteger(count) || count < 1 || count > 100) {
       return NextResponse.json({ error: '抽獎數量不正確' }, { status: 400 })
     }
 

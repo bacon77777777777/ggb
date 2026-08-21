@@ -21,6 +21,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ChevronLeft, MessageCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureGate } from '@/lib/useFeatureGate';
 
 type ShopHeader = {
   seller_id: string;
@@ -61,6 +62,7 @@ const payLabel = (m: string | null) =>
   m === 'linepay' ? 'LINE Pay' : m === 'bank' ? '銀行轉帳' : '';
 
 export default function SellerShopPage() {
+  useFeatureGate('sell'); // C2C 隱藏時直接 404（試營運）
   const params = useParams<{ id: string }>();
   const sellerId = String(params?.id || '');
   const router = useRouter();

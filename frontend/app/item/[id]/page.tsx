@@ -890,7 +890,6 @@ export default function ProductDetailPage() {
       return;
     }
 
-    console.log('[GA] event: begin_checkout', { items: [{ item_id: product?.id, item_name: product?.name }] });
     setIsPurchaseModalOpen(true);
   };
 
@@ -1055,7 +1054,6 @@ export default function ProductDetailPage() {
     }
 
     try {
-      console.log('[GA] event: purchase_attempt', { item_id: product.id, quantity });
 
       const drawRes = await fetch('/api/gacha', {
         method: 'POST',
@@ -1160,7 +1158,6 @@ export default function ProductDetailPage() {
         errorMessage = errObj.message || errObj.error_description || errObj.details || JSON.stringify(error);
       }
       
-      console.log('[GA] event: purchase_error', { error: errorMessage });
       if (errorMessage && /insufficient.*balance/i.test(errorMessage)) {
         trackEvent('insufficient_balance', {
           productId: product.id,
@@ -1404,7 +1401,6 @@ export default function ProductDetailPage() {
     const productId = parseInt(params.id as string);
     if (isNaN(productId)) return;
 
-    console.log('Setting up realtime subscription for product:', productId);
 
     const channel = supabase
       .channel(`product-${productId}`)

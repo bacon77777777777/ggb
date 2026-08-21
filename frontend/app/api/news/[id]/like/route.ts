@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdmin } from '@supabase/supabase-js'
+import { interactLimiter } from '@/lib/ratelimit'
 
 function getAdmin() {
   return createAdmin(
@@ -15,6 +16,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: '請先登入' }, { status: 401 })
+
+  // 互動限流（資安審查 2026-08-21）：防腳本無限灌留言/按讚
+  const { success } = await interactLimiter.limit(`interact:${user.id}`)
+  if (!success) return NextResponse.json({ error: '操作太頻繁，請稍後再試' }, { status: 429 })
 
   const admin = getAdmin()
 

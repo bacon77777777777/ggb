@@ -12,8 +12,8 @@ export async function POST(
   if (isNaN(machineId)) return NextResponse.json({ error: '無效機台 ID' }, { status: 400 })
 
   const ssrSupabase = await createSsrClient()
-  const { data: { session } } = await ssrSupabase.auth.getSession()
-  if (!session?.user) return NextResponse.json({ error: '未登入' }, { status: 401 })
+  const { data: { user } } = await ssrSupabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: '未登入' }, { status: 401 })
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,7 +33,7 @@ export async function POST(
     .from('slot_machines')
     .update(updates)
     .eq('id', machineId)
-    .eq('occupant_id', session.user.id)
+    .eq('occupant_id', user.id)
 
   return NextResponse.json({ success: true })
 }

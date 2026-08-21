@@ -7,18 +7,37 @@
 -- 保留：admins, feature_flags, platform_settings,
 --        dev_logs（永不清除），AI 記憶資料（永不清除），
 --        users WHERE is_bot = true（機器人帳號），
---        draw_records WHERE is_bot = true（機器人抽獎記錄，維持排行榜）
+--        draw_records WHERE is_bot = true（機器人抽獎記錄，維持排行榜），
+--        news / news_comments / news_likes（情報文章＋機器人互動，全部保留），
+--        events WHERE slug='fairness'（抽獎公平性頁，常駐不刪），
+--        slot_danmaku_bots（機器人彈幕）
 -- ============================================================
 
 BEGIN;
 
 -- ── 1. 商品/廠商/輪播圖資料（全清） ────────────────────────────
+-- 輪播圖管理四個 tab：home/challenge/app_splash 在 banners、首頁彈窗在 site_promos
 TRUNCATE TABLE
   product_prizes,
   products,
   suppliers,
-  banners
+  banners,
+  site_promos
 RESTART IDENTITY CASCADE;
+
+-- ── 1b. 機台（老虎機）全清；slot_danmaku_bots 是機器人彈幕，保留 ──────
+TRUNCATE TABLE
+  slot_spin_logs,
+  slot_sessions,
+  slot_pool_items,
+  slot_theme_prizes,
+  slot_machines,
+  slot_themes
+RESTART IDENTITY CASCADE;
+
+-- ── 1c. 活動頁全清，但保留「抽獎公平性」(slug='fairness') ──────────────
+-- event_sections 的 FK 是 ON DELETE CASCADE，刪 events 會自動連帶刪 sections
+DELETE FROM events WHERE slug <> 'fairness';
 
 -- ── 2. 使用者交易/行為資料（全清，CASCADE 處理 FK） ────────────
 TRUNCATE TABLE
@@ -96,7 +115,7 @@ INSERT INTO dev_logs (version, title, description, type, status, priority)
 VALUES (
   'DB-RESET',
   '全站資料清除',
-  '執行 migration 288 清除全站測試資料。保留：管理員、商品、廠商、機器人帳號及其抽獎記錄、dev_logs。清除：所有真實用戶交易/行為資料、AI 系統生成資料。',
+  '執行 migration 288 清除全站測試資料。清除：商品/品項/廠商/輪播圖/首頁彈窗/機台/活動頁(保留抽獎公平性)、所有真人交易與行為資料、真人帳號。保留：管理員、功能開關、平台設定、dev_logs、AI 記憶、機器人帳號及其抽獎記錄、情報文章、抽獎公平性活動頁。',
   'improvement',
   'released',
   'high'

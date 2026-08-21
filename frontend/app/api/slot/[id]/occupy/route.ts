@@ -11,8 +11,8 @@ export async function POST(
   if (isNaN(machineId)) return NextResponse.json({ error: '無效機台 ID' }, { status: 400 })
 
   const ssrSupabase = await createSsrClient()
-  const { data: { session } } = await ssrSupabase.auth.getSession()
-  if (!session?.user) return NextResponse.json({ error: '未登入' }, { status: 401 })
+  const { data: { user } } = await ssrSupabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: '未登入' }, { status: 401 })
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,7 +27,7 @@ export async function POST(
     .from('slot_machines')
     .select('occupancy_expires_at')
     .eq('id', machineId)
-    .eq('occupant_id', session.user.id)
+    .eq('occupant_id', user.id)
     .gt('occupancy_expires_at', nowIso)
     .maybeSingle()
 
@@ -37,7 +37,7 @@ export async function POST(
       .from('slot_machines')
       .update({ occupant_active_until: new Date(Math.min(now + 30_000, deadline)).toISOString() })
       .eq('id', machineId)
-      .eq('occupant_id', session.user.id)
+      .eq('occupant_id', user.id)
     return NextResponse.json({ success: true, occupancy_expires_at: mine.occupancy_expires_at })
   }
 
@@ -46,7 +46,7 @@ export async function POST(
   const { data: claimed } = await supabase
     .from('slot_machines')
     .update({
-      occupant_id:           session.user.id,
+      occupant_id:           user.id,
       occupant_active_until: newExpiresAt,
       occupancy_expires_at:  newExpiresAt,
     })

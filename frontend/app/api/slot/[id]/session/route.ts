@@ -12,8 +12,8 @@ export async function GET(
     if (isNaN(machineId)) return NextResponse.json({ error: '無效機台 ID' }, { status: 400 })
 
     const ssrSupabase = await createSsrClient()
-    const { data: { session } } = await ssrSupabase.auth.getSession()
-    if (!session?.user) return NextResponse.json({ session: null })
+    const { data: { user } } = await ssrSupabase.auth.getUser()
+    if (!user) return NextResponse.json({ session: null })
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,7 +25,7 @@ export async function GET(
       supabase
         .from('slot_sessions')
         .select('tier_progress, total_spins')
-        .eq('user_id', session.user.id)
+        .eq('user_id', user.id)
         .eq('machine_id', machineId)
         .single(),
       supabase

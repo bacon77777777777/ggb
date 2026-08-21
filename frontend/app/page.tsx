@@ -112,8 +112,6 @@ export default function Home() {
 
   const fetchData = useCallback(async () => {
     const LOAD_TIMEOUT_MS = 10000;
-    console.log('[Home] Fetching data...');
-    console.log('[Home] Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 20) + '...');
     const startTime = Date.now();
 
     const withTimeout = async <T,>(p: PromiseLike<T>, label: string) => {
@@ -123,7 +121,6 @@ export default function Home() {
           Promise.resolve(p),
           new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`timeout fetching ${label}`)), LOAD_TIMEOUT_MS))
         ]);
-        console.log(`[Home] Fetch ${label} took ${Date.now() - startTime}ms`);
         return result;
       } catch (error) {
         throw error;
@@ -134,7 +131,6 @@ export default function Home() {
       setIsLoading(true);
       setLoadError(null);
 
-      console.log('[Home] Starting data fetch...');
 
       if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
         setLoadError('Supabase 設定缺失，請檢查 .env.local');
@@ -235,12 +231,10 @@ export default function Home() {
         setLoadError('無法載入商品列表，請檢查網路連線');
       }
 
-      console.log(`[Home] Data fetch complete in ${Date.now() - startTime}ms`);
     } catch (error) {
       console.error('Error fetching data:', error);
       setLoadError('載入失敗，請重試');
     } finally {
-      console.log('[Home] Setting isLoading to false');
       setIsLoading(false);
     }
   }, [supabase]);

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import { useFeatureGate } from '@/lib/useFeatureGate';
 
 type ExchangeCard = {
   id: string;
@@ -39,6 +40,7 @@ type ExchangeOrder = {
 };
 
 export default function ExchangeManagePage() {
+  useFeatureGate('exchange'); // C2C 隱藏時直接 404（試營運）
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading } = useAuth();

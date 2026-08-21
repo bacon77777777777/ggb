@@ -220,7 +220,6 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
           videoElement.playsInline = true;
           await videoElement.play();
         } catch (err) {
-          console.log("Autoplay prevented:", err);
           // We can show a play button here if needed, but the overlay handles the initial click
         }
       }

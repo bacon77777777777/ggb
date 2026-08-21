@@ -28,3 +28,6 @@ export const drawLimiter = makeLimiter({ requests: 3, window: 3, unit: 's', pref
 
 // 登入 OTP 請求：同一 IP 每 15 分鐘最多 5 次
 export const authLimiter = makeLimiter({ requests: 5, window: 15, unit: 'm', prefix: 'rl:auth' })
+
+// 情報互動（留言／按讚）：同一用戶每 30 秒最多 10 次，防腳本灌 DB
+export const interactLimiter = makeLimiter({ requests: 10, window: 30, unit: 's', prefix: 'rl:interact' })
