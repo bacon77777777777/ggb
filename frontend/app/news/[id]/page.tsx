@@ -588,7 +588,7 @@ export default function NewsDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-neutral-950 pb-24">
+      <div className="min-h-screen bg-white dark:bg-neutral-950 pt-[env(safe-area-inset-top)] md:pt-0 pb-24">
         <Skeleton className="w-full aspect-[4/3]" />
         <div className="px-4 pt-4 space-y-3">
           <Skeleton className="h-6 w-full rounded" />
@@ -613,7 +613,7 @@ export default function NewsDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-neutral-950 pb-[calc(88px+env(safe-area-inset-bottom))] md:pb-16">
+    <div className="min-h-screen bg-white dark:bg-neutral-950 pt-[env(safe-area-inset-top)] md:pt-0 pb-[calc(88px+env(safe-area-inset-bottom))] md:pb-16">
 
       {/* ── 頂部操作列（絕對定位在圖片上方）── */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-20 flex items-center justify-between pt-[env(safe-area-inset-top)] pointer-events-none">
