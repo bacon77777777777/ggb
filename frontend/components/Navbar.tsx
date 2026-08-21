@@ -1054,19 +1054,9 @@ function NavbarInner() {
             ) : (
               !['/login', '/register', '/forgot-password', '/update-password'].includes(pathname) && !isProductDetailPage && !isExchangeDetailPage && !isMessagesDetailPage && !isNewsDetailPage && (
                 <>
-                  {/* 未登入搜尋圖標（手機，登入按鈕左邊）。
-                      首頁不放這顆 —— 首頁的搜尋已經排在鈴鐺前面了，
-                      兩顆都渲染會變成一列有兩個放大鏡 */}
-                  {!isHomePage && !isAnnouncementsArea && (
-                    <Link
-                      href="/search?focus=1"
-                      onClick={startKeyboardRelay}
-                      className="md:hidden p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform"
-                      aria-label="搜尋"
-                    >
-                      <Search className="w-5 h-5 stroke-[2]" />
-                    </Link>
-                  )}
+                  {/* 未登入時搜尋圖標只放首頁（見上方 isHomePage 那顆）。
+                      常見問題／關於我們／條款／隱私／退換貨這些頁跟搜尋無關，
+                      未登入不放搜尋鈕（老闆 2026-08-21：其他頁面不相關不需放）。 */}
                   {/* Mobile login button: 細膠囊線框 */}
                   <Link
                     href="/login"

@@ -468,12 +468,6 @@ export default function PwaPullToRefresh() {
          * 它帶著 transform，會開一個新的 stacking context 把 tab 的 z-20 關在
          * 裡面，外面怎麼調都比不到。層級只能靠「沉下去或浮上來」二選一。
          */
-        if (wrapRef.current) {
-          wrapRef.current.style.zIndex = marked.length
-            ? String(stackAbove(marked[0], 30))
-            : '0';
-        }
-
         if (marked.length) {
           // 只拖被標記的區塊：其餘（tab、背景、返回鈕）原地不動，不需要任何抵銷。
           // 空隙開在被拖區塊的最上緣；版面特殊（排行榜的榜單 grid 起點其實在
@@ -514,7 +508,26 @@ export default function PwaPullToRefresh() {
           );
         }
         stripTop.current = marked.length ? gapTop.current : navBottom();
-        if (wrapRef.current) wrapRef.current.style.top = `${gapTop.current}px`;
+        /*
+         * 球該沉還是該浮：
+         *   拖 <main> 且頂部沒有不透明頂欄 → 沉下去（z 0）：空隙沒東西擋，
+         *     回彈時被內容蓋住，像從版面底下鑽出來。
+         *   拖標記區塊（marked）→ 浮到那一層之上（覆蓋層 z-[60/90/100] 也蓋不掉）。
+         *   拖 <main> 但頂部有不透明頂欄（登入頁的 SimplePageHeader）→ 也要浮起來：
+         *     那道補洞用的灰 box-shadow 掛在頂欄（z-50）、屬 <main> 子樹，會蓋在
+         *     z-0 的球上面（老闆截圖「灰塊遮住球、只露一點」）。把球抬到頂欄之上，
+         *     球就落在那道灰底上、完整可見。頂欄本身在球上方 0..h，球在其下的空隙，
+         *     兩者不重疊，抬高不會蓋到頂欄。
+         */
+        if (wrapRef.current) {
+          const opaqueBar = marked.length ? null : pinned.current.find((p) => p.opaque);
+          wrapRef.current.style.zIndex = marked.length
+            ? String(stackAbove(marked[0], 30))
+            : opaqueBar
+              ? String(stackAbove(opaqueBar.el, 30))
+              : '0';
+          wrapRef.current.style.top = `${gapTop.current}px`;
+        }
         stripBg.current = stripColor(dragEls.current[0]?.el ?? null);
         if (stripRef.current) {
           stripRef.current.style.top = `${stripTop.current}px`;

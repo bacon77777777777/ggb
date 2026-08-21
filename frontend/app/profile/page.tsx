@@ -6420,8 +6420,9 @@ function ProfileContent() {
                 />
               </div>
 
-              {/* Profile Info Section */}
-              <div className="absolute top-[8%] left-0 w-full px-[4.2%] flex items-center justify-between">
+              {/* Profile Info Section（全出血：背景 inset-0 鋪到動態島，前景內容
+                  往下壓一個安全區，避免頭像/暱稱躲到島下面被裁） */}
+              <div className="absolute top-[calc(8%_+_env(safe-area-inset-top))] left-0 w-full px-[4.2%] flex items-center justify-between">
                 <div className="flex-1 flex items-center gap-[2.1%] min-w-0">
                   {/* Avatar */}
                   <div className="relative shrink-0 w-[16%] aspect-square">

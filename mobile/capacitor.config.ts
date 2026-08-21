@@ -46,13 +46,17 @@ const config: CapacitorConfig = {
   ios: {
     appendUserAgent: 'GGBApp/1.0 (ios)',
     /*
-     * 'automatic'（安全預設）：webview 從安全區底下開始，內容不會被動態島裁到。
-     * 2026-08-21 曾改 'never' 做全出血，但代價是每個自繪頂部的頁面都要逐一補
-     * 安全區、補不完又難驗（會員/排行/商品/邀請都被裁），故改回。
-     * 真正要出血的表面（啟動頁、App 開屏）本來就是全螢幕覆蓋，不受此設定影響。
-     * 網頁端保留的 env(safe-area-inset-top) 內距在此模式下自動為 0、無害。
+     * 'never'（全出血）：webview 鋪滿整個螢幕、延伸到動態島底下，彩色頁頭與
+     * hero 圖直接畫到螢幕頂邊（老闆 2026-08-21 指定「全站頂邊出血」）。
+     * 版面的內縮改由網頁自己用 env(safe-area-inset-top) 處理：
+     *   - 共用 Navbar（NavbarLayout）已內建 pt-[env(safe-area-inset-top)]，
+     *     走它的頁一次到位。
+     *   - 手機自繪頂部的頁（profile／排行／商品／簽到／邀請）逐頁「背景出血＋
+     *     內容壓安全區」，見各頁 pt-[calc(... + env(safe-area-inset-top))]。
+     * 先前為了不逐頁補而用 'automatic'，全站頂邊需求出現後翻案；這次把自繪頂部
+     * 的頁一併補齊，不再裁頂。viewportFit:'cover' 已設（app/layout.tsx），env() 有值。
      */
-    contentInset: 'automatic',
+    contentInset: 'never',
     limitsNavigationsToAppBoundDomains: false,
     backgroundColor: '#ffffff',
   },
@@ -106,8 +110,8 @@ const config: CapacitorConfig = {
       launchFadeOutDuration: 0,
     },
     StatusBar: {
-      // 安全預設：webview 從安全區下開始，內容不會被動態島裁到
-      overlaysWebView: false,
+      // 全出血：狀態列疊在 webview 上，內容延伸到動態島底下（見 contentInset 註解）
+      overlaysWebView: true,
       style: 'DEFAULT',
       backgroundColor: '#ffffff',
     },

@@ -4,6 +4,28 @@
 
 ---
 
+## v2026.08.21r｜2026-08-21｜重開全站頂邊出血（正確版）＋PTR 球被灰塊遮住修正＋未登入搜尋鈕收斂
+
+**全出血（重來一次，這次補齊自繪頂部的頁）**
+- capacitor.config.ts 改回 contentInset:'never'、StatusBar.overlaysWebView:true；
+  NativeAppBootstrap 兩處 setOverlaysWebView 改 true。webview 鋪到動態島底下。
+- 共用 NavbarLayout 早已內建 pt-[env(safe-area-inset-top)]（走它的頁一次到位）；
+  AppSplashAd（inset-0 cover＋按鈕 top:calc(env+14px)）、排行、邀請已內建安全區。
+- profile 手機頂圖：背景 inset-0 出血到島，前景資訊塊 top-[8%] → 
+  top-[calc(8%+env(safe-area-inset-top))]，頭像/暱稱不再躲島下。
+- 其餘自繪頂部頁（商品內頁、交換、搜尋）逐頁在手機驗後再精準補。
+
+**PTR 轉蛋球被灰塊遮住（登入頁）**
+- 拖 <main> 時球固定 z-0（沉在內容下），但登入頁的 SimplePageHeader（fixed 白底
+  z-50）那道補洞用的往下灰 box-shadow 屬 <main> 子樹、蓋在 z-0 球上 → 只露一點。
+- 修：拖 <main> 且頂部有不透明頂欄時，把球 wrap 抬到頂欄之上（stackAbove），
+  球落在灰底上完整可見；沒有不透明頂欄的頁維持沉 z-0。
+
+**未登入搜尋鈕收斂**
+- 未登入時搜尋圖標只留首頁；常見問題/關於我們/條款/隱私/退換貨等頁不再放
+  （與搜尋無關）。移除 Navbar 未登入非首頁那顆。
+---
+
 ## v2026.08.21q｜2026-08-21｜原生殼改回「安全預設」——收回全出血，止血全站被島裁
 
 全出血（contentInset:never + overlaysWebView:true）方向收回：它讓每個自繪頂部的

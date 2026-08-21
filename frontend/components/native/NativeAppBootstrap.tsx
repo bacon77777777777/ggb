@@ -118,7 +118,7 @@ export default function NativeAppBootstrap() {
         retry = window.setTimeout(() => void refreshProfile?.(), 2200);
         // 瀏覽器收掉後狀態列設定會被 iOS 洗掉，補一次（同上面的說明）
         window.setTimeout(() => {
-          void native.call('StatusBar', 'setOverlaysWebView', { overlay: false });
+          void native.call('StatusBar', 'setOverlaysWebView', { overlay: true });
         }, 500);
 
         // 目的地由落地頁帶過來（儲值是儲值紀錄、商城訂單是訂單頁）
@@ -192,7 +192,7 @@ export default function NativeAppBootstrap() {
     if (!native.isNativePlatform()) return;
 
     const apply = () => {
-      void native.call('StatusBar', 'setOverlaysWebView', { overlay: false });
+      void native.call('StatusBar', 'setOverlaysWebView', { overlay: true });
       const dark = theme === 'dark';
       void native.call('StatusBar', 'setStyle', { style: dark ? 'DARK' : 'LIGHT' });
       // Android 才需要設背景色；iOS 的狀態列背景是由底下的 view 決定
