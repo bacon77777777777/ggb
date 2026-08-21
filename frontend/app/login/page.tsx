@@ -360,7 +360,7 @@ function AuthContent() {
     <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col relative">
       <SimplePageHeader title={getTitle()} onBack={handleBack} darkBg="page" />
 
-      <div className="flex-1 flex flex-col justify-start items-center pt-[88px] px-6 pb-8 z-10">
+      <div className="flex-1 flex flex-col justify-start items-center pt-[calc(88px+env(safe-area-inset-top))] px-6 pb-8 z-10">
         <div className="w-full max-w-sm">
           {(error || messageParam || errorParam) && (
             <div className={cn(

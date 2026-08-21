@@ -340,7 +340,7 @@ export default function AppSplashAd() {
 
   return (
     <div
-      className="fixed inset-0 z-[10000] bg-white dark:bg-neutral-950 transition-opacity duration-300"
+      className="fixed inset-0 z-[10000] flex items-center justify-center overflow-hidden bg-white dark:bg-neutral-950 transition-opacity duration-300"
       style={{ opacity: visible ? 1 : 0, pointerEvents: visible ? 'auto' : 'none' }}
     >
       {/* 滿版：直式手機的比例各不相同，一律裁切填滿，不留黑邊。
@@ -351,7 +351,7 @@ export default function AppSplashAd() {
         src={splash.image || splash.src}
         alt=""
         onClick={go}
-        className="h-full w-full object-cover"
+        className="w-full h-auto"
         draggable={false}
       />
 

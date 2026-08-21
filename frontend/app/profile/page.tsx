@@ -6302,7 +6302,7 @@ function ProfileContent() {
                 />
 
                 <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col relative">
-                  <div className="flex-1 flex flex-col justify-start items-center pt-[88px] px-6 pb-8">
+                  <div className="flex-1 flex flex-col justify-start items-center pt-[calc(88px+env(safe-area-inset-top))] px-6 pb-8">
                     <div className="w-full max-w-sm">
                       {phoneStep === 'input' ? (
                         <div className="w-full animate-in fade-in slide-in-from-right-4 duration-300">

@@ -127,7 +127,7 @@ function ForgotPasswordContent() {
         darkBg="page"
       />
 
-      <div className="flex-1 flex flex-col justify-start items-center pt-[88px] px-6 pb-8 z-10">
+      <div className="flex-1 flex flex-col justify-start items-center pt-[calc(88px+env(safe-area-inset-top))] px-6 pb-8 z-10">
         <div className="w-full max-w-sm">
           {error && (
             <div className="mb-6 p-3 rounded-lg text-sm flex items-center justify-center text-center bg-red-50 text-red-600 border border-red-100">
