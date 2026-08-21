@@ -4,6 +4,16 @@
 
 ---
 
+## v2026.08.21t｜2026-08-21｜排行榜全螢幕流體背景（Ink Flow Field, WebGL2）＋podium 換 top123
+
+- 落地 Originkit Ink Flow Field（WebGL2 Navier-Stokes 流體：advection/壓力/渦度，
+  WebGL1 half-float fallback）為排行榜全螢幕背景 components/ranking/InkFlowField.tsx。
+  base preset 參數；當純背景 fixed inset-0 pointer-events-none，z 疊在內容下、nav/返回上；
+  prefers-reduced-motion 退回靜態深色底(#0E0B1E) 省電/無障礙。拿掉 Framer 專用 minW/minH。
+- 排行榜根底色 #232429 → #0E0B1E，移除舊三顆 CSS 光暈。
+- TOP123 podium 底圖 ranking123.webp → top123.png。
+---
+
 ## v2026.08.21s｜2026-08-21｜排行/會員程序化背景（CSS 動態，取代靜態圖）＋修會員頂圖全出血跑版
 
 **程序化背景（純 CSS，取代 rank/profile 兩張 topbg.webp）**

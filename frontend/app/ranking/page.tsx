@@ -12,6 +12,7 @@ import {
 import { imgAvatar } from './assets';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import PlayerProfileCard from '@/components/ranking/PlayerProfileCard';
+import InkFlowField from '@/components/ranking/InkFlowField';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -47,6 +48,15 @@ export default function RankingPage() {
    * 跟榜單內容打架。
    */
   const [navScrolled, setNavScrolled] = useState(false);
+  // 全螢幕流體背景（InkFlowField）：省電/無障礙 → prefers-reduced-motion 時退回靜態深色底
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduceMotion(mq.matches);
+    const on = () => setReduceMotion(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
   useEffect(() => {
     const onScroll = () => setNavScrolled(window.scrollY > 8);
     onScroll();
@@ -281,9 +291,17 @@ export default function RankingPage() {
         <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
       </Link>
     </div>
-    <div className="bg-[#232429] min-h-screen w-full overflow-x-hidden flex justify-center" {...swipeTabs}>
-      <div 
-        className="overflow-hidden"
+    <div className="relative bg-[#0E0B1E] min-h-screen w-full overflow-x-hidden flex justify-center" {...swipeTabs}>
+      {/* 全螢幕流體背景（Ink Flow Field，WebGL2）：fixed 鋪滿視窗、當純背景、
+          z-0 疊在內容(z-[1])下、fixed nav(z-10)/返回鍵(z-20)上。
+          reduce-motion 時不掛（退回 bg-[#0E0B1E] 靜態深色底，省電/無障礙）。*/}
+      {!reduceMotion && (
+        <div className="fixed inset-0 z-0 pointer-events-none" aria-hidden>
+          <InkFlowField style={{ width: '100%', height: '100%' }} />
+        </div>
+      )}
+      <div
+        className="relative z-[1] overflow-hidden"
         style={{
           width: Math.ceil(750 * scale),
           height: scaledHeight ?? undefined
@@ -299,12 +317,7 @@ export default function RankingPage() {
             // minHeight removed from here, let the content define height, but keep min-h-[1334px] class for background coverage
           }}
         >
-          {/* 程序化背景：深藍頂＋三顆紫藍光暈微閃（取代 rank/topbg.webp，樣式在 globals.css）*/}
-          <div className="rank-aurora absolute top-0 left-0 w-full h-[561px] z-0 pointer-events-none" aria-hidden>
-            <span className="orb orb-1" />
-            <span className="orb orb-2" />
-            <span className="orb orb-3" />
-          </div>
+          {/* 主視覺背景改為全螢幕 Ink Flow Field（見上方 fixed 層），這裡不再放頂部光暈 */}
           
           {/* 賞金狂人／轉蛋魔人已搬到頁面層級的固定頂欄（見上方），畫布裡只剩日榜／週榜 */}
           <RankingTimeTabs activeTab={activeTab} onTabChange={setActiveTab} />

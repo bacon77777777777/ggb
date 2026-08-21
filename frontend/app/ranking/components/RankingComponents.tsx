@@ -6,7 +6,7 @@ import { imgAvatar, img, imgAvatar1, img1, imgAvatar2, img2 } from '../assets';
 
 // Global G Coin Icon
 const imgGCoin = "/images/gcoin.webp";
-const imgRanking123 = "/images/rank/ranking123.webp";
+const imgRanking123 = "/images/rank/top123.png";
 const imgDefaultAvatar = "/images/avatar.webp";
 
 const TITLE_STYLES: Record<string, string> = {
