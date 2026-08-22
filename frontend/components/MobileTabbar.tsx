@@ -90,10 +90,28 @@ function MobileTabbarInner() {
     }
   };
 
+  /*
+   * 排行榜頁底部改毛玻璃（老闆 2026-08-22）：那頁整片是深色 #232429 的畫布，
+   * 白色底欄像貼了一塊膠帶。樣式照排行榜自己頂欄捲動後的那組
+   * （app/ranking/page.tsx：`bg-[#1b2148]/80 backdrop-blur-md border-b border-white/10`）
+   * 換成 border-t。其他頁維持白底不動。
+   */
+  const isRankingGlass = pathname === '/ranking';
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 md:hidden z-50 pb-[env(safe-area-inset-bottom)] bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-800 transition-colors" data-testid="mobile-tabbar">
+    <div
+      className={cn(
+        'fixed bottom-0 left-0 right-0 md:hidden z-50 pb-[env(safe-area-inset-bottom)] transition-colors',
+        isRankingGlass
+          ? 'bg-[#1b2148]/80 backdrop-blur-md border-t border-white/10'
+          : 'bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-800',
+      )}
+      data-testid="mobile-tabbar"
+    >
       <div className="relative h-[60px] w-full flex items-end">
-        <div className="absolute bottom-0 left-0 right-0 h-[56px] bg-white dark:bg-neutral-900 transition-colors" />
+        {!isRankingGlass && (
+          <div className="absolute bottom-0 left-0 right-0 h-[56px] bg-white dark:bg-neutral-900 transition-colors" />
+        )}
 
         <div className={cn("relative w-full grid px-2 h-[56px]", tabs.length === 5 ? "grid-cols-5" : "grid-cols-4")}>
           {tabs.map((tab) => {
