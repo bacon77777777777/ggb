@@ -28,7 +28,9 @@
 - 備註：migration 153 的 `trg_set_default_user_name_small_chicken`（空名填「小菜雞-xxxx」）
   **STG 還在、PROD 已不存在**（不知何時掉的）。它排在新 trigger 前面先跑，所以 STG 的
   空名會先變小菜雞、PROD 走 email 前綴（跟 205 之後的 `handle_new_user` 同慣例）。
-  不衝突，但兩邊不一致；153 比 205 早，建議拿掉 153 那顆統一成 email 前綴 —— 留給老闆決定。
+  不衝突，但兩邊不一致；153 比 205 早。**老闆裁定拿掉 153 那顆統一成 email 前綴** →
+  migration 601：DROP trigger 與函數（PROD／STG 都已執行；兩邊本來就沒有「小菜雞-」的帳號）。
+  現在 `public.users` 上只剩 `trg_users_default_name` 一顆。
 ---
 
 ## v2026.08.22a｜2026-08-22｜動態島／下拉更新收尾：撕包聲音鈕、會員橘底層級、文章與公平性頁的浮動鈕
