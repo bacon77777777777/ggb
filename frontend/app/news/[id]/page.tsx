@@ -635,7 +635,7 @@ export default function NewsDetailPage() {
        （老闆 2026-08-22：「頂部的灰色塊會蓋到返回圖標跟分享圖標」） */
     <div className="min-h-screen bg-white dark:bg-neutral-950 pt-[env(safe-area-inset-top)] md:pt-0 pb-[calc(88px+env(safe-area-inset-bottom))] md:pb-16" data-ptr-strip="none">
       {/* 動態島底下的漸層毛玻璃（老闆 2026-08-22）：白底頁帶白，捲動時內文從島下經過才看得清 status bar */}
-      <TopFadeBlur tint="light" className="md:hidden" />
+      <TopFadeBlur className="md:hidden" />
 
       {/* ── 頂部操作列（絕對定位在圖片上方）── */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-20 flex items-center justify-between pt-[env(safe-area-inset-top)] pointer-events-none">

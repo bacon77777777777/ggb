@@ -32,6 +32,9 @@ import { cn } from '@/lib/utils';
  */
 /** 內容往上捲超過這麼多 px 才出現 */
 const SHOW_AFTER = 8;
+/** iOS 毛玻璃配方：模糊 + 飽和度 1.8 + 微對比（iOS 系統 material 的比例） */
+const GLASS_STRONG = 'blur(20px) saturate(1.8) contrast(1.05)';
+const GLASS_SOFT = 'blur(7px) saturate(1.4)';
 
 export function TopFadeBlur({
   tint = 'none',
@@ -96,11 +99,13 @@ export function TopFadeBlur({
         transition: 'opacity .3s ease-out, visibility .3s',
       }}
     >
+      {/* iOS 那種毛玻璃（老闆 2026-08-22）：不是只有糊，還要 saturate 把底下的顏色提上來、
+          加一點 contrast 讓玻璃有「厚度」。強層在上緣、弱層拖到底，兩層都走遮罩漸層。 */}
       <div
         className="absolute inset-0"
         style={{
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
+          backdropFilter: GLASS_STRONG,
+          WebkitBackdropFilter: GLASS_STRONG,
           maskImage: maskStrong,
           WebkitMaskImage: maskStrong,
         }}
@@ -108,8 +113,8 @@ export function TopFadeBlur({
       <div
         className="absolute inset-0"
         style={{
-          backdropFilter: 'blur(5px)',
-          WebkitBackdropFilter: 'blur(5px)',
+          backdropFilter: GLASS_SOFT,
+          WebkitBackdropFilter: GLASS_SOFT,
           maskImage: maskSoft,
           WebkitMaskImage: maskSoft,
           background: tintBg,
