@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
+import { isSyntheticEmail } from '@/lib/syntheticEmail'
 
 export async function POST() {
   const cookieStore = await cookies()
@@ -39,10 +40,26 @@ export async function POST() {
 
   const { data: inviteCode } = await admin.rpc('generate_invite_code')
 
+  /*
+   * 預設暱稱 —— 跟 DB trigger handle_new_user 同一套規則：metadata 的 name
+   * → 真信箱的前綴 → 'GGB 玩家'。以前這裡寫 `|| null`，email 註冊的人經這條
+   * 路補建檔（清資料後 auth.users 還在、public.users 沒了）就會是空名；
+   * 留言／排行榜／跑馬燈／資料小卡全讀 users.name，空的就變「用戶／神秘玩家」
+   * （老闆 2026-08-22）。會員頁看得到名字只是 AuthContext 裝出來的暫時名。
+   * LINE 合成信箱的前綴是 line_<id> 亂碼，不拿來當名字。
+   * DB 端 migration 600 另有 BEFORE INSERT 保險，這裡仍明確帶值，不靠它。
+   */
+  const metaName = String(user.user_metadata?.name ?? '').trim()
+  const email = user.email ?? ''
+  const name =
+    metaName ||
+    (email && !isSyntheticEmail(email) ? email.split('@')[0] : '') ||
+    'GGB 玩家'
+
   const { error } = await admin.from('users').insert({
     id: user.id,
     email: user.email,
-    name: user.user_metadata?.name || null,
+    name,
     invite_code: inviteCode,
   })
 

@@ -4,6 +4,33 @@
 
 ---
 
+## v2026.08.22b｜2026-08-22｜暱稱消失：users.name 空值的來源與補救（migration 600）
+
+老闆回報：文章內頁留言、排行榜、首頁跑馬燈、玩家資料小卡都沒顯示個人暱稱。
+
+**病根**
+- 四個地方全讀 `users.name`（留言 API、`get_leaderboard_*`、`get_winning_records`、
+  `PlayerProfileCard`），空的就退成「用戶／神秘玩家／神秘客」。
+- 會員頁看得到 `bacon731` 只是 `AuthContext` 的 `tempNameFrom()` 用 email 前綴裝出來的
+  暫時名，DB 裡其實是 null —— PROD 14 個真人只有老闆這一列中招。
+- 為什麼空：正常註冊走 `auth.users` 的 trigger `handle_new_user`（metadata name → email
+  前綴）。但老闆的 `auth.users` 是 7/3 建的、`public.users` 那列是 **8/5** 建的：清資料後
+  auth 還在、profile 沒了，由前台 `ensure-profile` API 補建，它寫的是
+  `name: user.user_metadata?.name || null`，email 註冊沒有 metadata name → null。
+
+**修法**
+- `frontend/app/api/user/ensure-profile/route.ts`：預設名改跟 trigger 同一套規則
+  （metadata name → 真信箱前綴 → `GGB 玩家`；LINE 合成信箱的前綴是亂碼，不用）。
+- migration 600：`default_user_name(email, meta_name)` 函數 + `public.users` 的
+  BEFORE INSERT trigger `trg_users_default_name`（任何路徑塞空名都自動補，撞名加四位數
+  後綴）+ 回填現有空名。**PROD／STG 都已執行**：PROD 回填 1 列（老闆），STG 0 列。
+  回填當下正式站留言 API 已經顯示 `bacon731`，四個地方都是讀 DB 即時算，不用推版。
+- 備註：migration 153 的 `trg_set_default_user_name_small_chicken`（空名填「小菜雞-xxxx」）
+  **STG 還在、PROD 已不存在**（不知何時掉的）。它排在新 trigger 前面先跑，所以 STG 的
+  空名會先變小菜雞、PROD 走 email 前綴（跟 205 之後的 `handle_new_user` 同慣例）。
+  不衝突，但兩邊不一致；153 比 205 早，建議拿掉 153 那顆統一成 email 前綴 —— 留給老闆決定。
+---
+
 ## v2026.08.22a｜2026-08-22｜動態島／下拉更新收尾：撕包聲音鈕、會員橘底層級、文章與公平性頁的浮動鈕
 
 老闆 2026-08-22 四張截圖，四個獨立的坑：
