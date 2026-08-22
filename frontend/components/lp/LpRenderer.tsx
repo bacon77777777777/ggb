@@ -189,6 +189,10 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light'; hero?
 
   return `
     .lpv{background:${vars.bg};color:${textColor};min-height:100svh;overflow-x:hidden;
+      /* 關掉這個內層捲動區自己的橡皮筋：原生殼的下拉更新會對 .lpv 下 transform，
+         iOS 的過捲再疊上去就是兩段位移，放手時 hero 停不回頂邊（老闆 2026-08-22）。
+         PwaPullToRefresh 在 touchstart 也會關，這裡是保險。 */
+      overscroll-behavior-y:none;
       font-family:'Noto Sans JP',system-ui,sans-serif;}
     .lpv-topbar{position:fixed;top:0;left:0;right:0;z-index:60;display:flex;align-items:center;
       justify-content:space-between;padding:env(safe-area-inset-top) 0 0;pointer-events:none;}

@@ -796,7 +796,9 @@ export default function GGBPackRip({
       {/* 標題與關閉鈕移除（老闆指定）：全畫面演出不需要品名，關閉走演出自己的收尾流程。
           靜音改用站上共用的 SoundToggle，跟盒玩商品頁同一顆 */}
       <div data-ui>
-        <SoundToggle className="absolute top-3 right-3 z-[60]" />
+        {/* safeTop：這層 stage 是 fixed inset-0 的滿版演出，y=0 是螢幕實體頂邊，
+            不疊安全區鈕會塞進動態島（老闆 2026-08-22 截圖） */}
+        <SoundToggle className="absolute top-3 right-3 z-[60]" safeTop />
       </div>
 
       {/* ---------- 卡包（弧形掀封條） ---------- */}

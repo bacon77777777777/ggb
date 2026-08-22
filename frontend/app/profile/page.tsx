@@ -6409,8 +6409,11 @@ function ProfileContent() {
             {/* 橘色動態背景：**fixed**，不跟著捲動、也不被下拉更新拖走
                 （老闆 2026-08-21：「往下捲動時橘色動態背景不要跟著被捲動，跟排行榜一樣」）。
                 排行榜的流體背景就是 fixed 當純背景、內容在上面捲，這裡照做，只鋪頭圖
-                那一段高度：安全區 + 頭圖（375:195 → 52vw）。底下的卡片本來就是不透明
-                白底，蓋得住，不需要鋪滿整個視窗。
+                那一段高度：安全區 + 頭圖（375:195 → 52vw）**再多 160px**。
+                多的那段是給下拉更新用的：內容被拖時最多往下走 78px 再加一個安全區的
+                抬升（約 137px），橘底只鋪到頭圖下緣的話，拖到底頭圖下半截就坐在灰底上
+                （老闆 2026-08-22：「下拉會看到橘色背景只有局部」）。
+                沒在拖的時候那 160px 被底下不透明的灰色選單區蓋住，看不到。
                 ⚠️ fixed 要成立，祖先就不能有 transform —— 所以底下那層內容掛
                 `data-ptr-content`，讓下拉更新只拖內容、不拖整個 <main>
                 （有 transform 的祖先會讓 position:fixed 退化成相對定位）。*/}
@@ -6420,7 +6423,7 @@ function ProfileContent() {
                  `position:absolute; inset:0`，用 tailwind 的 .fixed 蓋它要賭
                  樣式表順序，行內樣式才一定贏 */
               style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'auto',
-                       height: 'calc(env(safe-area-inset-top) + 52vw)' }}
+                       height: 'calc(env(safe-area-inset-top) + 52vw + 160px)' }}
               aria-hidden
             >
               <span className="bubble bubble-dark" />
@@ -6431,7 +6434,6 @@ function ProfileContent() {
                 詳細頁開著時整塊是 hidden，量不到尺寸，這時不要掛標記 —— 讓下拉
                 更新退回預設的拖 <main>。*/}
             <div
-              className="space-y-2.5"
               {...(isMobileDetailOpen ? {} : { 'data-ptr-content': '', 'data-ptr-strip': 'none' })}
             >
             {/* Mobile Header - RankingTop Style
@@ -6633,6 +6635,13 @@ function ProfileContent() {
             </div>
             </div>
 
+            {/* 頭圖以下整段是**不透明的灰底、而且疊在橘底之上**（relative z-[1]）。
+                橘底是 fixed 的 positioned 元素（z-0），會畫在任何「沒定位」的兄弟節點
+                上面 —— 之前選單卡片沒定位，往下捲時頭圖（z-[1]）捲到頂、底下的
+                「我的倉庫／配送管理」整排被橘底蓋掉，看起來像餘額卡跟選單分家、
+                灰背景沒跟著上來（老闆 2026-08-22 截圖）。
+                間距（space-y-2.5 + pt-2.5）搬到這層，跟原本的版面一樣。*/}
+            <div className="relative z-[1] bg-neutral-50 dark:bg-neutral-950 pt-2.5 space-y-2.5">
             {/*
               這裡原本有「購買清單」區塊（待付款/待出貨/待收貨/評價 → /purchases）。
               2026-08-14 老闆指定隱藏：商城訂單的唯一入口是商城的「我的訂單」
@@ -6788,6 +6797,7 @@ function ProfileContent() {
               <p className="text-[10px] font-black text-neutral-300 uppercase tracking-widest">
                 © 2025 吉吉比. All Rights Reserved
               </p>
+            </div>
             </div>
             </div>
           </div>

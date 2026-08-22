@@ -613,7 +613,10 @@ export default function NewsDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-neutral-950 pt-[env(safe-area-inset-top)] md:pt-0 pb-[calc(88px+env(safe-area-inset-bottom))] md:pb-16">
+    /* data-ptr-strip="none"：下拉的空隙不鋪灰底 —— 跟邀請頁同款。底色帶是浮在 <main>
+       之上的，而返回／分享鈕是 <main> 裡面的 fixed 透明列，鋪了灰底整條會壓在鈕上
+       （老闆 2026-08-22：「頂部的灰色塊會蓋到返回圖標跟分享圖標」） */
+    <div className="min-h-screen bg-white dark:bg-neutral-950 pt-[env(safe-area-inset-top)] md:pt-0 pb-[calc(88px+env(safe-area-inset-bottom))] md:pb-16" data-ptr-strip="none">
 
       {/* ── 頂部操作列（絕對定位在圖片上方）── */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-20 flex items-center justify-between pt-[env(safe-area-inset-top)] pointer-events-none">

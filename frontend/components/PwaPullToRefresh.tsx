@@ -202,6 +202,50 @@ function pinnedBars(top: number): HTMLElement[] {
 }
 
 /**
+ * 內層捲動容器（活動頁的 `.lpv`）**自己帶的** fixed 頂列 —— 返回／分享那種
+ * 浮動鈕。有這種東西的容器**不能整個被拖**：容器一被下 transform 就成了它們的
+ * containing block，它們會跟著容器一起被拖下去（老闆 2026-08-22：公平性頁
+ * 「參照邀請頁面，同樣的返回圖標跟分享圖標的做法」—— 鈕要留在原地）。
+ *
+ * ⚠️ 也不能用反向位移把它們定回去：容器是 overflow-y:auto，反向位移會把鈕推到
+ * 容器（已經下移）的框外，直接被裁掉 —— 拉到 62px 時鈕整顆消失（2026-08-22
+ * Playwright 實測，跟排行榜畫布那個坑同一回事）。正確做法是容器不動、
+ * **拖它裡面的流內子節點**（見 `flowChildren()`），fixed 的鈕自然留在原地，
+ * 空隙露出來的就是容器自己的底色。
+ *
+ * 只看**直接子節點、而且是 fixed** 的：
+ *   - 不抓 sticky —— 會員中心覆蓋層的清單裡每一列的 sticky 標頭是內容的一部分，
+ *     該跟著捲動區走，定住它們反而錯（這正是 resolveStart 那段註解講的坑）
+ *   - 不往深處找 —— 長頁面逐一 getComputedStyle 太貴，而頁面級的浮動頂列
+ *     在版面上一定是容器的直接子節點
+ */
+function pinnedChrome(root: HTMLElement, top: number): HTMLElement[] {
+  const found: HTMLElement[] = [];
+  Array.from(root.children).forEach((child) => {
+    const el = child as HTMLElement;
+    if (window.getComputedStyle(el).position !== 'fixed') return;
+    const r = el.getBoundingClientRect();
+    if (r.height <= 0 || r.height > window.innerHeight * 0.4) return;
+    if (r.top <= top + 2) found.push(el);
+  });
+  return found;
+}
+
+/**
+ * 內層捲動容器的**流內**直接子節點 —— 容器帶著 fixed 頂列時改拖這些
+ * （見 `pinnedChrome()`）。fixed／absolute 的子節點不算（頂列、底部 CTA、
+ * 裝飾層），`<style>` 這種不佔位的也跳過。
+ */
+function flowChildren(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.children).filter((child) => {
+    const el = child as HTMLElement;
+    const pos = window.getComputedStyle(el).position;
+    if (pos === 'fixed' || pos === 'absolute') return false;
+    return el.getBoundingClientRect().height > 0;
+  }) as HTMLElement[];
+}
+
+/**
  * 空隙的底色：看「被拖的區塊坐在什麼底上」——往它的祖先找第一個不透明背景。
  *
  * 底夠白（一般頁面）→ 鋪淡灰 `#e8e8e8`（#f5f5f5 在白 tab 旁看起來就是另一塊白）；
@@ -328,8 +372,19 @@ export default function PwaPullToRefresh() {
   const armed = useRef(false);      // 已滿格
   const lastTick = useRef(0);       // 上一次細微滴答時的進度（持續微震用）
   const refreshing = useRef(false);
-  /** 手勢起點的元素：engage 時用它找內層捲動容器 */
-  const startTarget = useRef<EventTarget | null>(null);
+  /** 手勢起點的裁決（touchstart 就量好）：engage 時直接用，不必再走一次祖先鏈 */
+  const startVerdict = useRef<StartVerdict | null>(null);
+  /**
+   * 內層捲動容器被暫時關掉的原生橡皮筋，結束要還原。
+   *
+   * html／body 的 overscroll 在 effect 開頭就關了，但內層捲動區（活動頁 `.lpv`
+   * 是 fixed inset-0 + overflow-y auto）有**自己的**橡皮筋：在它頂端往下拉，
+   * iOS 會把它的內容往下彈、我們又對同一個元素下 transform，兩段位移疊在一起，
+   * 放手時一個彈回去、一個回彈，hero 就停不回原本的頂邊
+   * （老闆 2026-08-22：「公平性驗證頁下拉刷新，hero 區回彈不會到原本頂部」）。
+   * 在 touchstart 就關，捲動手勢還沒開始，來得及生效。
+   */
+  const innerOverscroll = useRef<{ el: HTMLElement; prev: string } | null>(null);
   /** 這一趟要「定住」的 sticky 列，連同原本的 inline 樣式（結束要還原）。
       opaque：不透明的欄（tab 列）在被抵銷後，文件流裡空出來的位置會露出頁面
       底色 —— 用一條「往下的實心 box-shadow」把那個洞蓋成空隙的底色。
@@ -455,6 +510,10 @@ export default function PwaPullToRefresh() {
       engaged.current = false;
       armed.current = false;
       lastTick.current = 0;
+      if (innerOverscroll.current) {
+        innerOverscroll.current.el.style.overscrollBehaviorY = innerOverscroll.current.prev;
+        innerOverscroll.current = null;
+      }
       setShift(0, animate);
       if (dotRef.current) {
         dotRef.current.classList.remove('ptr-toss');
@@ -480,7 +539,13 @@ export default function PwaPullToRefresh() {
       if (!isAtTop() || startedInScrollable(e.target)) return;
       startY.current = e.touches[0].clientY;
       startX.current = e.touches[0].clientX;
-      startTarget.current = e.target;
+      const verdict = resolveStart(e.target);
+      startVerdict.current = verdict;
+      if (verdict.kind === 'inner') {
+        // 關掉內層捲動區自己的橡皮筋（見 innerOverscroll 的說明）；reset 時還原
+        innerOverscroll.current = { el: verdict.el, prev: verdict.el.style.overscrollBehaviorY };
+        verdict.el.style.overscrollBehaviorY = 'none';
+      }
       tracking.current = true;
       engaged.current = false;
       armed.current = false;
@@ -503,7 +568,7 @@ export default function PwaPullToRefresh() {
         if (raw < DEAD_ZONE) return;
         // 橫向分量比較大就是在滑輪播／切頁籤，整趟放掉
         if (dx > raw) {
-          tracking.current = false;
+          reset(false); // 順便還原內層容器的 overscroll
           return;
         }
         engaged.current = true;
@@ -518,17 +583,22 @@ export default function PwaPullToRefresh() {
          * <main>，把已貼頂的 sticky 列反向抵銷。
          */
         const main = document.querySelector('main') as HTMLElement | null;
-        const verdict = resolveStart(startTarget.current);
+        const verdict = startVerdict.current ?? { kind: 'main' as const };
         if (verdict.kind === 'blocked') {
           // 起點在固定區塊（頁頭、tab、導航）：整趟不觸發
-          tracking.current = false;
+          reset(false);
           return;
         }
         let marked: HTMLElement[] = [];
+        /** 內層捲動容器自己帶 fixed 頂列（活動頁）：容器不動、拖子節點、底色帶不浮 */
+        let innerChrome = false;
         if (verdict.kind === 'marked') {
           marked = main ? Array.from(main.querySelectorAll<HTMLElement>('[data-ptr-content]')) : [];
         } else if (verdict.kind === 'inner') {
-          marked = [verdict.el];
+          innerChrome = pinnedChrome(verdict.el, contentTop()).length > 0;
+          const children = innerChrome ? flowChildren(verdict.el) : [];
+          marked = children.length ? children : [verdict.el];
+          if (!children.length) innerChrome = false;
         }
 
         /*
@@ -554,6 +624,8 @@ export default function PwaPullToRefresh() {
           // 畫布最上緣，tab 都是絕對定位不佔流）可另下 data-ptr-gap 指定
           // 「空隙從這個元素的上緣開」。
           dragEls.current = marked.map((el) => ({ el, scale: scaleOf(el) }));
+          // 標記區塊／內層容器外面的東西本來就不會動，不用定住。
+          // 內層容器自己的 fixed 頂列：容器沒被拖（拖的是子節點），鈕自然留在原地。
           pinned.current = [];
           const gapEl = main?.querySelector<HTMLElement>('[data-ptr-gap]') ?? null;
           baseTop.current = Math.max(
@@ -651,7 +723,11 @@ export default function PwaPullToRefresh() {
         const bgFrom = dragEls.current[0]?.el ?? null;
         stripBg.current = declaredStrip
           ? (declaredStrip === 'none' ? 'transparent' : declaredStrip)
-          : stripColor(verdict.kind === 'inner' && bgFrom ? bgFrom.firstElementChild as HTMLElement ?? bgFrom : bgFrom);
+          : stripColor(
+              verdict.kind === 'inner'
+                ? (verdict.el.firstElementChild as HTMLElement | null) ?? verdict.el
+                : bgFrom,
+            );
         if (stripRef.current) {
           /*
            * 底色帶跟著球一起浮 —— 沉在 z-0 的話會被商品頁那片「從 y=0 開始畫」
@@ -660,9 +736,17 @@ export default function PwaPullToRefresh() {
            * [navBottom, gapTop+位移]，涵蓋了那條被定住的 tab，浮起來會把它蓋掉。
            * 那種情況維持沉在下面，tab 自然畫在它前面（原本就是這樣設計的）。
            */
-          // 與球同層：wrap 排在這條之後，同層時後者畫在上面，球自然壓在底色帶上。
-          // 減 1 會掉到跟 `.lpv`（z-50）同層而排在它前面，被整片蓋掉。
-          stripRef.current.style.zIndex = opaqueBar ? '0' : String(floatZ);
+          /*
+           * 與球同層：wrap 排在這條之後，同層時後者畫在上面，球自然壓在底色帶上。
+           *
+           * 例外：內層捲動容器自己帶 fixed 頂列（活動頁 `.lpv`，見 pinnedChrome）。
+           * 那時拖的是容器裡的子節點、容器本身沒動，空隙露出來的就是容器自己的
+           * 底色（深色活動頁就是它的 bg_color），根本不需要底色帶；而且浮上去
+           * 一定壓在留在原地的返回／分享鈕上（`.lpv` 是 z-50 的堆疊層，鈕在
+           * 它裡面，外面再高的 z 都比不到它底下）—— 老闆 2026-08-22 公平性頁。
+           * 所以沉到 0，藏在 <main> 後面。
+           */
+          stripRef.current.style.zIndex = opaqueBar || innerChrome ? '0' : String(floatZ);
           stripRef.current.style.top = `${stripTop.current}px`;
           stripRef.current.style.background = stripBg.current;
         }
