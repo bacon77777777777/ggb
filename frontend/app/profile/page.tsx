@@ -7,6 +7,7 @@ import { Box, Truck, Trophy, Settings, LogOut, ChevronRight, ChevronLeft, CheckC
 import { Modal } from '@/components/ui/Modal';
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
 import PageHeader from '@/components/ui/PageHeader';
+import { TopFadeBlur } from '@/components/ui/TopFadeBlur';
 
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -6406,6 +6407,9 @@ function ProfileContent() {
           
           {/* 1. Mobile Menu View (Only shown on mobile when no tab is active) */}
           <div className={cn("md:hidden col-span-1", isMobileDetailOpen && "hidden")}>
+            {/* 動態島底下的漸層毛玻璃（老闆 2026-08-22）：橘底本來就有色，只模糊不帶色。
+                掛在 data-ptr-content 外面，下拉更新不會拖到它 */}
+            <TopFadeBlur />
             {/* 橘色動態背景：**fixed**，不跟著捲動、也不被下拉更新拖走
                 （老闆 2026-08-21：「往下捲動時橘色動態背景不要跟著被捲動，跟排行榜一樣」）。
                 排行榜的流體背景就是 fixed 當純背景、內容在上面捲，這裡照做，只鋪頭圖

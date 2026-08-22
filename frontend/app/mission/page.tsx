@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/Toast';
 import { MissionSkeleton } from '@/components/Skeletons';
 import { useRouter } from 'next/navigation';
 import { useSwipeTabs } from '@/lib/useSwipeTabs';
+import { TopFadeBlur } from '@/components/ui/TopFadeBlur';
 
 export default function MissionPage() {
   const { user, refreshProfile, isLoading: authLoading } = useAuth();
@@ -223,6 +224,8 @@ export default function MissionPage() {
        這個「會被拖走」的元素身上的，空隙得自己補一條同色的才看不出破綻 */
     <div className="overflow-x-hidden flex justify-center" data-ptr-strip="#ff2d14"
       style={{ minHeight: '100dvh', background: '#ff2d14', paddingTop: 'env(safe-area-inset-top)' }} {...swipeTabs}>
+      {/* 動態島底下的漸層毛玻璃（老闆 2026-08-22）：底是純橘紅，只模糊不帶色 */}
+      <TopFadeBlur />
       <div
         className="overflow-hidden"
         style={{

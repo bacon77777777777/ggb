@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import QRCode from 'qrcode';
 import { ChevronLeft, Copy, Loader2, Share2 } from 'lucide-react';
+import { TopFadeBlur } from '@/components/ui/TopFadeBlur';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { buildInviteMessage } from '@/lib/inviteMessage';
@@ -264,6 +265,8 @@ export default function InvitePage() {
     /* data-ptr-strip="none"：下拉的空隙不鋪灰底，轉蛋球直接浮在 hero 圖上
        （老闆 2026-08-21：「轉蛋圖標直接移到最上面來蓋在 hero 圖上」）*/
     <div className="min-h-screen bg-white pb-[calc(96px+env(safe-area-inset-bottom))]" data-ptr-strip="none">
+      {/* 動態島底下的漸層毛玻璃（老闆 2026-08-22）：hero 是亮金色插圖、本來就有底色，只模糊不帶色 */}
+      <TopFadeBlur className="md:hidden" />
       {/* 頂部操作列 —— 文章內頁同款：浮動圓鈕蓋在 hero 上（老闆指定），
           返回＋分享（分享＝複製邀請訊息） */}
       <div className="fixed left-0 right-0 top-0 z-20 flex items-center justify-between pt-[env(safe-area-inset-top)] pointer-events-none">

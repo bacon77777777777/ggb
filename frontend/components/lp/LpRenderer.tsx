@@ -7,6 +7,7 @@ import { ChevronLeft, Share2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ProductCard from '@/components/ProductCard'
 import { scheduleState } from '@/lib/schedule'
+import { TopFadeBlur } from '@/components/ui/TopFadeBlur'
 
 const LP_LOADING_CHARS = [
   '/loading/1.webp', '/loading/2.webp', '/loading/3.webp', '/loading/4.webp',
@@ -1047,6 +1048,9 @@ export default function LpRenderer({ slug }: { slug: string }) {
   return (
     <div ref={containerRef} className="lpv" style={{ position: 'fixed', inset: 0, zIndex: 50, overflowY: 'auto', background: event.bg_color, paddingBottom: stickySection ? 90 : 0 }}>
       <style>{css({ bg: event.bg_color, accent: event.accent_color, theme: event.theme_mode, hero: event.hero_mode })}</style>
+      {/* 動態島底下的漸層毛玻璃（老闆 2026-08-22）：深色活動頁帶黑、淺色帶白。
+          是 .lpv 的 fixed 子節點：下拉更新拖的是流內子節點，它不會被拖走 */}
+      <TopFadeBlur tint={event.theme_mode === 'light' ? 'light' : 'dark'} />
       <div className="lpv-topbar">
         <button onClick={() => router.back()} className="lpv-topbtn" aria-label="返回">
           <ChevronLeft size={20} strokeWidth={2.5} />
