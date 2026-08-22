@@ -366,7 +366,7 @@ RLS 關掉、Redis 掛掉時 GB哥會自動 LINE 推播（health-check cron）�
 - **機台（老虎機）全清**：`slot_machines`、`slot_themes`、`slot_theme_prizes`、`slot_prizes`、`slot_pool_items`、`slot_sessions`、`slot_spin_logs`（`slot_danmaku_bots` 是機器人彈幕，**保留**）
 - **活動頁**：`DELETE FROM events WHERE slug <> 'fairness'`（`event_sections` 隨 FK CASCADE 一起刪）—— **抽獎公平性頁 `slug='fairness'` 保留**
 - 所有真實用戶的交易記錄：`draw_records`、`recharge_records`、`orders`、`order_items`、`token_adjustments`
-- 用戶行為：`user_event_logs`、`user_events`、`visit_logs`、`search_logs`、`notifications` 等
+- 用戶行為：`user_event_logs`、`user_events`、`visit_logs`、`search_logs`、`notifications` 等、`feed_events`（首頁推薦 feed 的曝光／點擊，migration 603）
 - 用戶進度：`user_badges`、`user_coupons`、`user_titles`、`referrals`、`daily_check_ins` 等
 - 市場：`sell_*`、`exchange_*`、`marketplace_*`
 - `webhook_events`（ECPay 冪等記錄）、`leaderboard_bot_daily_stats`（機器人排行榜分數，重上線後自動補回）

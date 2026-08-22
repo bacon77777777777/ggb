@@ -226,6 +226,40 @@ Oswald 了）。改名成 `amount-plain`，globals.css 已留註解。
 
 **⑥ 後台**：抽獎模組設定 → 卡包模式 → 撕開封口，新增「快速模式飛牌速度」（預設 28ms）。
 
+## v2026.08.22i｜2026-08-22｜首頁「綜合 → 推薦」改成 IG 式 feed（分桶抽籤＋Thompson 學習＋曝光埋點＋A/B）
+
+老闆：刷新首頁前幾個商品不要都一樣，要像 IG／短影音推薦 —— 每次刷都推不同的、所有商品都有機會、
+照個人習慣或話題。階段一（前端 feed）與階段二（學習）一起做。
+
+**階段一：feed 組裝 `lib/feed/assemble.ts`（純函數）**
+- 不是排序公式，是「分桶配額＋加權抽籤」：每 6 格一個畫面，每格從不同的桶抽（抽到不放回）——
+  登入 forYou×2／topic／hot／fresh／explore；訪客 hot／explore／topic／hot／fresh／explore。
+  桶空了讓給 hot → explore。**explore 桶是純隨機，所有商品都可能被推到。**
+- 權重 = 桶內基礎分 × Thompson 係數 × 看過懲罰。看過記憶 `lib/feed/memory.ts`：最近 3 輪首屏
+  ×0.15／×0.5／×0.8，30 分鐘沒動作清掉。硬規則：首屏最多 2 件跟上一輪重複；首 12 件同系列不連 3、同類型不連 4。
+- 每次掛載一顆亂數種子（導航、下拉刷新、回首頁都是新一輪）；同一次掛載內訊號陸續到齊重算用同一顆，不會在眼前重洗。
+- 訊號：個人系列偏好（原有 RPC）／全站系列熱門／商品熱度／**關注**（product_follows）／話題／新上架 7 天／剩餘 <20%。
+- 售完／結束沉底、價格排序、系列頁籤維持原樣；只動推薦頁籤。
+
+**階段二：學習與驗證**
+- migration 603：`feed_events`（曝光／點擊，帶桶別、位置、變體、session；RLS 開、無 policy，只有
+  `/api/feed/events` 以 service role 寫）、`get_feed_weights(days)`（排除機器人）、`get_feed_topics(days)`
+  （商品標籤近期瀏覽／抽數 + 站內搜尋熱詞）、`feed_ab_report(days)`、`platform_settings.feed_ab_ratio`、
+  PROD pg_cron 每日清 90 天前（STG 沒 pg_cron）。兩環境已執行。
+- **Thompson sampling**：`/api/public/feed-weights`（CDN 5 分鐘）回每個商品近 14 天曝光／點擊與全站平均
+  點擊率；前端對每個商品從 Beta 後驗抽一個點擊率除以平均當權重係數（先驗＝全站平均、假樣本 20）——
+  點擊率高的自動多推、沒資料的靠變異數自然探索、表現差的自動退場。權重是學出來的，不是人定的。
+- **曝光埋點**：ProductCard 進入視口 ≥50% 記一筆（同 session 同卡一次），2 秒批次送、離頁 sendBeacon；
+  點擊立刻送。只有首頁推薦頁籤帶 `feedBucket` 才記。
+- **A/B**：`feed_ab_ratio`（分到舊排序 v1 的百分比，預設 0＝全部新 feed），session 雜湊決定、整個 session 固定；
+  報表 `SELECT * FROM feed_ab_report(7)`（變體 → session／曝光／點擊／CTR／點擊後 30 分鐘內有抽獎的 session）。
+- **話題** `/api/public/topics`（CDN 10 分鐘）：目前 tag_daily_stats 與 search_logs 還沒資料，topic 桶會讓給 hot；
+  資料進來就自動生效。
+- 沒做的：feed 改由 API 組（個人訊號要搬到伺服器，現階段沒必要；前端組＋伺服器給權重已達到同樣效果）。
+
+驗證：純函數 27 輪連刷首屏重複 ≤1、40 件全出現；瀏覽器三次載入首屏不同、曝光／點擊事件有落 STG 的 feed_events、零錯誤。
+---
+
 ## v2026.08.22h｜2026-08-22｜首頁推薦頁籤刷新洗牌沒動：沒有系列偏好分數時整段被跳過
 
 老闆：「首頁下拉刷新，綜合推薦的商品排序都一樣」。

@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import ProductBadge, { ProductType } from './ui/ProductBadge';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getItemImageForId, DEFAULT_ITEM_IMAGE as DEFAULT_IMAGE } from '@/lib/productImage';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { categoryState } from '@/lib/categoryFlags';
@@ -13,6 +13,8 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { prefetch } from '@/lib/swr';
 import { productKey, fetchProductDetail } from '@/lib/queries/product';
+import { recordImpression, recordClick } from '@/lib/feed/events';
+import type { FeedBucket } from '@/lib/feed/assemble';
 
 interface ProductCardProps {
   id: string | number;
@@ -30,6 +32,9 @@ interface ProductCardProps {
   status?: 'active' | 'pending' | 'ended' | string;
   onNavigate?: () => void;
   hrefOverride?: string;
+  /** 推薦 feed 的桶別／位置（首頁推薦頁籤才有）：有帶就記曝光與點擊（lib/feed/events） */
+  feedBucket?: FeedBucket;
+  feedPosition?: number;
   unitLabel?: string;
   /** 抽卡卡包模式：一包幾張。>=2 時價格單位與庫存都以「包」呈現 */
   cardsPerPack?: number;
@@ -55,6 +60,8 @@ export default function ProductCard(props: ProductCardProps) {
     status,
     onNavigate,
     hrefOverride,
+    feedBucket,
+    feedPosition,
     unitLabel,
     cardsPerPack,
     showRemainingText = true,
@@ -78,6 +85,28 @@ export default function ProductCard(props: ProductCardProps) {
    */
   const queryClient = useQueryClient();
   const router = useRouter();
+
+  /*
+   * 曝光埋點（階段二學習資料）：卡片有 ≥50% 進入視口就記一筆，同 session 同卡只記一次
+   *（lib/feed/events 會去重）。只有首頁推薦頁籤帶 feedBucket，其他列表不記。
+   */
+  const cardRef = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    if (feedBucket === undefined || !cardRef.current || typeof IntersectionObserver === 'undefined') return;
+    const el = cardRef.current;
+    const numericId = Number(id);
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting && e.intersectionRatio >= 0.5) {
+          recordImpression(numericId, feedBucket, feedPosition);
+          io.disconnect();
+        }
+      }
+    }, { threshold: 0.5 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [id, feedBucket, feedPosition]);
+
   const warm = () => {
     const numericId = Number(id);
     if (Number.isFinite(numericId)) {
@@ -114,11 +143,13 @@ export default function ProductCard(props: ProductCardProps) {
 
   return (
     <Link
+      ref={cardRef}
       href={href}
       onTouchStart={warm}
       onMouseEnter={warm}
       className="group block h-full"
       onClick={() => {
+        if (feedBucket !== undefined) recordClick(Number(id), feedBucket, feedPosition);
         onNavigate?.()
       }}
     >

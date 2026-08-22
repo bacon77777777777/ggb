@@ -29,6 +29,10 @@ import { asset } from '@/lib/asset';
 import { useQueryClient } from '@tanstack/react-query';
 import { swrLoad } from '@/lib/swr';
 import { HOME_KEY, fetchHomeCatalog } from '@/lib/queries/home';
+import { assembleFeed, seededRng, type FeedBucket, type FeedSignals } from '@/lib/feed/assemble';
+import { loadSeenRounds, saveRound } from '@/lib/feed/memory';
+import { resolveVariant } from '@/lib/feed/variant';
+import { fetchJson } from '@/lib/swr';
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 type BannerRow = Database['public']['Tables']['banners']['Row'];
@@ -98,6 +102,41 @@ export default function Home() {
   // Map<product_id, score> — 商品層熱度（近期真人抽數，含時間衰減）。
   // 系列分只知道「哪個 IP 紅」，這張表才知道「同一個 IP 裡哪一檔紅」
   const [productHeat, setProductHeat] = useState<Map<number, number>>(new Map());
+  /*
+   * 推薦 feed（老闆 2026-08-22：要像 IG／短影音）—— 組裝邏輯在 lib/feed/assemble.ts。
+   * feedAux：話題（/api/public/topics）、近 14 天曝光／點擊（/api/public/feed-weights，Thompson 用）、A/B 比例。
+   * feedRng：每次掛載一顆種子 —— 導航進來、下拉刷新、從別頁回來都是新的一輪；同一次掛載內
+   *           偏好／熱度陸續到齊時重算，拿同一顆種子才不會在玩家眼前重洗。
+   * feedMeta：商品 id → 桶別／位置，給 ProductCard 記曝光／點擊用。
+   */
+  const [feedAux, setFeedAux] = useState<{ topics: { keyword: string; weight: number }[]; ctr: FeedSignals['ctr']; abRatio: number }>({
+    topics: [], ctr: { mean: 0.03, items: new Map() }, abRatio: 0,
+  });
+  const [follows, setFollows] = useState<Set<number>>(new Set());
+  const [feedVariant, setFeedVariant] = useState<'v1' | 'v2'>('v2');
+  const feedSeed = useRef<number>(Math.floor(Math.random() * 0xffffffff));
+  const feedMeta = useRef<Map<string, { bucket: FeedBucket; position: number }>>(new Map());
+  useEffect(() => {
+    let alive = true;
+    Promise.all([
+      queryClient.fetchQuery({ queryKey: ['feed', 'topics'], queryFn: () => fetchJson<{ keyword: string; weight: number }[]>('/api/public/topics'), staleTime: 10 * 60 * 1000 }).catch(() => []),
+      queryClient.fetchQuery({ queryKey: ['feed', 'weights'], queryFn: () => fetchJson<{ mean: number; items: Record<string, { impressions: number; clicks: number }>; abRatio: number }>('/api/public/feed-weights'), staleTime: 5 * 60 * 1000 }).catch(() => null),
+    ]).then(([topics, w]) => {
+      if (!alive) return;
+      const items = new Map<number, { impressions: number; clicks: number }>();
+      if (w) for (const [id, v] of Object.entries(w.items || {})) items.set(Number(id), v);
+      setFeedAux({ topics: Array.isArray(topics) ? topics : [], ctr: { mean: w?.mean ?? 0.03, items }, abRatio: w?.abRatio ?? 0 });
+      setFeedVariant(resolveVariant(w?.abRatio ?? 0));
+    });
+    return () => { alive = false; };
+  }, [queryClient]);
+  useEffect(() => {
+    if (!user?.id) { setFollows(new Set()); return; }
+    let alive = true;
+    supabase.from('product_follows').select('product_id').eq('user_id', user.id).limit(500)
+      .then(({ data }) => { if (alive) setFollows(new Set((data ?? []).map(r => Number(r.product_id)))); });
+    return () => { alive = false; };
+  }, [user?.id, supabase]);
   /*
    * 有幾個分類頁籤存在。
    *
@@ -675,6 +714,23 @@ export default function Home() {
         result.sort((a, b) => a.price - b.price);
       } else if (sortMode === 'price-desc') {
         result.sort((a, b) => b.price - a.price);
+      } else if (activeSecondaryTab === 'featured' && feedVariant === 'v2') {
+        /*
+         * 新 feed（老闆 2026-08-22）：分桶配額＋加權抽籤＋Thompson 學習權重＋看過懲罰，
+         * 每次掛載一輪、首屏保證換新面孔，所有商品都有機會（explore 桶）。詳見 lib/feed/assemble.ts。
+         */
+        const signals: FeedSignals = {
+          seriesPref: userSeriesPref.size > 0 ? userSeriesPref : globalSeriesPop,
+          heat: productHeat,
+          follows,
+          topics: feedAux.topics,
+          ctr: feedAux.ctr,
+          isGuest: !user,
+        };
+        const items = assembleFeed(result, signals, loadSeenRounds(), seededRng(feedSeed.current));
+        feedMeta.current = new Map(items.map(i => [String(i.product.id), { bucket: i.bucket, position: i.position }]));
+        result = items.map(i => i.product);
+        saveRound(result.slice(0, 6).map(p => String(p.id)));
       } else if (activeSecondaryTab === 'featured') {
         const prefMap = userSeriesPref.size > 0 ? userSeriesPref : globalSeriesPop;
         /*
@@ -763,7 +819,7 @@ export default function Home() {
 
       return result;
     },
-    [filterByPrimaryTab, sortMode, priceMin, priceMax, activeSecondaryTab, userSeriesPref, globalSeriesPop, productHeat]
+    [filterByPrimaryTab, sortMode, priceMin, priceMax, activeSecondaryTab, userSeriesPref, globalSeriesPop, productHeat, feedVariant, feedAux, follows, user]
   );
 
   const filteredProducts = useMemo(
@@ -1499,6 +1555,8 @@ export default function Home() {
                         isHot={product.is_hot}
                         type={product.type}
                         status={product.status}
+                        feedBucket={feedMeta.current.get(String(product.id))?.bucket}
+                        feedPosition={feedMeta.current.get(String(product.id))?.position}
                         onNavigate={() => {
                           persistHomeState();
                           import('@/lib/trackEvent').then(({ trackEvent }) => {
