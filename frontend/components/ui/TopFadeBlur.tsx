@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -20,8 +20,8 @@ import { cn } from '@/lib/utils';
  * 只在安全區 > 0 的環境出現：`min(env×100, env+tail)` —— env 是 0 時整個高度
  * 歸零，桌機與一般瀏覽器分頁完全看不到它（同邀請頁 hero 出血裁切的那招）。
  *
- * **捲動後才出現**（老闆 2026-08-22）：剛進頁面、還沒動作時完全沒有（一開始就糊體感很差），
- * 內容往上捲超過 SHOW_AFTER px 才淡入，捲回頂端淡出。活動頁 `.lpv` 是內層捲動容器，
+ * **強度跟著捲動距離走**（老闆 2026-08-22）：剛進頁面、在頂端時完全沒有（一開始就糊體感很差），
+ * 往上捲 RAMP_PX 內線性變強、往回捲同樣變弱、回頂歸零。活動頁 `.lpv` 是內層捲動容器，
  * 所以監聽的是「最近的可捲動祖先」，找不到才聽 window。
  *
  * 跟下拉更新的關係：它是 fixed、不在被拖的內容裡。
@@ -30,20 +30,18 @@ import { cn } from '@/lib/utils';
  *   - 拖標記區塊／內層子節點的頁（會員、活動頁）：掛在被拖的那批外面，本來就不動
  * 層級 z-10：壓在內容上、壓在各頁的返回／分享鈕（z-20／z-60）底下。
  */
-/** 內容往上捲超過這麼多 px 才出現 */
-const SHOW_AFTER = 8;
-/** iOS 毛玻璃配方：模糊 + 飽和度 1.8 + 微對比（iOS 系統 material 的比例） */
-const GLASS_STRONG = 'blur(20px) saturate(1.8) contrast(1.05)';
-const GLASS_SOFT = 'blur(7px) saturate(1.4)';
-/*
- * 淡入淡出要動的是 backdrop-filter 本身，不是 opacity（老闆 2026-08-22 實機：「都是突然出來、
- * 突然消失」）。WebKit 的 backdrop-filter 是對「背景」算的，祖先的 opacity 過渡它不理會，
- * 淡入期間照樣全強度畫出來。filter 函數列表可以內插，從 blur(0) 過渡到 blur(20px) 才是
- * 真的由淡到濃。關閉狀態的函數列表要跟開啟一樣長（同名同序），不然瀏覽器不內插、直接跳。
+/**
+ * 模糊強度跟著捲動距離走（老闆 2026-08-22 改法）：頂端 0、往上捲 RAMP_PX 到滿，
+ * 往回捲同一條曲線減弱、回到頂端歸零。不是「切換＋淡入淡出」，手指拖多少糊多少，
+ * 沒有時機點可以抓。每個 scroll 事件在 rAF 裡直接寫 backdrop-filter，不走 React state。
  */
-const GLASS_STRONG_OFF = 'blur(0px) saturate(1) contrast(1)';
-const GLASS_SOFT_OFF = 'blur(0px) saturate(1)';
-const GLASS_TRANSITION = 'backdrop-filter .35s ease-out, -webkit-backdrop-filter .35s ease-out, background .35s ease-out';
+const RAMP_PX = 64;
+/** iOS 毛玻璃配方（滿強度）：模糊 + 飽和度 1.8 + 微對比（iOS 系統 material 的比例） */
+const STRONG = { blur: 20, sat: 1.8, con: 1.05 };
+const SOFT = { blur: 7, sat: 1.4, con: 1 };
+const mix = (from: number, to: number, t: number) => from + (to - from) * t;
+const glass = (g: { blur: number; sat: number; con: number }, t: number) =>
+  `blur(${mix(0, g.blur, t).toFixed(2)}px) saturate(${mix(1, g.sat, t).toFixed(3)}) contrast(${mix(1, g.con, t).toFixed(3)})`;
 
 export function TopFadeBlur({
   tint = 'none',
@@ -61,8 +59,8 @@ export function TopFadeBlur({
   const maskStrong = 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,.7) 40%, rgba(0,0,0,0) 72%)';
   const maskSoft = 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,.75) 50%, rgba(0,0,0,0) 100%)';
   const ref = useRef<HTMLDivElement>(null);
-  /** 捲動超過門檻 → 玻璃開；只切 backdrop-filter 的值讓 CSS 過渡去淡，不碰 opacity */
-  const [on, setOn] = useState(false);
+  const strongRef = useRef<HTMLDivElement>(null);
+  const softRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -76,12 +74,23 @@ export function TopFadeBlur({
     const target: HTMLElement | Window = scroller && scroller !== document.body ? scroller : window;
     const read = () => (target === window ? window.scrollY : (target as HTMLElement).scrollTop);
     let raf = 0;
-    const update = () => {
+    const paint = () => {
       raf = 0;
-      setOn(read() > SHOW_AFTER);
+      const t = Math.min(1, Math.max(0, read() / RAMP_PX));
+      const sStrong = glass(STRONG, t);
+      const sSoft = glass(SOFT, t);
+      if (strongRef.current) {
+        strongRef.current.style.backdropFilter = sStrong;
+        strongRef.current.style.setProperty('-webkit-backdrop-filter', sStrong);
+      }
+      if (softRef.current) {
+        softRef.current.style.backdropFilter = sSoft;
+        softRef.current.style.setProperty('-webkit-backdrop-filter', sSoft);
+        softRef.current.style.opacity = String(t); // 淡色層（若有）跟著強度走
+      }
     };
-    const onScroll = () => { if (!raf) raf = window.requestAnimationFrame(update); };
-    update();
+    const onScroll = () => { if (!raf) raf = window.requestAnimationFrame(paint); };
+    paint();
     target.addEventListener('scroll', onScroll, { passive: true });
     return () => {
       target.removeEventListener('scroll', onScroll);
@@ -105,26 +114,16 @@ export function TopFadeBlur({
     >
       {/* iOS 那種毛玻璃（老闆 2026-08-22）：不是只有糊，還要 saturate 把底下的顏色提上來、
           加一點 contrast 讓玻璃有「厚度」。強層在上緣、弱層拖到底，兩層都走遮罩漸層。 */}
+      {/* 兩層的 backdrop-filter 由上面的 effect 依捲動距離即時寫入（初始 0 = 完全沒有） */}
       <div
+        ref={strongRef}
         className="absolute inset-0"
-        style={{
-          backdropFilter: on ? GLASS_STRONG : GLASS_STRONG_OFF,
-          WebkitBackdropFilter: on ? GLASS_STRONG : GLASS_STRONG_OFF,
-          transition: GLASS_TRANSITION,
-          maskImage: maskStrong,
-          WebkitMaskImage: maskStrong,
-        }}
+        style={{ maskImage: maskStrong, WebkitMaskImage: maskStrong }}
       />
       <div
+        ref={softRef}
         className="absolute inset-0"
-        style={{
-          backdropFilter: on ? GLASS_SOFT : GLASS_SOFT_OFF,
-          WebkitBackdropFilter: on ? GLASS_SOFT : GLASS_SOFT_OFF,
-          transition: GLASS_TRANSITION,
-          maskImage: maskSoft,
-          WebkitMaskImage: maskSoft,
-          background: on ? tintBg : undefined,
-        }}
+        style={{ maskImage: maskSoft, WebkitMaskImage: maskSoft, background: tintBg, opacity: 0 }}
       />
     </div>
   );
