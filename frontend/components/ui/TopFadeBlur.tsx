@@ -35,6 +35,15 @@ const SHOW_AFTER = 8;
 /** iOS 毛玻璃配方：模糊 + 飽和度 1.8 + 微對比（iOS 系統 material 的比例） */
 const GLASS_STRONG = 'blur(20px) saturate(1.8) contrast(1.05)';
 const GLASS_SOFT = 'blur(7px) saturate(1.4)';
+/*
+ * 淡入淡出要動的是 backdrop-filter 本身，不是 opacity（老闆 2026-08-22 實機：「都是突然出來、
+ * 突然消失」）。WebKit 的 backdrop-filter 是對「背景」算的，祖先的 opacity 過渡它不理會，
+ * 淡入期間照樣全強度畫出來。filter 函數列表可以內插，從 blur(0) 過渡到 blur(20px) 才是
+ * 真的由淡到濃。關閉狀態的函數列表要跟開啟一樣長（同名同序），不然瀏覽器不內插、直接跳。
+ */
+const GLASS_STRONG_OFF = 'blur(0px) saturate(1) contrast(1)';
+const GLASS_SOFT_OFF = 'blur(0px) saturate(1)';
+const GLASS_TRANSITION = 'backdrop-filter .35s ease-out, -webkit-backdrop-filter .35s ease-out, background .35s ease-out';
 
 export function TopFadeBlur({
   tint = 'none',
@@ -52,6 +61,7 @@ export function TopFadeBlur({
   const maskStrong = 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,.7) 40%, rgba(0,0,0,0) 72%)';
   const maskSoft = 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,.75) 50%, rgba(0,0,0,0) 100%)';
   const ref = useRef<HTMLDivElement>(null);
+  /** 捲動超過門檻 → 玻璃開；只切 backdrop-filter 的值讓 CSS 過渡去淡，不碰 opacity */
   const [on, setOn] = useState(false);
   useEffect(() => {
     const el = ref.current;
@@ -91,21 +101,16 @@ export function TopFadeBlur({
       ref={ref}
       aria-hidden
       className={cn('ggb-top-fade fixed top-0 left-0 right-0 z-10 pointer-events-none', className)}
-      style={{
-        height,
-        // 淡入淡出；visibility 在淡出結束時才切 hidden，隱藏時不再算 backdrop-filter
-        opacity: on ? 1 : 0,
-        visibility: on ? 'visible' : 'hidden',
-        transition: 'opacity .3s ease-out, visibility .3s',
-      }}
+      style={{ height }}
     >
       {/* iOS 那種毛玻璃（老闆 2026-08-22）：不是只有糊，還要 saturate 把底下的顏色提上來、
           加一點 contrast 讓玻璃有「厚度」。強層在上緣、弱層拖到底，兩層都走遮罩漸層。 */}
       <div
         className="absolute inset-0"
         style={{
-          backdropFilter: GLASS_STRONG,
-          WebkitBackdropFilter: GLASS_STRONG,
+          backdropFilter: on ? GLASS_STRONG : GLASS_STRONG_OFF,
+          WebkitBackdropFilter: on ? GLASS_STRONG : GLASS_STRONG_OFF,
+          transition: GLASS_TRANSITION,
           maskImage: maskStrong,
           WebkitMaskImage: maskStrong,
         }}
@@ -113,11 +118,12 @@ export function TopFadeBlur({
       <div
         className="absolute inset-0"
         style={{
-          backdropFilter: GLASS_SOFT,
-          WebkitBackdropFilter: GLASS_SOFT,
+          backdropFilter: on ? GLASS_SOFT : GLASS_SOFT_OFF,
+          WebkitBackdropFilter: on ? GLASS_SOFT : GLASS_SOFT_OFF,
+          transition: GLASS_TRANSITION,
           maskImage: maskSoft,
           WebkitMaskImage: maskSoft,
-          background: tintBg,
+          background: on ? tintBg : undefined,
         }}
       />
     </div>
