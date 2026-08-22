@@ -140,7 +140,11 @@ function MobileTabbarInner() {
                 </motion.div>
                 <span className={cn(
                   "text-[11px] font-black transition-colors duration-300",
-                  isActive ? "text-primary" : "text-neutral-400 dark:text-neutral-500"
+                  // 排行榜頁 active 文字用白（老闆 2026-08-22：先試了頂欄下底線的藍 #577fe5，
+                  // 在深色毛玻璃上不夠清楚，改白）；其他頁維持主題色
+                  isActive
+                    ? (isRankingGlass ? "text-white" : "text-primary")
+                    : "text-neutral-400 dark:text-neutral-500"
                 )}>
                   {tab.name}
                 </span>
