@@ -5,6 +5,7 @@ import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import SoundToggle from '@/components/ui/SoundToggle';
 import { useSoundMuted } from '@/hooks/useSoundMuted';
+import { asset } from '@/lib/asset';
 
 type Rarity = 'SSR' | 'SR' | 'R' | 'N';
 
@@ -24,15 +25,15 @@ interface GachaBattleEffectProps {
 type Phase = 'loading' | 'intro' | 'qte' | 'outcome' | 'cards';
 
 function getCardBackImage(rarity: Rarity) {
-  if (rarity === 'SSR') return '/images/card/cardback1.webp';
-  if (rarity === 'SR') return '/images/card/cardback2.webp';
-  if (rarity === 'R') return '/images/card/cardback3.webp';
-  return '/images/card/cardback4.webp';
+  if (rarity === 'SSR') return asset('/images/card/cardback1.webp');
+  if (rarity === 'SR') return asset('/images/card/cardback2.webp');
+  if (rarity === 'R') return asset('/images/card/cardback3.webp');
+  return asset('/images/card/cardback4.webp');
 }
 
 const LOADER_CHARS = [
-  '/loading/1.webp','/loading/2.webp','/loading/3.webp','/loading/4.webp',
-  '/loading/5.webp','/loading/6.webp','/loading/7.webp','/loading/8.webp',
+  asset('/loading/1.webp'),asset('/loading/2.webp'),asset('/loading/3.webp'),asset('/loading/4.webp'),
+  asset('/loading/5.webp'),asset('/loading/6.webp'),asset('/loading/7.webp'),asset('/loading/8.webp'),
 ];
 function BattleLoadingChars() {
   const [idx, setIdx] = useState(0);
@@ -76,7 +77,7 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
   const nextTargetIdRef = useRef(0);
 
   useEffect(() => {
-    tapAudioRef.current = new Audio('/audio/sword1.mp3');
+    tapAudioRef.current = new Audio(asset('/audio/sword1.mp3'));
     tapAudioRef.current.volume = 0.6;
     tapAudioRef.current.load();
   }, []);
@@ -153,9 +154,9 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
 
   // Determine intro video source path
   const introVideoPath = useMemo(() => {
-    if (productType === 'custom') return '/videos/video1.mp4';
-    if (productType === 'blindbox') return '/videos/blindbox_op.mp4';
-    return '/videos/card.mp4';
+    if (productType === 'custom') return asset('/videos/video1.mp4');
+    if (productType === 'blindbox') return asset('/videos/blindbox_op.mp4');
+    return asset('/videos/card.mp4');
   }, [productType]);
 
   useEffect(() => {
@@ -184,8 +185,8 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
       // Direct paths - no preloading to minimize wait time
       setVideoSources({
         intro: introVideoPath,
-        qte: '/videos/video2_button.mp4',
-        outcome: '/videos/video3_win.mp4'
+        qte: asset('/videos/video2_button.mp4'),
+        outcome: asset('/videos/video3_win.mp4')
       });
       
       setPhase('intro');
@@ -284,7 +285,7 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
       {/* Global Background */}
       <div className="absolute inset-0 -z-10">
         <Image
-          src="/images/gacha_bg.webp"
+          src={asset("/images/gacha_bg.webp")}
           alt=""
           fill
           className="object-cover filter brightness-[0.3] blur-[10px]"
@@ -484,7 +485,7 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
                   className="relative w-[9.2rem] h-[9.2rem] md:w-[11.5rem] md:h-[11.5rem] focus:outline-none"
                 >
                   <Image
-                    src="/images/touch.png"
+                    src={asset("/images/touch.png")}
                     alt="Tap"
                     fill
                     className="object-contain"
@@ -535,7 +536,7 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
             >
               <div className="absolute inset-0 -z-10">
                 <Image
-                  src="/images/gacha_bg.webp"
+                  src={asset("/images/gacha_bg.webp")}
                   alt=""
                   fill
                   className="object-cover filter brightness-[0.9] blur-[4px] scale-105"

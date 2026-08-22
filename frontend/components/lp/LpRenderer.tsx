@@ -8,10 +8,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import ProductCard from '@/components/ProductCard'
 import { scheduleState } from '@/lib/schedule'
 import { TopFadeBlur } from '@/components/ui/TopFadeBlur'
+import { asset } from '@/lib/asset';
 
 const LP_LOADING_CHARS = [
-  '/loading/1.webp', '/loading/2.webp', '/loading/3.webp', '/loading/4.webp',
-  '/loading/5.webp', '/loading/6.webp', '/loading/7.webp', '/loading/8.webp',
+  asset('/loading/1.webp'), asset('/loading/2.webp'), asset('/loading/3.webp'), asset('/loading/4.webp'),
+  asset('/loading/5.webp'), asset('/loading/6.webp'), asset('/loading/7.webp'), asset('/loading/8.webp'),
 ]
 
 function LpLoadingScreen({ bg }: { bg?: string }) {
@@ -1046,7 +1047,9 @@ export default function LpRenderer({ slug }: { slug: string }) {
   const stickySection = sections.find(s => s.type === 'sticky_cta')
 
   return (
-    <div ref={containerRef} className="lpv" style={{ position: 'fixed', inset: 0, zIndex: 50, overflowY: 'auto', background: event.bg_color, paddingBottom: stickySection ? 90 : 0 }}>
+    /* data-ptr-strip="#ffffff"：下拉的空隙露白底，跟邀請頁一致（老闆 2026-08-22）。
+       這個容器帶 fixed 頂列，PwaPullToRefresh 會在容器裡塞一塊白色填色層（見 gapFill） */
+    <div ref={containerRef} className="lpv" style={{ position: 'fixed', inset: 0, zIndex: 50, overflowY: 'auto', background: event.bg_color, paddingBottom: stickySection ? 90 : 0 }} data-ptr-strip="#ffffff">
       <style>{css({ bg: event.bg_color, accent: event.accent_color, theme: event.theme_mode, hero: event.hero_mode })}</style>
       {/* 動態島底下的漸層毛玻璃（老闆 2026-08-22）：深色活動頁帶黑、淺色帶白。
           是 .lpv 的 fixed 子節點：下拉更新拖的是流內子節點，它不會被拖走 */}

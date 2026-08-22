@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
+import { asset } from '@/lib/asset';
 
 const steps = [
   {
@@ -95,7 +96,7 @@ export default function ChallengeRulesPage() {
           <div key={step} className="relative">
             <div className="absolute -top-5 right-4 w-[100px] h-[100px] pointer-events-none z-10">
               <Image
-                src={`/images/rules/${step}.png`}
+                src={asset(`/images/rules/${step}.png`)}
                 alt={title}
                 fill
                 sizes="100px"

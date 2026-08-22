@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useCallback, useState } from 'react';
+import { asset } from '@/lib/asset';
 
 type SpinState = 'idle' | 'spinning' | 'stopping' | 'video' | 'result';
 
@@ -98,7 +99,7 @@ function sThud(lvl: number) {
 
 // 滾輪符號：sprite 組圖 D 區 6 格（256×256），index 0 = 7（RUSH 專屬）
 const N = 6, REP = 5, SEVEN = 0;
-const DEFAULT_SPRITE = '/images/slot/machine/sprite.png';
+const DEFAULT_SPRITE = asset('/images/slot/machine/sprite.webp');
 const MARQUEE_DEFAULT = '★ GGB RUSH ★ 押忍!! ★ 拉下拉桿試試手氣 ★ GOOD LUCK ★';
 const CNNUM = '一二三四五六七八九十';
 const cn = (n: number) => n <= 10 ? CNNUM[n - 1] : n.toString();
@@ -389,7 +390,7 @@ const SMVC_CSS = `
 .smvc-wallet {
   position:absolute; z-index:4; pointer-events:none;
   left:var(--wl-l,24.4%); top:var(--wl-t,92.6%); width:var(--wl-w,51.2%); height:var(--wl-h,6.33%);
-  background:url('/images/slot/machine/wallet.png') no-repeat center/100% 100%;
+  background:url(${asset('/images/slot/machine/wallet.png')}) no-repeat center/100% 100%;
 }
 .smvc-wallet i {
   position:absolute; right:7%; top:6%; bottom:6%;

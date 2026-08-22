@@ -30,6 +30,7 @@ const BlindboxMachineMode5 = dynamic(
 import type { Prize as GachaPrize } from '@/components/GachaMachine';
 import { useToast } from '@/components/ui/Toast';
 import { PRODUCT_PUBLIC_COLUMNS, PRIZE_PUBLIC_COLUMNS } from '@/lib/productColumns'
+import { asset } from '@/lib/asset';
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 type PrizeRow = Database['public']['Tables']['product_prizes']['Row'];
@@ -76,7 +77,7 @@ export default function BlindboxDetailPage() {
   const [mode2DrawCount, setMode2DrawCount] = useState(0);
   // 立體物理機台的「換一批」：按一次遞增，機台看到變化才動作
   const [restockSignal, setRestockSignal] = useState(0);
-  const bgVideos = useMemo(() => ['/videos/bg.mp4'], []);
+  const bgVideos = useMemo(() => [asset('/videos/bg.mp4')], []);
   const bgVideoRef = useRef<HTMLVideoElement | null>(null);
   const [isVideoMuted, setIsVideoMuted] = useState(false);
   const openingVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -104,7 +105,7 @@ export default function BlindboxDetailPage() {
     let video: HTMLVideoElement | null = null;
     const warm = () => {
       video = document.createElement('video');
-      video.src = '/videos/blindbox_op.mp4';
+      video.src = asset('/videos/blindbox_op.mp4');
       video.preload = 'auto';
       video.load();
     };
@@ -591,7 +592,7 @@ export default function BlindboxDetailPage() {
               >
                 {/* 雙指可放大／拖移看細節，放開彈回；單指點一下才收起 */}
                 <PinchZoomImage
-                  src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
+                  src={product.image_url || asset(`/images/item/${product.id.toString().padStart(5, '0')}.jpg`)}
                   alt={product.name}
                   className="h-full w-full"
                   onTap={() => setIsBoxImageMode(false)}
@@ -662,7 +663,7 @@ export default function BlindboxDetailPage() {
                   }}
                 >
                   <PinchZoomImage
-                    src={sanitizeImageUrl(product.image_url) ?? `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
+                    src={sanitizeImageUrl(product.image_url) ?? asset(`/images/item/${product.id.toString().padStart(5, '0')}.jpg`)}
                     alt={product.name}
                     className="w-full h-full rounded-2xl border border-white/20"
                     onTap={() => setIsEggBoxImageMode(false)}
@@ -672,7 +673,7 @@ export default function BlindboxDetailPage() {
             </div>
 
             <ImageButton
-              src="/images/gacha/btn2.webp"
+              src={asset("/images/gacha/btn2.webp")}
               alt="換一盒"
               text="換一盒"
               className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
@@ -681,7 +682,7 @@ export default function BlindboxDetailPage() {
               onClick={handleChangeBox}
             />
             <ImageButton
-              src="/images/gacha/btn1.webp"
+              src={asset("/images/gacha/btn1.webp")}
               alt="立即開盒"
               text="立即開盒"
               className="absolute"
@@ -690,7 +691,7 @@ export default function BlindboxDetailPage() {
               onClick={handlePlay}
             />
             <ImageButton
-              src="/images/gacha/btn2.webp"
+              src={asset("/images/gacha/btn2.webp")}
               alt="試試看"
               text="試試看"
               className="absolute"
@@ -729,7 +730,7 @@ export default function BlindboxDetailPage() {
                 單抽
               </span>
               <div className="flex items-center gap-1">
-                <Image src="/images/gcoin.webp" alt="G" width={16} height={16}
+                <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16}
                   className="inline-block shrink-0" style={{ width: 16, height: 16 }} unoptimized />
                 <span className="font-amount text-xl font-black leading-none text-accent-red">
                   {(product.price ?? 0).toLocaleString()}
@@ -812,7 +813,7 @@ export default function BlindboxDetailPage() {
                     </h1>
                     <div className="flex items-end justify-between gap-2 pb-4 border-b border-neutral-50 dark:border-neutral-800">
                       <div className="flex items-baseline gap-2">
-                        <Image src="/images/gcoin.webp" alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
+                        <Image src={asset("/images/gcoin.webp")} alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-4xl font-black text-accent-red font-amount tracking-tighter leading-none">
                             {product.price.toLocaleString()}
@@ -861,7 +862,7 @@ export default function BlindboxDetailPage() {
           <div className="fixed inset-0 z-[2100] flex items-center justify-center bg-black/90 pointer-events-auto">
             <div className="absolute inset-0 -z-10">
               <Image
-                src="/images/gacha_bg.webp"
+                src={asset("/images/gacha_bg.webp")}
                 alt=""
                 fill
                 className="object-cover filter brightness-[0.3] blur-[10px]"
@@ -872,7 +873,7 @@ export default function BlindboxDetailPage() {
             <div className="relative w-full max-w-[560px] h-full overflow-hidden shadow-2xl ring-1 ring-white/10 flex flex-col items-center justify-center bg-black">
               <video
                 ref={openingVideoRef}
-                src="/videos/blindbox_op.mp4"
+                src={asset("/videos/blindbox_op.mp4")}
                 className="w-full h-full object-cover"
                 preload="auto"
                 muted={isVideoMuted}

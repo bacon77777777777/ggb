@@ -25,6 +25,7 @@ import FanMenu from '@/components/home/FanMenu';
 import NoticeBar from '@/components/promo/NoticeBar';
 import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
 import { useSwipeTabs } from '@/lib/useSwipeTabs';
+import { asset } from '@/lib/asset';
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 type BannerRow = Database['public']['Tables']['banners']['Row'];
@@ -1131,7 +1132,7 @@ export default function Home() {
               if (!id) continue;
               displayById.set(id, {
                 name: String((d as any)?.name || 'user'),
-                avatar_url: String((d as any)?.avatar_url || '/images/avatar.webp'),
+                avatar_url: String((d as any)?.avatar_url || asset('/images/avatar.webp')),
               });
             }
           }
@@ -1139,7 +1140,7 @@ export default function Home() {
 
         const mapped: SaleListing[] = listingRows.map((row: any) => {
           const sellerId = String(row?.seller_id || '');
-          const display = displayById.get(sellerId) || { name: 'user', avatar_url: '/images/avatar.webp' };
+          const display = displayById.get(sellerId) || { name: 'user', avatar_url: asset('/images/avatar.webp') };
           const createdAtRaw = String(row?.created_at || '');
           const createdAt = createdAtRaw ? createdAtRaw.slice(0, 10) : '';
           const title = String(row?.title || '').trim();
@@ -1172,7 +1173,7 @@ export default function Home() {
               image:
                 (imageCandidates[0] ||
                   items.map((x: any) => x.image).filter(Boolean)[0] ||
-                  '/images/item_defaulet.webp') as string,
+                  asset('/images/item_defaulet.webp')) as string,
             },
           };
         });
@@ -1293,7 +1294,7 @@ export default function Home() {
           for (const d of Array.isArray(displays) ? displays : []) {
             const id = String((d as any).id || '');
             if (!id) continue;
-            displayById.set(id, { name: String((d as any).name || 'user'), avatar_url: String((d as any).avatar_url || '/images/avatar.webp') });
+            displayById.set(id, { name: String((d as any).name || 'user'), avatar_url: String((d as any).avatar_url || asset('/images/avatar.webp')) });
           }
         }
 
@@ -1307,7 +1308,7 @@ export default function Home() {
 
         const mapped: ExchangeOffer[] = offerRows.map((row: any) => {
           const ownerId = String(row.owner_id || '');
-          const display = displayById.get(ownerId) || { name: 'user', avatar_url: '/images/avatar.webp' };
+          const display = displayById.get(ownerId) || { name: 'user', avatar_url: asset('/images/avatar.webp') };
           const cardRows = Array.isArray(row.cards) ? row.cards : [];
           cardRows.sort((a: any, b: any) => (Number(a.position) || 0) - (Number(b.position) || 0));
           const getting = cardRows.filter((c: any) => c.side === 'want').map(toCard);
@@ -1468,7 +1469,7 @@ export default function Home() {
                           <div className="flex items-end justify-between gap-1">
                             <div className="flex items-center gap-1">
                               <div className="w-3.5 h-3.5">
-                                <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="w-full h-full object-contain" />
+                                <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="w-full h-full object-contain" />
                               </div>
                               <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">
                                 {Math.round(listing.price).toLocaleString()}
@@ -1572,7 +1573,7 @@ export default function Home() {
                               <div className="flex items-end justify-between gap-1">
                                 <div className="flex items-center gap-1">
                                   <div className="w-3.5 h-3.5">
-                                    <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="w-full h-full object-contain" />
+                                    <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="w-full h-full object-contain" />
                                   </div>
                                   <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">
                                     {Math.round(listing.price).toLocaleString()}
@@ -2062,11 +2063,11 @@ export default function Home() {
       */}
       {!isFlagsLoading && (() => {
         const entries = [
-          { feature: 'slot',     icon: '/images/menu/4.webp',   label: '機台',     href: '/challenge' },
+          { feature: 'slot',     icon: asset('/images/menu/4.webp'),   label: '機台',     href: '/challenge' },
           // nudgeY: 店鋪那張圖的主體偏上，跟鄰居擺同一格會看起來高一截，往下推 4px
-          { feature: 'sell',     icon: '/images/menu/2.webp',   label: '商城',     href: '/sell', nudgeY: 4 },
-          { feature: 'exchange', icon: '/images/menu/3.webp',   label: '卡牌交換', href: '/exchange' },
-          { feature: 'market',   icon: '/images/menu/1.webp',   label: '交易所',   href: '/market' },
+          { feature: 'sell',     icon: asset('/images/menu/2.webp'),   label: '商城',     href: '/sell', nudgeY: 4 },
+          { feature: 'exchange', icon: asset('/images/menu/3.webp'),   label: '卡牌交換', href: '/exchange' },
+          { feature: 'market',   icon: asset('/images/menu/1.webp'),   label: '交易所',   href: '/market' },
         ] as const;
         /*
          * ⚠️ 直接讀 `flagStates[key]`，不要用 `categoryState()`。
@@ -2087,7 +2088,7 @@ export default function Home() {
           }));
         // 四個入口都關掉時整組不出現 —— 點開空空如也比沒有還怪
         if (items.length === 0) return null;
-        return <FanMenu mainIcon="/images/btn.webp" mainIconOpen="/images/btn_close.webp" items={items} />;
+        return <FanMenu mainIcon={asset("/images/btn.webp")} mainIconOpen={asset("/images/btn_close.webp")} items={items} />;
       })()}
 
       <PromoPopup placement="home" />

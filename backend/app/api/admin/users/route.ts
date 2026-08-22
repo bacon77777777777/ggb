@@ -184,7 +184,7 @@ export async function POST(request: Request) {
                         Math.random().toString(36).substring(2, 6).toUpperCase()
 
     const avatarIndex = (Math.floor(Math.random() * 8) + 1).toString().padStart(2, '0')
-    const avatar_url = `/images/avatar/${avatarIndex}.png`
+    const avatar_url = `/images/avatar/${avatarIndex}.webp`
 
     const payload = {
       id: authUserId,

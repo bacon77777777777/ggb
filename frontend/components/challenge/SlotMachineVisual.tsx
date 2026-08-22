@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useCallback } from 'react';
+import { asset } from '@/lib/asset';
 
 type SpinState = 'idle' | 'spinning' | 'video' | 'result';
 
@@ -50,14 +51,14 @@ const SMV_CSS = `
 /* Machine base */
 .smv-machine{
   position:absolute;inset:0;
-  background:url('/images/slot/machine/main.png') center/100% 100% no-repeat;
+  background:url(${asset('/images/slot/machine/main.webp')}) center/100% 100% no-repeat;
   pointer-events:none;
 }
 
 /* RUSH sign */
 .smv-rushsign{
   position:absolute;left:27.07%;top:27.15%;width:45.87%;height:8.8%;z-index:5;
-  background:url('/images/slot/machine/light_rush.png') center/100% 100% no-repeat;
+  background:url(${asset('/images/slot/machine/light_rush.png')}) center/100% 100% no-repeat;
   pointer-events:none;
   animation:smv-signPulse 2.4s ease-in-out infinite;transform-origin:center;
 }
@@ -133,10 +134,10 @@ const SMV_CSS = `
 .smv-lever{position:absolute;left:5.07%;top:50.32%;height:30.47%;z-index:6;pointer-events:none;}
 .smv-lf{position:absolute;left:0;top:0;height:100%;background:center/100% 100% no-repeat;opacity:0;}
 .smv-lf.show{opacity:1;}
-.smv-lf1{aspect-ratio:69/284;background-image:url('/images/slot/machine/1.png');}
-.smv-lf2{aspect-ratio:73/284;background-image:url('/images/slot/machine/2.png');}
-.smv-lf3{aspect-ratio:74/284;background-image:url('/images/slot/machine/3.png');}
-.smv-lf4{aspect-ratio:70/284;background-image:url('/images/slot/machine/4.png');}
+.smv-lf1{aspect-ratio:69/284;background-image:url(${asset('/images/slot/machine/1.png')});}
+.smv-lf2{aspect-ratio:73/284;background-image:url(${asset('/images/slot/machine/2.png')});}
+.smv-lf3{aspect-ratio:74/284;background-image:url(${asset('/images/slot/machine/3.png')});}
+.smv-lf4{aspect-ratio:70/284;background-image:url(${asset('/images/slot/machine/4.png')});}
 
 /* Buttons */
 .smv-btn{
@@ -150,14 +151,14 @@ const SMV_CSS = `
   text-shadow:0 0 .8cqw rgba(0,0,0,.9),0 .4cqw .4cqw rgba(0,0,0,.7);
   pointer-events:none;line-height:1;letter-spacing:.05cqw;
 }
-.smv-btn-auto{left:21.87%;top:61.48%;width:17.33%;height:8.58%;background-image:url('/images/slot/machine/auto.png');}
+.smv-btn-auto{left:21.87%;top:61.48%;width:17.33%;height:8.58%;background-image:url(${asset('/images/slot/machine/auto.png')});}
 .smv-btn-spin{
   left:39.20%;top:62.34%;width:23.73%;height:11.16%;
-  background-image:url('/images/slot/machine/spin.png');
+  background-image:url(${asset('/images/slot/machine/spin.png')});
   animation:smv-invite 1.8s ease-in-out infinite;
 }
 .smv-btn-spin .smv-btn-label{font-size:6.5cqw;letter-spacing:.2cqw;}
-.smv-btn-rush{left:62.93%;top:61.48%;width:17.33%;height:8.58%;background-image:url('/images/slot/machine/rush.png');}
+.smv-btn-rush{left:62.93%;top:61.48%;width:17.33%;height:8.58%;background-image:url(${asset('/images/slot/machine/rush.png')});}
 @keyframes smv-invite{
   0%,100%{filter:drop-shadow(0 0 .2cqw rgba(255,220,120,.3));}
   50%    {filter:drop-shadow(0 0 1.6cqw rgba(255,220,120,.95)) brightness(1.12);}

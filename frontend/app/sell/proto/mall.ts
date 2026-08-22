@@ -1,5 +1,6 @@
 /* eslint-disable */
 // @ts-nocheck
+import { asset } from '@/lib/asset';
 /*
  * 商城原型引擎 —— 自 docs/prototypes/ggb-market-taobao_3.html 逐字移植（老闆的定版原型）。
  *
@@ -394,7 +395,7 @@ function vMarket(){
     <span class="hdots">${hl.map((_,i)=>`<i class="${i===0?"on":""}"></i>`).join("")}</span></div>`;
   const catRow=`<div class="cats">${cats.map((c,i)=>`<button data-seg="${esc(c[0])}" aria-pressed="${seg===c[0]}">
       <span class="ci" style="background:${CAT_BG[i%CAT_BG.length]}">${CAT_IMG[c[0]]
-        ?`<img src="/images/sell/category/${CAT_IMG[c[0]]}.webp" alt="" width="42" height="42" loading="lazy">`
+        ?`<img src={asset("/images/sell/category/${CAT_IMG[c[0]]}.webp")} alt="" width="42" height="42" loading="lazy">`
         :`<svg viewBox="0 0 24 24" fill="none" stroke="#FF6A00" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICONS[c[0]==="all"?"all":(CAT_ICON[c[0]]||"tag")]}</svg>`}</span>${esc(c[1])}</button>`).join("")}</div>`;
   const catStrip=seg!=="all"?`<div class="strip"><div class="striphd"><b>${esc(seg)} 分類首排</b></div>
     <div class="srow">${scards(C2C.filter(x=>x.category?x.category===seg:(CAT_KINDS[seg]||[]).includes(x.k)).concat(pool).slice(0,4),"推廣")}</div></div>`:"";

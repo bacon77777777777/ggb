@@ -14,6 +14,7 @@ import { useRouteTransition } from '@/components/ui/RouteTransition';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import { categoryState } from '@/lib/categoryFlags';
+import { asset } from '@/lib/asset';
 
 interface BetTier { label: string; coins: number }
 
@@ -173,9 +174,9 @@ function TierSelectModal({
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="relative w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-800 overflow-hidden shrink-0 border border-neutral-100 dark:border-neutral-700">
               <Image
-                src={machine.image_url || machine.slot_themes?.image_url || '/images/slot/item.png'}
+                src={machine.image_url || machine.slot_themes?.image_url || asset('/images/slot/item.webp')}
                 alt={machine.name} fill className="object-cover"
-                onError={(e) => { (e.target as HTMLImageElement).src = '/images/item_defaulet.webp'; }}
+                onError={(e) => { (e.target as HTMLImageElement).src = asset('/images/item_defaulet.webp'); }}
               />
             </div>
             <h3 className="font-black text-base text-neutral-900 dark:text-white truncate">
@@ -287,7 +288,7 @@ function TierSelectModal({
                       <div key={item.id} className="flex flex-col items-center">
                         <div className="aspect-square w-full rounded-lg overflow-hidden relative">
                           <Image
-                            src={prize?.image_url ?? '/images/slot/machine/coin.png'}
+                            src={prize?.image_url ?? asset('/images/slot/machine/coin.png')}
                             alt={name} fill className="object-contain p-2" unoptimized
                           />
                         </div>
@@ -393,9 +394,9 @@ function MachineCard({
       {/* Image — aspect-square like ProductCard */}
       <div className="aspect-square w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800 rounded-t-[8px] relative flex-shrink-0">
         <Image
-          src={machine.image_url || machine.slot_themes?.image_url || '/images/slot/item.png'}
+          src={machine.image_url || machine.slot_themes?.image_url || asset('/images/slot/item.webp')}
           alt={machine.name} fill className="object-cover"
-          onError={(e) => { (e.target as HTMLImageElement).src = '/images/item_defaulet.webp'; }}
+          onError={(e) => { (e.target as HTMLImageElement).src = asset('/images/item_defaulet.webp'); }}
         />
         {sched === 'running' && (
           <OccupancyOverlay

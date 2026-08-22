@@ -5,6 +5,7 @@ import { playSfx, SFX } from '@/lib/sfx';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ImageButton } from '@/components/ui/ImageButton';
+import { asset } from '@/lib/asset';
 
 interface GachaMachineMode4Props {
   state: 'idle' | 'shaking' | 'spinning' | 'dropping' | 'waiting' | 'result';
@@ -20,7 +21,7 @@ interface GachaMachineMode4Props {
   disableButtons?: boolean;
 }
 
-const EGG_IMAGES = ['/images/gacha/begg.webp', '/images/gacha/gegg.webp', '/images/gacha/pegg.webp'];
+const EGG_IMAGES = [asset('/images/gacha/begg.webp'), asset('/images/gacha/gegg.webp'), asset('/images/gacha/pegg.webp')];
 
 interface Egg {
   id: number;
@@ -216,7 +217,7 @@ export function GachaMachineMode4({
       {/* Background machine image */}
       <div className="absolute inset-0">
         <Image
-          src="/images/gacha/mode4/main.webp"
+          src={asset("/images/gacha/mode4/main.webp")}
           alt="gacha machine"
           fill
           className="object-fill"
@@ -244,9 +245,9 @@ export function GachaMachineMode4({
           top: '18.24%',
           width: '67.33%',
           height: '42.06%',
-          WebkitMaskImage: 'url(/images/gacha/mode4/box.svg)',
+          WebkitMaskImage: `url(${asset('/images/gacha/mode4/box.svg')})`,
           WebkitMaskSize: '100% 100%',
-          maskImage: 'url(/images/gacha/mode4/box.svg)',
+          maskImage: `url(${asset('/images/gacha/mode4/box.svg')})`,
           maskSize: '100% 100%',
         }}
       >
@@ -276,9 +277,9 @@ export function GachaMachineMode4({
           width: '21.2%',
           height: '13.52%',
           zIndex: 10,
-          WebkitMaskImage: 'url(/images/gacha/mode4/hole.svg)',
+          WebkitMaskImage: `url(${asset('/images/gacha/mode4/hole.svg')})`,
           WebkitMaskSize: '100% 100%',
-          maskImage: 'url(/images/gacha/mode4/hole.svg)',
+          maskImage: `url(${asset('/images/gacha/mode4/hole.svg')})`,
           maskSize: '100% 100%',
         }}
       >
@@ -315,7 +316,7 @@ export function GachaMachineMode4({
 
       {/* Buttons */}
       <ImageButton
-        src="/images/gacha/mode4/btn2.webp"
+        src={asset("/images/gacha/mode4/btn2.webp")}
         alt="推一下"
         text="推一下"
         className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
@@ -328,7 +329,7 @@ export function GachaMachineMode4({
         }}
       />
       <ImageButton
-        src="/images/gacha/mode4/btn1.webp"
+        src={asset("/images/gacha/mode4/btn1.webp")}
         alt="立即轉蛋"
         text="立即轉蛋"
         className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
@@ -337,7 +338,7 @@ export function GachaMachineMode4({
         onClick={() => { if (!isSoldOut && !disableButtons && onPurchase) onPurchase(); }}
       />
       <ImageButton
-        src="/images/gacha/mode4/btn2.webp"
+        src={asset("/images/gacha/mode4/btn2.webp")}
         alt="試試看"
         text="試試看"
         className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { TicketSelectionFlow } from '@/components/shop/TicketSelectionFlow';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
+import { asset } from '@/lib/asset';
 
 function ItemSelectTicketInner() {
   const isDesktop = useMediaQuery('(min-width: 768px)');
@@ -18,7 +19,7 @@ function ItemSelectTicketInner() {
       {isDesktop && (
         <div className="absolute inset-0 z-0 overflow-hidden">
           <Image 
-            src="/images/gacha_bg.webp" 
+            src={asset("/images/gacha_bg.webp")} 
             alt="" 
             fill
             className="object-cover filter brightness-[0.85] blur-[3px] scale-105"

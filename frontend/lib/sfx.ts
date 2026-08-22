@@ -18,6 +18,7 @@
  */
 
 import { isSoundMuted, subscribeSoundMuted } from './soundPrefs';
+import { asset } from '@/lib/asset';
 
 type Entry = { audio: HTMLAudioElement; playingUntil: number };
 
@@ -83,8 +84,8 @@ if (typeof window !== 'undefined') {
 }
 
 export const SFX = {
-  eggDrop:    '/audio/spinopel-open-a-egg-carton-345737.mp3',
-  gachaPush:  '/audio/gachapush.mp3',
-  gachaAuto:  '/audio/gacha.mp3',
+  eggDrop:    asset('/audio/spinopel-open-a-egg-carton-345737.mp3'),
+  gachaPush:  asset('/audio/gachapush.mp3'),
+  gachaAuto:  asset('/audio/gacha.mp3'),
 } as const;
 

@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import { createClient } from '@supabase/supabase-js';
+import { asset } from '@/lib/asset';
 
 /**
  * 維護頁
@@ -63,7 +64,7 @@ export default async function MaintenancePage() {
     <div className="fixed inset-0 z-[9999] flex flex-col items-center overflow-y-auto bg-white px-6 py-10 text-center dark:bg-neutral-950">
       {/* logo 不可點：維護中沒有能去的地方，點了只會回到同一頁 */}
       <Image
-        src="/images/20260629/logo.svg"
+        src={asset("/images/20260629/logo.svg")}
         alt="吉吉比"
         width={132}
         height={44}
@@ -74,7 +75,7 @@ export default async function MaintenancePage() {
       {/* 主訊息吃掉剩下的空間並置中，所以畫面高矮不同時 logo 與底部小字都待在原位 */}
       <div className="flex flex-1 flex-col items-center justify-center py-8">
         <Image
-          src="/images/maintain.webp"
+          src={asset("/images/maintain.webp")}
           alt=""
           width={200}
           height={200}

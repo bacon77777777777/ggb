@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ImageButton } from '@/components/ui/ImageButton';
 import { hapticMedium } from '@/lib/haptics';
+import { asset } from '@/lib/asset';
 
 // ─── layout (750×932 design) ─────────────────────────────────────────────────
 const BOX_DESIGN_W = 100;
@@ -45,7 +46,7 @@ const BACK_FLOOR  = HOLE_B - BOX_R * 1.2;
 // ─── 素材資料夾 ───────────────────────────────────────────────────────────────
 // 同一台販賣機邏輯可換皮：mode3（叢林探險）、mode4（賽璐璐風格）版位完全相同，
 // 只有 main.png / hole_bg.png 不同，故素材根目錄做成參數。
-const DEFAULT_ASSET_BASE = '/images/blindbox/mode3';
+const DEFAULT_ASSET_BASE = asset('/images/blindbox/mode3');
 
 // ─── 6-face image paths ───────────────────────────────────────────────────────
 const faceSrcs = (base: string) => ({

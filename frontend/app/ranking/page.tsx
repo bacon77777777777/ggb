@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSwipeTabs } from '@/lib/useSwipeTabs';
+import { asset } from '@/lib/asset';
 
 interface RankingRpcItem {
   user_id: string;
@@ -162,7 +163,7 @@ export default function RankingPage() {
           user_id: item.user_id,
           rank: item.rank,
           nickname: item.nickname || '神秘玩家',
-          avatar_url: item.avatar_url || imgAvatar,
+          avatar_url: asset(item.avatar_url || imgAvatar),
           amount: amountStr,
           title: item.title_name ? { name: item.title_name, color_key: item.title_color || 'gold' } : null,
         };
@@ -175,7 +176,7 @@ export default function RankingPage() {
           user_id: `placeholder-${i}`,
           rank: i,
           nickname: '虛位以待',
-          avatar_url: '/images/avatar.webp',
+          avatar_url: asset('/images/avatar.webp'),
           amount: '0',
           isPlaceholder: true
         });
@@ -297,7 +298,9 @@ export default function RankingPage() {
         <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
       </Link>
     </div>
-    <div className="relative min-h-screen w-full overflow-x-hidden flex justify-center" style={{ background: RANK_BG }} {...swipeTabs}>
+    {/* data-ptr-strip="none"：下拉的空隙不鋪底色帶，直接露出底下 fixed 的流體背景
+        （老闆 2026-08-22：「排行榜下拉的灰色塊移除顏色，讓他是透明」） */}
+    <div className="relative min-h-screen w-full overflow-x-hidden flex justify-center" style={{ background: RANK_BG }} data-ptr-strip="none" {...swipeTabs}>
       {/* 全螢幕流體背景（Ink Flow Field，WebGL2）：fixed 鋪滿視窗、當純背景、
           z-0 疊在內容(z-[1])下、fixed nav(z-10)/返回鍵(z-20)上。
           底色是 RANK_BG 漸層（老闆 2026-08-22 換底色、動畫保留）：InkFlowField 的 GL

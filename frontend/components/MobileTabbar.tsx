@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { hapticLight } from '@/lib/haptics';
+import { asset } from '@/lib/asset';
 
 export default function MobileTabbar() {
   return (
@@ -117,7 +118,7 @@ function MobileTabbarInner() {
           {tabs.map((tab) => {
             const isActive = pathname === tab.href || (tab.href === '/profile' && pathname.startsWith('/profile'));
             const imgIdx = tabImgMap[tab.href] || 1;
-            const imgSrc = `/images/topbar/${imgIdx}${isActive ? 'b' : 'a'}.png`;
+            const imgSrc = asset(`/images/topbar/${imgIdx}${isActive ? 'b' : 'a'}.png`);
 
             return (
               <Link

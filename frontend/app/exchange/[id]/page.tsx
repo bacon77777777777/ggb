@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { useFeatureGate } from '@/lib/useFeatureGate';
+import { asset } from '@/lib/asset';
 
 type ExchangeCard = {
   id: string;
@@ -168,7 +169,7 @@ export default function ExchangeDetailPage() {
         if (displayError) throw displayError;
         const display = Array.isArray(displays) ? displays[0] : null;
         const ownerName = String(display?.name || 'user');
-        const ownerAvatar = String(display?.avatar_url || '/images/avatar.webp');
+        const ownerAvatar = String(display?.avatar_url || asset('/images/avatar.webp'));
 
         const createdAtRaw = String((data as any).created_at || '');
         const createdAt = createdAtRaw ? createdAtRaw.slice(0, 10) : '';

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import { asset } from '@/lib/asset';
 
 interface ProductPackViewer3DProps {
   packImage: string;
@@ -43,7 +44,7 @@ const FALLBACK = { top: '#e8e4dc', bot: '#b8b0a8' };
 
 export function ProductPackViewer3D({
   packImage,
-  backImage = '/images/card/back.webp',
+  backImage = asset('/images/card/back.webp'),
   showSSRGlare = true,
   interactive = true,
 }: ProductPackViewer3DProps) {
@@ -190,8 +191,8 @@ export function ProductPackViewer3D({
             <div
               className="pointer-events-none absolute inset-0"
               style={{
-                WebkitMaskImage: "url('/images/card/mask.svg')",
-                maskImage: "url('/images/card/mask.svg')",
+                WebkitMaskImage: `url(${asset('/images/card/mask.svg')})`,
+                maskImage: `url(${asset('/images/card/mask.svg')})`,
                 WebkitMaskSize: 'contain',
                 maskSize: 'contain',
                 WebkitMaskRepeat: 'no-repeat',
@@ -215,8 +216,8 @@ export function ProductPackViewer3D({
             <div
               className="pointer-events-none absolute inset-0"
               style={{
-                WebkitMaskImage: "url('/images/card/mask.svg')",
-                maskImage: "url('/images/card/mask.svg')",
+                WebkitMaskImage: `url(${asset('/images/card/mask.svg')})`,
+                maskImage: `url(${asset('/images/card/mask.svg')})`,
                 WebkitMaskSize: 'contain',
                 maskSize: 'contain',
                 WebkitMaskRepeat: 'no-repeat',

@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/Toast';
 import { native } from '@/lib/native/bridge';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { closeInAppBrowser, openPayment } from '@/lib/native/browser';
+import { LINE_ICON, GOOGLE_ICON } from '@/lib/inlineIcons';
 
 /**
  * 社群登入
@@ -321,7 +322,7 @@ export function SocialLoginButtons() {
         className="relative h-12 w-full rounded-xl border border-neutral-200 bg-white text-[15px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
       >
         <span className="absolute left-4 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center">
-          <Image src="/images/line.png" alt="" width={22} height={22} unoptimized />
+          <Image src={LINE_ICON} alt="" width={22} height={22} unoptimized />
         </span>
         使用 LINE 帳號登入
       </button>
@@ -331,7 +332,7 @@ export function SocialLoginButtons() {
         className="relative h-12 w-full rounded-xl border border-neutral-200 bg-white text-[15px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
       >
         <span className="absolute left-4 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center">
-          <Image src="/images/google.png" alt="" width={20} height={20} unoptimized />
+          <Image src={GOOGLE_ICON} alt="" width={20} height={20} unoptimized />
         </span>
         使用 Google 帳號登入
       </button>

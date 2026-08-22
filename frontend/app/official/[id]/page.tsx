@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import { cn } from '@/lib/utils';
+import { asset } from '@/lib/asset';
 
 /*
  * 官方商城（B2C）商品頁。
@@ -95,7 +96,7 @@ export default function OfficialProductPage() {
   const mainImage =
     (product?.images || []).filter(Boolean)[0] ||
     items.map((i) => i.image).filter(Boolean)[0] ||
-    '/images/item_defaulet.webp';
+    asset('/images/item_defaulet.webp');
 
   const checkout = async () => {
     if (!user?.id) {

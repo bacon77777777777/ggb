@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { PrizeResultModal } from '@/components/shop/PrizeResultModal';
 import { IpLoader } from '@/components/ui/IpLoader';
 import Image from 'next/image';
+import { asset } from '@/lib/asset';
 
 // Types
 export interface Prize {
@@ -213,7 +214,7 @@ export default function GachaMachine({ prizes, isOpen, onGoToWarehouse, onContin
       {/* Background Image */}
       <div className="absolute inset-0 z-[-1]">
         <Image 
-          src="/images/gacha_bg.webp" 
+          src={asset("/images/gacha_bg.webp")} 
           alt="" 
           fill
           className="object-cover filter brightness-[0.85] blur-[3px] scale-105"
@@ -302,7 +303,7 @@ export default function GachaMachine({ prizes, isOpen, onGoToWarehouse, onContin
                       const imageSrc =
                         lastOnePrize?.image_url && !lastOnePrize.image_url.startsWith('blob:')
                           ? lastOnePrize.image_url
-                          : '/images/item_defaulet.webp';
+                          : asset('/images/item_defaulet.webp');
                       return lastOnePrize ? (
                          <Image 
                            src={imageSrc} 

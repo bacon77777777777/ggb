@@ -6,6 +6,7 @@ import Image from 'next/image';
 import SoundToggle from '@/components/ui/SoundToggle';
 import { bigRip, crackle, flashPop, spawnConfetti, unlockTearAudio } from '@/lib/tearSfx';
 import { isSoundMuted } from '@/lib/soundPrefs';
+import { asset } from '@/lib/asset';
 
 declare global {
   interface Window { jQuery: any }
@@ -61,9 +62,9 @@ export default function FigmaTearScene({
     const MIN_DELAY = 400;
     const HARD_CAP = 8000;
     const COVER_IMAGES = [
-      '/images/ichiban-tear/up1.svg',  // 蓋板正面，就是它擋住獎項
-      '/images/ichiban-tear/up2.svg',  // 掀起時的背面
-      '/images/ichiban-tear/bg.svg',   // 券底，獎項文字畫在它上面
+      asset('/images/ichiban-tear/up1.svg'),  // 蓋板正面，就是它擋住獎項
+      asset('/images/ichiban-tear/up2.svg'),  // 掀起時的背面
+      asset('/images/ichiban-tear/bg.svg'),   // 券底，獎項文字畫在它上面
     ];
 
     let cancelled = false;
@@ -325,7 +326,7 @@ export default function FigmaTearScene({
       style={{ minHeight: '100dvh', background: '#111', touchAction: 'none' }}
     >
       {/* 全屏背景 */}
-      <Image src="/images/ichiban-tear/bg.webp" alt="" fill className="object-cover" unoptimized priority />
+      <Image src={asset("/images/ichiban-tear/bg.webp")} alt="" fill className="object-cover" unoptimized priority />
 
       {/* 聲音開關：撕紙聲跟中獎音效都在這個畫面響，位置與轉蛋機台同一套 */}
       <SoundToggle safeTop className="absolute top-4 right-4 z-30" />
@@ -342,7 +343,7 @@ export default function FigmaTearScene({
       >
         {/* 手 */}
         <Image
-          src="/images/ichiban-tear/hand.webp" alt="" unoptimized
+          src={asset("/images/ichiban-tear/hand.webp")} alt="" unoptimized
           style={{
             position: 'absolute', top: 11 * s, left: 5 * s,
             width: 283 * s, height: 467 * s,
@@ -363,7 +364,7 @@ export default function FigmaTearScene({
           {/* 底層：bg.svg + 獎項文字 */}
           <div style={{ position: 'absolute', inset: 0, borderRadius: 18 * s, overflow: 'hidden' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/ichiban-tear/bg.svg" alt=""
+            <img src={asset("/images/ichiban-tear/bg.svg")} alt=""
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
             <div
               className="absolute inset-0 flex items-center justify-center"
@@ -423,7 +424,7 @@ export default function FigmaTearScene({
                   animate={{ x: [0, 72*s, 72*s], y: [-8.5*s, -8*s, -8*s], opacity: [0,1,1,0] }}
                   transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', times: [0, 0.5, 0.8, 1] }}
                 >
-                  <Image src="/images/finger.png" alt="" fill className="object-contain drop-shadow-md" unoptimized />
+                  <Image src={asset("/images/finger.png")} alt="" fill className="object-contain drop-shadow-md" unoptimized />
                 </motion.div>
               )}
             </>

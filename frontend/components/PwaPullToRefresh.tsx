@@ -385,6 +385,15 @@ export default function PwaPullToRefresh() {
    * 在 touchstart 就關，捲動手勢還沒開始，來得及生效。
    */
   const innerOverscroll = useRef<{ el: HTMLElement; prev: string } | null>(null);
+  /**
+   * 內層捲動容器「裡面」的空隙填色層。
+   *
+   * 容器帶 fixed 頂列時底色帶是沉在容器後面的（見 innerChrome），空隙露出的是容器
+   * 自己的底色 —— 活動頁是深色，老闆 2026-08-22 要跟邀請頁一樣露白底。
+   * 外面的底色帶怎麼疊都到不了容器的堆疊層裡，所以改在容器裡塞一塊：絕對定位在
+   * 容器頂端、高度跟著位移走、z 比被拖的子節點高但比 fixed 鈕低。放手收掉。
+   */
+  const gapFill = useRef<HTMLDivElement | null>(null);
   /** 這一趟要「定住」的 sticky 列，連同原本的 inline 樣式（結束要還原）。
       opaque：不透明的欄（tab 列）在被抵銷後，文件流裡空出來的位置會露出頁面
       底色 —— 用一條「往下的實心 box-shadow」把那個洞蓋成空隙的底色。
@@ -460,6 +469,10 @@ export default function PwaPullToRefresh() {
           el.style.boxShadow = shift ? `0 ${shift}px 0 0 ${stripBg.current}` : shadow;
         }
       });
+      if (gapFill.current) {
+        gapFill.current.style.transition = animate ? 'height .28s cubic-bezier(.22,1,.36,1)' : 'none';
+        gapFill.current.style.height = shift ? `${shift}px` : '0px';
+      }
       if (stripRef.current) {
         /*
          * 底色帶從導航列下緣鋪到位移的最底 —— 蓋住透明 tab 背後露出來的 body，
@@ -523,7 +536,11 @@ export default function PwaPullToRefresh() {
       // 位移歸零之後才能清空清單，不然那幾條會停在被抵銷的位置
       const restore = pinned.current;
       pinned.current = [];
+      const fill = gapFill.current;
+      gapFill.current = null;
       window.setTimeout(() => {
+        // 空隙填色層：回彈動畫收完才拆，不然放手那一下會先閃一次容器的底色
+        if (fill && fill !== gapFill.current) fill.remove();
         restore.forEach(({ el, transform, shadow }) => {
           // 已經被下一趟接手的就別動，不然會把進行中的抵銷清掉
           if (pinned.current.some((p) => p.el === el)) return;
@@ -728,6 +745,19 @@ export default function PwaPullToRefresh() {
                 ? (verdict.el.firstElementChild as HTMLElement | null) ?? verdict.el
                 : bgFrom,
             );
+        /*
+         * 內層容器帶 fixed 頂列、而且頁面宣告了底色（不是 none）：外面的底色帶
+         * 到不了容器裡，改在容器裡塞一塊填色層（見 gapFill 的說明）。
+         */
+        if (innerChrome && verdict.kind === 'inner' && stripBg.current !== 'transparent') {
+          gapFill.current?.remove();
+          const fill = document.createElement('div');
+          fill.setAttribute('aria-hidden', 'true');
+          fill.style.cssText =
+            `position:absolute;left:0;right:0;top:0;height:0;z-index:1;pointer-events:none;background:${stripBg.current}`;
+          verdict.el.appendChild(fill);
+          gapFill.current = fill;
+        }
         if (stripRef.current) {
           /*
            * 底色帶跟著球一起浮 —— 沉在 z-0 的話會被商品頁那片「從 y=0 開始畫」

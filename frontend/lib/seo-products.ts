@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import type { Database } from '@/types/database.types'
 import { getSiteUrl } from '@/lib/site'
 import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
+import { asset } from '@/lib/asset';
 
 type DbProduct = Database['public']['Tables']['products']['Row']
 
@@ -88,7 +89,7 @@ export function buildProductMetadata(product: DbProduct | null): Metadata {
 
   const description = descriptionRaw ? `${descriptionRaw.slice(0, 100)} — ${typeLabel} | 吉吉比` : autoDesc
 
-  const imagePath = product.image_url || '/images/item_defaulet.webp'
+  const imagePath = product.image_url || asset('/images/item_defaulet.webp')
   const imageUrl = imagePath.startsWith('http') ? imagePath : `${siteUrl}${imagePath}`
   const images = [{ url: imageUrl, width: 800, height: 800, alt: `${product.name} ${typeLabel}` }]
 

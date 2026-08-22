@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { asset } from '@/lib/asset';
 
 /**
  * 8 隻 IP 角色，160×180 的 WebP（渲染尺寸 80×90 的 2 倍圖）
@@ -15,14 +16,14 @@ import { motion, AnimatePresence } from 'framer-motion';
  * 160×180 + webp q90 輸出，不要直接把 SVG 丟進來。
  */
 const CHARS = [
-  '/loading/1.webp', // 轉蛋機
-  '/loading/2.webp', // 兔兔
-  '/loading/3.webp', // 柴犬
-  '/loading/4.webp', // 恐龍
-  '/loading/5.webp', // 企鵝
-  '/loading/6.webp', // 小熊
-  '/loading/7.webp', // 貴賓狗
-  '/loading/8.webp', // 貓咪
+  asset('/loading/1.webp'), // 轉蛋機
+  asset('/loading/2.webp'), // 兔兔
+  asset('/loading/3.webp'), // 柴犬
+  asset('/loading/4.webp'), // 恐龍
+  asset('/loading/5.webp'), // 企鵝
+  asset('/loading/6.webp'), // 小熊
+  asset('/loading/7.webp'), // 貴賓狗
+  asset('/loading/8.webp'), // 貓咪
 ];
 
 const W = 80;

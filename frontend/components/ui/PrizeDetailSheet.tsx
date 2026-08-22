@@ -10,6 +10,7 @@ const CardShowcase3D = dynamic(() => import('@/components/card/CardShowcase3D'),
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import GradeBadge from '@/components/ui/GradeBadge';
+import { asset } from '@/lib/asset';
 
 export interface PrizeInfo {
   name: string;
@@ -152,14 +153,14 @@ export default function PrizeDetailSheet({ prize, onClose, sealed = false, showc
                    這裡不接左右滑切換品項 —— 拖曳已經被旋轉吃掉了 */
                 <CardShowcase3D
                   key={prize?.name ?? ''}
-                  frontImage={prize?.image_url || '/images/item_defaulet.webp'}
+                  frontImage={prize?.image_url || asset('/images/item_defaulet.webp')}
                   backImage={showcaseBackImage || undefined}
                   height={320}
                 />
               ) : (
                 <PinchZoomImage
                   key={prize?.name ?? ''}
-                  src={prize?.image_url || '/images/item_defaulet.webp'}
+                  src={prize?.image_url || asset('/images/item_defaulet.webp')}
                   alt={prize?.name ?? ''}
                   className="mx-auto h-[36dvh] max-h-[320px] w-full rounded-xl"
                   onSwipeLeft={onNext}

@@ -22,6 +22,7 @@ import { SoundToggle } from '@/components/ui/SoundToggle';
 import { trackEvent } from '@/lib/trackEvent';
 import ProductBadge from '@/components/ui/ProductBadge';
 import { hapticHeavy, hapticLight, hapticMedium, hapticNotify } from '@/lib/haptics';
+import { asset } from '@/lib/asset';
 
 interface GachaProductDetailProps {
   product: Database['public']['Tables']['products']['Row'];
@@ -441,7 +442,7 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
               {/* 雙指可放大／拖移看細節（放開彈回，放大時會浮到全螢幕不被機台框裁掉）；
                   單指點一下才收起 —— 跟盒玩、抽卡走同一支元件，手感一致 */}
               <PinchZoomImage
-                src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
+                src={product.image_url || asset(`/images/item/${product.id.toString().padStart(5, '0')}.jpg`)}
                 alt={product.name}
                 className="h-full w-full"
                 onTap={() => setIsEggBoxImageMode(false)}
@@ -520,7 +521,7 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
 
                   <div className="flex items-end justify-between gap-2 pb-4 border-b border-neutral-50 dark:border-neutral-800">
                     <div className="flex items-baseline gap-2">
-                      <Image src="/images/gcoin.webp" alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
+                      <Image src={asset("/images/gcoin.webp")} alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-4xl font-black text-accent-red font-amount tracking-tighter leading-none">
                           {product.price.toLocaleString()}
@@ -559,7 +560,7 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
                 單抽
               </span>
               <div className="flex items-center gap-1">
-                <Image src="/images/gcoin.webp" alt="G" width={16} height={16}
+                <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16}
                   className="inline-block shrink-0" style={{ width: 16, height: 16 }} unoptimized />
                 <span className="font-amount text-xl font-black leading-none text-accent-red">
                   {(product.price ?? 0).toLocaleString()}

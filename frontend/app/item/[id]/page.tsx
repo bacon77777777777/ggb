@@ -51,7 +51,7 @@ const PackShowcase3D = dynamic(() => import('@/components/card/PackShowcase3D'),
       style={{
         width: '100%',
         height: Math.round(375 * 932 / 750),
-        background: "url('/images/card/showcase-bg.webp') center/cover no-repeat",
+        background: `url(${asset('/images/card/showcase-bg.webp')}) center/cover no-repeat`,
       }}
     />
   ),
@@ -74,6 +74,7 @@ import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { isCategoryHidden, isCategoryUnderMaintenance, categoryFlagKey, CATEGORY_LABELS } from '@/lib/categoryFlags';
 import { fetchProductPromotion, type ProductPromotion } from '@/lib/promotions';
 import GradeBadge from '@/components/ui/GradeBadge';
+import { asset } from '@/lib/asset';
 
 /**
  * 走 commit-reveal 抽獎引擎的三種商品（migration 405 的 play_ichiban_auto）。
@@ -373,8 +374,8 @@ const PackSelectionCarousel = forwardRef<PackSelectionCarouselHandle, PackSelect
                     輪播轉到後面時看到的會是鏡像的正面而不是卡背 */}
                 <div className="relative" style={{ transformStyle: 'preserve-3d' }}>
                   <ProductPackViewer3D
-                    packImage={`/images/card/pack/${packStyles[index] ?? '01'}a.webp`}
-                    backImage={`/images/card/pack/${packStyles[index] ?? '01'}b.webp`}
+                    packImage={asset(`/images/card/pack/${packStyles[index] ?? '01'}a.webp`)}
+                    backImage={asset(`/images/card/pack/${packStyles[index] ?? '01'}b.webp`)}
                     interactive={isActive}
                     showSSRGlare={false}
                   />
@@ -382,8 +383,8 @@ const PackSelectionCarousel = forwardRef<PackSelectionCarouselHandle, PackSelect
                     <div
                       className="pointer-events-none absolute inset-0"
                       style={{
-                        WebkitMaskImage: "url('/images/card/mask.svg')",
-                        maskImage: "url('/images/card/mask.svg')",
+                        WebkitMaskImage: `url(${asset('/images/card/mask.svg')})`,
+                        maskImage: `url(${asset('/images/card/mask.svg')})`,
                         WebkitMaskSize: 'contain',
                         maskSize: 'contain',
                         WebkitMaskRepeat: 'no-repeat',
@@ -556,7 +557,7 @@ export default function ProductDetailPage() {
   const [tearGachaResults, setTearGachaResults] = useState<Prize[]>([]);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
-  const openingVideoSrc = product?.type === 'card' ? '/videos/card.mp4' : '/videos/blindbox_op.mp4';
+  const openingVideoSrc = product?.type === 'card' ? asset('/videos/card.mp4') : asset('/videos/blindbox_op.mp4');
 
   // 每個商品只計一次分享任務，以 localStorage 去重
   const trackShareOnce = () => {
@@ -957,7 +958,7 @@ export default function ProductDetailPage() {
       id: `trial-${best?.id ?? rarity}`,
       name: String(best?.name || rarity),
       rarity,
-      image_url: best?.image_url || '/images/card/00001.webp',
+      image_url: best?.image_url || asset('/images/card/00001.webp'),
       grade: rarity,
       is_last_one: false,
     }
@@ -1251,10 +1252,10 @@ export default function ProductDetailPage() {
                 ? 'R'
                 : 'N';
 
-        let cardFrontImage = '/images/card/00004.webp';
-        if (rarity === 'SSR') cardFrontImage = '/images/card/00001.webp';
-        else if (rarity === 'SR') cardFrontImage = '/images/card/00002.webp';
-        else if (rarity === 'R') cardFrontImage = '/images/card/00003.webp';
+        let cardFrontImage = asset('/images/card/00004.webp');
+        if (rarity === 'SSR') cardFrontImage = asset('/images/card/00001.webp');
+        else if (rarity === 'SR') cardFrontImage = asset('/images/card/00002.webp');
+        else if (rarity === 'R') cardFrontImage = asset('/images/card/00003.webp');
 
         return {
           id: prize.id,
@@ -1580,7 +1581,7 @@ export default function ProductDetailPage() {
               aspectRatio: '750/932',
               // 卡包輪播會整片蓋住這一區，底圖用同一張棚景 ——
               // 用舊的暗色 bg.webp 的話，輪播載入完成前會先閃一下暗背景（老闆回報）
-              backgroundImage: "url('/images/card/showcase-bg.webp')",
+              backgroundImage: `url(${asset('/images/card/showcase-bg.webp')})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
@@ -1643,7 +1644,7 @@ export default function ProductDetailPage() {
                 >
                   {/* 雙指可放大／拖移看細節，放開彈回；單指點一下才收起 */}
                   <PinchZoomImage
-                    src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
+                    src={product.image_url || asset(`/images/item/${product.id.toString().padStart(5, '0')}.jpg`)}
                     alt={product.name}
                     className="w-full h-full border border-white/20"
                     onTap={() => setIsCardImageMode(false)}
@@ -1723,7 +1724,7 @@ export default function ProductDetailPage() {
                         <td className="px-2 sm:px-6 py-2 sm:py-3.5">
                           <div className="flex items-center gap-2 sm:gap-3">
                             <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
-                              <Image src={prize.image_url || '/images/item_defaulet.webp'} alt={prize.name} fill className="object-cover" unoptimized />
+                              <Image src={prize.image_url || asset('/images/item_defaulet.webp')} alt={prize.name} fill className="object-cover" unoptimized />
                             </div>
                             {/* 賞等擺名稱左邊（老闆指定）：一番賞／抽卡／自製賞
                                 的重點是「這是幾賞」，名稱反而是次要資訊 */}
@@ -1774,7 +1775,7 @@ export default function ProductDetailPage() {
                   const lastOneImage =
                     lastOnePrize.image_url && !lastOnePrize.image_url.startsWith('blob:')
                       ? lastOnePrize.image_url
-                      : '/images/item_defaulet.webp';
+                      : asset('/images/item_defaulet.webp');
                   
                   return (
                     <button
@@ -1984,7 +1985,7 @@ export default function ProductDetailPage() {
                     </h1>
                     <div className="flex items-end justify-between gap-2 pb-4 border-b border-neutral-50 dark:border-neutral-800">
                       <div className="flex items-baseline gap-2">
-                        <Image src="/images/gcoin.webp" alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
+                        <Image src={asset("/images/gcoin.webp")} alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-4xl font-black text-accent-red font-amount tracking-tighter leading-none">{product.price.toLocaleString()}</span>
                           <span className="text-sm text-neutral-400 font-black uppercase tracking-widest">{isPackMode ? '/ 包' : '/ 抽'}</span>
@@ -2073,9 +2074,9 @@ export default function ProductDetailPage() {
               <div className="fixed inset-0 z-[2100]">
               <GgbPackRip
                 /* 卡包正面用自己的欄位，沒設才退回商品主圖，再沒有才用內建款式 */
-                packImage={(product as any).pack_front_image_url || product.image_url || `/images/card/pack/${activePackStyle}a.webp`}
-                cardBack={(product as any).card_back_image_url || '/images/card/back.webp'}
-                cards={ordered.map(p => p.image_url || '/images/card/00004.webp')}
+                packImage={(product as any).pack_front_image_url || product.image_url || asset(`/images/card/pack/${activePackStyle}a.webp`)}
+                cardBack={(product as any).card_back_image_url || asset('/images/card/back.webp')}
+                cards={ordered.map(p => p.image_url || asset('/images/card/00004.webp'))}
                 prizeTier={packTiers[0] ?? 'blue'}
                 prizeTiers={packTiers}
                 soundDefault={!isVideoMuted}
@@ -2093,7 +2094,7 @@ export default function ProductDetailPage() {
               <CardDrawAnimation
                 isOpen={isVideoOpen}
                 prizes={wonPrizes}
-                packImage={`/images/card/pack/${activePackStyle}a.webp`}
+                packImage={asset(`/images/card/pack/${activePackStyle}a.webp`)}
                 onGoToWarehouse={handleVideoEnd}
                 onContinue={handleCardContinue}
               />
@@ -2187,7 +2188,7 @@ export default function ProductDetailPage() {
                 {isPackMode ? '單包' : '單抽'}
               </span>
               <div className="flex items-center gap-1">
-                <Image src="/images/gcoin.webp" alt="G" width={16} height={16}
+                <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16}
                   className="inline-block shrink-0" style={{ width: 16, height: 16 }} unoptimized />
                 <span className="font-amount text-xl font-black leading-none text-accent-red">
                   {(product.price ?? 0).toLocaleString()}
@@ -2243,7 +2244,7 @@ export default function ProductDetailPage() {
               <div className="relative aspect-square bg-neutral-100 dark:bg-neutral-800">
                 <div className="w-full h-full flex items-center justify-center text-white/20 group-hover:scale-105 transition-transform duration-500">
                   <Image
-                    src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
+                    src={product.image_url || asset(`/images/item/${product.id.toString().padStart(5, '0')}.jpg`)}
                     alt={product.name}
                     fill
                     className="object-cover"
@@ -2254,7 +2255,7 @@ export default function ProductDetailPage() {
                 {((typeof totalRemaining === 'number' && totalRemaining <= 0) || product.status === 'ended') && (
                   <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
                     <Image 
-                      src="/images/sale.svg" 
+                      src={asset("/images/sale.svg")} 
                       alt="完抽" 
                       width={120}
                       height={120}
@@ -2303,7 +2304,7 @@ export default function ProductDetailPage() {
                 <div className="hidden lg:flex items-end justify-between gap-2 pb-5 border-b border-neutral-50 dark:border-neutral-800">
                   <div className="flex items-baseline gap-2">
                     <Image
-                      src="/images/gcoin.webp"
+                      src={asset("/images/gcoin.webp")}
                       alt="G Coin"
                       width={20}
                       height={20}
@@ -2354,7 +2355,7 @@ export default function ProductDetailPage() {
                         <td className="px-2 sm:px-6 py-2 sm:py-3.5">
                           <div className="flex items-center gap-2 sm:gap-3">
                             <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
-                              <Image src={prize.image_url || '/images/item_defaulet.webp'} alt={prize.name} fill className="object-cover" unoptimized />
+                              <Image src={prize.image_url || asset('/images/item_defaulet.webp')} alt={prize.name} fill className="object-cover" unoptimized />
                             </div>
                             {/* 賞等擺名稱左邊（老闆指定）：一番賞／抽卡／自製賞
                                 的重點是「這是幾賞」，名稱反而是次要資訊 */}
@@ -2405,7 +2406,7 @@ export default function ProductDetailPage() {
                   const lastOneImage =
                     lastOnePrize.image_url && !lastOnePrize.image_url.startsWith('blob:')
                       ? lastOnePrize.image_url
-                      : '/images/item_defaulet.webp';
+                      : asset('/images/item_defaulet.webp');
                   
                   return (
                     <button
@@ -2591,7 +2592,7 @@ export default function ProductDetailPage() {
                 {isPackMode ? '單包' : '單抽'}
               </span>
               <div className="flex items-center gap-1">
-                <Image src="/images/gcoin.webp" alt="G" width={16} height={16}
+                <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16}
                   className="inline-block shrink-0" style={{ width: 16, height: 16 }} unoptimized />
                 <span className="font-amount text-xl font-black leading-none text-accent-red">
                   {(product.price ?? 0).toLocaleString()}

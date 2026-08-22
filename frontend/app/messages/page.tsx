@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import { asset } from '@/lib/asset';
 
 type ThreadPreview = {
   id: string;
@@ -136,13 +137,13 @@ export default function MessagesListPage() {
           for (const d of Array.isArray(displays) ? displays : []) {
             const id = String((d as any).id || '');
             if (!id) continue;
-            displayById.set(id, { name: String((d as any).name || 'user'), avatar: String((d as any).avatar_url || '/images/avatar.webp') });
+            displayById.set(id, { name: String((d as any).name || 'user'), avatar: String((d as any).avatar_url || asset('/images/avatar.webp')) });
           }
         }
 
         const list: ThreadPreview[] = Array.from(byThread.entries())
           .map(([id, t]) => {
-            const display = displayById.get(t.otherId) || { name: 'user', avatar: '/images/avatar.webp' };
+            const display = displayById.get(t.otherId) || { name: 'user', avatar: asset('/images/avatar.webp') };
             return {
               id,
               title: `@${display.name}`,

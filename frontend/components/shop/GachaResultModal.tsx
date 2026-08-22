@@ -8,6 +8,7 @@ import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
 import { gradeRank } from '@/lib/prizeGrade';
 import GradeBadge from '@/components/ui/GradeBadge';
 import { initMachineAudio, sfxFanfare, sfxUiClick, setDucking } from '@/lib/machineSfx';
+import { asset } from '@/lib/asset';
 
 /**
  * 中獎結果彈窗（全站共用：轉蛋／盒玩／一番賞／自製賞）
@@ -32,11 +33,11 @@ interface GachaResultModalProps {
   hideTicketNumber?: boolean;
 }
 
-const ITEM_DEFAULT_IMG = '/images/item_defaulet.webp';
+const ITEM_DEFAULT_IMG = asset('/images/item_defaulet.webp');
 
 function prizeImage(p: Prize, failed: boolean): string {
   if (failed) return ITEM_DEFAULT_IMG;
-  return p.image_url || `/images/item/${(p.id ?? '').toString().padStart(5, '0')}.jpg`;
+  return p.image_url || asset(`/images/item/${(p.id ?? '').toString().padStart(5, '0')}.jpg`);
 }
 
 export function GachaResultModal({ isOpen, onClose, results, hideTicketNumber = false }: GachaResultModalProps) {

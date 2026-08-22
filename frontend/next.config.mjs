@@ -11,6 +11,21 @@ const nextConfig = {
   // 那不是 Next.js 需要重啟，是被自己人打壞的。
   distDir: process.env.NEXT_DIST_DIR || '.next',
   output: 'standalone',
+  /*
+   * 靜態資源快取：**只有帶 `?v=<內容雜湊>` 的網址**才給一年 immutable
+   * （見 lib/asset.ts；雜湊表由 scripts/gen-asset-manifest.mjs 產生）。
+   * 沒帶版本的維持 Next 預設的 must-revalidate —— 慢，但永遠不會拿到舊圖。
+   * 不用 stale-while-revalidate：老闆 2026-08-22 明確不要舊圖（資訊不對等）。
+   */
+  async headers() {
+    return [
+      {
+        source: '/:prefix(images|loading|icons|audio|videos)/:path*',
+        has: [{ type: 'query', key: 'v' }],
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+    ]
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**.supabase.co',                      pathname: '/storage/v1/object/public/**' },

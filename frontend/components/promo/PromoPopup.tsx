@@ -21,12 +21,13 @@ import { usePromos, type SitePromo, type NewArrivalProduct } from './usePromos';
 import { hideForToday } from '@/lib/promoDismiss';
 import { useRouteTransition } from '@/components/ui/RouteTransition';
 import { CATEGORY_LABELS, categoryFlagKey } from '@/lib/categoryFlags';
+import { asset } from '@/lib/asset';
 
 /** 卡片版的統一模板底圖（含外框、緞帶、喇叭與按鈕），版位百分比由此圖量測而來 */
-const TEMPLATE_BG = '/images/bg.webp';
+const TEMPLATE_BG = asset('/images/bg.webp');
 
 /** 最新上架彈窗的外框（含「最新上架」字樣與狗狗），中間留白給商品 */
-const NEW_ARRIVAL_BG = '/images/new_item.png';
+const NEW_ARRIVAL_BG = asset('/images/new_item.webp');
 
 /**
  * 外框裡那塊白板的內容區。
@@ -245,7 +246,7 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                                 小卡是 24px，這裡是列表所以縮到 15px，其餘一致 */}
                             {p.price != null && (
                               <span className="mt-0.5 flex items-center gap-1">
-                                <Image src="/images/gcoin.webp" alt="G" width={12} height={12} className="h-3 w-3 object-contain" />
+                                <Image src={asset("/images/gcoin.webp")} alt="G" width={12} height={12} className="h-3 w-3 object-contain" />
                                 <span className="font-amount text-[15px] font-black leading-none tracking-tight text-primary">
                                   {p.price.toLocaleString()}
                                 </span>

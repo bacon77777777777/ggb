@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { useAlert } from '@/components/ui/AlertDialog';
 import Image from 'next/image';
 import { fetchProductPromotion, promoBonusDraws, type ProductPromotion } from '@/lib/promotions';
+import { asset } from '@/lib/asset';
 
 type UserCoupon = Database['public']['Tables']['user_coupons']['Row'] & {
   coupon: Database['public']['Tables']['coupons']['Row'] | null
@@ -309,15 +310,15 @@ export function PurchaseConfirmationModal({
                       isDesktop ? "w-16 h-16" : "w-12 h-12"
                     )}>
                       <Image
-                        src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
+                        src={product.image_url || asset(`/images/item/${product.id.toString().padStart(5, '0')}.jpg`)}
                         alt={product.name}
                         fill
                         className="object-cover"
                         unoptimized
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          target.srcset = '/images/item_defaulet.webp';
-                          target.src = '/images/item_defaulet.webp';
+                          target.srcset = asset('/images/item_defaulet.webp');
+                          target.src = asset('/images/item_defaulet.webp');
                         }}
                       />
                     </div>
@@ -341,7 +342,7 @@ export function PurchaseConfirmationModal({
                         <div className="flex items-center gap-1">
                           <div className={cn("relative shrink-0", isDesktop ? "w-6 h-6" : "w-5 h-5")}>
                             <Image 
-                              src="/images/gcoin.webp" 
+                              src={asset("/images/gcoin.webp")} 
                               alt="G" 
                               fill
                               className="object-contain"
@@ -713,7 +714,7 @@ export function GAmount({ value, negative, iconSize = 14, className }: {
   return (
     <span className={cn("inline-flex items-center gap-1 align-middle", className)}>
       {negative && <span>-</span>}
-      <Image src="/images/gcoin.webp" alt="G" width={iconSize} height={iconSize}
+      <Image src={asset("/images/gcoin.webp")} alt="G" width={iconSize} height={iconSize}
         className="inline-block shrink-0" style={{ width: iconSize, height: iconSize }} />
       <span className="font-amount">{value.toLocaleString()}</span>
     </span>

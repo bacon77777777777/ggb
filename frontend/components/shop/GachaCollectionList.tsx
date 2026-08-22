@@ -12,6 +12,7 @@ import ProductCard from '@/components/ProductCard';
 import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
 import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
 import { fetchProductPromotion, type ProductPromotion } from '@/lib/promotions';
+import { asset } from '@/lib/asset';
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 type Prize = Database['public']['Tables']['product_prizes']['Row'];
@@ -134,7 +135,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
                       {/* 小圖 */}
                       <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
                         <Image
-                          src={imgSrc ?? '/images/item_defaulet.webp'}
+                          src={imgSrc ?? asset('/images/item_defaulet.webp')}
                           alt={prize.name}
                           fill
                           className="object-cover"

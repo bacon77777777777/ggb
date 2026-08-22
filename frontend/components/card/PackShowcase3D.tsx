@@ -27,6 +27,7 @@ import * as THREE from 'three';
 import { createClient } from '@/lib/supabase/client';
 import SoundToggle from '@/components/ui/SoundToggle';
 import { swoosh, unlockPackAudio } from '@/lib/packSfx';
+import { asset } from '@/lib/asset';
 
 export type PackShowcase3DHandle = {
   goToNext: () => void;
@@ -211,7 +212,7 @@ function slotFor(d: number, aspect: number) {
  * 這張是淺色棚景，縫透出來也是淺的所以看不出來 —— 換成暗色背景就會露餡，
  * 先前那條「側面黑縫」就是背景留成暗色機台圖造成的。
  */
-const STUDIO_BG = "url('/images/card/showcase-bg.webp') center/cover no-repeat";
+const STUDIO_BG = `url(${asset('/images/card/showcase-bg.webp')}) center/cover no-repeat`;
 
 /**
  * 背景的流星。
@@ -431,8 +432,8 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         const p = paramsRef.current;
         for (let i = 0; i < N; i++) {
           const style = packStyles[i] ?? '01';
-          const builtinFront = `/images/card/pack/${style}a.webp`;
-          const builtinBack = `/images/card/pack/${style}b.webp`;
+          const builtinFront = asset(`/images/card/pack/${style}a.webp`);
+          const builtinBack = asset(`/images/card/pack/${style}b.webp`);
           // 自訂圖載不到（網址失效、格式不支援…）就退回內建款式 —— 寧可長得不一樣，也不要白色空包
           const loadOr = async (custom: string | undefined, fallback: string) => {
             if (!custom) return loadImage(fallback);
@@ -599,7 +600,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
 
     if (fallback) {
       const style = packStyles[0] ?? '01';
-      const src = params.frontImage || `/images/card/pack/${style}a.webp`;
+      const src = params.frontImage || asset(`/images/card/pack/${style}a.webp`);
       return (
         <div className="w-full flex items-center justify-center" style={{ height, background: STUDIO_BG }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ImageButton } from '@/components/ui/ImageButton';
 import { hapticMedium } from '@/lib/haptics';
+import { asset } from '@/lib/asset';
 
 // ─── layout (750×932 design) ─────────────────────────────────────────────────
 const BOX_DESIGN_W = 100;
@@ -46,12 +47,12 @@ const BACK_FLOOR  = HOLE_B - BOX_R * 1.2;
 
 // ─── 6-face image paths (shared with mode3) ───────────────────────────────────
 const FACES = {
-  front:  '/images/blindbox/mode3/box/4.webp',
-  back:   '/images/blindbox/mode3/box/6.webp',
-  left:   '/images/blindbox/mode3/box/3.webp',
-  right:  '/images/blindbox/mode3/box/5.webp',
-  top:    '/images/blindbox/mode3/box/2.webp', // 交換：原 bottom 圖
-  bottom: '/images/blindbox/mode3/box/1.webp', // 交換：原 top 圖
+  front:  asset('/images/blindbox/mode3/box/4.webp'),
+  back:   asset('/images/blindbox/mode3/box/6.webp'),
+  left:   asset('/images/blindbox/mode3/box/3.webp'),
+  right:  asset('/images/blindbox/mode3/box/5.webp'),
+  top:    asset('/images/blindbox/mode3/box/2.webp'), // 交換：原 bottom 圖
+  bottom: asset('/images/blindbox/mode3/box/1.webp'), // 交換：原 top 圖
 } as const;
 
 const BASE_AX = -20;
@@ -139,8 +140,8 @@ function useBoxSounds() {
   const machineRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    shuffleRef.current = new Audio('/audio/changebox.mp3');
-    machineRef.current = new Audio('/audio/gacha.mp3');
+    shuffleRef.current = new Audio(asset('/audio/changebox.mp3'));
+    machineRef.current = new Audio(asset('/audio/gacha.mp3'));
     machineRef.current.loop = true;
     [shuffleRef, machineRef].forEach(r => { if (r.current) r.current.preload = 'auto'; });
     return () => {
@@ -573,7 +574,7 @@ export function BlindboxMachineMode2({
       {/* Background */}
       <div className="absolute inset-0">
         <Image
-          src="/images/blindbox/mode2/main.webp" alt="blindbox machine"
+          src={asset("/images/blindbox/mode2/main.webp")} alt="blindbox machine"
           fill className="object-fill" unoptimized
           priority
           /* priority 一定要留著。
@@ -744,7 +745,7 @@ export function BlindboxMachineMode2({
 
       {/* hole_bg (z=12): opaque overlay with transparent oval */}
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 12 }}>
-        <Image src="/images/blindbox/mode2/hole_bg.webp" alt="" fill className="object-fill" unoptimized />
+        <Image src={asset("/images/blindbox/mode2/hole_bg.webp")} alt="" fill className="object-fill" unoptimized />
       </div>
 
       {/* Retrieval slot click area (z=14) */}
@@ -778,19 +779,19 @@ export function BlindboxMachineMode2({
 
       {/* Buttons (z=20) */}
       <ImageButton
-        src="/images/blindbox/mode2/btn2.webp" alt="換一批" text="換一批"
+        src={asset("/images/blindbox/mode2/btn2.webp")} alt="換一批" text="換一批"
         className={`absolute ${isSoldOut || machineState !== 'idle' || readyToPick ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '5.33%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
         onClick={handleShuffle} />
       <ImageButton
-        src="/images/blindbox/mode2/btn1.webp" alt="立即開盒" text="立即開盒"
+        src={asset("/images/blindbox/mode2/btn1.webp")} alt="立即開盒" text="立即開盒"
         className={`absolute ${isSoldOut || machineState !== 'idle' || readyToPick ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '31.73%', top: '84.5%', width: '36.53%', height: '11.2%', zIndex: 20 }}
         onClick={() => { if (machineState === 'idle' && !readyToPick) onPurchase?.(); }} />
       <ImageButton
-        src="/images/blindbox/mode2/btn2.webp" alt="試試看" text="試試看"
+        src={asset("/images/blindbox/mode2/btn2.webp")} alt="試試看" text="試試看"
         className={`absolute ${isSoldOut || machineState !== 'idle' || readyToPick ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '69.6%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}

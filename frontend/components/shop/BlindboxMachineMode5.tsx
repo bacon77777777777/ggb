@@ -25,6 +25,7 @@ import {
   sfxThunk, sfxRumble, sfxClack, sfxDing, sfxWhirr, sfxCollect, sfxUiClick,
 } from '@/lib/machineSfx';
 import { hapticLight, hapticMedium } from '@/lib/haptics';
+import { asset } from '@/lib/asset';
 
 export interface BlindboxMachineMode5Props {
   machineState: 'idle' | 'animating';
@@ -42,7 +43,7 @@ export interface BlindboxMachineMode5Props {
   restockSignal?: number;
 }
 
-const ASSETS = '/images/blindbox/mode5';
+const ASSETS = asset('/images/blindbox/mode5');
 
 const ART_W = 750, ART_H = 932, HALF = Math.PI / 2;
 const S = 0.80;   // 原型 v2 放大：櫃口淨高 163/154 的 65%/69%

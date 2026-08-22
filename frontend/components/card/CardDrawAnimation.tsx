@@ -6,6 +6,7 @@ import Image from 'next/image';
 import type { Prize } from '@/components/GachaMachine';
 import BoosterPackOpenEffect from './BoosterPackOpenEffect';
 import SoundToggle from '@/components/ui/SoundToggle';
+import { asset } from '@/lib/asset';
 
 type CardDrawAnimationProps = {
   isOpen: boolean;
@@ -20,10 +21,10 @@ type Phase = 'pack' | 'swipe';
 function getCardImage(prize: Prize) {
   if (prize.image_url) return prize.image_url;
   const raw = (prize.grade || prize.rarity || '').toUpperCase();
-  if (raw.includes('SSR') || raw.includes('超稀有')) return '/images/card/00001.webp';
-  if (raw.includes('SR')) return '/images/card/00002.webp';
-  if (raw.includes('R') || raw.includes('稀有')) return '/images/card/00003.webp';
-  return '/images/card/00004.webp';
+  if (raw.includes('SSR') || raw.includes('超稀有')) return asset('/images/card/00001.webp');
+  if (raw.includes('SR')) return asset('/images/card/00002.webp');
+  if (raw.includes('R') || raw.includes('稀有')) return asset('/images/card/00003.webp');
+  return asset('/images/card/00004.webp');
 }
 
 // 稀有度配色與 SSR 光效已移除 —— 卡片改成只顯示品項原圖，不加任何外框與疊層。
@@ -183,8 +184,8 @@ function TopCard({ prize, current, onSwiped, s, fit }: TopCardProps) {
 
 // ── IP character cycling loader ───────────────────────────────────────────────
 const LOADER_CHARS = [
-  '/loading/1.webp','/loading/2.webp','/loading/3.webp','/loading/4.webp',
-  '/loading/5.webp','/loading/6.webp','/loading/7.webp','/loading/8.webp',
+  asset('/loading/1.webp'),asset('/loading/2.webp'),asset('/loading/3.webp'),asset('/loading/4.webp'),
+  asset('/loading/5.webp'),asset('/loading/6.webp'),asset('/loading/7.webp'),asset('/loading/8.webp'),
 ];
 function CardLoadingOverlay() {
   const [idx, setIdx] = useState(0);
@@ -341,7 +342,7 @@ export default function CardDrawAnimation({
             >
               {/* Background */}
               <Image
-                src="/images/card/charge/bg.webp"
+                src={asset("/images/card/charge/bg.webp")}
                 alt=""
                 fill
                 className="object-cover"
@@ -355,7 +356,7 @@ export default function CardDrawAnimation({
               {/* hand1 — open palm, behind cards */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/images/card/charge/hand1.webp"
+                src={asset("/images/card/charge/hand1.webp")}
                 alt=""
                 draggable={false}
                 style={{
@@ -394,7 +395,7 @@ export default function CardDrawAnimation({
               {/* hand2 — in front of card, same position as charge screen */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/images/card/charge/hand2.webp"
+                src={asset("/images/card/charge/hand2.webp")}
                 alt=""
                 draggable={false}
                 style={{

@@ -1,10 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { asset } from '@/lib/asset';
 
 const CHARS = [
-  '/loading/1.webp','/loading/2.webp','/loading/3.webp','/loading/4.webp',
-  '/loading/5.webp','/loading/6.webp','/loading/7.webp','/loading/8.webp',
+  asset('/loading/1.webp'),asset('/loading/2.webp'),asset('/loading/3.webp'),asset('/loading/4.webp'),
+  asset('/loading/5.webp'),asset('/loading/6.webp'),asset('/loading/7.webp'),asset('/loading/8.webp'),
 ];
 
 interface IpLoaderProps {

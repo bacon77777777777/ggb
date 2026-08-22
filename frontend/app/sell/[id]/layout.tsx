@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import { getSiteUrl } from '@/lib/site'
+import { asset } from '@/lib/asset';
 
 /*
  * 商城商品詳情的分享預覽（og:title / og:image）。
@@ -56,7 +57,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const description = note
     ? `${note.slice(0, 100)} — ${seller} 上架 · NT$${row.price}`
     : `${seller} 在吉吉比商城上架「${row.title}」，NT$${row.price}。玩家二手轉讓、官方商品，安心交易。`
-  const imagePath = (Array.isArray(row.images) && row.images[0]) || '/images/item_defaulet.webp'
+  const imagePath = (Array.isArray(row.images) && row.images[0]) || asset('/images/item_defaulet.webp')
   const imageUrl = imagePath.startsWith('http') ? imagePath : `${siteUrl}${imagePath}`
   const images = [{ url: imageUrl, width: 800, height: 800, alt: row.title }]
 

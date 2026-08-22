@@ -24,6 +24,7 @@ import ExternalLinkHandler from '@/components/native/ExternalLinkHandler';
 import AppSplashAd from '@/components/native/AppSplashAd';
 import PaymentReturnBridge from '@/components/native/PaymentReturnBridge';
 import { Suspense } from 'react';
+import { asset } from '@/lib/asset';
 
 const siteUrl = getSiteUrl();
 
@@ -100,12 +101,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/images/20260629/favicon.png' },
-      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { url: asset('/images/20260629/favicon.png') },
+      { url: asset('/icons/icon-192.png'), sizes: '192x192', type: 'image/png' },
+      { url: asset('/icons/icon-512.png'), sizes: '512x512', type: 'image/png' },
     ],
     // iOS 主畫面圖示不吃透明底，也不會自己補白 —— 要用切好的 180×180
-    apple: '/icons/apple-touch-icon.png',
+    apple: asset('/icons/apple-touch-icon.png'),
   },
   appleWebApp: {
     title: '吉吉比轉蛋',

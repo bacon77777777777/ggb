@@ -9,11 +9,12 @@
  */
 
 import { BlindboxMachineMode3, type BlindboxMachineMode3Props } from './BlindboxMachineMode3';
+import { asset } from '@/lib/asset';
 
 export type BlindboxMachineMode4Props = Omit<BlindboxMachineMode3Props, 'assetBase'>;
 
 export function BlindboxMachineMode4(props: BlindboxMachineMode4Props) {
-  return <BlindboxMachineMode3 {...props} assetBase="/images/blindbox/mode4" />;
+  return <BlindboxMachineMode3 {...props} assetBase={asset("/images/blindbox/mode4")} />;
 }
 
 export default BlindboxMachineMode4;

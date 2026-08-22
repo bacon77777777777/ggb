@@ -15,6 +15,7 @@ import { trackEvent, trackPageView, trackScrollDepth } from '@/lib/trackEvent';
 import CategoryBadge from '@/components/news/CategoryBadge';
 import { timeAgo } from '@/lib/timeAgo';
 import { useRequireLogin } from '@/hooks/useRequireLogin';
+import { asset } from '@/lib/asset';
 
 interface NewsItem {
   id: string;
@@ -78,7 +79,7 @@ function Avatar({ src, name, size = 36 }: { src: string | null; name: string | n
   }
   return (
     <div style={{ width: size, height: size }} className="rounded-full overflow-hidden flex-shrink-0">
-      <img src="/images/avatar/01.png" alt="用戶" className="w-full h-full object-cover" />
+      <img src={asset("/images/avatar/01.webp")} alt="用戶" className="w-full h-full object-cover" />
     </div>
   );
 }

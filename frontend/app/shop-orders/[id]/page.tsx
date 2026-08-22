@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
+import { asset } from '@/lib/asset';
 
 /*
  * 官方商城訂單。
@@ -47,7 +48,7 @@ export default function ShopOrderPage() {
 
   const [order, setOrder] = useState<Order | null>(null);
   const [title, setTitle] = useState('');
-  const [image, setImage] = useState('/images/item_defaulet.webp');
+  const [image, setImage] = useState(asset('/images/item_defaulet.webp'));
   const [isLoading, setIsLoading] = useState(true);
   const [isActing, setIsActing] = useState(false);
 
@@ -75,7 +76,7 @@ export default function ShopOrderPage() {
         setTitle(String((l as any).title || ''));
         const imgs = Array.isArray((l as any).images) ? (l as any).images.filter(Boolean) : [];
         const items = Array.isArray((l as any).items) ? (l as any).items : [];
-        setImage(imgs[0] || items.map((x: any) => x?.image).filter(Boolean)[0] || '/images/item_defaulet.webp');
+        setImage(imgs[0] || items.map((x: any) => x?.image).filter(Boolean)[0] || asset('/images/item_defaulet.webp'));
       }
     }
     return o;

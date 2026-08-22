@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui';
 import type { Prize } from '@/components/GachaMachine';
+import { asset } from '@/lib/asset';
 
 function useCardSounds() {
   const flipRef  = useRef<HTMLAudioElement | null>(null);
@@ -13,9 +14,9 @@ function useCardSounds() {
   const ripRef   = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    flipRef.current  = new Audio('/audio/sword1.mp3');
-    blingRef.current = new Audio('/audio/u_o8xh7gwsrj-correct_answer_toy_bi-bling-476370.mp3');
-    ripRef.current   = new Audio('/audio/tanweraman-paper-rip-fast-252617.mp3');
+    flipRef.current  = new Audio(asset('/audio/sword1.mp3'));
+    blingRef.current = new Audio(asset('/audio/u_o8xh7gwsrj-correct_answer_toy_bi-bling-476370.mp3'));
+    ripRef.current   = new Audio(asset('/audio/tanweraman-paper-rip-fast-252617.mp3'));
     [flipRef, blingRef, ripRef].forEach(r => { if (r.current) r.current.preload = 'auto'; });
     return () => {
       [flipRef, blingRef, ripRef].forEach(r => {
@@ -68,18 +69,18 @@ function normalizeRank(grade?: string, rarity?: string): 'SSR' | 'SR' | 'R' | 'N
 
 function getCardFront(grade?: string, rarity?: string) {
   const r = normalizeRank(grade, rarity);
-  return r === 'SSR' ? '/images/card/00001.webp'
-    : r === 'SR'  ? '/images/card/00002.webp'
-    : r === 'R'   ? '/images/card/00003.webp'
-    : '/images/card/00004.webp';
+  return r === 'SSR' ? asset('/images/card/00001.webp')
+    : r === 'SR'  ? asset('/images/card/00002.webp')
+    : r === 'R'   ? asset('/images/card/00003.webp')
+    : asset('/images/card/00004.webp');
 }
 
 function getCardBack(grade?: string, rarity?: string) {
   const r = normalizeRank(grade, rarity);
-  return r === 'SSR' ? '/images/card/cardback1.webp'
-    : r === 'SR'  ? '/images/card/cardback2.webp'
-    : r === 'R'   ? '/images/card/cardback3.webp'
-    : '/images/card/cardback4.webp';
+  return r === 'SSR' ? asset('/images/card/cardback1.webp')
+    : r === 'SR'  ? asset('/images/card/cardback2.webp')
+    : r === 'R'   ? asset('/images/card/cardback3.webp')
+    : asset('/images/card/cardback4.webp');
 }
 
 export default function CardFlipDirect({
@@ -129,7 +130,7 @@ export default function CardFlipDirect({
     <div className="fixed inset-0 z-[1200] bg-black flex flex-col items-center justify-center overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 -z-10">
-        <Image src="/images/gacha_bg.webp" alt="" fill className="object-cover brightness-[0.25] blur-[8px]" unoptimized />
+        <Image src={asset("/images/gacha_bg.webp")} alt="" fill className="object-cover brightness-[0.25] blur-[8px]" unoptimized />
         <div className="absolute inset-0 bg-black/50" />
       </div>
 

@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { GAmount } from './PurchaseConfirmationModal';
 import { fetchProductPromotion, promoBonusDraws, type ProductPromotion } from '@/lib/promotions';
+import { asset } from '@/lib/asset';
 
 type UserCoupon = Database['public']['Tables']['user_coupons']['Row'] & {
   coupon: Database['public']['Tables']['coupons']['Row'] | null
@@ -248,15 +249,15 @@ export function PurchaseConfirmation({
         <div className="p-3 md:p-6 pb-2 md:pb-4 flex gap-3 md:gap-5">
           <div className="relative w-12 h-12 md:w-16 md:h-16 bg-neutral-100 dark:bg-neutral-800 rounded-lg overflow-hidden shrink-0 shadow-sm border border-neutral-100 dark:border-neutral-700">
             <Image
-              src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
+              src={product.image_url || asset(`/images/item/${product.id.toString().padStart(5, '0')}.jpg`)}
               alt={product.name}
               fill
               className="object-cover"
               unoptimized
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.srcset = '/images/item_defaulet.webp';
-                target.src = '/images/item_defaulet.webp';
+                target.srcset = asset('/images/item_defaulet.webp');
+                target.src = asset('/images/item_defaulet.webp');
               }}
             />
           </div>
@@ -279,7 +280,7 @@ export function PurchaseConfirmation({
             <div className="flex flex-col justify-end mt-1">
               <div className="flex items-center gap-1">
                 <Image
-                        src="/images/gcoin.webp"
+                        src={asset("/images/gcoin.webp")}
                         alt="G Coin"
                         width={24}
                         height={24}

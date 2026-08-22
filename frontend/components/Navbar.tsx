@@ -15,6 +15,7 @@ import { categoryState } from '@/lib/categoryFlags';
 import NavbarLayout from './NavbarLayout';
 import { countUnread } from '@/lib/announcementRead';
 import { startKeyboardRelay } from '@/lib/keyboardRelay';
+import { asset } from '@/lib/asset';
 
 export default function Navbar() {
   return (
@@ -687,7 +688,7 @@ function NavbarInner() {
             <Link href="/" className={cn("flex items-center group md:relative", (isProductDetailPage || isAnnouncementDetailPage) ? "hidden" : (!showLogo && "hidden md:flex"))}>
               <div className="flex items-center gap-1.5 transition-transform group-hover:scale-105">
                 <Image
-                  src="/images/20260629/logo.svg"
+                  src={asset("/images/20260629/logo.svg")}
                   alt="GACHA ONLINE"
                   width={112}
                   height={28}
@@ -765,7 +766,7 @@ function NavbarInner() {
             {pathname === '/topup' && user && (
               <div className="flex items-center gap-1 mr-1">
                 <div className="w-5 h-5 relative">
-                  <Image src="/images/gcoin.webp" alt="G" fill className="object-contain" unoptimized />
+                  <Image src={asset("/images/gcoin.webp")} alt="G" fill className="object-contain" unoptimized />
                 </div>
                 <span className="text-lg font-black text-accent-red font-amount leading-none tracking-tight">
                   {(user.tokens || 0).toLocaleString()}
@@ -968,7 +969,7 @@ function NavbarInner() {
                   <div className="px-3.5 py-2.5 mb-2 flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full overflow-hidden border border-neutral-200 dark:border-neutral-700 relative">
                       <Image
-                        src={user.avatar_url || '/images/avatar.webp'}
+                        src={user.avatar_url || asset('/images/avatar.webp')}
                         alt={user.name || 'User'}
                         fill
                         className="object-cover"
@@ -1003,7 +1004,7 @@ function NavbarInner() {
                     <div className="text-[13px] font-black text-neutral-400 uppercase tracking-widest mb-1 leading-none">可用代幣</div>
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 relative">
-                        <Image src="/images/gcoin.webp" alt="G" fill className="object-contain" unoptimized />
+                        <Image src={asset("/images/gcoin.webp")} alt="G" fill className="object-contain" unoptimized />
                       </div>
                       <span className="text-xl font-black text-accent-red font-amount leading-none tracking-tight">
                         {(user.tokens || 0).toLocaleString()}

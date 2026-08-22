@@ -22,6 +22,7 @@ import { ChevronLeft, MessageCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatureGate } from '@/lib/useFeatureGate';
+import { asset } from '@/lib/asset';
 
 type ShopHeader = {
   seller_id: string;
@@ -56,7 +57,7 @@ const nt = (n: number) => Math.round(Number(n) || 0).toLocaleString();
 const imgOf = (r: ShopRow) =>
   (Array.isArray(r.images) ? r.images.map((x) => String(x || '').trim()).find(Boolean) : '') ||
   (Array.isArray(r.items) ? r.items.map((x: any) => String(x?.image || '').trim()).find(Boolean) : '') ||
-  '/images/item_defaulet.webp';
+  asset('/images/item_defaulet.webp');
 
 const payLabel = (m: string | null) =>
   m === 'linepay' ? 'LINE Pay' : m === 'bank' ? '銀行轉帳' : '';

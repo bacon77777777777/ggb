@@ -28,6 +28,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { native } from '@/lib/native/bridge';
 import { openPayment } from '@/lib/native/browser';
+import { asset } from '@/lib/asset';
 
 const TOPUP_PLANS = [
   { id: 'p1', amount: 100, points: 100, bonus: 0, isHot: false },
@@ -346,7 +347,7 @@ export default function TopupPage() {
                     選擇儲值金額
                   </h2>
                   <span className="text-[10px] md:text-xs font-bold text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2 py-1 rounded-full flex items-center gap-1">
-                    1 TWD = 1 <Image src="/images/gcoin.webp" alt="G" width={12} height={12} className="w-3 h-3 object-contain inline-block" />
+                    1 TWD = 1 <Image src={asset("/images/gcoin.webp")} alt="G" width={12} height={12} className="w-3 h-3 object-contain inline-block" />
                   </span>
                 </div>
                 <div className="grid grid-cols-3 md:grid-cols-3 gap-2 md:gap-3">
@@ -374,7 +375,7 @@ export default function TopupPage() {
                       </div>
                       <div className="flex items-center gap-1.5">
                         <div className="relative w-5 h-5 md:w-6 md:h-6">
-                          <Image src="/images/gcoin.webp" alt="G" fill className="object-contain" unoptimized />
+                          <Image src={asset("/images/gcoin.webp")} alt="G" fill className="object-contain" unoptimized />
                         </div>
                         <span className="text-xl md:text-2xl font-black text-neutral-900 dark:text-white font-amount tracking-tight">{plan.points.toLocaleString()}</span>
                       </div>
@@ -468,7 +469,7 @@ export default function TopupPage() {
                   <span className="text-neutral-500 dark:text-neutral-400 font-bold">儲值代幣</span>
                   <div className="flex items-center gap-1">
                     <span className="text-neutral-900 dark:text-neutral-100 font-black font-amount">{selectedPlan.points.toLocaleString()}</span>
-                    <Image src="/images/gcoin.webp" alt="G" width={16} height={16} className="w-4 h-4 object-contain" />
+                    <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16} className="w-4 h-4 object-contain" />
                   </div>
                 </div>
                 {selectedPlan.bonus > 0 && (
@@ -476,7 +477,7 @@ export default function TopupPage() {
                     <span className="text-neutral-500 dark:text-neutral-400 font-bold">額外贈點</span>
                     <div className="flex items-center gap-1">
                       <span className="text-accent-emerald font-black font-amount">+{selectedPlan.bonus.toLocaleString()}</span>
-                      <Image src="/images/gcoin.webp" alt="G" width={16} height={16} className="w-4 h-4 object-contain" />
+                      <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16} className="w-4 h-4 object-contain" />
                     </div>
                   </div>
                 )}
@@ -583,7 +584,7 @@ export default function TopupPage() {
                     <div className="text-right">
                       <div className="flex items-center justify-end gap-1 font-black text-neutral-900 dark:text-white font-amount">
                         {selectedPlan.points.toLocaleString()} 
-                        <Image src="/images/gcoin.webp" alt="G" width={16} height={16} className="w-4 h-4 object-contain" />
+                        <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16} className="w-4 h-4 object-contain" />
                       </div>
                       {selectedPlan.bonus > 0 && (
                         <div className="text-xs font-bold text-accent-emerald font-amount">

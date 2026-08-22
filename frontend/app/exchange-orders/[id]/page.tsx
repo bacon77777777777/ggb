@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { ActionBar } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import { asset } from '@/lib/asset';
 
 type ExchangeCard = { id: string; name: string; series: string; image: string; value: number };
 type RoleKey = 'owner' | 'initiator';
@@ -261,13 +262,13 @@ export default function ExchangeOrderFlowPage() {
 
         const otherId = ownerId === user.id ? initiatorId : ownerId;
         let title = '@user';
-        let avatar = '/images/avatar.webp';
+        let avatar = asset('/images/avatar.webp');
         if (otherId) {
           const { data: displays, error: displayError } = await supabase.rpc('get_user_displays', { p_ids: [otherId] });
           if (displayError) throw displayError;
           const d = Array.isArray(displays) ? displays[0] : null;
           title = `@${String(d?.name || 'user')}`;
-          avatar = String(d?.avatar_url || '/images/avatar.webp');
+          avatar = String(d?.avatar_url || asset('/images/avatar.webp'));
         }
 
         const createdAt = Date.parse(String((row as any).created_at || '')) || Date.now();
@@ -654,7 +655,7 @@ export default function ExchangeOrderFlowPage() {
           <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 px-4 py-3">
             <div className="flex items-center gap-3">
               <div className="relative w-10 h-10 rounded-full overflow-hidden bg-neutral-100 dark:bg-neutral-800 shrink-0">
-                <Image src={order?.avatar || '/images/avatar.webp'} alt={order?.title || ''} fill className="object-cover" />
+                <Image src={order?.avatar || asset('/images/avatar.webp')} alt={order?.title || ''} fill className="object-cover" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-[14px] font-black text-neutral-900 dark:text-white truncate">{order?.title || '找不到交換'}</div>

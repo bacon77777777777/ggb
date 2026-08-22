@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { isSyntheticEmail } from '@/lib/syntheticEmail';
 import { useRouter } from 'next/navigation';
 import { User as SupabaseUser } from '@supabase/supabase-js';
+import { asset } from '@/lib/asset';
 
 
 /**
@@ -106,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   id: retryData.id,
                   name: retryData.name || tempNameFrom(undefined, email),
                   full_name: retryData.name,
-                  avatar_url: retryData.avatar_url || '/images/avatar/01.png',
+                  avatar_url: retryData.avatar_url || asset('/images/avatar/01.png'),
                   points: retryData.points || 0,
                   tokens: retryData.tokens || 0,
                   tickets: retryData.tickets || 0,
@@ -168,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: data.id,
           name: data.name || tempNameFrom(undefined, email),
           full_name: data.name,
-          avatar_url: data.avatar_url || '/images/avatar/01.png',
+          avatar_url: data.avatar_url || asset('/images/avatar/01.png'),
           points: data.points || 0,
           tokens: data.tokens || 0,
           tickets: data.tickets || 0,
@@ -228,7 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email,
             name: tempName,
             full_name: null,
-            avatar_url: '/images/avatar/01.png',
+            avatar_url: asset('/images/avatar/01.png'),
             points: 0,
             tokens: 0,
             tickets: 0,
@@ -270,7 +271,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email,
           name: tempName,
           full_name: null,
-          avatar_url: '/images/avatar/01.png',
+          avatar_url: asset('/images/avatar/01.png'),
           points: 0,
           tokens: 0,
           tickets: 0,

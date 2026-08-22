@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import { asset } from '@/lib/asset';
 
 const formatPrizeName = (name: string) => {
   if (!name) return '';
@@ -30,7 +31,7 @@ const useTearSound = () => {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const audio = new Audio('/audio/tanweraman-paper-rip-fast-252617.mp3');
+    const audio = new Audio(asset('/audio/tanweraman-paper-rip-fast-252617.mp3'));
     audio.preload = 'auto';
     audioRef.current = audio;
 
@@ -167,7 +168,7 @@ export const IchibanTicket: React.FC<IchibanTicketProps> = ({
         <div className="absolute inset-0 rounded-[12px] overflow-hidden">
           {/* Background Image */}
           <Image 
-            src="/images/bg.svg?v=10" 
+            src={asset("/images/bg.svg?v=10")} 
             className="object-cover" 
             alt="ticket background"
             draggable={false}
@@ -309,7 +310,7 @@ export const IchibanTicket: React.FC<IchibanTicketProps> = ({
                 <div className="absolute inset-0 rounded-[12px] overflow-hidden">
                   <div className="relative w-[105%] h-[105%] -translate-x-2 -translate-y-0.5">
                     <Image 
-                      src={coverImageUrl || "/images/up.svg?v=8"}
+                      src={coverImageUrl || asset("/images/up.svg?v=8")}
                       className="object-cover" 
                       alt="cover" 
                       draggable={false}
@@ -343,7 +344,7 @@ export const IchibanTicket: React.FC<IchibanTicketProps> = ({
                 >
                   <div className="relative w-16 h-16 drop-shadow-md">
                     <Image 
-                      src="/images/finger.png" 
+                      src={asset("/images/finger.png")} 
                       alt="swipe" 
                       fill
                       className="object-contain"

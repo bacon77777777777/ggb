@@ -3,6 +3,7 @@ import { playSfx, SFX } from '@/lib/sfx';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ImageButton } from '@/components/ui/ImageButton';
+import { asset } from '@/lib/asset';
 
 interface GachaMachineVisualProps {
   state: 'idle' | 'shaking' | 'spinning' | 'dropping' | 'waiting' | 'result';
@@ -18,7 +19,7 @@ interface GachaMachineVisualProps {
   disableButtons?: boolean;
 }
 
-const EGG_IMAGES = ['/images/gacha/begg.webp', '/images/gacha/gegg.webp', '/images/gacha/pegg.webp'];
+const EGG_IMAGES = [asset('/images/gacha/begg.webp'), asset('/images/gacha/gegg.webp'), asset('/images/gacha/pegg.webp')];
 
 interface Egg {
   id: number;
@@ -380,7 +381,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
     <div className="relative w-full h-full" style={{ touchAction: 'pan-y' }}>
       <div className="absolute inset-0">
         <Image
-          src="/images/gacha/main.webp"
+          src={asset("/images/gacha/main.webp")}
           alt="gacha machine"
           fill
           className="object-fill"
@@ -426,7 +427,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
             </motion.div>
           ))}
         </div>
-        <Image src="/images/gacha/box.svg" alt="gacha box" fill className="object-contain pointer-events-none" unoptimized />
+        <Image src={asset("/images/gacha/box.svg")} alt="gacha box" fill className="object-contain pointer-events-none" unoptimized />
       </div>
 
       <div
@@ -438,7 +439,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
           height: '12.16%',
         }}
       >
-        <Image src="/images/gacha/hole.svg" alt="hole" fill className="object-contain pointer-events-none" unoptimized />
+        <Image src={asset("/images/gacha/hole.svg")} alt="hole" fill className="object-contain pointer-events-none" unoptimized />
         <div className="absolute inset-0 overflow-hidden">
           <AnimatePresence>
             {isDropping && (
@@ -475,7 +476,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
       </div>
 
       <ImageButton
-        src="/images/gacha/btn2.webp"
+        src={asset("/images/gacha/btn2.webp")}
         alt="推一下"
         text="推一下"
         className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
@@ -495,7 +496,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
       />
 
       <ImageButton
-        src="/images/gacha/btn1.webp"
+        src={asset("/images/gacha/btn1.webp")}
         alt="立即轉蛋"
         text="立即轉蛋"
         className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
@@ -513,7 +514,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
       />
 
       <ImageButton
-        src="/images/gacha/btn2.webp"
+        src={asset("/images/gacha/btn2.webp")}
         alt="試試看"
         text="試試看"
         className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
@@ -532,7 +533,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
 
       <div className="absolute inset-0 pointer-events-none">
         <Image
-          src="/images/gacha/boxmask.webp"
+          src={asset("/images/gacha/boxmask.webp")}
           alt="gacha box overlay"
           fill
           className="object-contain object-top"

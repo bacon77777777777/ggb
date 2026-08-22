@@ -13,6 +13,7 @@ import { useAlert } from '@/components/ui/AlertDialog';
 import { useRequireLogin } from '@/hooks/useRequireLogin';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
+import { asset } from '@/lib/asset';
 
 /**
  * 交易所
@@ -39,7 +40,7 @@ type Listing = {
   seller_name: string;
 };
 
-const FALLBACK_IMAGE = '/images/banner_defaulet.png';
+const FALLBACK_IMAGE = asset('/images/banner_defaulet.png');
 
 export default function MarketPage() {
   const [supabase] = useState(() => createClient());

@@ -40,7 +40,7 @@ const EMPTY: UserForm = {
   recipient_name: '', recipient_phone: '', address: '', tokens: 0, points: 0, status: 'active',
 }
 
-const PRESET_AVATARS = Array.from({ length: 8 }, (_, i) => `/images/avatar/${String(i + 1).padStart(2, '0')}.png`)
+const PRESET_AVATARS = Array.from({ length: 8 }, (_, i) => `/images/avatar/${String(i + 1).padStart(2, '0')}.webp`)
 
 const FIELD_CLASS =
   'w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary'

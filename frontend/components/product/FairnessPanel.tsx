@@ -13,6 +13,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import CopyableTruncatedField from '@/components/ui/CopyableTruncatedField';
+import { asset } from '@/lib/asset';
 
 interface Props {
   productId: number;
@@ -29,7 +30,7 @@ export default function FairnessPanel({ productId, commitment, isSealed, isSoldO
       <div className="flex items-center gap-3 sm:gap-4 border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
         {/* 與底部警語列（NoticeBar）同一顆圖標，玩家兩處看到的是同一個東西 */}
         <Image
-          src="/images/ic.png" alt="" width={48} height={48}
+          src={asset("/images/ic.png")} alt="" width={48} height={48}
           className="w-8 h-8 sm:w-12 sm:h-12 flex-shrink-0"
           unoptimized
         />

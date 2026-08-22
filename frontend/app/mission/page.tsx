@@ -10,6 +10,7 @@ import { MissionSkeleton } from '@/components/Skeletons';
 import { useRouter } from 'next/navigation';
 import { useSwipeTabs } from '@/lib/useSwipeTabs';
 import { TopFadeBlur } from '@/components/ui/TopFadeBlur';
+import { asset } from '@/lib/asset';
 
 export default function MissionPage() {
   const { user, refreshProfile, isLoading: authLoading } = useAuth();
@@ -36,7 +37,7 @@ export default function MissionPage() {
 
   // Initialize Audio
   useEffect(() => {
-    audioRef.current = new Audio('/audio/23424.mp3');
+    audioRef.current = new Audio(asset('/audio/23424.mp3'));
     audioRef.current.load();
   }, []);
 

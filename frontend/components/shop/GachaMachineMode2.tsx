@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { playSfx, SFX } from '@/lib/sfx';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import { asset } from '@/lib/asset';
 
 interface GachaMachineMode2Props {
   state: 'idle' | 'shaking' | 'spinning' | 'dropping' | 'waiting' | 'result';
@@ -19,7 +20,7 @@ interface GachaMachineMode2Props {
   disableButtons?: boolean;
 }
 
-const EGG_IMAGES = ['/images/gacha/begg.webp', '/images/gacha/gegg.webp', '/images/gacha/pegg.webp'];
+const EGG_IMAGES = [asset('/images/gacha/begg.webp'), asset('/images/gacha/gegg.webp'), asset('/images/gacha/pegg.webp')];
 
 interface Egg {
   id: number;
@@ -229,7 +230,7 @@ export function GachaMachineMode2({
       {/* Background machine image */}
       <div className="absolute inset-0">
         <Image
-          src="/images/gacha/mode2/main.webp"
+          src={asset("/images/gacha/mode2/main.webp")}
           alt="gacha machine"
           fill
           className="object-fill"
@@ -257,9 +258,9 @@ export function GachaMachineMode2({
           top: '7.94%',
           width: '94.27%',
           height: '41.42%',
-          WebkitMaskImage: 'url(/images/gacha/mode2/box.svg)',
+          WebkitMaskImage: `url(${asset('/images/gacha/mode2/box.svg')})`,
           WebkitMaskSize: '100% 100%',
-          maskImage: 'url(/images/gacha/mode2/box.svg)',
+          maskImage: `url(${asset('/images/gacha/mode2/box.svg')})`,
           maskSize: '100% 100%',
         }}
       >
@@ -288,7 +289,7 @@ export function GachaMachineMode2({
         transition={{ duration: 1.2, ease: [0.4, 0, 0.2, 1] }}
         onClick={() => { if (!isSoldOut && !disableButtons && onPurchase) onPurchase(); }}
       >
-        <Image src="/images/gacha/mode2/switch.webp" alt="switch" fill className="object-contain" unoptimized />
+        <Image src={asset("/images/gacha/mode2/switch.webp")} alt="switch" fill className="object-contain" unoptimized />
       </motion.div>
 
       {/* Hole animation container — (500,580), 157×157; hole.svg NOT rendered (visual is in main.png) */}

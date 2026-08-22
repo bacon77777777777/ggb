@@ -21,6 +21,7 @@ import Image from 'next/image';
 import { X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { dismiss, shouldShow } from '@/lib/promoDismiss';
+import { asset } from '@/lib/asset';
 
 const NOTICE_ID = 'fairness-notice';
 const LOGGED_IN_DISMISS_DAYS = 7;
@@ -159,7 +160,7 @@ export default function NoticeBar({ position = 'bottom' }: Props) {
       <div className={`bg-neutral-800 dark:bg-neutral-900 ${isTop ? 'border-b' : 'border-t'} border-white/5 px-4 py-1.5 flex items-center gap-2.5`}>
         <Link href={CTA_HREF} className="flex items-center gap-2.5 flex-1 min-w-0">
           <Image
-            src="/images/ic.png" alt="" width={24} height={24}
+            src={asset("/images/ic.png")} alt="" width={24} height={24}
             className="flex-shrink-0 w-6 h-6"
             unoptimized
           />

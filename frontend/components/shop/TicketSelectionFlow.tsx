@@ -21,8 +21,9 @@ import Image from 'next/image';
 import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
 import SoundToggle from '@/components/ui/SoundToggle';
 import { isSoundMuted } from '@/lib/soundPrefs';
+import { asset } from '@/lib/asset';
 
-const ITEM_DEFAULT_IMG = '/images/item_defaulet.webp';
+const ITEM_DEFAULT_IMG = asset('/images/item_defaulet.webp');
 
 interface TearResult {
   id: string;
@@ -106,7 +107,7 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const audio = new Audio('/audio/tanweraman-paper-rip-fast-252617.mp3');
+    const audio = new Audio(asset('/audio/tanweraman-paper-rip-fast-252617.mp3'));
     audio.preload = 'auto';
     tearSoundRef.current = audio;
 
@@ -187,7 +188,7 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const audio = new Audio('/audio/getpopup.mp3');
+    const audio = new Audio(asset('/audio/getpopup.mp3'));
     audio.preload = 'auto';
     resultSoundRef.current = audio;
 
@@ -1290,7 +1291,7 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
         {/* Background Image */}
         <div className="absolute inset-0 z-0 overflow-hidden">
           <Image 
-            src="/images/gacha_bg.webp" 
+            src={asset("/images/gacha_bg.webp")} 
             alt="" 
             fill
             className="object-cover filter brightness-[0.85] scale-105"
@@ -1319,10 +1320,10 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
                   const isLastOne = result.is_last_one;
                   const isHidden = isLastOne && !allNormalOpened;
                   const displayImage = isHidden
-                    ? '/images/item_defaulet.webp'
+                    ? asset('/images/item_defaulet.webp')
                     : result.image_url && !result.image_url.startsWith('blob:')
                       ? result.image_url
-                      : '/images/item_defaulet.webp';
+                      : asset('/images/item_defaulet.webp');
                   
                   return (
                   <div key={idx} className={cn(
@@ -1489,7 +1490,7 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
           <div className="flex flex-col shrink-0 pl-1 justify-center h-full">
             <span className="text-[13px] text-neutral-400 font-black uppercase tracking-widest leading-none mb-0.5">已選 <span className="font-amount">{selectedTickets.length.toLocaleString()}</span> 張</span>
             <div className="flex items-center gap-1">
-              <Image src="/images/gcoin.webp" alt="G" width={16} height={16}
+              <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16}
                 className="inline-block shrink-0" style={{ width: 16, height: 16 }} unoptimized />
               <span className="text-xl font-black text-accent-red font-amount leading-none">{(selectedTickets.length * product.price).toLocaleString()}</span>
             </div>

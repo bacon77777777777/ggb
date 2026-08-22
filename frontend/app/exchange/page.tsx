@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { asset } from '@/lib/asset';
 
 export const dynamic = 'force-dynamic';
 
@@ -231,7 +232,7 @@ export default function ExchangeListPage() {
               if (!id) continue;
               displayById.set(id, {
                 name: String(d.name || 'user'),
-                avatar_url: String(d.avatar_url || '/images/avatar.webp'),
+                avatar_url: String(d.avatar_url || asset('/images/avatar.webp')),
               });
             }
           }
@@ -247,7 +248,7 @@ export default function ExchangeListPage() {
 
         const mapped: ExchangeOffer[] = offerRows.map((row) => {
           const ownerId = String(row.owner_id || '');
-          const display = displayById.get(ownerId) || { name: 'user', avatar_url: '/images/avatar.webp' };
+          const display = displayById.get(ownerId) || { name: 'user', avatar_url: asset('/images/avatar.webp') };
           const cardRows = Array.isArray(row.cards) ? row.cards : [];
           cardRows.sort((a, b) => (Number(a.position) || 0) - (Number(b.position) || 0));
           const getting = cardRows.filter((c) => c.side === 'want').map(toCard);
@@ -362,10 +363,10 @@ export default function ExchangeListPage() {
         })();
 
         const fallback = [
-          { id: 'demo:1', name: '示例卡 1', image: '/images/item/10017.jpg', series: 'JP' },
-          { id: 'demo:2', name: '示例卡 2', image: '/images/item/10018.jpg', series: 'JP' },
-          { id: 'demo:3', name: '示例卡 3', image: '/images/item/10019.jpg', series: 'JP' },
-          { id: 'demo:4', name: '示例卡 4', image: '/images/item/10020.jpg', series: 'JP' },
+          { id: 'demo:1', name: '示例卡 1', image: asset('/images/item/10017.jpg'), series: 'JP' },
+          { id: 'demo:2', name: '示例卡 2', image: asset('/images/item/10018.jpg'), series: 'JP' },
+          { id: 'demo:3', name: '示例卡 3', image: asset('/images/item/10019.jpg'), series: 'JP' },
+          { id: 'demo:4', name: '示例卡 4', image: asset('/images/item/10020.jpg'), series: 'JP' },
         ];
 
         const pool = cardsPool.length >= 4 ? cardsPool : fallback;

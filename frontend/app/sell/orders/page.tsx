@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import OrderSheet, { type OrderLite } from '@/components/sell/OrderSheet';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import MarketTabBar from '@/components/sell/MarketTabBar';
+import { asset } from '@/lib/asset';
 
 /*
  * 商城訂單 —— 照原型 vOrders() 的 .olist / .ocard / .ohd / .orow 結構。
@@ -49,7 +50,7 @@ const pickImage = (l: any): string => {
   const imgs = Array.isArray(l?.images) ? l.images.filter(Boolean) : [];
   if (imgs[0]) return imgs[0];
   const items = Array.isArray(l?.items) ? l.items : [];
-  return items.map((x: any) => String(x?.image || '').trim()).filter(Boolean)[0] || '/images/item_defaulet.webp';
+  return items.map((x: any) => String(x?.image || '').trim()).filter(Boolean)[0] || asset('/images/item_defaulet.webp');
 };
 
 export default function SellOrdersPage() {

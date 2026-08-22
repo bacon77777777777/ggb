@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import { hapticHeavy } from '@/lib/haptics';
+import { asset } from '@/lib/asset';
 
 interface LastOneCelebrationModalPrize {
   name: string;
@@ -57,7 +58,7 @@ export function LastOneCelebrationModal({ onClose, prize }: LastOneCelebrationMo
               const imageSrc =
                 activePrize.image_url && !activePrize.image_url.startsWith('blob:')
                   ? activePrize.image_url
-                  : '/images/item_defaulet.webp';
+                  : asset('/images/item_defaulet.webp');
 
               return (
             <>

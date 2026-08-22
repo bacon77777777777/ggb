@@ -1,3 +1,4 @@
+import { asset } from '@/lib/asset';
 /**
  * 各抽獎模組的首屏素材清單
  *
@@ -17,31 +18,31 @@
 
 export const MACHINE_ASSETS: Record<string, string[]> = {
   // ── 轉蛋 ──
-  gacha_classic: ['/images/gacha/machine.webp'],
-  gacha_mode2: ['/images/gacha/mode2/main.webp'],
-  gacha_mode3: ['/images/gacha/mode3/main.webp'],
-  gacha_mode4: ['/images/gacha/mode4/main.webp', '/images/gacha/mode4/box.svg'],
-  gacha_mode5: ['/images/gacha/mode5/main.webp'],
+  gacha_classic: [asset('/images/gacha/machine.webp')],
+  gacha_mode2: [asset('/images/gacha/mode2/main.webp')],
+  gacha_mode3: [asset('/images/gacha/mode3/main.webp')],
+  gacha_mode4: [asset('/images/gacha/mode4/main.webp'), asset('/images/gacha/mode4/box.svg')],
+  gacha_mode5: [asset('/images/gacha/mode5/main.webp')],
 
   // ── 盒玩 ──
-  blindbox_mode2: ['/images/blindbox/mode2/main.webp', '/images/blindbox/mode2/hole_bg.webp'],
-  blindbox_mode3: ['/images/blindbox/mode3/main.webp', '/images/blindbox/mode3/hole_bg.webp'],
-  blindbox_mode4: ['/images/blindbox/mode4/main.webp', '/images/blindbox/mode4/hole_bg.webp'],
-  blindbox_mode5: ['/images/blindbox/mode5/bg.webp'],
+  blindbox_mode2: [asset('/images/blindbox/mode2/main.webp'), asset('/images/blindbox/mode2/hole_bg.webp')],
+  blindbox_mode3: [asset('/images/blindbox/mode3/main.webp'), asset('/images/blindbox/mode3/hole_bg.webp')],
+  blindbox_mode4: [asset('/images/blindbox/mode4/main.webp'), asset('/images/blindbox/mode4/hole_bg.webp')],
+  blindbox_mode5: [asset('/images/blindbox/mode5/bg.webp')],
 
   // ── 抽卡 ──
   // 卡包模式的棚景底圖：沒等它就是老闆回報的「進去先看到一張全白卡包」
-  card: ['/images/card/showcase-bg.webp', '/images/card/back.webp'],
-  card_pack_mode: ['/images/card/showcase-bg.webp', '/images/card/back.webp'],
-  card_peel: ['/images/card/showcase-bg.webp', '/images/card/back.webp'],
-  card_pack: ['/images/card/showcase-bg.webp', '/images/card/back.webp'],
+  card: [asset('/images/card/showcase-bg.webp'), asset('/images/card/back.webp')],
+  card_pack_mode: [asset('/images/card/showcase-bg.webp'), asset('/images/card/back.webp')],
+  card_peel: [asset('/images/card/showcase-bg.webp'), asset('/images/card/back.webp')],
+  card_pack: [asset('/images/card/showcase-bg.webp'), asset('/images/card/back.webp')],
 
   // ── 一番賞沉浸式撕紙 ──
   ichiban_tear: [
-    '/images/ichiban-tear/bg.webp',
-    '/images/ichiban-tear/hand.webp',
-    '/images/ichiban-tear/bg.svg',
-    '/images/ichiban-tear/up1.svg',
+    asset('/images/ichiban-tear/bg.webp'),
+    asset('/images/ichiban-tear/hand.webp'),
+    asset('/images/ichiban-tear/bg.svg'),
+    asset('/images/ichiban-tear/up1.svg'),
   ],
 };
 

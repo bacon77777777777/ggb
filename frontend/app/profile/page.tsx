@@ -40,6 +40,7 @@ import { useMediaQuery } from '@/hooks/use-media-query';
 import { trackEvent, trackPageView } from '@/lib/trackEvent';
 import Button from '@/components/ui/Button';
 import ImageCropper from '@/components/ImageCropper';
+import { asset } from '@/lib/asset';
 
 // --- Interfaces ---
 interface MarketListing {
@@ -2487,7 +2488,7 @@ function ProfileContent() {
                           >
                             <div className="relative w-[56px] h-[56px] rounded-[8px] bg-item-bg overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
                               <Image
-                                src={item.image || '/images/item_defaulet.webp'}
+                                src={item.image || asset('/images/item_defaulet.webp')}
                                 alt={item.name}
                                 fill
                                 className="object-cover"
@@ -2559,7 +2560,7 @@ function ProfileContent() {
                           <div key={item.id} className="flex items-center gap-3 px-4 py-2">
                             <div className="relative w-[56px] h-[56px] rounded-[8px] bg-item-bg overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
                               <Image
-                                src={item.image || '/images/item_defaulet.webp'}
+                                src={item.image || asset('/images/item_defaulet.webp')}
                                 alt={item.name}
                                 fill
                                 className="object-cover"
@@ -2581,7 +2582,7 @@ function ProfileContent() {
                             <div className="flex flex-col items-end gap-1 flex-shrink-0">
                               <div className="flex items-center gap-1">
                                 <span className="text-[13px] font-black text-accent-red">+{item.recycleValue}</span>
-                                <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
+                                <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="object-contain" />
                               </div>
                               <span className="text-[10px] text-neutral-400 font-bold">{item.dismantled_at}</span>
                             </div>
@@ -2820,7 +2821,7 @@ function ProfileContent() {
                                   </div>
                                   <div className="relative w-14 h-14 rounded-xl bg-item-bg overflow-hidden flex-shrink-0">
                                     <Image
-                                      src={item.image || '/images/item_defaulet.webp'}
+                                      src={item.image || asset('/images/item_defaulet.webp')}
                                       alt={item.name}
                                       fill
                                       className="object-cover"
@@ -2919,7 +2920,7 @@ function ProfileContent() {
                                           <div className="flex items-center gap-3 min-w-0">
                                             <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shrink-0">
                                               <Image
-                                                src={item.image || '/images/item_defaulet.webp'}
+                                                src={item.image || asset('/images/item_defaulet.webp')}
                                                 alt={item.name}
                                                 fill
                                                 className="object-cover"
@@ -3057,7 +3058,7 @@ function ProfileContent() {
                               <div key={item.id} className="flex items-center gap-3 px-4 py-2">
                                 <div className="relative w-[56px] h-[56px] rounded-[8px] bg-item-bg overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
                                   <Image
-                                    src={item.image || '/images/item_defaulet.webp'}
+                                    src={item.image || asset('/images/item_defaulet.webp')}
                                     alt={item.name}
                                     fill
                                     className="object-cover"
@@ -3079,7 +3080,7 @@ function ProfileContent() {
                                 <div className="flex flex-col items-end gap-1 flex-shrink-0">
                                   <div className="flex items-center gap-1">
                                     <span className="text-[13px] font-black text-accent-red">+{item.recycleValue}</span>
-                                    <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
+                                    <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="object-contain" />
                                   </div>
                                   <span className="text-[10px] text-neutral-400 font-bold">{item.dismantled_at}</span>
                                 </div>
@@ -3123,7 +3124,7 @@ function ProfileContent() {
                                           <div className="flex items-center gap-3 min-w-0">
                                             <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shrink-0">
                                               <Image
-                                                src={item.image || '/images/item_defaulet.webp'}
+                                                src={item.image || asset('/images/item_defaulet.webp')}
                                                 alt={item.name}
                                                 fill
                                                 className="object-cover"
@@ -3153,7 +3154,7 @@ function ProfileContent() {
                                         className: 'w-[140px]',
                                         render: (item) => (
                                           <div className="flex items-center gap-1.5">
-                                            <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
+                                            <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="object-contain" />
                                             <span className="text-[14px] font-black text-accent-red font-amount tracking-tighter">
                                               +{item.recycleValue.toLocaleString()}
                                             </span>
@@ -3231,7 +3232,7 @@ function ProfileContent() {
                             <span className="font-black text-primary">免運費</span>
                           ) : (
                             <div className="flex items-center gap-1">
-                              <Image src="/images/gcoin.webp" alt="G" width={16} height={16} className="object-contain" />
+                              <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16} className="object-contain" />
                               <span className="font-black text-accent-red font-amount tracking-tighter">{currentShippingFee}</span>
                               <span className="font-bold text-accent-red text-[13px]">代幣</span>
                             </div>
@@ -3246,7 +3247,7 @@ function ProfileContent() {
                           <div className={cn("flex justify-between pt-2 border-t border-neutral-200 dark:border-neutral-700", isDesktop ? "text-sm" : "text-[13px]")}>
                             <span className="text-neutral-500 dark:text-neutral-400 font-bold">抽籤商品價金</span>
                             <div className="flex items-center gap-1">
-                              <Image src="/images/gcoin.webp" alt="G" width={16} height={16} className="object-contain" />
+                              <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16} className="object-contain" />
                               <span className="font-black text-accent-red font-amount tracking-tighter">{lotteryPurchaseTotal}</span>
                               <span className="font-bold text-accent-red text-[13px]">代幣</span>
                             </div>
@@ -3605,7 +3606,7 @@ function ProfileContent() {
                       {sellingItem && (
                         <div className={cn("bg-neutral-50 dark:bg-neutral-800 rounded-xl flex items-center gap-4", isDesktop ? "p-4" : "p-3")}>
                           <Image 
-                            src={sellingItem.image || '/images/item_defaulet.webp'} 
+                            src={sellingItem.image || asset('/images/item_defaulet.webp')} 
                             alt={sellingItem.name} 
                             width={64} 
                             height={64} 
@@ -3626,7 +3627,7 @@ function ProfileContent() {
                           <div className={cn("absolute top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none", isDesktop ? "left-4" : "left-3")}>
                              <div className="relative w-5 h-5">
                                <Image
-                                 src="/images/gcoin.webp"
+                                 src={asset("/images/gcoin.webp")}
                                  alt="G"
                                  fill
                                  className="object-contain"
@@ -3845,7 +3846,7 @@ function ProfileContent() {
                               
                               <div className="flex items-center gap-3">
                                 <div className="flex items-center gap-1.5">
-                                  <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
+                                  <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="object-contain" />
                                   <span className="text-[14px] font-black text-neutral-900 dark:text-white font-amount tracking-tighter">
                                     {item.price.toLocaleString()}
                                   </span>
@@ -3881,7 +3882,7 @@ function ProfileContent() {
                             </div>
                             <div className="relative w-12 h-12 rounded-lg bg-neutral-100 dark:bg-neutral-800 overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
                               <Image 
-                                src={item.product.image || '/images/item_defaulet.webp'} 
+                                src={item.product.image || asset('/images/item_defaulet.webp')} 
                                 alt={item.product.name} 
                                 fill 
                                 className="object-cover" 
@@ -3901,7 +3902,7 @@ function ProfileContent() {
                               <div className="flex items-center justify-between mt-1">
                                 <span className="text-[10px] text-neutral-400">{item.updated_at.split(' ')[0]}</span>
                                 <div className="flex items-center gap-1.5">
-                                  <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
+                                  <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="object-contain" />
                                   <span className={cn(
                                     "text-[14px] font-black font-amount tracking-tighter",
                                     item.type === 'sell' ? "text-accent-emerald" : "text-red-500"
@@ -4075,7 +4076,7 @@ function ProfileContent() {
                               <div className="flex items-center gap-3 min-w-0">
                                 <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shrink-0">
                                   <Image
-                                    src={item.product.image || '/images/item_defaulet.webp'}
+                                    src={item.product.image || asset('/images/item_defaulet.webp')}
                                     alt={item.product.name}
                                     fill
                                     className="object-cover"
@@ -4095,7 +4096,7 @@ function ProfileContent() {
                             className: 'w-[140px]',
                             render: (item) => (
                               <div className="flex items-center gap-1.5">
-                                <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
+                                <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="object-contain" />
                                 <span className="text-[14px] font-black text-neutral-900 dark:text-white font-amount tracking-tighter">
                                   {item.price.toLocaleString()}
                                 </span>
@@ -4219,7 +4220,7 @@ function ProfileContent() {
                             <div className="flex items-center gap-3 min-w-0">
                               <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shrink-0">
                                 <Image
-                                  src={item.product.image || '/images/item_defaulet.webp'}
+                                  src={item.product.image || asset('/images/item_defaulet.webp')}
                                   alt={item.product.name}
                                   fill
                                   className="object-cover"
@@ -4264,7 +4265,7 @@ function ProfileContent() {
                           className: 'w-[140px]',
                           render: (item) => (
                             <div className="flex items-center gap-1.5">
-                              <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
+                              <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="object-contain" />
                               <span className="text-[14px] font-black text-neutral-900 dark:text-white font-amount tracking-tighter">
                                 {item.price.toLocaleString()}
                               </span>
@@ -4290,7 +4291,7 @@ function ProfileContent() {
                             const sign = item.type === 'sell' ? '+' : '-'
                             return (
                               <div className="flex items-center gap-1.5">
-                                <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
+                                <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="object-contain" />
                                 <span className={cn('text-[14px] font-black font-amount tracking-tighter', item.type === 'sell' ? 'text-accent-emerald' : 'text-red-500')}>
                                   {sign}
                                   {amount.toLocaleString()}
@@ -4822,7 +4823,7 @@ function ProfileContent() {
                                     </span>
                                   ) : (
                                     <>
-                                      <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
+                                      <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="object-contain" />
                                       <span className="text-[14px] font-black text-neutral-900 dark:text-white font-amount tracking-tighter">
                                         {item.cost.toLocaleString()}
                                       </span>
@@ -4999,7 +5000,7 @@ function ProfileContent() {
                           className: 'w-[140px]',
                           render: (item) => (
                             <div className="flex items-center gap-1.5">
-                              <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
+                              <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="object-contain" />
                               <span className="text-[14px] font-black text-accent-red font-amount tracking-tighter">
                                 {item.cost.toLocaleString()}
                               </span>
@@ -5146,7 +5147,7 @@ function ProfileContent() {
                             <div className="flex items-center gap-2">
                                 <div className="text-[14px] font-black text-neutral-900 dark:text-white leading-tight flex items-center gap-1.5">
                                   儲值 
-                                  <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
+                                  <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="object-contain" />
                                   <span className="font-amount tracking-tighter">{item.tokens.toLocaleString()}</span>
                                 </div>
                             </div>
@@ -5252,7 +5253,7 @@ function ProfileContent() {
                           className: 'w-[180px]',
                           render: (item) => (
                             <div className="flex items-center gap-1.5">
-                              <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
+                              <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="object-contain" />
                               <span className="text-[14px] font-black text-neutral-900 dark:text-white font-amount tracking-tighter">
                                 {item.tokens.toLocaleString()}
                               </span>
@@ -5488,7 +5489,7 @@ function ProfileContent() {
                             <div className="flex items-center gap-3 min-w-0">
                               <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shrink-0">
                                 <Image
-                                  src={p.image || '/images/item_defaulet.webp'}
+                                  src={p.image || asset('/images/item_defaulet.webp')}
                                   alt={p.name}
                                   fill
                                   className="object-cover"
@@ -5526,7 +5527,7 @@ function ProfileContent() {
                           className: 'w-[140px]',
                           render: (p: FollowedProduct) => (
                             <div className="flex items-center gap-1.5">
-                              <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
+                              <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="object-contain" />
                               <span className="text-[14px] font-black text-neutral-900 dark:text-white font-amount tracking-tighter">
                                 {(p.price || 0).toLocaleString()}
                               </span>
@@ -5923,7 +5924,7 @@ function ProfileContent() {
                               </div>
                            ) : (
                               <Image 
-                                src={user?.avatar_url || '/images/avatar.webp'} 
+                                src={user?.avatar_url || asset('/images/avatar.webp')} 
                                 alt="Avatar" 
                                 fill 
                                 className="object-cover" 
@@ -6113,7 +6114,7 @@ function ProfileContent() {
                             </div>
                          ) : (
                             <Image 
-                              src={user?.avatar_url || '/images/avatar.webp'} 
+                              src={user?.avatar_url || asset('/images/avatar.webp')} 
                               alt="Avatar" 
                               fill 
                               className="object-cover" 
@@ -6449,7 +6450,7 @@ function ProfileContent() {
               {/* 疊層：原本的去背底圖（深色卡＋星盾＋波紋，透明 PNG），蓋在動態橘底上，
                   頭像/代幣內容再疊在它上面 —— 還原原始外觀、只是底色改成會動的（老闆 2026-08-21）*/}
               <Image
-                src="/images/profile/topbg.png"
+                src={asset("/images/profile/topbg.png")}
                 alt=""
                 fill
                 sizes="(max-width: 768px) 100vw, 375px"
@@ -6473,7 +6474,7 @@ function ProfileContent() {
                         </div>
                       ) : (
                         <Image
-                          src={user.avatar_url || '/images/avatar.webp'}
+                          src={user.avatar_url || asset('/images/avatar.webp')}
                           alt={user.name || 'User'}
                           fill
                           className="object-cover"
@@ -6516,7 +6517,7 @@ function ProfileContent() {
                       {/* Badge Image */}
                       {!isGuest && user.is_phone_verified && (
                         <div className="relative shrink-0 w-[24px] h-[24px]">
-                          <Image src="/images/profile/badge.png" alt="Badge" fill className="object-contain" unoptimized />
+                          <Image src={asset("/images/profile/badge.png")} alt="Badge" fill className="object-contain" unoptimized />
                         </div>
                       )}
                     </div>
@@ -6594,7 +6595,7 @@ function ProfileContent() {
                     <div className="flex justify-between items-center mb-2">
                       <div className="flex items-center gap-1.5">
                         <div className="relative w-4 h-4">
-                          <Image src="/images/gcoin.webp" alt="Token" fill className="object-contain" unoptimized />
+                          <Image src={asset("/images/gcoin.webp")} alt="Token" fill className="object-contain" unoptimized />
                         </div>
                         <span className="text-xs text-white/90 font-medium">代幣餘額</span>
                       </div>
@@ -6892,7 +6893,7 @@ function ProfileContent() {
                   
                   <div className="flex items-center justify-between bg-neutral-50 dark:bg-neutral-800/50 p-2 rounded-lg border border-neutral-100 dark:border-neutral-800">
                     <div className="flex items-center gap-1.5">
-                      <Image src="/images/gcoin.webp" alt="G" width={24} height={24} className="object-contain" />
+                      <Image src={asset("/images/gcoin.webp")} alt="G" width={24} height={24} className="object-contain" />
                       {isGuest ? (
                         <Link
                           href={loginHref}

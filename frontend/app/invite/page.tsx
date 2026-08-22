@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/Toast';
 import { buildInviteMessage } from '@/lib/inviteMessage';
 import { createClient } from '@/lib/supabase/client';
 import { MissionService, type UserMission } from '@/services/mission';
+import { asset } from '@/lib/asset';
 
 /**
  * 邀請好友頁 —— 滿版主視覺＋循環獎進度區
@@ -30,7 +31,7 @@ import { MissionService, type UserMission } from '@/services/mission';
  * QR 取框內短邊的九成，四周留白就是掃碼的靜區。
  * 換圖要重掃這幾個數字；CSS 與下載 canvas 共用，只改這裡。
  */
-const HERO_SRC = '/images/invite/invite.webp';
+const HERO_SRC = asset('/images/invite/invite.webp');
 const QR_CENTER_Y = 0.7875; // 量自新圖 invite.webp（800x1320）白框中心
 const QR_SIZE = 0.336; // 相對圖寬（= 269px / 800px）
 
@@ -343,7 +344,7 @@ export default function InvitePage() {
             所以容器滿版寬（老闆指定），內距用百分比對齊卡面 */}
         <div
           className="mt-3 w-full px-[7.5%] pb-6 pt-4"
-          style={{ backgroundImage: 'url(/images/invite/card_progress.png)', backgroundSize: '100% 100%' }}
+          style={{ backgroundImage: `url(${asset('/images/invite/card_progress.png')})`, backgroundSize: '100% 100%' }}
         >
           <div className="flex items-center justify-between gap-2">
             <p className="text-[14px] font-bold text-neutral-900">被邀請的好友綁定 LINE 帳號即可 +1</p>
@@ -360,13 +361,13 @@ export default function InvitePage() {
           {/* 分段進度條：素材軌道＋亮綠填充，填充用寬度裁切露出 */}
           <div className="relative mt-2.5 h-[15px]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/invite/bar_track.png" alt="" className="absolute inset-0 h-full w-full" />
+            <img src={asset("/images/invite/bar_track.png")} alt="" className="absolute inset-0 h-full w-full" />
             {filled > 0 && (
               <div className="absolute inset-0 overflow-hidden" style={{ width: `${(filled / step) * 100}%` }}>
                 <div
                   className="h-full"
                   style={{
-                    backgroundImage: 'url(/images/invite/bar_fill.png)',
+                    backgroundImage: `url(${asset('/images/invite/bar_fill.png')})`,
                     backgroundSize: `${(step / filled) * 100}% 100%`,
                     backgroundPosition: 'left center',
                     backgroundRepeat: 'no-repeat',
@@ -385,7 +386,7 @@ export default function InvitePage() {
               —— pt 用寬度百分比對齊圖上標題的下緣（62/750） */}
           <div
             className="bg-top bg-no-repeat px-[6.5%] pb-2 pt-[10%]"
-            style={{ backgroundImage: 'url(/images/invite/card_reward.png)', backgroundSize: '100% auto' }}
+            style={{ backgroundImage: `url(${asset('/images/invite/card_reward.png')})`, backgroundSize: '100% auto' }}
           >
             <div>
               {missions.length === 0 && (
@@ -484,10 +485,10 @@ export default function InvitePage() {
 
 /** 勳章：與簽到頁成就同一批高解析圖（invite_friend:N），以目標人數對應 */
 const ACH_BADGES: Record<number, string> = {
-  1: '/images/mask/初級召集人.png',
-  5: '/images/mask/揪團王.png',
-  20: '/images/mask/傳教士.png',
-  100: '/images/mask/信徒滿天下.png',
+  1: asset('/images/mask/初級召集人.png'),
+  5: asset('/images/mask/揪團王.png'),
+  20: asset('/images/mask/傳教士.png'),
+  100: asset('/images/mask/信徒滿天下.png'),
 };
 
 /** 稱號小標：與簽到頁 ACHIEVEMENT_TITLE / TITLE_STYLES 同款漸層膠囊 */

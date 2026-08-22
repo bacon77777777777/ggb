@@ -7,6 +7,7 @@ import { getItemImageForId, DEFAULT_ITEM_IMAGE as DEFAULT_IMAGE } from '@/lib/pr
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { categoryState } from '@/lib/categoryFlags';
 import { useProductPromotion } from '@/contexts/PromotionsContext';
+import { asset } from '@/lib/asset';
 
 interface ProductCardProps {
   id: string | number;
@@ -142,7 +143,7 @@ export default function ProductCard(props: ProductCardProps) {
           {((typeof remaining === 'number' && remaining <= 0) || status === 'ended') ? (
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 rounded-[8px]">
               <Image 
-                src="/images/sale.svg" 
+                src={asset("/images/sale.svg")} 
                 alt="完抽" 
                 width={96}
                 height={96}
@@ -187,7 +188,7 @@ export default function ProductCard(props: ProductCardProps) {
               <div className="flex flex-col">
                 <div className="flex items-center gap-1">
                   <div className="w-3.5 h-3.5">
-                    <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="w-full h-full object-contain" />
+                    <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="w-full h-full object-contain" />
                   </div>
                   <div className="flex items-baseline gap-0.5">
                     <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">{price.toLocaleString()}</span>

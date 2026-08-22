@@ -35,7 +35,7 @@ const COLOR_STYLES: Record<string, string> = {
 }
 
 const BLANK: Partial<Bot> = {
-  nickname: '', avatar_url: '/images/avatar/01.png',
+  nickname: '', avatar_url: '/images/avatar/01.webp',
   whale_score: 500, draws_score: 10,
   title_name: '', title_color: 'gold',
   is_active: true, sort_order: 99,
@@ -240,7 +240,7 @@ export default function LeaderboardBotsPage() {
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">頭像 URL</label>
               <input value={form.avatar_url ?? ''} onChange={e => setForm(f => ({ ...f, avatar_url: e.target.value }))}
-                placeholder="/images/avatar/01.png"
+                placeholder="/images/avatar/01.webp"
                 className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
             </div>
 

@@ -18,6 +18,7 @@ import dynamic from 'next/dynamic';
 const PlayerProfileCard = dynamic(() => import('@/components/ranking/PlayerProfileCard'), { ssr: false });
 import { inheritSchedule } from '@/lib/schedule';
 import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
+import { asset } from '@/lib/asset';
 
 // 返還種類 → 滾輪演出組合（機率由 DB 權重決定，這裡純顯示映射）
 const RETURN_OUTCOME: Record<string, ReelOutcome> = {
@@ -832,7 +833,7 @@ export default function MachinePage() {
                     <div key={item.id} className="flex flex-col items-center">
                       <div className="aspect-[63/88] w-full relative rounded-md overflow-hidden">
                         <Image
-                          src={prize?.image_url ?? '/images/slot/machine/coin.png'}
+                          src={prize?.image_url ?? asset('/images/slot/machine/coin.png')}
                           alt={name} fill className="object-contain p-2" unoptimized
                         />
                       </div>
@@ -1116,7 +1117,7 @@ export default function MachinePage() {
                 <div className="flex gap-3 p-3 pb-2 md:p-6 md:pb-4 md:gap-5">
                   <div className="relative bg-neutral-100 dark:bg-neutral-800 rounded-lg overflow-hidden shrink-0 shadow-sm border border-neutral-100 dark:border-neutral-700 w-12 h-12 md:w-16 md:h-16">
                     <Image
-                      src={machine.slot_themes?.image_url || machine.image_url || '/images/item_defaulet.webp'}
+                      src={machine.slot_themes?.image_url || machine.image_url || asset('/images/item_defaulet.webp')}
                       alt={machine.name} fill className="object-cover" unoptimized
                     />
                   </div>
@@ -1127,7 +1128,7 @@ export default function MachinePage() {
                     <div className="flex flex-col justify-end mt-1">
                       <div className="flex items-center gap-1">
                         <div className="relative shrink-0 w-5 h-5 md:w-6 md:h-6">
-                          <Image src="/images/gcoin.webp" alt="G" fill className="object-contain" unoptimized />
+                          <Image src={asset("/images/gcoin.webp")} alt="G" fill className="object-contain" unoptimized />
                         </div>
                         <div className="flex items-baseline gap-0.5">
                           <span className="font-black text-accent-red font-amount leading-none tracking-tighter text-lg md:text-2xl">{directCost.toLocaleString()}</span>

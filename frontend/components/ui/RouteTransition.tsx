@@ -30,14 +30,23 @@ const RouteTransitionContext = createContext<Ctx | null>(null);
 
 /** 保險絲：路由若因故沒有變化，不要讓玩家卡在白畫面 */
 const MAX_MS = 8000;
+/**
+ * 換頁遮罩的延遲（老闆 2026-08-22 頁面加載優化）：
+ * 以前 navigate() 一呼叫就蓋全屏 loading，連 200ms 就到的換頁也會閃一下 loading 畫面
+ * —— 「又不能卡在 loading 太久」。現在先不蓋、等 300ms，新頁還沒進來才蓋：
+ * 快的換頁完全不閃，慢的（網路差）照樣有遮罩讓玩家知道有在動。
+ * begin()／end() 是「要先等 API」的動作，呼叫端明確要遮罩，維持立刻蓋。
+ */
+const NAVIGATE_DELAY_MS = 300;
 
 export function RouteTransitionProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [active, setActive] = useState(false);
+  const [pendingNav, setPendingNav] = useState(false);
 
   // 新頁面進來就收掉
-  useEffect(() => { setActive(false); }, [pathname]);
+  useEffect(() => { setActive(false); setPendingNav(false); }, [pathname]);
 
   useEffect(() => {
     if (!active) return;
@@ -45,11 +54,18 @@ export function RouteTransitionProvider({ children }: { children: React.ReactNod
     return () => clearTimeout(t);
   }, [active]);
 
+  // navigate() 之後 300ms 還沒換到新頁才蓋遮罩
+  useEffect(() => {
+    if (!pendingNav) return;
+    const t = setTimeout(() => setActive(true), NAVIGATE_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [pendingNav]);
+
   const begin = useCallback(() => setActive(true), []);
-  const end = useCallback(() => setActive(false), []);
+  const end = useCallback(() => { setActive(false); setPendingNav(false); }, []);
 
   const navigate = useCallback((href: string) => {
-    setActive(true);
+    setPendingNav(true);
     router.push(href);
   }, [router]);
 

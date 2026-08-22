@@ -3,11 +3,12 @@ import Image from 'next/image';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
 import { imgAvatar, img, imgAvatar1, img1, imgAvatar2, img2 } from '../assets';
+import { asset } from '@/lib/asset';
 
 // Global G Coin Icon
-const imgGCoin = "/images/gcoin.webp";
-const imgRanking123 = "/images/rank/top123.webp";
-const imgDefaultAvatar = "/images/avatar.webp";
+const imgGCoin = asset("/images/gcoin.webp");
+const imgRanking123 = asset("/images/rank/top123.webp");
+const imgDefaultAvatar = asset("/images/avatar.webp");
 
 const TITLE_STYLES: Record<string, string> = {
   gold:   'bg-gradient-to-r from-yellow-400 to-amber-500',
@@ -210,7 +211,7 @@ export function BackgroundImageAndText4({ text, type = 'token' }: BackgroundImag
       {type === 'token' && <GiftboxBackgroundImage />}
       {type === 'gift' && (
         <div className="relative shrink-0 size-[25px]">
-          <img alt="" className="absolute inset-0 max-w-none object-contain pointer-events-none size-full" src="/images/gift.webp" />
+          <img alt="" className="absolute inset-0 max-w-none object-contain pointer-events-none size-full" src={asset("/images/gift.webp")} />
         </div>
       )}
       <p className="font-amount font-bold leading-[26px] not-italic relative shrink-0 text-[#ffc700] text-[28.125px]">{text}</p>
@@ -221,7 +222,7 @@ export function BackgroundImageAndText4({ text, type = 'token' }: BackgroundImag
 export function GiftboxBackgroundImage() {
   return (
     <div className="relative w-[18px] h-[18px] mr-1.5 flex-shrink-0">
-      <Image src="/images/coin.png" alt="Coin" fill className="object-contain" unoptimized />
+      <Image src={asset("/images/coin.png")} alt="Coin" fill className="object-contain" unoptimized />
     </div>
   );
 }
@@ -236,7 +237,7 @@ export function BackgroundImageAndText3({ text, type = 'token' }: { text: string
       )}
       {type === 'gift' && (
         <div className="relative shrink-0 size-[23.438px]">
-          <img alt="" className="absolute inset-0 max-w-none object-contain pointer-events-none size-full" src="/images/gift.webp" />
+          <img alt="" className="absolute inset-0 max-w-none object-contain pointer-events-none size-full" src={asset("/images/gift.webp")} />
         </div>
       )}
       <p className="font-amount font-bold leading-[1.2] not-italic relative shrink-0 text-[#ffc700] text-[28.125px]">{text}</p>

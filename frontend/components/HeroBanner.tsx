@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import { isInternalUrl, toInternalPath } from '@/lib/internalUrl'
+import { asset } from '@/lib/asset';
 
 interface Banner {
   id: string;
@@ -16,7 +17,7 @@ interface Banner {
 
 const DEFAULT_BANNER: Banner = {
   id: '__default__',
-  image: '/images/banner_defaulet.png',
+  image: asset('/images/banner_defaulet.png'),
   link: '#',
 };
 
@@ -79,16 +80,20 @@ export default function HeroBanner({ banners, onBannerClick }: { banners: Banner
             {isInternalUrl(banner.link) ? (
             <Link href={toInternalPath(banner.link)} className="block w-full h-full relative" onClick={() => onBannerClick?.(banner)}>
               <Image
-                src={brokenIds.has(banner.id) || !banner.image ? '/images/banner_defaulet.png' : banner.image}
+                src={brokenIds.has(banner.id) || !banner.image ? asset('/images/banner_defaulet.png') : banner.image}
                 alt="Banner" fill className="object-fill select-none" draggable={false} unoptimized
+                // 第一張是首頁 LCP：priority 會先載、不 lazy；其餘輪到才載（老闆 2026-08-22 頁面加載）
+                priority={index === 0}
                 onError={() => setBrokenIds(prev => new Set(prev).add(banner.id))}
               />
             </Link>
           ) : (
             <a href={banner.link} target="_blank" rel="noopener noreferrer" className="block w-full h-full relative" onClick={() => onBannerClick?.(banner)}>
               <Image
-                src={brokenIds.has(banner.id) || !banner.image ? '/images/banner_defaulet.png' : banner.image}
+                src={brokenIds.has(banner.id) || !banner.image ? asset('/images/banner_defaulet.png') : banner.image}
                 alt="Banner" fill className="object-fill select-none" draggable={false} unoptimized
+                // 第一張是首頁 LCP：priority 會先載、不 lazy；其餘輪到才載（老闆 2026-08-22 頁面加載）
+                priority={index === 0}
                 onError={() => setBrokenIds(prev => new Set(prev).add(banner.id))}
               />
             </a>

@@ -5,6 +5,7 @@ import { playSfx, SFX } from '@/lib/sfx';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ImageButton } from '@/components/ui/ImageButton';
+import { asset } from '@/lib/asset';
 
 interface GachaMachineMode3Props {
   state: 'idle' | 'shaking' | 'spinning' | 'dropping' | 'waiting' | 'result';
@@ -20,7 +21,7 @@ interface GachaMachineMode3Props {
   disableButtons?: boolean;
 }
 
-const EGG_IMAGES = ['/images/gacha/begg.webp', '/images/gacha/gegg.webp', '/images/gacha/pegg.webp'];
+const EGG_IMAGES = [asset('/images/gacha/begg.webp'), asset('/images/gacha/gegg.webp'), asset('/images/gacha/pegg.webp')];
 
 interface Egg {
   id: number;
@@ -232,7 +233,7 @@ export function GachaMachineMode3({
       {/* Background machine image */}
       <div className="absolute inset-0">
         <Image
-          src="/images/gacha/mode3/main.webp"
+          src={asset("/images/gacha/mode3/main.webp")}
           alt="gacha machine"
           fill
           className="object-fill"
@@ -260,9 +261,9 @@ export function GachaMachineMode3({
           top: '7.94%',
           width: '94.27%',
           height: '41.42%',
-          WebkitMaskImage: 'url(/images/gacha/mode3/box.svg)',
+          WebkitMaskImage: `url(${asset('/images/gacha/mode3/box.svg')})`,
           WebkitMaskSize: '100% 100%',
-          maskImage: 'url(/images/gacha/mode3/box.svg)',
+          maskImage: `url(${asset('/images/gacha/mode3/box.svg')})`,
           maskSize: '100% 100%',
         }}
       >
@@ -291,7 +292,7 @@ export function GachaMachineMode3({
         transition={{ duration: 1.2, ease: [0.4, 0, 0.2, 1] }}
         onClick={() => { if (!isSoldOut && !disableButtons && onPurchase) onPurchase(); }}
       >
-        <Image src="/images/gacha/mode3/switch.webp" alt="switch" fill className="object-contain" unoptimized />
+        <Image src={asset("/images/gacha/mode3/switch.webp")} alt="switch" fill className="object-contain" unoptimized />
       </motion.div>
 
       {/* Hole animation container — (500,580), 157×157; hole.svg NOT rendered (visual is in main.png) */}
@@ -332,7 +333,7 @@ export function GachaMachineMode3({
 
       {/* Buttons (same % positions as classic) */}
       <ImageButton
-        src="/images/gacha/mode3/btn2.webp"
+        src={asset("/images/gacha/mode3/btn2.webp")}
         alt="推一下"
         text="推一下"
         className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
@@ -345,7 +346,7 @@ export function GachaMachineMode3({
         }}
       />
       <ImageButton
-        src="/images/gacha/mode3/btn1.webp"
+        src={asset("/images/gacha/mode3/btn1.webp")}
         alt="立即轉蛋"
         text="立即轉蛋"
         className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
@@ -354,7 +355,7 @@ export function GachaMachineMode3({
         onClick={() => { if (!isSoldOut && !disableButtons && onPurchase) onPurchase(); }}
       />
       <ImageButton
-        src="/images/gacha/mode3/btn2.webp"
+        src={asset("/images/gacha/mode3/btn2.webp")}
         alt="試試看"
         text="試試看"
         className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}

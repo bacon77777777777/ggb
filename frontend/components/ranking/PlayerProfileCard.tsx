@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { useAlert } from '@/components/ui/AlertDialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { asset } from '@/lib/asset';
 
 interface Badge {
   id: string;
@@ -28,36 +29,36 @@ interface PlayerProfile {
 }
 
 const BADGE_IMAGE: Record<string, string> = {
-  first_draw:       '/images/mask/初心試煉.png',
-  draw_30:          '/images/mask/命運啟程.png',
-  draw_100:         '/images/mask/停不下來.png',
-  draw_500:         '/images/mask/抽獎成癮.png',
-  draw_1000:        '/images/mask/抽獎之神.png',
-  draw_5000:        '/images/mask/命運支配者.webp',
-  draw_streak_10:   '/images/mask/每日修行.png',
-  draw_streak_20:   '/images/mask/永不缺席.png',
-  login_streak_7:   '/images/mask/習慣養成.png',
-  login_streak_30:  '/images/mask/全勤戰士.png',
-  login_streak_100: '/images/mask/常駐居民.png',
-  first_topup:      '/images/mask/初次獻祭.png',
-  topup_1000:       '/images/mask/小課怡情.png',
-  topup_5000:       '/images/mask/荷包失守.png',
-  topup_20000:      '/images/mask/錢包蒸發.png',
-  topup_100000:     '/images/mask/課長降臨.webp',
-  topup_streak_5:   '/images/mask/每日供奉.png',
-  topup_streak_10:  '/images/mask/信仰充值.png',
-  refer_1:          '/images/mask/初級召集人.png',
-  refer_5:          '/images/mask/揪團王.png',
-  refer_20:         '/images/mask/傳教士.png',
-  refer_100:        '/images/mask/信徒滿天下.png',
-  lucky_first:      '/images/mask/一發入魂.png',
-  lucky_day3:       '/images/mask/天命之子.png',
-  lucky_10:         '/images/mask/命運眷顧.png',
-  lucky_50:         '/images/mask/神明代抽.png',
-  duplicate_10:     '/images/mask/非洲酋長.png',
-  single_day_100:   '/images/mask/火力全開.png',
-  birthday_draw:    '/images/mask/壽星最大.png',
-  ranking_50:       '/images/mask/排行榜信徒.png',
+  first_draw:       asset('/images/mask/初心試煉.png'),
+  draw_30:          asset('/images/mask/命運啟程.png'),
+  draw_100:         asset('/images/mask/停不下來.png'),
+  draw_500:         asset('/images/mask/抽獎成癮.png'),
+  draw_1000:        asset('/images/mask/抽獎之神.png'),
+  draw_5000:        asset('/images/mask/命運支配者.webp'),
+  draw_streak_10:   asset('/images/mask/每日修行.png'),
+  draw_streak_20:   asset('/images/mask/永不缺席.png'),
+  login_streak_7:   asset('/images/mask/習慣養成.png'),
+  login_streak_30:  asset('/images/mask/全勤戰士.png'),
+  login_streak_100: asset('/images/mask/常駐居民.png'),
+  first_topup:      asset('/images/mask/初次獻祭.png'),
+  topup_1000:       asset('/images/mask/小課怡情.png'),
+  topup_5000:       asset('/images/mask/荷包失守.png'),
+  topup_20000:      asset('/images/mask/錢包蒸發.png'),
+  topup_100000:     asset('/images/mask/課長降臨.webp'),
+  topup_streak_5:   asset('/images/mask/每日供奉.png'),
+  topup_streak_10:  asset('/images/mask/信仰充值.png'),
+  refer_1:          asset('/images/mask/初級召集人.png'),
+  refer_5:          asset('/images/mask/揪團王.png'),
+  refer_20:         asset('/images/mask/傳教士.png'),
+  refer_100:        asset('/images/mask/信徒滿天下.png'),
+  lucky_first:      asset('/images/mask/一發入魂.png'),
+  lucky_day3:       asset('/images/mask/天命之子.png'),
+  lucky_10:         asset('/images/mask/命運眷顧.png'),
+  lucky_50:         asset('/images/mask/神明代抽.png'),
+  duplicate_10:     asset('/images/mask/非洲酋長.png'),
+  single_day_100:   asset('/images/mask/火力全開.png'),
+  birthday_draw:    asset('/images/mask/壽星最大.png'),
+  ranking_50:       asset('/images/mask/排行榜信徒.png'),
 };
 
 // ── 稱號 → 對應徽章 ID（對應 migration 223 titles.badge_id）──
@@ -291,7 +292,7 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
     // mock UUID (00000000-...) = SQL 假用戶
     const isMockUUID = !!userId && userId.startsWith('00000000-');
     if (isPlaceholder || !userId || isMockUUID) {
-      setProfile(buildFakeProfile(userId || 'placeholder-1', propAvatarUrl || '/images/avatar/01.png', titleFromRanking));
+      setProfile(buildFakeProfile(userId || 'placeholder-1', propAvatarUrl || asset('/images/avatar/01.webp'), titleFromRanking));
       setLoading(false);
       return;
     }
@@ -392,7 +393,7 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
               <img
                 alt=""
                 className="absolute inset-0 pointer-events-none object-cover"
-                src="/images/profilecard/card-bg.webp"
+                src={asset("/images/profilecard/card-bg.webp")}
                 style={{ width: '100%', height: '100%', opacity: 0.3, borderRadius: '80px 80px 0 0' }}
               />
 
@@ -408,7 +409,7 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                   <img
                     alt=""
                     className="absolute inset-0 pointer-events-none object-cover"
-                    src="/images/profilecard/header-bg.webp"
+                    src={asset("/images/profilecard/header-bg.webp")}
                     style={{ width: '100%', height: '100%', opacity: 0.5 }}
                   />
 
@@ -422,7 +423,7 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                         </div>
                       ) : (
                         <Image
-                          src={profile?.avatar_url || propAvatarUrl || '/images/avatar/01.png'}
+                          src={asset(profile?.avatar_url || propAvatarUrl || '/images/avatar/01.webp')}
                           alt={displayName}
                           width={180}
                           height={180}
@@ -552,7 +553,7 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                         onClick={() => setActiveBadgeId(activeBadgeId === badge.id ? null : badge.id)}
                       >
                         <img
-                          src={BADGE_IMAGE[badge.id] || '/images/mask/初心試煉.png'}
+                          src={BADGE_IMAGE[badge.id] || asset('/images/mask/初心試煉.png')}
                           alt={badge.name}
                           style={{ height: 83, width: 'auto', objectFit: 'contain' }}
                         />

@@ -16,6 +16,7 @@ import AdCenterContent from '@/components/sell/AdCenterContent';
 import DepositRulesContent from '@/components/sell/DepositRulesContent';
 import PayoutSettingsContent from '@/components/sell/PayoutSettingsContent';
 import ProUpgradeContent from '@/components/sell/ProUpgradeContent';
+import { asset } from '@/lib/asset';
 
 /*
  * 我的賣場 —— 照原型 vMe() 的 .mehd / .mecard / .mlist / .mine 結構。
@@ -54,7 +55,7 @@ const pickImage = (l: MyListing) => {
   const imgs = Array.isArray(l.images) ? l.images.filter(Boolean) : [];
   if (imgs[0]) return imgs[0];
   const items = Array.isArray(l.items) ? l.items : [];
-  return items.map((x: any) => String(x?.image || '').trim()).filter(Boolean)[0] || '/images/item_defaulet.webp';
+  return items.map((x: any) => String(x?.image || '').trim()).filter(Boolean)[0] || asset('/images/item_defaulet.webp');
 };
 
 const stockOf = (l: MyListing) =>

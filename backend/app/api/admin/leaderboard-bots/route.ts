@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase
     .from('leaderboard_bots')
-    .insert({ nickname, avatar_url: avatar_url || '/images/avatar/01.png', whale_score: whale_score || 0, draws_score: draws_score || 0, title_name: title_name || null, title_color: title_color || null, is_active: is_active ?? true, sort_order: sort_order || 99 })
+    .insert({ nickname, avatar_url: avatar_url || '/images/avatar/01.webp', whale_score: whale_score || 0, draws_score: draws_score || 0, title_name: title_name || null, title_color: title_color || null, is_active: is_active ?? true, sort_order: sort_order || 99 })
     .select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

@@ -5,11 +5,12 @@ import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import Image from 'next/image';
 import { missionSvgs as svgPaths } from './mission-svgs';
 import RulesModal from '@/components/ui/RulesModal';
+import { asset } from '@/lib/asset';
 
-const imgImage22 = "/images/mission/bg-overlay.png";
-const imgImage20 = "/images/mission/bg-pattern.png";
-const imgCoin = "/images/coin.png";
-const imgCheck = "/images/check.png";
+const imgImage22 = asset("/images/mission/bg-overlay.png");
+const imgImage20 = asset("/images/mission/bg-pattern.png");
+const imgCoin = asset("/images/coin.png");
+const imgCheck = asset("/images/check.png");
 
 const FloatingReward = ({ x, y, reward, onComplete }: { x: number; y: number; reward: number; onComplete: () => void }) => {
   return (
@@ -186,36 +187,36 @@ const ACHIEVEMENT_TITLE: Record<string, { name: string; color: string }> = {
 };
 
 const ACHIEVEMENT_BADGE_IMAGE: Record<string, string> = {
-  'draw_count:1':           '/images/mask/初心試煉.png',
-  'draw_count:30':          '/images/mask/命運啟程.png',
-  'draw_count:100':         '/images/mask/停不下來.png',
-  'draw_count:500':         '/images/mask/抽獎成癮.png',
-  'draw_count:1000':        '/images/mask/抽獎之神.png',
-  'draw_count:5000':        '/images/mask/命運支配者.webp',
-  'draw_streak:10':         '/images/mask/每日修行.png',
-  'draw_streak:20':         '/images/mask/永不缺席.png',
-  'login_streak:7':         '/images/mask/習慣養成.png',
-  'login_streak:30':        '/images/mask/全勤戰士.png',
-  'login_streak:100':       '/images/mask/常駐居民.png',
-  'recharge:1':             '/images/mask/初次獻祭.png',
-  'recharge_amount:1000':   '/images/mask/小課怡情.png',
-  'recharge_amount:5000':   '/images/mask/荷包失守.png',
-  'recharge_amount:20000':  '/images/mask/錢包蒸發.png',
-  'recharge_amount:100000': '/images/mask/課長降臨.webp',
-  'topup_streak:5':         '/images/mask/每日供奉.png',
-  'topup_streak:10':        '/images/mask/信仰充值.png',
-  'invite_friend:1':        '/images/mask/初級召集人.png',
-  'invite_friend:5':        '/images/mask/揪團王.png',
-  'invite_friend:20':       '/images/mask/傳教士.png',
-  'invite_friend:100':      '/images/mask/信徒滿天下.png',
-  'top_prize_first:1':      '/images/mask/一發入魂.png',
-  'top_prize_day3:3':       '/images/mask/天命之子.png',
-  'top_prize_count:10':     '/images/mask/命運眷顧.png',
-  'top_prize_count:50':     '/images/mask/神明代抽.png',
-  'bad_luck_streak:10':     '/images/mask/非洲酋長.png',
-  'single_day_draws:100':   '/images/mask/火力全開.png',
-  'birthday_draw:1':        '/images/mask/壽星最大.png',
-  'like_ranking:50':        '/images/mask/排行榜信徒.png',
+  'draw_count:1':           asset('/images/mask/初心試煉.png'),
+  'draw_count:30':          asset('/images/mask/命運啟程.png'),
+  'draw_count:100':         asset('/images/mask/停不下來.png'),
+  'draw_count:500':         asset('/images/mask/抽獎成癮.png'),
+  'draw_count:1000':        asset('/images/mask/抽獎之神.png'),
+  'draw_count:5000':        asset('/images/mask/命運支配者.webp'),
+  'draw_streak:10':         asset('/images/mask/每日修行.png'),
+  'draw_streak:20':         asset('/images/mask/永不缺席.png'),
+  'login_streak:7':         asset('/images/mask/習慣養成.png'),
+  'login_streak:30':        asset('/images/mask/全勤戰士.png'),
+  'login_streak:100':       asset('/images/mask/常駐居民.png'),
+  'recharge:1':             asset('/images/mask/初次獻祭.png'),
+  'recharge_amount:1000':   asset('/images/mask/小課怡情.png'),
+  'recharge_amount:5000':   asset('/images/mask/荷包失守.png'),
+  'recharge_amount:20000':  asset('/images/mask/錢包蒸發.png'),
+  'recharge_amount:100000': asset('/images/mask/課長降臨.webp'),
+  'topup_streak:5':         asset('/images/mask/每日供奉.png'),
+  'topup_streak:10':        asset('/images/mask/信仰充值.png'),
+  'invite_friend:1':        asset('/images/mask/初級召集人.png'),
+  'invite_friend:5':        asset('/images/mask/揪團王.png'),
+  'invite_friend:20':       asset('/images/mask/傳教士.png'),
+  'invite_friend:100':      asset('/images/mask/信徒滿天下.png'),
+  'top_prize_first:1':      asset('/images/mask/一發入魂.png'),
+  'top_prize_day3:3':       asset('/images/mask/天命之子.png'),
+  'top_prize_count:10':     asset('/images/mask/命運眷顧.png'),
+  'top_prize_count:50':     asset('/images/mask/神明代抽.png'),
+  'bad_luck_streak:10':     asset('/images/mask/非洲酋長.png'),
+  'single_day_draws:100':   asset('/images/mask/火力全開.png'),
+  'birthday_draw:1':        asset('/images/mask/壽星最大.png'),
+  'like_ranking:50':        asset('/images/mask/排行榜信徒.png'),
 };
 
 interface MissionFrameProps {
@@ -612,7 +613,7 @@ function MissionFrame({
                         {mission.type === 'achievement' && mission.condition_type != null && (
                           <div className="relative shrink-0 flex items-center justify-center" style={{ height: 80, width: 80 }}>
                             <img
-                              src={ACHIEVEMENT_BADGE_IMAGE[`${mission.condition_type}:${mission.target_value}`] || '/images/mask/初心試煉.png'}
+                              src={ACHIEVEMENT_BADGE_IMAGE[`${mission.condition_type}:${mission.target_value}`] || asset('/images/mask/初心試煉.png')}
                               alt=""
                               style={{ height: 72, width: 'auto', maxWidth: 80, objectFit: 'contain' }}
                             />

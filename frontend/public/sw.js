@@ -11,7 +11,7 @@
  *   這樣「改版後看到舊頁面」不會發生 —— 有網路時永遠拿線上的。
  */
 
-const VERSION = 'ggb-v1';
+const VERSION = 'ggb-v2';
 const PAGE_CACHE = `${VERSION}-pages`;
 const ASSET_CACHE = `${VERSION}-assets`;
 const OFFLINE_URL = '/offline.html';
@@ -38,11 +38,18 @@ self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
+/*
+ * 帶內容版本（?v=<hash>）的靜態資源：lib/asset.ts 產的網址，檔案一改 hash 就變，
+ * 所以可以放心 cache-first，永遠不會拿到舊圖。
+ * ⚠️ 沒帶 ?v= 的 /images、/loading、/icons **不再** cache-first（v1 對 /icons、/loading
+ * 是整個目錄 cache-first，檔案換了 SW 會一直回舊的 —— 老闆 2026-08-22 不要舊圖）。
+ */
+const VERSIONED_PREFIX = /^\/(?:images|loading|icons|audio|videos)\//;
+const isVersionedAsset = (url) => url.searchParams.has('v') && VERSIONED_PREFIX.test(url.pathname);
 const isImmutableAsset = (url) =>
   url.pathname.startsWith('/_next/static/') ||
-  url.pathname.startsWith('/icons/') ||
-  url.pathname.startsWith('/loading/') ||
-  /\.(?:woff2?|ttf|otf)$/.test(url.pathname);
+  /\.(?:woff2?|ttf|otf)$/.test(url.pathname) ||
+  isVersionedAsset(url);
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
@@ -74,8 +81,19 @@ self.addEventListener('fetch', (event) => {
         (cached) =>
           cached ||
           fetch(request).then((res) => {
+            if (!res.ok) return res;
             const copy = res.clone();
-            caches.open(ASSET_CACHE).then((c) => c.put(request, copy));
+            caches.open(ASSET_CACHE).then(async (c) => {
+              // 同一個路徑的舊版本（不同 ?v=）一律清掉：快取不會無限長，也絕不會留舊圖
+              if (isVersionedAsset(url)) {
+                const keys = await c.keys();
+                for (const k of keys) {
+                  const ku = new URL(k.url);
+                  if (ku.pathname === url.pathname && ku.search !== url.search) await c.delete(k);
+                }
+              }
+              await c.put(request, copy);
+            });
             return res;
           })
       )
