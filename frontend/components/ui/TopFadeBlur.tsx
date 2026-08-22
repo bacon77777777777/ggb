@@ -93,7 +93,7 @@ export function TopFadeBlur({
         // 淡入淡出；visibility 在淡出結束時才切 hidden，隱藏時不再算 backdrop-filter
         opacity: on ? 1 : 0,
         visibility: on ? 'visible' : 'hidden',
-        transition: 'opacity .25s ease, visibility .25s',
+        transition: 'opacity .3s ease-out, visibility .3s',
       }}
     >
       <div

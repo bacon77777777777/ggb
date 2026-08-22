@@ -12,6 +12,9 @@ import CategoryBadge from '@/components/news/CategoryBadge';
 import { timeAgo } from '@/lib/timeAgo';
 import { useRequireLogin } from '@/hooks/useRequireLogin';
 import { useSwipeTabs } from '@/lib/useSwipeTabs';
+import { useQueryClient } from '@tanstack/react-query';
+import { swrLoad } from '@/lib/swr';
+import { newsListKey, fetchNewsList } from '@/lib/queries/news';
 
 interface NewsItem {
   id: string;
@@ -247,6 +250,7 @@ export default function NewsPage() {
   const [isLoading, setIsLoading] = useState(() => !listCache);
   const [activeTab, setActiveTab] = useState(() => listCache?.tab ?? 'all');
   const supabase = createClient();
+  const queryClient = useQueryClient();
 
   // 內容已經在 DOM 裡了才捲。用 layout effect + rAF：
   // layout effect 早於瀏覽器繪製，rAF 讓出一幀給圖片版位撐開
@@ -302,33 +306,23 @@ export default function NewsPage() {
   // 冷門分類（卡牌/盒玩）的文章多半較舊，會整批落在 N 篇之外，
   // 導致資料庫明明有文章、頁籤卻顯示「此分類目前沒有文章」
   const loadArticles = async (category: string) => {
-    let q = supabase
-      .from('news')
-      .select('id,title,summary,image_url,source_url,category,tags,is_active,created_at,view_count')
-      .eq('is_active', true);
-    if (category !== 'all') q = q.eq('category', category);
-    const { data } = await q.order('created_at', { ascending: false }).limit(60);
-
-    const articles = data ?? [];
-    if (articles.length === 0) { setAll([]); setIsLoading(false); return; }
-
-    const ids = articles.map(a => String(a.id));
-    const countsRes = await fetch(`/api/news/counts?ids=${ids.join(',')}`).then(r => r.json()).catch(() => ({}));
-    const likesMap:    Record<string, number> = countsRes.likes    ?? {};
-    const commentsMap: Record<string, number> = countsRes.comments ?? {};
-
-    setAll(articles.map(a => ({
-      ...a,
-      likes_count:    likesMap[String(a.id)]    ?? 0,
-      comments_count: commentsMap[String(a.id)] ?? 0,
-    })));
-    setIsLoading(false);
+    // 先套快取、再背景更新（lib/swr.ts）；資料改走 /api/public/news（CDN 邊緣快取 60 秒）
+    try {
+      await swrLoad(queryClient, newsListKey(category), () => fetchNewsList(category), (items) => {
+        setAll(items as unknown as NewsItem[]);
+        setIsLoading(false);
+      });
+    } catch (e) {
+      console.warn('[News] list fetch failed:', e);
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
     // 有這個分頁的快取就不要再閃一次 loading —— 直接顯示舊內容、背景換新的。
     // 這也是捲動位置能還原的前提：畫面不能在還原前變成空的
-    const cached = listCache?.tab === activeTab && listCache.items.length > 0;
+    const cached = (listCache?.tab === activeTab && listCache.items.length > 0)
+      || queryClient.getQueryData(newsListKey(activeTab)) !== undefined;
     if (!cached) setIsLoading(true);
     loadArticles(activeTab);
     // 回到頁面時刷新讚/留言數，確保與內頁同步

@@ -4,6 +4,56 @@
 
 ---
 
+## v2026.08.22g｜2026-08-22｜頁面加載優化六件套：資源版本化、WebP、資料快取層、邊緣快取 API、按下預取、換頁遮罩延遲
+
+老闆：「很多頁面進去圖都還沒載出來、空白；網路不好時登入頁 LINE／Google 圖標會消失一下才出現；
+又不能卡在 loading 太久。」三個約束：**不准用到舊圖（資訊不對等）、六點全做、不留防護漏洞。**
+
+**病根**：`/images/**` 的回應是 `max-age=0, must-revalidate`（Next 對 public/ 的預設），瀏覽器每次顯示
+都要先回伺服器問一趟，網路差時那一趟就是空白；sw.js 也沒管 `/images/`。資料層則是每頁掛載才從
+瀏覽器直打 Supabase、換頁整棵重掛、零快取，回上一頁也重看骨架屏。
+
+**① 靜態資源內容版本化（永不舊圖）**
+- `scripts/gen-asset-manifest.mjs`（predev／prebuild 自動跑）算 public/{images,loading,icons,audio,videos}
+  每個檔的 md5 → `lib/assetManifest.generated.json`；`lib/asset.ts` 的 `asset('/images/x.png')` 在 prod
+  回 `/images/x.png?v=<hash>`（dev 不加版本：老闆常同檔名覆蓋圖，dev 要永遠最新）。
+- `next.config` headers：**只有帶 `?v=` 的網址**給 `max-age=31536000, immutable`；沒帶的維持 must-revalidate
+  —— 漏包的引用頂多慢、不會舊。已用 `next build` + routes-manifest 與 dev server 驗證規則。
+- `sw.js` v2：只對帶 `?v=` 的資源 cache-first，寫入時清掉同路徑的舊版本；v1 對 `/icons/`、`/loading/`
+  整目錄 cache-first 會一直回舊檔，移除。
+- codemod 把 421 處引用（JSX 屬性、字串、樣板字串、inline style 的 `url()`）包進 `asset()`，88 檔。
+  DB 存的本站路徑（機器人頭像）在渲染處也包一層（外部網址原樣回傳）。
+- **慣例（寫進 CLAUDE.md）**：前台引用 public/ 的圖／音／影一律 `asset('/images/...')`。
+
+**② 圖片**
+- 轉 WebP：avatar 01~08（每張 730KB → 45KB）、slot sprite（3.4MB → 486KB）、slot main（1.3MB → 170KB）、
+  new_item（665KB → 36KB）、slot/item（253KB → 43KB）。程式碼引用改 .webp；非頭像的 PNG 原檔刪除。
+- migration 602：201（PROD）／204（STG）個機器人 `avatar_url` 改 .webp；`trg_users_avatar_webp` BEFORE
+  INSERT/UPDATE 把外部腳本塞進來的 `/images/avatar/N.png` 自動正規化（堵漏）。後台建帳號／預設頭像也改 .webp。
+- 登入頁 LINE／Google 圖標內嵌 data URI（`lib/inlineIcons.ts`，零請求）。首頁輪播第一張 `priority`。
+
+**③ 客戶端資料快取層（TanStack Query）**
+- `components/QueryProvider.tsx` 包在 layout 最外層；`lib/swr.ts` 的 `swrLoad()`：**先把快取套上畫面、
+  同時背景重抓、到了再換**，5 秒新鮮度窗口內不重抓（給預取用）。不改寫各頁狀態機，只換抓資料那段。
+- 套用：首頁（商品／輪播／分類）、情報列表、排行榜、商品頁主資料（商品＋廠商＋分類＋品項）、文章內頁（文章＋留言）。
+- 下拉更新（PathnameKeyed）先 `invalidateQueries()` 再重掛，保證一定重抓。
+
+**④ 公開資料 API 走 CDN 邊緣快取**
+- `/api/public/home`（15 秒）、`/api/public/news?category=`（60 秒，讚／留言數沿用 `get_news_engagement_counts`
+  RPC）、`/api/public/ranking?type=&range=`（60 秒；榜單本來就每日結算）。用 `lib/supabase/anon.ts` 的訪客
+  client（同一套 RLS、不碰 session）。**不用 stale-while-revalidate**，過期就重算。
+- ⚠️ 舊資料窗口：首頁列表最多 15 秒（上架／售完晚 15 秒出現在列表）；商品頁直連 Supabase 永遠即時。
+
+**⑤ 按下就預取**
+- ProductCard `touchstart`／`mouseenter` → 預取商品頁主資料（同 key）＋ `router.prefetch`。
+- 底部 tab `touchstart` → 預取首頁／情報／排行的主資料。Playwright 驗過兩者都會打。
+
+**⑥ 換頁遮罩延遲**：`RouteTransition.navigate()` 300ms 內換到頁就不蓋 loading，超過才蓋。
+
+**順手**：排行榜下拉空隙透明（`data-ptr-strip="none"`）；公平性活動頁下拉空隙白底（PTR 在內層容器塞
+`gapFill` 填色層）；`TopFadeBlur` 改捲動 >8px 才淡入、回頂淡出（0.3s），剛進頁面沒有。
+---
+
 ## v2026.08.22f｜2026-08-22｜排行榜底部導航 active 文字改白
 
 老闆：排行榜頁底部導航的「排行榜」active 文字先改成頂部下底線那個藍（#577fe5），

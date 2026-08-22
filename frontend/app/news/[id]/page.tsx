@@ -8,6 +8,8 @@ import { createClient } from '@/lib/supabase/client';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Clock, Tag, Send, ChevronLeft, Share2, X } from 'lucide-react';
 import { TopFadeBlur } from '@/components/ui/TopFadeBlur';
+import { useQueryClient } from '@tanstack/react-query';
+import { swrLoad } from '@/lib/swr';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
@@ -439,6 +441,7 @@ export default function NewsDetailPage() {
   const params  = useParams();
   const newsId  = params.id as string;
   const supabase = createClient();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const requireLogin = useRequireLogin();
 
@@ -465,21 +468,28 @@ export default function NewsDetailPage() {
     return () => { cleanupView(); cleanupScroll(); };
   }, [newsId]);
 
-  // 載入文章
+  // 載入文章：先套快取、再背景更新（lib/swr.ts）—— 從列表回來再點開不會再閃一次
   useEffect(() => {
     if (!newsId) return;
-    supabase
-      .from('news')
-      .select('*')
-      .eq('id', newsId)
-      .single()
-      .then(({ data }) => {
+    if (queryClient.getQueryData(['news', 'article', newsId]) === undefined) setIsLoading(true);
+    swrLoad(
+      queryClient,
+      ['news', 'article', newsId],
+      async () => {
+        const { data, error } = await supabase.from('news').select('*').eq('id', newsId).single();
+        if (error) throw error;
+        return data;
+      },
+      (data, stale) => {
         setItem(data);
         setIsLoading(false);
         // 瀏覽數走 RPC。news 的匿名 UPDATE 政策已收回（migration 470）——
         // 原本是整張表對匿名開放寫入，等於任何人都能竄改站上文章。
-        if (data) supabase.rpc('increment_news_view', { p_news_id: data.id });
-      });
+        // 只在真的重抓那次計一次，套快取那次不算
+        if (data && !stale) supabase.rpc('increment_news_view', { p_news_id: data.id });
+      },
+    ).catch(() => setIsLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newsId]);
 
   // 載入按讚 + 留言數（快速）+ 完整留言（背景）
@@ -496,13 +506,18 @@ export default function NewsDetailPage() {
       setCommentCount(count ?? 0);
     });
 
-    // 背景載入完整留言列表（供打開抽屜用）
-    fetch(`/api/news/${newsId}/comments`).then(r => r.json()).then(d => {
-      if (Array.isArray(d)) {
-        setComments(d);
-        setCommentCount(d.length);
-      }
-    });
+    // 背景載入完整留言列表（供打開抽屜用）—— 先套快取、再背景更新
+    swrLoad(
+      queryClient,
+      ['news', 'article', newsId, 'comments'],
+      () => fetch(`/api/news/${newsId}/comments`).then(r => r.json()),
+      (d) => {
+        if (Array.isArray(d)) {
+          setComments(d);
+          setCommentCount(d.length);
+        }
+      },
+    ).catch(() => {});
   }, [newsId]);
 
   const handleLike = async () => {

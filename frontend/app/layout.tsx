@@ -6,6 +6,7 @@ import FooterWrapper from '@/components/FooterWrapper';
 import MobileTabbar from '@/components/MobileTabbar';
 import { RouteTransitionProvider } from '@/components/ui/RouteTransition';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { QueryProvider } from '@/components/QueryProvider';
 import { ToastProvider } from '@/components/ui/Toast';
 import { AlertProvider } from '@/components/ui/AlertDialog';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -215,6 +216,7 @@ export default async function RootLayout({
           </div>
         </div>
 
+        <QueryProvider>
         <AuthProvider>
         {/* 維護開啟時把停在頁面上的使用者帶到維護頁 */}
         <MaintenanceWatcher />
@@ -247,6 +249,7 @@ export default async function RootLayout({
             </AlertProvider>
           </ThemeProvider>
         </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

@@ -26,6 +26,9 @@ import NoticeBar from '@/components/promo/NoticeBar';
 import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
 import { useSwipeTabs } from '@/lib/useSwipeTabs';
 import { asset } from '@/lib/asset';
+import { useQueryClient } from '@tanstack/react-query';
+import { swrLoad } from '@/lib/swr';
+import { HOME_KEY, fetchHomeCatalog } from '@/lib/queries/home';
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 type BannerRow = Database['public']['Tables']['banners']['Row'];
@@ -85,6 +88,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [supabase] = useState(() => createClient());
+  const queryClient = useQueryClient();
   const { flags, states: flagStates, isLoading: isFlagsLoading } = useFeatureFlags();
   const { user } = useAuth();
   // Map<series, score> — populated from get_user_series_preferences RPC
@@ -112,133 +116,28 @@ export default function Home() {
       : null;
 
   const fetchData = useCallback(async () => {
-    const LOAD_TIMEOUT_MS = 10000;
-    const startTime = Date.now();
-
-    const withTimeout = async <T,>(p: PromiseLike<T>, label: string) => {
-      const startTime = Date.now();
-      try {
-        const result = await Promise.race<T>([
-          Promise.resolve(p),
-          new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`timeout fetching ${label}`)), LOAD_TIMEOUT_MS))
-        ]);
-        return result;
-      } catch (error) {
-        throw error;
-      }
-    };
-
+    /*
+     * 先套快取、再背景更新（lib/swr.ts）—— 老闆 2026-08-22 頁面加載優化 ③④。
+     * 商品／輪播／分類改走 /api/public/home（CDN 邊緣快取 15 秒，該 route 有說明）。
+     * 回到首頁時快取裡有上次的資料就直接畫、不閃骨架屏；重抓到了再無聲換掉。
+     */
     try {
-      setIsLoading(true);
       setLoadError(null);
-
-
-      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        setLoadError('Supabase 設定缺失，請檢查 .env.local');
-        return;
-      }
-      
-      // Independent fetch handling to ensure partial data loading
-      let productsData: ProductRow[] = [];
-      let bannersData: BannerRow[] = [];
-      let productsError = null;
-
-      // Fetch Products
-      try {
-        type RawProductRow = ProductRow & { original_price?: number | string | null };
-        type ProductsQueryResult = {
-          data: RawProductRow[] | null;
-          error: unknown;
-        };
-
-        const result = await withTimeout(
-          supabase
-            .from('products')
-            .select(PRODUCT_PUBLIC_COLUMNS)
-            .neq('status', 'pending')
-            .neq('type', 'slot')
-            .order('created_at', { ascending: false }) as unknown as Promise<ProductsQueryResult>,
-          'products'
-        );
-        
-        const { data, error } = result;
-        
-        if (error) throw error;
-        
-        productsData = (data || []).map((p) => ({
-          ...p,
-          price: Number(p.price),
-          original_price: p.original_price != null ? Number(p.original_price) : undefined,
-          total_count: Number(p.total_count),
-          remaining: Number(p.remaining),
-        }));
-      } catch (err) {
-        console.warn('[Home] Products fetch failed:', err);
-        productsError = err;
-      }
-
-      // Fetch Banners (Non-blocking for products)
-      try {
-        type BannersQueryResult = {
-          data: BannerRow[] | null;
-          error: unknown;
-        };
-
-        const result = await withTimeout(
-          supabase
-            .from('banners')
-            .select('*, events(start_at, end_at)')
-            .eq('is_active', true)
-            .eq('page', 'home')
-            .order('sort_order', { ascending: true }) as unknown as Promise<BannersQueryResult>,
-          'banners'
-        );
-        
-        const { data, error } = result;
-        
-        if (!error) {
-          bannersData = data || [];
-        }
-      } catch (err) {
-        if (err instanceof Error && err.message.includes('timeout fetching banners')) {
-          console.warn('[Home] Banners fetch timed out');
-        } else {
-          console.warn('[Home] Banners fetch failed:', err);
-        }
-        // Banners error is non-critical
-      }
-
-      // Fetch Menus (Categories)
-      try {
-        const { data, error } = await withTimeout(
-          supabase
-            .from('categories')
-            .select('id, name')
-            .eq('is_active', true)
-            .order('sort_order', { ascending: true }) as unknown as Promise<{ data: Array<{ id: string; name: string }> | null; error: unknown }>,
-          'menus'
-        );
-        if (!error) {
-          setMenus((data || []).map((m) => ({ id: m.id, name: m.name })));
-        }
-      } catch (err) {
-        console.warn('[Home] Menus fetch failed:', err);
-      }
-
-      setAllProducts(productsData);
-      setBanners(filterBannersBySchedule(bannersData as any[]) as typeof bannersData);
-
-      if (productsError) {
-        setLoadError('無法載入商品列表，請檢查網路連線');
-      }
-
+      if (!queryClient.getQueryData(HOME_KEY)) setIsLoading(true);
+      await swrLoad(queryClient, HOME_KEY, fetchHomeCatalog, (d) => {
+        setAllProducts(d.products as ProductRow[]);
+        setBanners(filterBannersBySchedule(d.banners as any[]) as BannerRow[]);
+        setMenus(d.menus);
+        setIsLoading(false);
+      });
     } catch (error) {
-      console.error('Error fetching data:', error);
-      setLoadError('載入失敗，請重試');
+      console.warn('[Home] catalog fetch failed:', error);
+      // 有快取就讓舊畫面留著，只在完全沒東西時才顯示錯誤
+      if (!queryClient.getQueryData(HOME_KEY)) setLoadError('無法載入商品列表，請檢查網路連線');
     } finally {
       setIsLoading(false);
     }
-  }, [supabase]);
+  }, [queryClient]);
 
   useEffect(() => {
     fetchData();

@@ -476,6 +476,10 @@ curl -X POST https://admin.ggb.com.tw/api/admin/storage/clear-products \
 
 ## 前台 UI 設計慣例
 
+- **靜態資源一律 `asset()`**：引用 `public/` 底下的圖／音／影（`/images/…`、`/loading/…`、`/icons/…`、
+  `/audio/…`、`/videos/…`）一律寫 `asset('/images/x.png')`（`frontend/lib/asset.ts`）。prod 會接上內容雜湊
+  `?v=`，只有帶版本的網址才拿得到一年 immutable 快取；沒包的不會壞，只是每次都要重新驗證（慢）。
+  DB 存的本站路徑（機器人頭像）在渲染處也包一層，外部網址原樣回傳。**大圖先轉 WebP 再放進來。**
 - **Loading 動畫**：一律使用 `ProductLoadingScreen`（`frontend/components/ui/ProductLoadingScreen.tsx`）或其相同邏輯（cycling IP character SVGs at `frontend/public/loading/1-8.svg` + framer-motion float）。**禁止自創 spinner、骨架屏或其他 loading 動畫**。
 - **商品卡片**：猜你喜歡、相關商品、LP 底部等任何商品列表，一律使用 `ProductCard`（`frontend/components/ProductCard.tsx`）。不要自製商品卡。
 

@@ -8,6 +8,11 @@ import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { categoryState } from '@/lib/categoryFlags';
 import { useProductPromotion } from '@/contexts/PromotionsContext';
 import { asset } from '@/lib/asset';
+import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import { prefetch } from '@/lib/swr';
+import { productKey, fetchProductDetail } from '@/lib/queries/product';
 
 interface ProductCardProps {
   id: string | number;
@@ -65,6 +70,21 @@ export default function ProductCard(props: ProductCardProps) {
           : `/item/${id}`);
   const fallbackImage = getItemImageForId(id);
   const [displayImage, setDisplayImage] = useState<string>(image || fallbackImage);
+
+  /*
+   * 按下就預取（老闆 2026-08-22 頁面加載優化 ⑤）：touchstart 比 click 早 100ms 左右，
+   * 先把商品頁的主資料（lib/queries/product，跟商品頁同一個 key）跟路由 JS 抓起來，
+   * 手指放開換頁時資料多半已經到了。桌機用 mouseenter。5 秒內重複按不會重打。
+   */
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const warm = () => {
+    const numericId = Number(id);
+    if (Number.isFinite(numericId)) {
+      prefetch(queryClient, productKey(numericId), () => fetchProductDetail(createClient(), numericId));
+    }
+    router.prefetch(href);
+  };
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
@@ -95,6 +115,8 @@ export default function ProductCard(props: ProductCardProps) {
   return (
     <Link
       href={href}
+      onTouchStart={warm}
+      onMouseEnter={warm}
       className="group block h-full"
       onClick={() => {
         onNavigate?.()

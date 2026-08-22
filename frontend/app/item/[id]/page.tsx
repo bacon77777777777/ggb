@@ -69,6 +69,9 @@ import FairnessPanel from '@/components/product/FairnessPanel';
 import NoticeBar from '@/components/promo/NoticeBar';
 import { fetchRecommendations } from '@/lib/recommendations';
 import { PRODUCT_PUBLIC_COLUMNS, PRIZE_PUBLIC_COLUMNS } from '@/lib/productColumns'
+import { useQueryClient } from '@tanstack/react-query';
+import { swrLoad } from '@/lib/swr';
+import { productKey, fetchProductDetail } from '@/lib/queries/product';
 import { useRequireLogin } from '@/hooks/useRequireLogin';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { isCategoryHidden, isCategoryUnderMaintenance, categoryFlagKey, CATEGORY_LABELS } from '@/lib/categoryFlags';
@@ -416,6 +419,7 @@ export default function ProductDetailPage() {
   const { showToast } = useToast();
   const { states: flagStates, isLoading: isFlagsLoading } = useFeatureFlags();
   const [supabase] = useState(() => createClient());
+  const queryClient = useQueryClient();
 
   const [product, setProduct] = useState<Database['public']['Tables']['products']['Row'] | null>(null);
   /*
@@ -1272,60 +1276,38 @@ export default function ProductDetailPage() {
       if (isNaN(productId)) return;
 
       /*
-       * 商品先查（要靠它判斷是不是盒玩、拿 supplier_id），其餘四個並行。
-       *
-       * 原本五個 await 接力，但只有 suppliers 真的相依（需要 supplier_id）；
-       * 品項、分類、推薦商品只要網址上的 productId 就能查，卻乖乖排隊等前面
-       * —— 白等約 0.3~0.4 秒。純前端渲染的頁面本來就慢，沒必要再自己加碼。
+       * 主資料（商品＋廠商名＋分類＋品項）走 lib/queries/product 的 fetchProductDetail：
+       * 先套快取、再背景更新（lib/swr.ts）。ProductCard 在 touchstart 就用同一個 key 預取，
+       * 所以從列表點進來時通常已經有資料、畫面直接出來（老闆 2026-08-22 頁面加載優化 ③⑤）。
+       * 直連 Supabase、不走 CDN：庫存／剩餘數要即時。
        */
-      const { data: productData, error: productError } = await supabase
-        .from('products')
-        .select(PRODUCT_PUBLIC_COLUMNS)
-        .eq('id', productId)
-        .neq('status', 'pending')
-        .single();
+      const { data } = await swrLoad(
+        queryClient,
+        productKey(productId),
+        () => fetchProductDetail(supabase, productId),
+        (d) => {
+          if (d.product.type === 'blindbox') return;
+          setProduct(d.product);
+          setSupplierName(d.supplierName);
+          setProductCategories(d.categories);
+          setPrizes(d.prizes);
+        },
+      );
 
-      if (productError) throw productError;
-
-      if (productData?.type === 'blindbox') {
+      if (data.product.type === 'blindbox') {
         router.replace(`/blindbox/${productId}`);
         return;
       }
 
-      setProduct(productData);
-
-      const [supRes, menuRes, prizesRes, recRes] = await Promise.all([
-        productData?.supplier_id
-          ? supabase.from('suppliers').select('name').eq('id', productData.supplier_id).single()
-          : Promise.resolve({ data: null, error: null }),
-        supabase.from('product_categories').select('categories(id, name)').eq('product_id', productId),
-        supabase.from('product_prizes').select(PRIZE_PUBLIC_COLUMNS).eq('product_id', productId)
-          .order('level', { ascending: true }),
-        // 佔位：真正的推薦在下面用 fetchRecommendations 取代（需要先知道 type）
-        Promise.resolve({ data: null }),
-      ]);
-
-      setSupplierName((supRes.data as { name?: string } | null)?.name ?? null);
-
-      setProductCategories(
-        ((menuRes.data as Record<string, unknown>[] | null) || [])
-          .map(r => r.categories as { id: string; name: string } | null)
-          .filter((c): c is { id: string; name: string } => !!c)
-      )
-
-      if (prizesRes.error) throw prizesRes.error;
-      setPrizes(prizesRes.data || []);
-
       // 猜你喜歡：照玩家自己的抽獎紀錄推薦（見 lib/recommendations）
-      void recRes;
-      fetchRecommendations(supabase, productId, productData?.type).then(setRecommendations);
+      fetchRecommendations(supabase, productId, data.product.type).then(setRecommendations);
 
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [params.id, router, supabase, setProduct, setPrizes, setRecommendations, setIsLoading]);
+  }, [params.id, router, supabase, queryClient, setProduct, setPrizes, setRecommendations, setIsLoading]);
 
   useEffect(() => {
     let isMounted = true;

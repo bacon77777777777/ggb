@@ -2,11 +2,13 @@
 
 import React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { markContentRefresh } from '@/lib/contentRefresh';
 
 export default function PathnameKeyed({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [version, setVersion] = React.useState(0);
 
   React.useEffect(() => {
@@ -35,6 +37,9 @@ export default function PathnameKeyed({ children }: { children: React.ReactNode 
       // 先標記再重掛：底下的頁面元件要能分辨「這是刷新，不是玩家剛進來」，
       // 首頁彈窗與開屏才不會每刷一次就跳一次
       markContentRefresh();
+      // 客戶端資料快取全部標成過期：重掛後各頁 swrLoad() 會先畫快取、再一定重抓
+      //（不 invalidate 的話 5 秒新鮮度窗口內不會重抓，下拉更新就等於沒更新）
+      void queryClient.invalidateQueries();
       setVersion((v) => v + 1);
       try { router.refresh(); } catch { /* no-op */ }
     };
@@ -52,7 +57,7 @@ export default function PathnameKeyed({ children }: { children: React.ReactNode 
       window.removeEventListener('ggb:content-refresh', refreshHandler);
       // document.removeEventListener('visibilitychange', visibilityHandler);
     };
-  }, [router]);
+  }, [router, queryClient]);
 
   return <div key={`${pathname}-${version}`}>{children}</div>;
 }

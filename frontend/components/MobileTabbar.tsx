@@ -10,6 +10,12 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { hapticLight } from '@/lib/haptics';
 import { asset } from '@/lib/asset';
+import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
+import { prefetch } from '@/lib/swr';
+import { HOME_KEY, fetchHomeCatalog } from '@/lib/queries/home';
+import { newsListKey, fetchNewsList } from '@/lib/queries/news';
+import { rankingKey, fetchRanking } from '@/lib/queries/ranking';
 
 export default function MobileTabbar() {
   return (
@@ -52,6 +58,19 @@ function MobileTabbarInner() {
   const isSecondaryPage = (!isMainTabPath && !isNewsDetail) || (pathname === '/profile' && !!activeTab);
 
   const { theme } = useTheme();
+
+  /*
+   * 按下就預取（老闆 2026-08-22 頁面加載優化 ⑤）：touchstart 時先把目標頁的主資料
+   * （跟各頁 swrLoad 同一個 key）與路由 JS 抓起來，切到那頁直接有東西。
+   */
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const warm = (href: string) => {
+    if (href === '/') prefetch(queryClient, HOME_KEY, fetchHomeCatalog);
+    else if (href === '/news') prefetch(queryClient, newsListKey('all'), () => fetchNewsList('all'));
+    else if (href === '/ranking') prefetch(queryClient, rankingKey('reward', 'day'), () => fetchRanking('reward', 'day'));
+    router.prefetch(href);
+  };
 
   if (isSecondaryPage || isNewsDetail || pathname.startsWith('/events/')) {
     return null;
@@ -125,6 +144,8 @@ function MobileTabbarInner() {
                 key={tab.href}
                 href={tab.href}
                 className="flex flex-col items-center justify-end pb-1.5 gap-0 h-full relative"
+                onTouchStart={() => warm(tab.href)}
+                onMouseEnter={() => warm(tab.href)}
                 onClick={() => handleTabClick(tab.href)}
               >
                 <motion.div

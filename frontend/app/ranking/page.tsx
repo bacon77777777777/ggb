@@ -21,6 +21,9 @@ import { ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSwipeTabs } from '@/lib/useSwipeTabs';
 import { asset } from '@/lib/asset';
+import { useQueryClient } from '@tanstack/react-query';
+import { swrLoad } from '@/lib/swr';
+import { rankingKey, fetchRanking as fetchRankingRows } from '@/lib/queries/ranking';
 
 interface RankingRpcItem {
   user_id: string;
@@ -44,6 +47,7 @@ export default function RankingPage() {
   useLayoutEffect(() => {
     if (window.innerWidth >= 768) router.replace('/');
   }, []);
+  const queryClient = useQueryClient();
   const [scale, setScale] = useState(1);
   const [isInitialized, setIsInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly'>('daily')
@@ -134,21 +138,13 @@ export default function RankingPage() {
 
   // Fetch Ranking Data
   const fetchRanking = useCallback(async () => {
-    setLoading(true);
+    const rangeParam = activeTab === 'weekly' ? 'week' : 'day';
+    const key = rankingKey(activeCategory, rangeParam);
+    // 先套快取、再背景更新（lib/swr.ts）；資料改走 /api/public/ranking（CDN 邊緣快取 60 秒）
+    if (!queryClient.getQueryData(key)) setLoading(true);
     try {
-      const rpcName = activeCategory === 'draws' ? 'get_leaderboard_draws' : 'get_leaderboard_whales';
-      const rangeParam = activeTab === 'weekly' ? 'week' : 'day';
-
-      const { data, error } = await supabase.rpc(rpcName, {
-        p_range: rangeParam
-      });
-
-      if (error) {
-        console.error('Error fetching ranking:', error);
-        setRankingData([]);
-        return;
-      }
-
+      await swrLoad(queryClient, key, () => fetchRankingRows(activeCategory, rangeParam), (rows) => {
+      const data = rows as unknown as RankingRpcItem[];
       // Transform data to match component props
       const formattedData: RankingItemData[] = (data || []).map((item: RankingRpcItem) => {
         let amountStr = '0';
@@ -183,13 +179,15 @@ export default function RankingPage() {
       }
 
       setRankingData(filledData);
+      setLoading(false);
+      });
     } catch (err) {
       console.error('Unexpected error fetching ranking:', err);
-      setRankingData([]);
+      if (!queryClient.getQueryData(key)) setRankingData([]);
     } finally {
       setLoading(false);
     }
-  }, [activeCategory, activeTab, supabase]);
+  }, [activeCategory, activeTab, queryClient]);
 
   useEffect(() => {
     fetchRanking();
