@@ -677,7 +677,13 @@ export default function Home() {
         result.sort((a, b) => b.price - a.price);
       } else if (activeSecondaryTab === 'featured') {
         const prefMap = userSeriesPref.size > 0 ? userSeriesPref : globalSeriesPop;
-        if (prefMap.size > 0) {
+        /*
+         * 不管有沒有系列偏好分數都要洗牌。以前包在 `if (prefMap.size > 0)` 裡 ——
+         * 沒有偏好資料（新帳號、訪客、資料還沒累積）時整段跳過、照 API 的上架時間排，
+         * 下拉刷新永遠同一個順序（老闆 2026-08-22 回報）。沒有分數時 scoreOf 全是 0，
+         * 權重只剩熱度＋1，頭部照熱度固定、其餘照樣每刷換一輪。
+         */
+        {
           /*
            * 新品曝光期：上架 7 天內的商品，系列分保底拉到「熱度榜中位數」。
            *
@@ -732,15 +738,6 @@ export default function Home() {
               JSON.stringify(result.slice(0, 24).map((p) => String(p.id))),
             );
           } catch { /* 無痕模式寫不了就沒有降權，無害 */ }
-        } else {
-          result.sort((a, b) => {
-            const heatA = productHeat.get(Number(a.id)) || 0;
-            const heatB = productHeat.get(Number(b.id)) || 0;
-            if (heatA !== heatB) return heatB - heatA;
-            const da = a.created_at ? new Date(a.created_at).getTime() : 0;
-            const db = b.created_at ? new Date(b.created_at).getTime() : 0;
-            return db - da;
-          });
         }
       } else {
         // 系列頁籤：同一個系列內比系列分沒有意義，改用商品熱度 → 新到舊。
