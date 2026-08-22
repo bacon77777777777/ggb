@@ -25,7 +25,13 @@ const config: CapacitorConfig = {
   webDir: 'www',
   server: {
     url: APP_URL,
-    cleartext: false,
+    /*
+     * 本機開發：`GGB_APP_URL=http://localhost:3000 npx cap sync ios` 把殼指到本地
+     * dev server（模擬器跟主機共用 loopback）。Android 的 http 要靠 cleartext 放行；
+     * iOS 走 Info.plist 的 NSAllowsLocalNetworking。產生的 ios/App/App/capacitor.config.json
+     * 沒被 git 追蹤，測完要記得用預設（正式網址）再 sync 一次。
+     */
+    cleartext: APP_URL.startsWith('http://'),
     /*
      * 不限制導航（'*'）。
      *

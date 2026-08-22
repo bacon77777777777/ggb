@@ -4,6 +4,13 @@
 <dict>
 	<key>CAPACITOR_DEBUG</key>
 	<string>$(CAPACITOR_DEBUG)</string>
+	<!-- 本機開發：讓殼能載 http://localhost:3000（模擬器與主機共用 loopback）。
+	     只放行本機／區網的 http，對正式版（https://www.ggb.com.tw）沒有影響。 -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>

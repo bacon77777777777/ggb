@@ -32,6 +32,11 @@ interface RankingRpcItem {
   title_color?: string | null;
 }
 
+
+/** 排行榜底色：#1C1D22 → #2C2D33 上到下的線性漸層（老闆 2026-08-22 Figma 指定），
+    流體動畫疊在上面不動。頁面打底與 InkFlowField 容器都用這條，reduce-motion 時只剩它。 */
+const RANK_BG = 'linear-gradient(180deg, #1C1D22 0%, #2C2D33 100%)';
+
 export default function RankingPage() {
   const router = useRouter();
 
@@ -292,13 +297,15 @@ export default function RankingPage() {
         <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
       </Link>
     </div>
-    <div className="relative bg-[#0E0B1E] min-h-screen w-full overflow-x-hidden flex justify-center" {...swipeTabs}>
+    <div className="relative min-h-screen w-full overflow-x-hidden flex justify-center" style={{ background: RANK_BG }} {...swipeTabs}>
       {/* 全螢幕流體背景（Ink Flow Field，WebGL2）：fixed 鋪滿視窗、當純背景、
           z-0 疊在內容(z-[1])下、fixed nav(z-10)/返回鍵(z-20)上。
-          reduce-motion 時不掛（退回 bg-[#0E0B1E] 靜態深色底，省電/無障礙）。*/}
+          底色是 RANK_BG 漸層（老闆 2026-08-22 換底色、動畫保留）：InkFlowField 的 GL
+          清色是透明的，底色由它容器的 background 畫，所以把同一條漸層餵給它。
+          reduce-motion 時不掛（退回外層的靜態漸層底，省電/無障礙）。*/}
       {!reduceMotion && (
         <div className="fixed inset-0 z-0 pointer-events-none" aria-hidden>
-          <InkFlowField style={{ width: '100%', height: '100%' }} />
+          <InkFlowField style={{ width: '100%', height: '100%' }} background={RANK_BG} />
         </div>
       )}
       <div

@@ -4,6 +4,24 @@
 
 ---
 
+## v2026.08.22e｜2026-08-22｜排行榜底色換線性漸層（動畫保留）＋ 殼可接本地 dev server
+
+**排行榜底色**（老闆 Figma 指定）：`#1C1D22 → #2C2D33` 上到下線性漸層（`RANK_BG`）。
+- 頁面打底從 `bg-[#0E0B1E]` 改成這條漸層；`InkFlowField` 的 GL 清色本來就是透明、
+  底色由容器的 `background` prop 畫，所以把同一條漸層餵給它，流體動畫原封不動。
+- reduce-motion 時不掛 WebGL，只剩外層的靜態漸層。
+
+**原生殼接本地**（老闆：「啟動 app 模擬器，接本地，不要 prod，我要先測試再推」）
+- `mobile/ios/App/App/Info.plist` 加 `NSAppTransportSecurity.NSAllowsLocalNetworking`：
+  ATS 預設擋 http，這個只放行本機／區網，正式版（https）不受影響。
+- `capacitor.config.ts` 的 `cleartext` 改成跟著 `GGB_APP_URL` 是不是 http 走。
+- 用法：`cd mobile && GGB_APP_URL=http://localhost:3000 npx cap sync ios` → xcodebuild
+  模擬器版 → `simctl install`。模擬器跟主機共用 loopback，不用查區網 IP。
+  產生的 `ios/App/App/capacitor.config.json` 沒被 git 追蹤；測完要用預設再 sync 一次。
+- 這台 Mac 已升到 Xcode 26.6 / macOS 26.6.2，v2026.08.20 那套剝 swiftinterface 旗標／
+  去簽章的 hack 不再需要。
+---
+
 ## v2026.08.22d｜2026-08-22｜排行榜頁底部導航改毛玻璃
 
 老闆 2026-08-22：排行榜頁底部導航改成跟頂部導航一樣的毛玻璃模糊底，其他頁維持白色。
