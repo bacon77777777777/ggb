@@ -4,6 +4,39 @@
 
 ---
 
+## v2026.08.24a｜2026-08-24｜宅配報錯與門市地圖卡住（PROD 補課）；收件資料驗證；暱稱去信箱化；餘額字級
+
+**① 宅配「function delivery_has_large_item does not exist」**
+- STG↔PROD 全函數 diff：**14 顆函數只在 STG**（426 之後「上線後只跑 STG」漏補的），含
+  `delivery_has_large_item`、`calc_delivery_fee`、`get_user_displays`、任務進度、交換通知、
+  `purchase_marketplace_listing_item` 等；另 3 條 exchange 通知 trigger 也缺。
+- migration 605：從 STG `pg_get_functiondef` 原樣搬到 PROD（純 CREATE OR REPLACE，無資料操作）。
+  已執行，PROD 缺漏歸零。表結構兩邊本來就一致。
+
+**② 超商取貨門市卡在 /api/logistics/map**
+- 中繼頁自動送出後，綠界回 24 bytes：「找不到加密金鑰，請確認是否有申請開通此物流方式」——
+  `ECPAY_LOGISTICS_MERCHANT_ID` 從本機到 Vercel 都填了 **3002607（金流測試商店）**，物流 stage 不認。
+- 實測綠界官方物流測試帳號：C2C `2000933`（XBERn.../h1ON...）開 UNIMARTC2C 地圖 OK。
+  已更新本機 `.env.local` 與 Vercel ggb-backend Production／Preview 三個變數，**下次後台部署生效**。
+- 注意：C2C 測試商店只涵蓋超商 C2C；之後若在 stage 測宅配（HOME/TCAT）建立物流單，要另用 B2C
+  測試商店 `2000132`（正式開通後就沒這個分裂，一個正式商店全都有）。
+
+**③ 收件資料格式（老闆指定要定義）**
+- 規則：姓名 2–10 字、電話 09 開頭 10 碼、宅配地址 8–60 字且含「縣」或「市」。
+- migration 606：`create_delivery_order` 開頭加驗證（直接打 RPC 也擋得住），錯誤碼
+  INVALID_RECIPIENT_NAME／PHONE／ADDRESS；前台送出前先驗、給看得懂的訊息，錯誤碼對照也補上
+  （含 LARGE_ITEM_REQUIRES_HOME_DELIVERY、FEE_MISMATCH 的中文）。兩環境已執行。
+
+**④ 暱稱去信箱化（老闆：信箱前綴猜得到帳號，隱私洩露）**
+- migration 607：`default_user_name()` 改隨機詞庫 —— 30 形容詞 × 30 名詞（900 組合，例「幸運的水豚」
+  「歐皇級企鵝」），撞名先重抽、再補兩位數字；metadata 名（LINE 顯示名）仍優先。**email 從此完全不參與。**
+  `handle_new_user()`（auth 註冊 trigger）與前台 ensure-profile 同步改。
+- 回填：真人帳號中「name = 信箱前綴」PROD 5 個、STG 2 個，加上舊撞名邏輯的「前綴＋數字」
+  （ap702087375 那類）全部換成隨機暱稱。兩環境殘留歸零。玩家仍可在會員中心自己改名（1–10 字規則不變）。
+
+**⑤ 會員頁代幣餘額**：36px → 40px、字距 tight → 0.05em（font-black 本來就是最粗）。
+---
+
 ## v2026.08.23e｜2026-08-23｜驗證碼六格在實機上有幾格看不到；社群鈕字重統一；儲值紀錄藥丸透出底圖
 
 **① 六格驗證碼的邊框在實機上會消失**

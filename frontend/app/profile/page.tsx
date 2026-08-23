@@ -1976,15 +1976,38 @@ function ProfileContent() {
       return;
     }
 
+    // 收件資料格式（migration 606 的 create_delivery_order 也驗同一套；這裡先擋是為了給看得懂的訊息）
+    const recipientName = settingsForm.recipientName.trim();
+    const recipientPhone = settingsForm.recipientPhone.trim();
+    const recipientAddress = settingsForm.recipientAddress.trim();
+    if (recipientName.length < 2 || recipientName.length > 10) {
+      toast.error('收件人姓名請填 2～10 個字');
+      return;
+    }
+    if (!/^09\d{8}$/.test(recipientPhone)) {
+      toast.error('聯絡電話請填 09 開頭的 10 碼手機號碼');
+      return;
+    }
+    if (logisticsType === 'HOME') {
+      if (recipientAddress.length < 8 || recipientAddress.length > 60) {
+        toast.error('收件地址請填 8～60 個字');
+        return;
+      }
+      if (!/[縣市]/.test(recipientAddress)) {
+        toast.error('收件地址請包含縣市（例：台北市…）');
+        return;
+      }
+    }
+
     setIsSubmittingDelivery(true);
 
     try {
       // Call RPC to create delivery order with atomic points deduction
       const { data, error } = await supabase.rpc('create_delivery_order', {
         p_user_id: user!.id,
-        p_recipient_name: settingsForm.recipientName,
-        p_recipient_phone: settingsForm.recipientPhone,
-        p_address: logisticsType === 'HOME' ? settingsForm.recipientAddress : storeAddress,
+        p_recipient_name: recipientName,
+        p_recipient_phone: recipientPhone,
+        p_address: logisticsType === 'HOME' ? recipientAddress : storeAddress,
         p_logistics_type: logisticsType,
         p_logistics_subtype: logisticsType === 'CVS' ? logisticsSubType : null,
         p_store_id: logisticsType === 'CVS' ? storeId : null,
@@ -2013,6 +2036,16 @@ function ProfileContent() {
       const msg = supaErr.message || (error as Error).message || '';
       if (msg.includes('INSUFFICIENT_POINTS')) {
         toast.error('代幣餘額不足，無法支付運費');
+      } else if (msg.includes('INVALID_RECIPIENT_NAME')) {
+        toast.error('收件人姓名請填 2～10 個字');
+      } else if (msg.includes('INVALID_RECIPIENT_PHONE')) {
+        toast.error('聯絡電話請填 09 開頭的 10 碼手機號碼');
+      } else if (msg.includes('INVALID_ADDRESS')) {
+        toast.error('收件地址請填 8～60 個字並包含縣市');
+      } else if (msg.includes('LARGE_ITEM_REQUIRES_HOME_DELIVERY')) {
+        toast.error('內含大型獎品，請改用宅配');
+      } else if (msg.includes('FEE_MISMATCH')) {
+        toast.error('運費已更新，請關閉視窗重新申請');
       } else {
         toast.error(`申請失敗：${msg || '請稍後再試'}`);
       }
@@ -6621,7 +6654,7 @@ function ProfileContent() {
                     
                     {/* Bottom Row: Amount (Left) and Topup (Right) */}
                     <div className="flex justify-between items-end">
-                      <div className="text-[36px] leading-none font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-[#ffa800] to-white drop-shadow-sm font-amount">
+                      <div className="text-[40px] leading-none font-black tracking-[0.05em] text-transparent bg-clip-text bg-gradient-to-b from-[#ffa800] to-white drop-shadow-sm font-amount">
                         {isGuest ? '0' : (user.tokens?.toLocaleString() || '0')}
                       </div>
                       
