@@ -24,7 +24,7 @@ const PARAM_DEFAULTS = {
   vortexScale: 100, vortexOffsetY: 0,
   energyScale: 100, energyOffsetY: 0,
   fxOpacity: 0.9,
-  dealStagger: 90, flipDelay: 500, skipFlyMs: 55,
+  dealStagger: 90, flipDelay: 500, skipFlyMs: 55, fastFlyMs: 28,
   sfxVolume: 1,
   peelCurl: 45,
 };
@@ -183,8 +183,7 @@ export default function GGBPackRip({
    * 快速模式（商品頁左上角的閃電，玩家設定會記住）。開啟時：
    *   1. 略過撕包步驟，直接進發牌
    *   2. SKIP 從「跳到本包壓軸」變成「直衝整筆最後一張」
-   *   3. 那一跳沒有飛牌動畫也沒有音效 —— 按 SKIP 的人要的是「別演了」，
-   *      飛 99 張就算再快也是快轉不是略過（老闆 2026-08-23）
+   *   3. 飛牌節奏改用 fastFlyMs（比 skipFlyMs 快，不然十包飛 99 張要五秒）
    * **每包壓軸照樣浮起等點擊** —— 那是抽獎的爽點，加速鍵不該吃掉它。
    */
   fast = false,
@@ -451,28 +450,11 @@ export default function GGBPackRip({
    * 把 from ~ target 之間的牌一張張卡背朝上往右飛出去，最後停在 target（老闆 2026-08-19）。
    * 原本是瞬間跳過去，看不出中間發生什麼事。
    *
-   * 節奏由後台參數「SKIP 飛牌速度」控制（55ms／張）。
+   * 節奏由後台參數控制：一般「SKIP 飛牌速度」55ms／張，快速模式另一格 28ms／張。
    * 飛出動畫 .14s 比間隔略長，牌才會有殘影般的連續感而不是一格一格跳。
    *
    * **target 一定是某一包的壓軸**，所以落地一律不自動翻 —— 留著給玩家點。
    */
-  /**
-   * 快速模式的「跳到」：沒有飛牌、沒有音效，直接換成 target 那張的卡背。
-   *
-   * 老闆 2026-08-23：「現在感覺是加速，不是跳到」。買十包飛 99 張，就算一張 28ms
-   * 也要將近三秒，那是快轉不是略過 —— 按 SKIP 的人要的是「別演了」。
-   * 計數器從 1/100 直接跳到 100/100，玩家看得出發生了什麼，不需要動畫解釋。
-   */
-  const jumpTo = (target) => {
-    timers.current.forEach(clearTimeout); timers.current = [];
-    setSkipping(false);
-    setFlying(null);
-    setCardOffset({ x: 0, y: 0 });
-    setCardIdx(target);
-    setSettled(true);
-    setFlipped(false);
-  };
-
   const flyThrough = (from, target) => {
     /*
      * 先把待辦計時器清乾淨。接在 dismissCard 後面呼叫時，它內部那支
@@ -480,8 +462,9 @@ export default function GGBPackRip({
      * 牌都飛到下一包了才突然翻開一張，畫面會亂掉。
      */
     timers.current.forEach(clearTimeout); timers.current = [];
-    // 只有非快速模式會飛牌（快速模式走 jumpTo），所以節奏只看 skipFlyMs
-    const STEP_MS = Math.max(20, Number(cfg.skipFlyMs) || 55);
+    const STEP_MS = fastRef.current
+      ? Math.max(15, Number(cfg.fastFlyMs) || 28)
+      : Math.max(20, Number(cfg.skipFlyMs) || 55);
 
     setSkipping(true);
     setCardOffset({ x: 0, y: 0 });
@@ -543,11 +526,7 @@ export default function GGBPackRip({
     const targetOf = (from) => (fastRef.current || !packCeremony ? lastIdx : packLastOf(from));
     const target = targetOf(cardIdx);
 
-    if (cardIdx < target) {
-      // 閃電開著＝「別演了」，直接落到最後一張；關著才逐張飛過去
-      if (fastRef.current) jumpTo(target); else flyThrough(cardIdx, target);
-      return;
-    }
+    if (cardIdx < target) { flyThrough(cardIdx, target); return; }
 
     // 已經站在落點（本包壓軸）上
     if (!flipped) { flipTop(cardIdx); return; }
@@ -561,8 +540,6 @@ export default function GGBPackRip({
      * 分成兩次按的話，買十包要按到二十次；合併後是「按一下前進、按一下翻開」的節奏。
      * 420ms 是等 dismissCard 內部那支 380ms 的飛出動畫收完，牌才不會疊在一起。
      */
-    // 只有非快速模式會走到這裡：快速模式的 target 就是 lastIdx，
-    // cardIdx < lastIdx 在上面那個分支就直接跳掉了
     const from = cardIdx + 1;
     dismissCard(1);
     later(() => {
