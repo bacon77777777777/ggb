@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
 import { DEFAULT_PALETTE, derivePalette, hexToRgb, type ThemePalette } from '@/lib/theme'
+import { revalidateFrontend } from '@/lib/revalidateFrontend'
 
 /**
  * 前台主題色
@@ -57,6 +58,8 @@ export async function PUT(request: Request) {
         targetId: 'theme',
         ip: getClientIp(request),
       })
+      // 前台把主題色烤進 <head>，不清整頁快取的話只有重新渲染過的頁會變色
+      await revalidateFrontend('theme')
       return NextResponse.json({ palette: DEFAULT_PALETTE, isDefault: true })
     }
 
@@ -84,6 +87,7 @@ export async function PUT(request: Request) {
       ip: getClientIp(request),
     })
 
+    await revalidateFrontend('theme')
     return NextResponse.json({ palette, isDefault: false })
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : '儲存失敗' }, { status: 500 })

@@ -13,7 +13,7 @@
  */
 
 import React, { useState, useRef, useEffect } from "react";
-import { SoundToggle } from "@/components/ui/SoundToggle";
+import { SoundToggle, RAISED_STYLE, RAISED_STYLE_GOLD } from "@/components/ui/SoundToggle";
 import useSoundMuted from "@/hooks/useSoundMuted";
 import { createClient } from "@/lib/supabase/client";
 import { hapticLight, hapticMedium } from '@/lib/haptics';
@@ -876,6 +876,30 @@ export default function GGBPackRip({
         {/* safeTop：這層 stage 是 fixed inset-0 的滿版演出，y=0 是螢幕實體頂邊，
             不疊安全區鈕會塞進動態島（老闆 2026-08-22 截圖） */}
         <SoundToggle className="absolute top-3 right-3 z-[60]" safeTop />
+        {/* 閃電（快速模式）：左上角，與右上角的靜音鈕左右對稱。
+            造型直接沿用 SoundToggle 匯出的 RAISED_STYLE／RAISED_STYLE_GOLD ——
+            關閉時跟靜音鈕一模一樣，開啟時整顆轉金，與商品頁那顆同一份樣式。
+            每包只有一張時 SKIP 本來就直達最後，這顆沒有意義，不顯示。 */}
+        {phase === "cards" && packCeremony && (
+          <button
+            type="button"
+            onClick={toggleFast}
+            aria-pressed={fastOn}
+            aria-label={fastOn ? "關閉快速模式" : "開啟快速模式"}
+            title={fastOn ? "快速模式：開（SKIP 一次跳到最後一張）" : "快速模式：關（SKIP 逐包停在壓軸）"}
+            className="pointer-events-auto absolute top-3 left-3 z-[60] w-[38px] h-[38px] rounded-full flex items-center justify-center transition-all active:scale-95 active:translate-y-[1px]"
+            style={{
+              ...(fastOn ? RAISED_STYLE_GOLD : RAISED_STYLE),
+              color: fastOn ? "#4a3200" : "#fff",
+              marginTop: "env(safe-area-inset-top)",
+            }}
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden
+                 className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]">
+              <path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12l1-8.5z" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* ---------- 卡包（弧形掀封條） ---------- */}
@@ -986,9 +1010,13 @@ export default function GGBPackRip({
             </div>
           )}
 
-          {auraOn && isLast && flipped && (
+          {auraOn && isLast && flipped && !flying && (
             /* 原本這裡還有一圈 conic-gradient 放射光，跟漩渦影片疊起來又亂又髒，
-               改成只留柔光讓影片當主角 */
+               改成只留柔光讓影片當主角。
+
+               `!flying` 是必要的：這層柔光釘在卡片的home位置、**不跟著 cardTransform 走**，
+               牌滑出去的那 380ms 它會原地留下一塊卡片形狀的亮框（老闆 2026-08-23 截圖）。
+               逐包壓軸上線後每一包都會看到，所以牌一開始飛就收掉。 */
             <div style={{ ...S.auraGlow, boxShadow: `0 0 90px 30px ${T.glow}66` }} />
           )}
 
@@ -1087,39 +1115,16 @@ export default function GGBPackRip({
             </div>
           </div>
 
+          {/* 只留數量膠囊（老闆 2026-08-23：「太多文字廢話了」）——
+              底下那行操作提示整條移除；「第 N/M 包」只在真的買多包時才出現，
+              買一包顯示「第 1/1 包」是廢話。 */}
           <div style={S.counter} data-ui>
             <span style={S.counterChip}>
               {cardIdx + 1} / {cards.length}
-              {packCeremony && <span style={{ opacity: .7 }}>{`　第 ${packNo}/${packTotal} 包`}</span>}
+              {packTotal > 1 && <span style={{ opacity: .7 }}>{`　第 ${packNo}/${packTotal} 包`}</span>}
             </span>
-            <div style={{ marginTop: 6, fontSize: 12, opacity: .65 }}>
-              {/* 買多包時講「最後一張」語意是錯的 —— 10/30 那張是第 1 包的最後一張 */}
-              {flipped
-                ? "滑動或點擊看下一張"
-                : (isLast && dealt && settled
-                    ? (packCeremony ? `✨ 點擊翻開第 ${packNo} 包最後一張！` : "✨ 點擊卡片翻開最後一張！")
-                    : "翻牌中…")}
-            </div>
           </div>
         </div>
-      )}
-
-      {/* 閃電（快速模式）：SKIP 正上方。
-          為什麼不是放左上角對齊商品頁 —— 演出裡左上是空舞台，玩家不會去那找；
-          跟 SKIP 疊在一起才看得出「這兩顆都是加速」。狀態與商品頁共用同一個偏好。
-          每包只有一張時 SKIP 本來就直達最後，這顆沒有意義，不顯示。 */}
-      {phase === "cards" && packCeremony && (
-        <button
-          data-ui
-          onClick={toggleFast}
-          aria-pressed={fastOn}
-          title={fastOn ? "快速模式：開（SKIP 一次跳到最後一張）" : "快速模式：關（SKIP 逐包停在壓軸）"}
-          style={{ ...S.fastBtn, ...(fastOn ? S.fastBtnOn : null) }}
-        >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-            <path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12l1-8.5z" />
-          </svg>
-        </button>
       )}
 
       {/* SKIP：右下角，樣式與一番賞過場影片那顆一致 */}
@@ -1163,24 +1168,6 @@ const S = {
     background: "rgba(0,0,0,.6)", border: "1px solid rgba(255,255,255,.3)",
     color: "#fff", fontSize: 14, fontWeight: 900, letterSpacing: "0.25em",
     display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-  },
-  /* 快速模式的閃電：關著時跟 SKIP 同一套暗底，開著時整顆轉金（與商品頁那顆同色） */
-  fastBtn: {
-    position: "absolute", right: 16, bottom: 66, zIndex: 60,
-    width: 40, height: 40, borderRadius: 999,
-    background: "rgba(0,0,0,.6)", border: "1px solid rgba(255,255,255,.3)",
-    color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
-    cursor: "pointer", transition: "background .18s ease, color .18s ease, box-shadow .18s ease",
-  },
-  fastBtnOn: {
-    border: "1px solid rgba(255,255,255,.35)",
-    background:
-      "radial-gradient(115% 100% at 50% -10%, rgba(255,255,255,0.7) 0%, rgba(253,220,110,0.96) 30%," +
-      " rgba(243,175,26,1) 66%, rgba(192,124,8,1) 100%)",
-    color: "#4a3200",
-    boxShadow:
-      "0 6px 14px rgba(170,110,0,0.36), inset 0 2px 4px -2px rgba(255,255,255,0.95)," +
-      " inset 0 -8px 12px -7px rgba(120,76,0,0.55)",
   },
   iconBtn: {
     background: "#ffffff1e", border: "1px solid #ffffff30", borderRadius: 10,

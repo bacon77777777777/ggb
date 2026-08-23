@@ -61,6 +61,23 @@ export const RAISED_STYLE_MUTED: React.CSSProperties = {
 };
 
 /**
+ * 開啟狀態的金色版（商品頁與撕包演出的閃電＝快速模式共用）。
+ *
+ * 放在這裡而不是各自寫一份：兩處只要有一份改了漸層就會對不起來，
+ * 而老闆的要求正是「兩邊長得一模一樣」。關閉狀態直接用上面的 RAISED_STYLE。
+ */
+export const RAISED_STYLE_GOLD: React.CSSProperties = {
+  background:
+    'radial-gradient(115% 100% at 50% -10%, rgba(255,255,255,0.7) 0%, rgba(253,220,110,0.96) 30%,' +
+    ' rgba(243,175,26,1) 66%, rgba(192,124,8,1) 100%)',
+  boxShadow:
+    '0 6px 14px rgba(170,110,0,0.36), 0 1px 3px rgba(120,80,0,0.26),' +
+    ' inset 0 2px 4px -2px rgba(255,255,255,0.95),' +
+    ' inset 0 -8px 12px -7px rgba(120,76,0,0.55),' +
+    ' inset 0 0 0 1px rgba(255,255,255,0.16)',
+};
+
+/**
  * `safeTop`：這顆鈕浮在**畫面最上緣**的滿版演出上（卡包展示、撕包、開卡動畫、
  * 選籤流程）時要打開。原生殼是全出血（`contentInset: 'never'`），畫面 y=0 是
  * 螢幕實體頂邊，`top-3`／`top-4` 會把鈕塞進動態島底下（老闆 2026-08-21 截圖）。

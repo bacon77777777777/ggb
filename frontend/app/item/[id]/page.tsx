@@ -14,7 +14,7 @@ import { Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, Loader2, Check, BookOpen } from 'lucide-react';
-import SoundToggle, { RAISED_STYLE } from '@/components/ui/SoundToggle';
+import SoundToggle, { RAISED_STYLE, RAISED_STYLE_GOLD } from '@/components/ui/SoundToggle';
 import { useSoundMuted } from '@/hooks/useSoundMuted';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { machineAssets } from '@/lib/machineAssets';
@@ -1594,18 +1594,9 @@ export default function ProductDetailPage() {
                 style={{
                   left: 12, top: 12, zIndex: 25,
                   color: skipPackIntro ? '#4a3200' : '#fff',
-                  ...(skipPackIntro
-                    ? {
-                        background:
-                          'radial-gradient(115% 100% at 50% -10%, rgba(255,255,255,0.7) 0%, rgba(253,220,110,0.96) 30%,' +
-                          ' rgba(243,175,26,1) 66%, rgba(192,124,8,1) 100%)',
-                        boxShadow:
-                          '0 6px 14px rgba(170,110,0,0.36), 0 1px 3px rgba(120,80,0,0.26),' +
-                          ' inset 0 2px 4px -2px rgba(255,255,255,0.95),' +
-                          ' inset 0 -8px 12px -7px rgba(120,76,0,0.55),' +
-                          ' inset 0 0 0 1px rgba(255,255,255,0.16)',
-                      }
-                    : RAISED_STYLE),
+                  /* 金色版與演出裡那顆共用同一份（SoundToggle 匯出），
+                     不再各寫一份漸層 —— 改一邊就對不起來 */
+                  ...(skipPackIntro ? RAISED_STYLE_GOLD : RAISED_STYLE),
                 }}
               >
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden
