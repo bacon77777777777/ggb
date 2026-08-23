@@ -37,9 +37,14 @@ function BrandIcon({ src }: { src: string }) {
   );
 }
 
-/** 白底描邊款（Google／Apple）：稿上是 1px #EFEFEF */
+/**
+ * 白底描邊款（Google／Apple）：稿上是 1px #EFEFEF。
+ *
+ * 字重刻意**不跟稿**：稿上 Google／Apple 是 w600、LINE 是 w400，三顆排在一起
+ * 粗細不一致。老闆 2026-08-23 指定三顆都跟 LINE 一樣用 regular。
+ */
 export const LOGIN_BUTTON_OUTLINE =
-  'border border-[#EFEFEF] bg-white font-semibold text-[#686868] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200';
+  'border border-[#EFEFEF] bg-white font-normal text-[#686868] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200';
 
 /**
  * 社群登入

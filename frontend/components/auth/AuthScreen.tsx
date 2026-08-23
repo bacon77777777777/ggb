@@ -132,7 +132,15 @@ export function OtpBoxes({
             onChange(digits)
             focus(digits.length)
           }}
-          className="aspect-square w-full rounded-[5px] border-[0.5px] border-[#979797] bg-white text-center text-[20px] font-semibold text-neutral-900 outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary dark:bg-neutral-900 dark:text-white"
+          /*
+           * 邊框用 1px #CBCBCB，不是稿上的 0.5px #979797。
+           *
+           * 0.5px 在實機（3x）會落在半個實體像素上，瀏覽器各自四捨五入 ——
+           * 同一排六格會有幾格的線直接消失（老闆 2026-08-23 實機截圖）。
+           * #CBCBCB 是「0.5px 的 #979797 疊在白底上」的等效色，
+           * 所以視覺份量跟稿一樣，但每一格都畫得出來。
+           */
+          className="aspect-square w-full rounded-[5px] border border-[#CBCBCB] bg-white text-center text-[20px] font-semibold text-neutral-900 outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
         />
       ))}
     </div>

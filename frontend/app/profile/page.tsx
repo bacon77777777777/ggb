@@ -6608,7 +6608,11 @@ function ProfileContent() {
                           }
                           handleTabChange('topup-history');
                         }}
-                        className="h-7 px-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm flex items-center gap-1 active:scale-95 transition-transform"
+                        /* 深色半透明，不用 backdrop-blur：原本是 bg-white/10 + 毛玻璃，
+                           等於把底下的盾牌插圖與卡片橘色漸層「照亮」再抹開，
+                           藥丸看起來像一塊有雜訊的髒斑（老闆 2026-08-23 截圖）。
+                           改成壓暗，底圖被蓋住、白字也更讀得出來。 */
+                        className="h-7 px-2 rounded-full bg-black/30 border border-white/25 flex items-center gap-1 active:scale-95 transition-transform"
                       >
                         <span className="text-xs text-white font-bold">儲值紀錄</span>
                         <ChevronRight className="w-3 h-3 text-white/70" />
