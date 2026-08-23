@@ -23,6 +23,7 @@ import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import NativeAppBootstrap from '@/components/native/NativeAppBootstrap';
 import ExternalLinkHandler from '@/components/native/ExternalLinkHandler';
 import AppSplashAd from '@/components/native/AppSplashAd';
+import AppUpdateGate from '@/components/native/AppUpdateGate';
 import PaymentReturnBridge from '@/components/native/PaymentReturnBridge';
 import { Suspense } from 'react';
 import { asset } from '@/lib/asset';
@@ -237,6 +238,7 @@ export default async function RootLayout({
                     <ServiceWorkerRegistrar />
                     <NativeAppBootstrap />
                     <ExternalLinkHandler />
+                    <AppUpdateGate />
                     <Suspense fallback={null}><PaymentReturnBridge /></Suspense>
                     <PathnameKeyed>{children}</PathnameKeyed>
                   </main>

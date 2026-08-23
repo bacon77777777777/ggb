@@ -16,6 +16,7 @@ import {
 import DateTimePicker from '@/components/DateTimePicker'
 import { useToast } from '@/contexts/ToastContext'
 import ThemePanel from './ThemePanel'
+import AppVersionPanel from './AppVersionPanel'
 
 // `sell_escrow`（商城平台代收，接藍新 MPL）已於 2026-08-13 移除：
 // 玩家商城定調雙方自理，平台不碰錢，這個旗標永遠是關的。
@@ -67,7 +68,7 @@ const STATE_OPTIONS: { v: FlagState; label: string }[] = [
   { v: 'off',         label: '關閉' },
 ]
 
-type SectionKey = 'maintenance' | 'category' | 'commerce' | 'push' | 'theme'
+type SectionKey = 'maintenance' | 'category' | 'commerce' | 'push' | 'theme' | 'appVersion'
 
 const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: 'maintenance', label: '站台維護' },
@@ -76,6 +77,7 @@ const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: 'push',        label: 'GB哥通知' },
   // 原獨立頁 /settings/theme，老闆 2026-08-09 指定併入這裡
   { key: 'theme',       label: '主題色' },
+  { key: 'appVersion',  label: 'App 版本' },
 ]
 
 const CATEGORY_ITEMS: { key: FeatureKey; label: string; desc?: string }[] = [
@@ -675,6 +677,7 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
               )}
 
               {section === 'theme' && <ThemePanel />}
+              {section === 'appVersion' && <AppVersionPanel />}
 
             </div>
           </SettingsShell>
