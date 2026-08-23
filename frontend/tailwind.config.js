@@ -21,6 +21,8 @@ module.exports = {
           light: 'rgb(var(--primary-light) / <alpha-value>)',
           soft: 'rgb(var(--primary-soft) / <alpha-value>)',
         },
+        // 金額紅：固定語意色，不跟主題走（見 globals.css 的 --amount）
+        amount: 'rgb(var(--amount) / <alpha-value>)',
         accent: {
           red: '#DC2626',    // 獎項/價格紅
           yellow: '#FACC15', // 代幣金
@@ -60,7 +62,10 @@ module.exports = {
         // 順序有意義：GGB CJK（繁中）→ GGB CJK JP（日文補缺字）→ system-ui（英數）。
         // 兩個 CJK 別名都必須排在 system-ui 前面，它會用 .notdef 方塊中斷 fallback。
         sans: ['"GGB CJK"', '"GGB CJK JP"', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
-        amount: ['Tilt Warp', 'sans-serif'],
+        // Oswald：與商城商品小卡的金額同一套（老闆 2026-08-23 指定統一）。
+        // 變數字軸只到 700，所以 font-black(900) 會夾到 700 —— 那是真的字重，
+        // 不是瀏覽器合成的假粗體。
+        amount: ['Oswald', 'sans-serif'],
       },
       lineHeight: {
         snug: '0.8',

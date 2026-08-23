@@ -223,7 +223,7 @@ export default function ShopOrderPage() {
             </div>
             <div className="flex justify-between pt-1">
               <span className="text-[13px] font-black text-neutral-900 dark:text-white">訂單金額</span>
-              <span className="text-[16px] font-black font-amount text-primary">
+              <span className="text-[16px] font-black font-amount text-amount">
                 NT${order.total_amount.toLocaleString()}
               </span>
             </div>

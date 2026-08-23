@@ -255,7 +255,7 @@ function TierSelectModal({
                           <div className="mt-px h-[22px] flex items-center justify-center w-full px-0.5">
                             <p className="text-[9px] text-center text-neutral-600 dark:text-neutral-300 leading-tight line-clamp-2 w-full">{prize?.name}</p>
                           </div>
-                          {val > 0 && <p className="text-[9px] font-black text-primary tabular-nums text-center">{val.toLocaleString()} G</p>}
+                          {val > 0 && <p className="text-[9px] font-black text-amount tabular-nums text-center">{val.toLocaleString()} G</p>}
                         </div>
                       );
                     })}
@@ -295,7 +295,7 @@ function TierSelectModal({
                         <div className="mt-px h-[22px] flex items-center justify-center w-full px-0.5">
                           <p className="text-[9px] text-center text-neutral-600 dark:text-neutral-300 leading-tight line-clamp-2 w-full">{name}</p>
                         </div>
-                        {ret != null && <p className="text-[9px] font-black text-primary tabular-nums text-center">{ret.toLocaleString()} G</p>}
+                        {ret != null && <p className="text-[9px] font-black text-amount tabular-nums text-center">{ret.toLocaleString()} G</p>}
                       </div>
                     );
                   })}

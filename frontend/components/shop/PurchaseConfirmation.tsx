@@ -206,7 +206,7 @@ export function PurchaseConfirmation({
                   >
                     <div className="p-4 flex gap-4">
                       <div className="w-24 shrink-0 flex flex-col items-center justify-center border-r border-dashed border-neutral-200 dark:border-neutral-600 pr-4">
-                        <span className="text-2xl font-black text-accent-red font-amount">
+                        <span className="text-2xl font-black text-accent-red font-amount amount-strong">
                           {coupon.coupon?.discount_type === 'fixed' ? `$${coupon.coupon.discount_value}` : `${coupon.coupon?.discount_value}%`}
                         </span>
                         <span className="text-xs font-bold text-neutral-500 mt-1">OFF</span>
@@ -287,7 +287,7 @@ export function PurchaseConfirmation({
                         className="w-5 h-5 md:w-6 md:h-6 object-contain"
                       />
                 <div className="flex items-baseline gap-0.5">
-                  <span className="text-lg md:text-2xl font-black text-accent-red font-amount leading-none tracking-tighter">{product.price.toLocaleString()}</span>
+                  <span className="text-lg md:text-2xl font-black text-accent-red font-amount amount-strong leading-none tracking-tighter">{product.price.toLocaleString()}</span>
                   <span className="text-[13px] md:text-[15px] font-black text-neutral-400 leading-none uppercase tracking-widest">/抽</span>
                 </div>
               </div>
@@ -381,21 +381,21 @@ export function PurchaseConfirmation({
               <div className="flex justify-between items-center text-[13px] md:text-[15px] font-bold text-neutral-500 dark:text-neutral-400">
                  <span>商品總額</span>
                  {usePoints ? (
-                   <span className="text-neutral-900 dark:text-neutral-100"><span className="font-amount">{pointsCost.toLocaleString()}</span> 積分</span>
+                   <span className="text-neutral-900 dark:text-neutral-100"><span className="font-amount amount-plain">{pointsCost.toLocaleString()}</span> 積分</span>
                  ) : (
-                   <GAmount value={totalPrice} className="text-neutral-900 dark:text-neutral-100" />
+                   <GAmount value={totalPrice} plain className="text-neutral-900 dark:text-neutral-100" />
                  )}
               </div>
 
               {usePoints ? (
                 <div className="flex justify-between items-center text-[13px] md:text-[15px] font-bold text-neutral-400 dark:text-neutral-500">
                   <span>積分餘額</span>
-                  <span><span className="font-amount">{userPoints.toLocaleString()}</span> 積分</span>
+                  <span><span className="font-amount amount-plain">{userPoints.toLocaleString()}</span> 積分</span>
                 </div>
               ) : (
                 <div className="flex justify-between items-center text-[13px] md:text-[15px] font-bold text-neutral-400 dark:text-neutral-500">
                   <span>G 幣餘額</span>
-                  <GAmount value={userTokens} />
+                  <GAmount value={userTokens} plain />
                 </div>
               )}
 
@@ -416,9 +416,9 @@ export function PurchaseConfirmation({
               <div className="flex justify-between items-end text-base font-black text-accent-red">
                  <span className="font-bold text-[13px] md:text-[15px]">實付金額</span>
                  {usePoints ? (
-                   <span className="text-xl md:text-3xl leading-none"><span className="font-amount">{pointsCost.toLocaleString()}</span> 積分</span>
+                   <span className="text-xl md:text-3xl leading-none"><span className="font-amount amount-strong">{pointsCost.toLocaleString()}</span> 積分</span>
                  ) : (
-                   <GAmount value={finalPrice} iconSize={18} className="text-xl md:text-3xl leading-none" />
+                   <GAmount value={finalPrice} iconSize={18} strong className="text-xl md:text-3xl leading-none" />
                  )}
               </div>
             {isInsufficient && (
@@ -472,7 +472,7 @@ export function PurchaseConfirmation({
              ? '處理中...'
              : usePoints
                ? `確認支付 ${pointsCost.toLocaleString()} 積分`
-               : <span className="flex items-center justify-center gap-1.5">確認支付 <GAmount value={finalPrice} iconSize={16} /></span>}
+               : <span className="flex items-center justify-center gap-1.5">確認支付 <GAmount value={finalPrice} iconSize={16} strong /></span>}
          </Button>
       </div>
     </div>

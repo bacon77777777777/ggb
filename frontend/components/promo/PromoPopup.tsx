@@ -247,7 +247,7 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                             {p.price != null && (
                               <span className="mt-0.5 flex items-center gap-1">
                                 <Image src={asset("/images/gcoin.webp")} alt="G" width={12} height={12} className="h-3 w-3 object-contain" />
-                                <span className="font-amount text-[15px] font-black leading-none tracking-tight text-primary">
+                                <span className="font-amount text-[15px] font-black leading-none tracking-tight text-amount">
                                   {p.price.toLocaleString()}
                                 </span>
                               </span>

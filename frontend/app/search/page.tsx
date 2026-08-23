@@ -751,7 +751,7 @@ export default function SearchPage() {
                               <div className="w-3.5 h-3.5">
                                 <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="w-full h-full object-contain" />
                               </div>
-                              <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">
+                              <span className="text-[24px] leading-none font-black font-amount text-amount tracking-tight">
                                 {Math.round(listing.price).toLocaleString()}
                               </span>
                             </div>
@@ -833,7 +833,7 @@ export default function SearchPage() {
                                       <div className="w-3.5 h-3.5">
                                         <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="w-full h-full object-contain" />
                                       </div>
-                                      <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">
+                                      <span className="text-[24px] leading-none font-black font-amount text-amount tracking-tight">
                                         {Math.round(listing.price).toLocaleString()}
                                       </span>
                                     </div>

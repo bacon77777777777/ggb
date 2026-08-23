@@ -1131,7 +1131,7 @@ export default function MachinePage() {
                           <Image src={asset("/images/gcoin.webp")} alt="G" fill className="object-contain" unoptimized />
                         </div>
                         <div className="flex items-baseline gap-0.5">
-                          <span className="font-black text-accent-red font-amount leading-none tracking-tighter text-lg md:text-2xl">{directCost.toLocaleString()}</span>
+                          <span className="font-black text-accent-red font-amount amount-strong leading-none tracking-tighter text-lg md:text-2xl">{directCost.toLocaleString()}</span>
                           <span className="font-black text-neutral-400 leading-none uppercase tracking-widest text-[13px] md:text-[15px]">/直擊</span>
                         </div>
                       </div>
@@ -1150,12 +1150,12 @@ export default function MachinePage() {
                   <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl space-y-2 mb-3 p-3 md:p-6 md:space-y-4">
                     <div className="flex justify-between items-center font-bold text-neutral-500 dark:text-neutral-400 text-[13px] md:text-[15px]">
                       <span>商品總額</span>
-                      <span className="text-neutral-900 dark:text-neutral-100"><span className="font-amount">{directCost.toLocaleString()}</span> 元</span>
+                      <span className="text-neutral-900 dark:text-neutral-100"><span className="font-amount amount-plain">{directCost.toLocaleString()}</span> 元</span>
                     </div>
                     <div className="flex justify-between items-center font-bold text-neutral-400 dark:text-neutral-500 text-[13px] md:text-[15px]">
                       <span>代幣餘額</span>
                       <div className="flex flex-col items-end">
-                        <span><span className="font-amount">{userTokens.toLocaleString()}</span> 代幣</span>
+                        <span><span className="font-amount amount-plain">{userTokens.toLocaleString()}</span> 代幣</span>
                         {!isLowForDirect && (
                           <span className="text-xs text-accent-emerald">購買後剩餘: {(userTokens - directCost).toLocaleString()}</span>
                         )}
@@ -1164,7 +1164,7 @@ export default function MachinePage() {
                     <div className="h-px bg-neutral-200 dark:bg-neutral-700 border-dashed w-full my-1" />
                     <div className="flex justify-between items-end text-base font-black text-accent-red">
                       <span className="text-[13px] md:text-[15px]">實付金額</span>
-                      <span className="leading-none text-xl md:text-3xl"><span className="font-amount">{directCost.toLocaleString()}</span> 代幣</span>
+                      <span className="leading-none text-xl md:text-3xl"><span className="font-amount amount-strong">{directCost.toLocaleString()}</span> 代幣</span>
                     </div>
                   </div>
                 </div>

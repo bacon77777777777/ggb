@@ -1448,7 +1448,13 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
         : "h-screen overflow-hidden pt-0" // Fixed height for page view to support internal scrolling, added padding for fixed header
     )}>
       {/* Header for Modal */}
-      <div className="flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 fixed top-0 left-0 right-0 z-10 shrink-0 md:sticky md:top-0">
+      {/* 全頁模式的頂欄是 fixed top-0，而原生殼是全出血（contentInset: 'never'），
+          y=0 就是螢幕實體頂邊 —— 不補安全區的話標題會被動態島蓋掉（老闆 2026-08-23 截圖）。
+          彈窗模式（桌機）不補：那是置中的卡片，安全區跟它無關。 */}
+      <div className={cn(
+        "flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 fixed top-0 left-0 right-0 z-10 shrink-0 md:sticky md:top-0",
+        !isModal && "pt-[calc(1rem+env(safe-area-inset-top))] md:pt-4",
+      )}>
         <h3 className="text-lg font-black text-neutral-900 dark:text-white">選擇籤號</h3>
         <button 
           onClick={() => {
@@ -1473,7 +1479,8 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
 
       <div className={cn(
         "flex-1 flex flex-col overflow-hidden relative z-0",
-        "pt-[60px] md:pt-0" // Add padding for fixed header on mobile modal
+        // 頂欄變高多少，內容就要往下讓多少，不然籤格會鑽到頂欄底下
+        isModal ? "pt-[60px] md:pt-0" : "pt-[calc(60px+env(safe-area-inset-top))] md:pt-0"
       )}>
         <TicketSelector
           tickets={tickets} 

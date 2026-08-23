@@ -147,7 +147,7 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
 
-        {/* 阻塞載入的只留 Tilt Warp：它是金額數字用的（font-amount，全站 91 處，
+        {/* 阻塞載入的只留 Oswald：它是金額數字用的（font-amount，全站 91 處，
             首屏就看得到），為它擋一下渲染划算。
 
             Chiron GoRound TC 已移到下面的非阻塞那批 —— 它是 200..900 的可變粗細
@@ -158,14 +158,18 @@ export default async function RootLayout({
             元素選擇器），從來沒生效過。 */}
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Tilt+Warp&display=swap"
+          /* 200..700 是 Oswald 變數字軸的完整範圍。商城小卡吃 500/600，
+             全站金額吃 font-black（900，夾到 700）與 font-bold（700），
+             一次載完整軸比列舉字重省事，檔案大小差不多。 */
+          href="https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap"
         />
 
         {/* 只有特定頁面用得到的五套，改成不擋渲染：
             先以 media="print" 下載（瀏覽器不會為了它延後繪製），載完再切回 all。
             Chiron GoRound TC 只有四個裝飾位置、Inter／Noto Sans JP 只有排行榜、
-            Noto Serif HK 只有抽卡對戰特效、Oswald 只有商城的金額數字在用，
-            為了它們讓每一頁都慢下來不划算。（Noto Sans SC 全站沒用到，已移除）
+            Noto Serif HK 只有抽卡對戰特效，為了它們讓每一頁都慢下來不划算。
+            （Noto Sans SC 全站沒用到，已移除；Oswald 2026-08-23 起是全站金額字型，
+            已升級成上面那個阻塞載入的 <link>，不再列在這裡）
 
             這個 <link> 刻意用 script 建，不放進 React 的樹裡：
             字型通常在 hydrate 之前就載完、onload 已經把 media 改成 'all'，
@@ -175,7 +179,7 @@ export default async function RootLayout({
             元素不由 React 管，就沒有這個比對。 */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var l=document.createElement('link');l.rel='stylesheet';l.media='print';l.href='https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@200..900&family=Inter:ital,wght@0,400;0,700;1,700&family=Noto+Sans+JP:wght@400;500;700;800;900&family=Noto+Serif+HK:wght@200..900&family=Oswald:wght@500;600&display=swap';l.onload=function(){l.media='all'};document.head.appendChild(l)})()`,
+            __html: `(function(){var l=document.createElement('link');l.rel='stylesheet';l.media='print';l.href='https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@200..900&family=Inter:ital,wght@0,400;0,700;1,700&family=Noto+Sans+JP:wght@400;500;700;800;900&family=Noto+Serif+HK:wght@200..900&display=swap';l.onload=function(){l.media='all'};document.head.appendChild(l)})()`,
           }}
         />
 

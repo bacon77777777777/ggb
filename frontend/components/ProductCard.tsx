@@ -213,7 +213,7 @@ export default function ProductCard(props: ProductCardProps) {
                     <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="w-full h-full object-contain" />
                   </div>
                   <div className="flex items-baseline gap-0.5">
-                    <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">{price.toLocaleString()}</span>
+                    <span className="text-[24px] leading-none font-black font-amount text-amount tracking-tight">{price.toLocaleString()}</span>
                     {!!effUnitLabel && <span className="text-[11px] font-black text-neutral-400">{effUnitLabel}</span>}
                   </div>
                 </div>

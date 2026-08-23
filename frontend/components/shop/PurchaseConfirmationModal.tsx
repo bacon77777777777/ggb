@@ -350,7 +350,7 @@ export function PurchaseConfirmationModal({
                             />
                           </div>
                           <div className="flex items-baseline gap-0.5">
-                            <span className={cn("font-black text-accent-red font-amount leading-none tracking-tighter", isDesktop ? "text-2xl" : "text-lg")}>{product.price.toLocaleString()}</span>
+                            <span className={cn("font-black text-accent-red font-amount amount-strong leading-none tracking-tighter", isDesktop ? "text-2xl" : "text-lg")}>{product.price.toLocaleString()}</span>
                             <span className={cn("font-black text-neutral-400 leading-none uppercase tracking-widest", isDesktop ? "text-[15px]" : "text-[13px]")}>/抽</span>
                           </div>
                         </div>
@@ -460,21 +460,21 @@ export function PurchaseConfirmationModal({
                       <div className={cn("flex justify-between items-center font-bold text-neutral-500 dark:text-neutral-400", isDesktop ? "text-[15px]" : "text-[13px]")}>
                           <span>商品總額</span>
                           {usePoints ? (
-                            <span className="text-neutral-900 dark:text-neutral-100"><span className="font-amount">{pointsCost.toLocaleString()}</span> 積分</span>
+                            <span className="text-neutral-900 dark:text-neutral-100"><span className="font-amount amount-plain">{pointsCost.toLocaleString()}</span> 積分</span>
                           ) : (
-                            <GAmount value={totalPrice} className="text-neutral-900 dark:text-neutral-100" />
+                            <GAmount value={totalPrice} plain className="text-neutral-900 dark:text-neutral-100" />
                           )}
                       </div>
                       
                       {usePoints ? (
                         <div className={cn("flex justify-between items-center font-bold text-neutral-400 dark:text-neutral-500", isDesktop ? "text-[15px]" : "text-[13px]")}>
                           <span>積分餘額</span>
-                          <span><span className="font-amount">{userPoints.toLocaleString()}</span> 積分</span>
+                          <span><span className="font-amount amount-plain">{userPoints.toLocaleString()}</span> 積分</span>
                         </div>
                       ) : (
                         <div className={cn("flex justify-between items-center font-bold text-neutral-400 dark:text-neutral-500", isDesktop ? "text-[15px]" : "text-[13px]")}>
                           <span>G 幣餘額</span>
-                          <GAmount value={userTokens} />
+                          <GAmount value={userTokens} plain />
                         </div>
                       )}
 
@@ -497,9 +497,9 @@ export function PurchaseConfirmationModal({
                           {/* 標題字重跟上面「活動促銷」列一致（font-bold），金額維持大字 */}
                           <span className={cn("font-bold", isDesktop ? "text-[15px]" : "text-[13px]")}>實付金額</span>
                           {usePoints ? (
-                            <span className={cn("leading-none", isDesktop ? "text-3xl" : "text-xl")}><span className="font-amount">{pointsCost.toLocaleString()}</span> 積分</span>
+                            <span className={cn("leading-none", isDesktop ? "text-3xl" : "text-xl")}><span className="font-amount amount-strong">{pointsCost.toLocaleString()}</span> 積分</span>
                           ) : (
-                            <GAmount value={finalPrice} iconSize={isDesktop ? 24 : 18} className={cn("leading-none", isDesktop ? "text-3xl" : "text-xl")} />
+                            <GAmount value={finalPrice} iconSize={isDesktop ? 24 : 18} strong className={cn("leading-none", isDesktop ? "text-3xl" : "text-xl")} />
                           )}
                       </div>
                     </div>
@@ -621,7 +621,7 @@ export function PurchaseConfirmationModal({
                       ? <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />處理中...</span>
                       : usePoints
                         ? `確認支付 ${pointsCost.toLocaleString()} 積分`
-                        : <span className="flex items-center justify-center gap-1.5">確認支付 <GAmount value={finalPrice} iconSize={16} /></span>}
+                        : <span className="flex items-center justify-center gap-1.5">確認支付 <GAmount value={finalPrice} iconSize={16} strong /></span>}
                 </Button>
               </div>
             )}
@@ -708,15 +708,19 @@ function QuickBtn({ children, onClick, disabled, active, accent }: {
 }
 
 /** G 幣金額：金幣圖標＋數字。全站購買彈窗的 G 金額都走這裡，單位不再寫「元」「代幣」 */
-export function GAmount({ value, negative, iconSize = 14, className }: {
+export function GAmount({ value, negative, iconSize = 14, className, plain, strong }: {
   value: number; negative?: boolean; iconSize?: number; className?: string;
+  /** 不要額外加粗（描邊）。給總額、餘額這種配角金額用，主角是「實付金額」 */
+  plain?: boolean;
+  /** 再重一階。給紅字／白字的主角金額用（實付金額、確認支付鈕） */
+  strong?: boolean;
 }) {
   return (
     <span className={cn("inline-flex items-center gap-1 align-middle", className)}>
       {negative && <span>-</span>}
       <Image src={asset("/images/gcoin.webp")} alt="G" width={iconSize} height={iconSize}
         className="inline-block shrink-0" style={{ width: iconSize, height: iconSize }} />
-      <span className="font-amount">{value.toLocaleString()}</span>
+      <span className={cn("font-amount", plain && "amount-plain", strong && "amount-strong")}>{value.toLocaleString()}</span>
     </span>
   );
 }

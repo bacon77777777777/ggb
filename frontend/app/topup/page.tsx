@@ -605,7 +605,7 @@ export default function TopupPage() {
                   
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-neutral-900 dark:text-white">應付總額</span>
-                    <span className="text-2xl font-black text-primary font-amount">
+                    <span className="text-2xl font-black text-amount font-amount">
                       NT$ {selectedPlan.amount.toLocaleString()}
                     </span>
                   </div>

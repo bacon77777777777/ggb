@@ -4,6 +4,50 @@
 
 ---
 
+## v2026.08.23c｜2026-08-23｜金額字型換 Oswald、紅色統一 #FF0036 且不跟主題色跑、字重分三層；選籤頁頂欄補安全區
+
+**① 金額不再跟著主題色變**
+主題色一換，全站價格數字就跟著變紫變綠，讀起來不再像「價格」。獨立出語意色 token
+`--amount: 255 0 54`（#FF0036，取商城小卡 `market.css` 的 `--red`，兩邊統一），
+Tailwind 加 `text-amount`，把 10 處金額的 `text-primary` 換掉（首頁／搜尋／商品卡／
+首頁彈窗／儲值／訂單詳情／挑戰機台的獎品價值）。跟獎項紅、代幣金、成功綠同一個道理 ——
+固定語意的顏色不該跟主題跑。
+
+**② 金額字型 Tilt Warp → Oswald**
+與商城商品小卡的金額同一套（`.hprice` / `.sp` 用的就是 Oswald）。順帶重排字型載入：
+Oswald 原本是延後載入（只有商城在用），現在升級成阻塞載入取代 Tilt Warp 的位置，
+範圍 `wght@200..700`（變數字軸全開，商城的 500/600 與全站的 font-black/font-bold 一次載完）；
+Tilt Warp 全站已無人使用，整個移除。
+`font-black` 是 900，超過 Oswald 的軸上限會夾到 700 —— 那是真的字重，不是合成假粗體。
+
+**③ 金額字重分三層**（Oswald 到 700 就是上限，再重只能補同色描邊）
+
+| 層級 | 描邊 | 用在哪 |
+|---|---|---|
+| `.amount-strong` | 0.9px | 紅字／白字的主角金額：商品單價、優惠券折扣、實付金額、確認支付鈕 |
+| `.font-amount`（預設） | 0.5px | 其餘一般金額 |
+| `.amount-plain` | 0 | 灰字配角：商品總額、G 幣／積分餘額 |
+
+`GAmount` 加 `plain` / `strong` 兩個 prop。三個結帳面板（PurchaseConfirmation、
+PurchaseConfirmationModal、challenge/[id]）套同一套，不然從一番賞切到轉蛋會不一樣；
+每個都涵蓋 G 幣與積分兩種模式，只改一邊會有一半沒生效。
+0.9px 只放 `text-lg` 以上：小字用這個粗度會把 `0`、`8` 的字腔封死。
+
+**⚠️ 退出用的 class 不可以叫 `font-amount-plain`**
+`cn()` 走 tailwind-merge，它把所有 `font-*` 當成同一個 font-family 群組，同時出現只留
+最後一個 —— `font-amount` 被整個吃掉，數字直接掉回系統字型（老闆截圖：總額與餘額不是
+Oswald 了）。改名成 `amount-plain`，globals.css 已留註解。
+
+**④ 選籤頁頂欄壓到動態島**
+`TicketSelectionFlow` 全頁模式的頂欄是 `fixed top-0` + `p-4`，沒補安全區。原生殼全出血
+（`contentInset: 'never'`），y=0 就是螢幕實體頂邊，「選擇籤號」直接跑到動態島底下。
+改 `pt-[calc(1rem+env(safe-area-inset-top))]`，底下籤格容器同步從 `pt-[60px]` 改成
+`pt-[calc(60px+env(safe-area-inset-top))]` —— 頂欄長高多少內容就讓多少。
+桌機彈窗模式不補（置中卡片與安全區無關）。手機端沒有雙頂欄：全域 Navbar 在這個路由
+本來就是 `hidden md:block`。
+
+---
+
 ## v2026.08.23b｜2026-08-23｜撕包演出收尾；主題色快取失效；App 更新提示 A/B 兩種
 
 **① 撕包演出收尾**
