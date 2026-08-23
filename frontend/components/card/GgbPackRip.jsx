@@ -24,7 +24,7 @@ const PARAM_DEFAULTS = {
   vortexScale: 100, vortexOffsetY: 0,
   energyScale: 100, energyOffsetY: 0,
   fxOpacity: 0.9,
-  dealStagger: 90, flipDelay: 500, skipFlyMs: 55, fastFlyMs: 28,
+  dealStagger: 90, flipDelay: 500, skipFlyMs: 55,
   sfxVolume: 1,
   peelCurl: 45,
 };
@@ -182,9 +182,12 @@ export default function GGBPackRip({
   /**
    * 快速模式（商品頁左上角的閃電，玩家設定會記住）。開啟時：
    *   1. 略過撕包步驟，直接進發牌
-   *   2. SKIP 從「跳到本包壓軸」變成「直衝整筆最後一張」
-   *   3. 飛牌節奏改用 fastFlyMs（比 skipFlyMs 快，不然十包飛 99 張要五秒）
-   * **每包壓軸照樣浮起等點擊** —— 那是抽獎的爽點，加速鍵不該吃掉它。
+   *   2. SKIP 的落點**不變**，還是逐包停在壓軸（10/30 → 20/30 → 30/30）——
+   *      差別只在中間那幾張不演飛牌，瞬間到位、也不出聲（老闆 2026-08-23）
+   * **每包壓軸照樣浮起等點擊** —— 那是抽獎的爽點，加速鍵只吃過場動畫，不吃它。
+   *
+   * 為什麼閃電不改落點：改成直衝整筆最後一張的話，前面每一包的壓軸全被吃掉，
+   * 玩家等於花錢買了十包卻只看到一包的演出。
    */
   fast = false,
   /** 演出畫面裡也有一顆同樣的閃電，切了要回寫商品頁的偏好 */
@@ -450,11 +453,29 @@ export default function GGBPackRip({
    * 把 from ~ target 之間的牌一張張卡背朝上往右飛出去，最後停在 target（老闆 2026-08-19）。
    * 原本是瞬間跳過去，看不出中間發生什麼事。
    *
-   * 節奏由後台參數控制：一般「SKIP 飛牌速度」55ms／張，快速模式另一格 28ms／張。
+   * 節奏由後台參數「SKIP 飛牌速度」控制（55ms／張）。
    * 飛出動畫 .14s 比間隔略長，牌才會有殘影般的連續感而不是一格一格跳。
    *
    * **target 一定是某一包的壓軸**，所以落地一律不自動翻 —— 留著給玩家點。
    */
+  /**
+   * 快速模式的「直衝」：沒有飛牌、沒有音效，直接換成 target 那張的卡背。
+   *
+   * 老闆 2026-08-23：「現在感覺是加速，不是跳到」。中間那幾張就算飛得再快也是快轉，
+   * 按 SKIP 的人要的是「別演了」。計數器直接跳到 10/30，玩家看得出發生了什麼。
+   *
+   * **落點跟一般 SKIP 完全一樣（本包壓軸）**，只差沒有過場動畫。
+   */
+  const jumpTo = (target) => {
+    timers.current.forEach(clearTimeout); timers.current = [];
+    setSkipping(false);
+    setFlying(null);
+    setCardOffset({ x: 0, y: 0 });
+    setCardIdx(target);
+    setSettled(true);
+    setFlipped(false);
+  };
+
   const flyThrough = (from, target) => {
     /*
      * 先把待辦計時器清乾淨。接在 dismissCard 後面呼叫時，它內部那支
@@ -462,9 +483,8 @@ export default function GGBPackRip({
      * 牌都飛到下一包了才突然翻開一張，畫面會亂掉。
      */
     timers.current.forEach(clearTimeout); timers.current = [];
-    const STEP_MS = fastRef.current
-      ? Math.max(15, Number(cfg.fastFlyMs) || 28)
-      : Math.max(20, Number(cfg.skipFlyMs) || 55);
+    // 快速模式不飛牌（走 jumpTo），所以節奏只看 skipFlyMs
+    const STEP_MS = Math.max(20, Number(cfg.skipFlyMs) || 55);
 
     setSkipping(true);
     setCardOffset({ x: 0, y: 0 });
@@ -523,10 +543,17 @@ export default function GGBPackRip({
      */
     setDealing(false); setDealt(true);
 
-    const targetOf = (from) => (fastRef.current || !packCeremony ? lastIdx : packLastOf(from));
+    /*
+     * 落點永遠是「本包壓軸」—— 閃電**不改落點**，只決定中間那幾張要不要演。
+     * 買 3 包就是 10/30 → 20/30 → 30/30，每一包的壓軸玩家都看得到。
+     */
+    const targetOf = (from) => (packCeremony ? packLastOf(from) : lastIdx);
+    const advance = (from, target) => {
+      if (fastRef.current) jumpTo(target); else flyThrough(from, target);
+    };
     const target = targetOf(cardIdx);
 
-    if (cardIdx < target) { flyThrough(cardIdx, target); return; }
+    if (cardIdx < target) { advance(cardIdx, target); return; }
 
     // 已經站在落點（本包壓軸）上
     if (!flipped) { flipTop(cardIdx); return; }
@@ -544,7 +571,7 @@ export default function GGBPackRip({
     dismissCard(1);
     later(() => {
       const next = targetOf(from);
-      if (from < next) flyThrough(from, next);
+      if (from < next) advance(from, next);
     }, 420);
   };
 
