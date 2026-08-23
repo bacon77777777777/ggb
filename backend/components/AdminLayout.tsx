@@ -565,6 +565,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     // 這兩頁已併進「數據分析」，不再掛選單；舊書籤還是要能開，權限跟著數據分析走
     '/reports/overview': 'analytics_overview',
     '/reports/behavior': 'analytics_overview',
+    '/reports/feed': 'analytics_overview',
     // 金流報表
     '/recharges': 'recharges',
     '/recharge-review': 'recharge_review',
@@ -675,6 +676,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
            */
           { name: '營運儀表板', path: '/dashboard', icon: IconDashboard },
           { name: '數據分析', path: '/analytics-overview', icon: IconLineChart },
+          { name: '推薦 feed 報表', path: '/reports/feed', icon: IconLineChart },
           { name: '廠商儀表板', path: '/analytics-supplier', icon: IconLineChart },
         ],
       },

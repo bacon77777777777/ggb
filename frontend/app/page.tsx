@@ -29,9 +29,10 @@ import { asset } from '@/lib/asset';
 import { useQueryClient } from '@tanstack/react-query';
 import { swrLoad } from '@/lib/swr';
 import { HOME_KEY, fetchHomeCatalog } from '@/lib/queries/home';
-import { assembleFeed, seededRng, type FeedBucket, type FeedSignals } from '@/lib/feed/assemble';
+import { assembleFeed, seededRng, type FeedBucket, type FeedSignals, type FeedCtrItem } from '@/lib/feed/assemble';
 import { loadSeenRounds, saveRound } from '@/lib/feed/memory';
 import { resolveVariant } from '@/lib/feed/variant';
+import { sessionIntent } from '@/lib/feed/session';
 import { fetchJson } from '@/lib/swr';
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
@@ -120,10 +121,10 @@ export default function Home() {
     let alive = true;
     Promise.all([
       queryClient.fetchQuery({ queryKey: ['feed', 'topics'], queryFn: () => fetchJson<{ keyword: string; weight: number }[]>('/api/public/topics'), staleTime: 10 * 60 * 1000 }).catch(() => []),
-      queryClient.fetchQuery({ queryKey: ['feed', 'weights'], queryFn: () => fetchJson<{ mean: number; items: Record<string, { impressions: number; clicks: number }>; abRatio: number }>('/api/public/feed-weights'), staleTime: 5 * 60 * 1000 }).catch(() => null),
+      queryClient.fetchQuery({ queryKey: ['feed', 'weights'], queryFn: () => fetchJson<{ mean: number; items: Record<string, FeedCtrItem>; abRatio: number }>('/api/public/feed-weights'), staleTime: 5 * 60 * 1000 }).catch(() => null),
     ]).then(([topics, w]) => {
       if (!alive) return;
-      const items = new Map<number, { impressions: number; clicks: number }>();
+      const items = new Map<number, FeedCtrItem>();
       if (w) for (const [id, v] of Object.entries(w.items || {})) items.set(Number(id), v);
       setFeedAux({ topics: Array.isArray(topics) ? topics : [], ctr: { mean: w?.mean ?? 0.03, items }, abRatio: w?.abRatio ?? 0 });
       setFeedVariant(resolveVariant(w?.abRatio ?? 0));
@@ -725,6 +726,7 @@ export default function Home() {
           follows,
           topics: feedAux.topics,
           ctr: feedAux.ctr,
+          session: sessionIntent(),
           isGuest: !user,
         };
         const items = assembleFeed(result, signals, loadSeenRounds(), seededRng(feedSeed.current));
@@ -1555,6 +1557,7 @@ export default function Home() {
                         isHot={product.is_hot}
                         type={product.type}
                         status={product.status}
+                        series={product.series}
                         feedBucket={feedMeta.current.get(String(product.id))?.bucket}
                         feedPosition={feedMeta.current.get(String(product.id))?.position}
                         onNavigate={() => {

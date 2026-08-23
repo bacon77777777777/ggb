@@ -18,6 +18,14 @@ import CategoryBadge from '@/components/news/CategoryBadge';
 import { timeAgo } from '@/lib/timeAgo';
 import { useRequireLogin } from '@/hooks/useRequireLogin';
 import { asset } from '@/lib/asset';
+import ProductCard from '@/components/ProductCard';
+import { ChevronRight } from 'lucide-react';
+import { fetchJson } from '@/lib/swr';
+
+interface RelatedProduct {
+  id: number; name: string; image_url: string | null; price: number; remaining: number | null;
+  total_count: number | null; type: string; status: string; is_hot: boolean | null; cards_per_pack?: number | null;
+}
 
 interface NewsItem {
   id: string;
@@ -457,6 +465,22 @@ export default function NewsDetailPage() {
   // 留言
   const [comments, setComments]       = useState<Comment[]>([]);
   const [commentCount, setCommentCount] = useState<number | null>(null);
+  /*
+   * 相關商品（老闆 2026-08-22）：文章講到的 IP（吉伊卡哇…）底下列最多 4 件站上的商品，
+   * 右邊「更多」跳搜尋頁帶同一個關鍵字。關鍵字與比對在 /api/public/news/[id]/related
+   *（CDN 10 分鐘）；沒命中任何商品就整塊不出現。
+   */
+  const [related, setRelated] = useState<{ keyword: string | null; products: RelatedProduct[]; total: number } | null>(null);
+  useEffect(() => {
+    if (!newsId) return;
+    let alive = true;
+    swrLoad(queryClient, ['news', 'article', newsId, 'related'],
+      () => fetchJson<{ keyword: string | null; products: RelatedProduct[]; total: number }>(`/api/public/news/${newsId}/related`),
+      (d) => { if (alive) setRelated(d); },
+    ).catch(() => {});
+    return () => { alive = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newsId]);
   const [sheetOpen, setSheetOpen]     = useState(false);
   const [submitting, setSubmitting]   = useState(false);
 
@@ -691,6 +715,42 @@ export default function NewsDetailPage() {
           </div>
         )}
 
+        {/* ── 相關商品：最多 4 件 + 更多 → 搜尋頁帶關鍵字（老闆 2026-08-22）── */}
+        {related?.keyword && related.products.length > 0 && (
+          <section className="mt-6 pt-5 border-t border-neutral-100 dark:border-neutral-800">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-[15px] font-black text-neutral-900 dark:text-neutral-100">
+                相關商品
+                <span className="ml-2 text-[12px] font-bold text-neutral-400">{related.keyword}</span>
+              </h2>
+              <Link
+                href={`/search?q=${encodeURIComponent(related.keyword)}`}
+                className="flex items-center gap-0.5 text-[13px] font-bold text-primary"
+              >
+                更多{related.total > related.products.length ? `（${related.total}）` : ''}
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+              {related.products.slice(0, 4).map((p) => (
+                <ProductCard
+                  key={`related:${p.id}`}
+                  id={String(p.id)}
+                  name={p.name}
+                  image={p.image_url || ''}
+                  price={p.price}
+                  remaining={p.remaining ?? undefined}
+                  total={p.total_count ?? undefined}
+                  cardsPerPack={p.cards_per_pack ?? undefined}
+                  isHot={!!p.is_hot}
+                  type={p.type as never}
+                  status={p.status}
+                  onNavigate={() => trackEvent('product_click', { productId: p.id, meta: { from: 'news_related', news_id: newsId } })}
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
       </article>
 

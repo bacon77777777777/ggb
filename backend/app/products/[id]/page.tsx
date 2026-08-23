@@ -216,6 +216,7 @@ export default function EditProductPage() {
     remaining: '',
     totalCount: '',
     isHot: false,
+    feedBoost: '0',
     releaseYear: '',
     releaseMonth: '',
     distributor: '',
@@ -491,6 +492,7 @@ export default function EditProductPage() {
             remaining: product.remaining.toString(),
             totalCount: product.total_count?.toString() || '0',
             isHot: product.is_hot,
+            feedBoost: String(product.feed_boost ?? 0),
             releaseYear: defaultYear,
             releaseMonth: defaultMonth,
             distributor: product.distributor || '',
@@ -683,6 +685,7 @@ export default function EditProductPage() {
         remaining: calculatedRemaining,
         status: formData.status,
         is_hot: formData.isHot,
+        feed_boost: Number(formData.feedBoost) || 0,
         total_count: calculatedTotalCount,
         distributor: formData.distributor,
         barcode: formData.barcode || null,
@@ -1105,6 +1108,17 @@ export default function EditProductPage() {
                   <SelectField value={formData.isHot ? '1' : '0'} onChange={e => setFormData({ ...formData, isHot: e.target.value === '1' })}>
                     <option value="0">否</option>
                     <option value="1">是</option>
+                  </SelectField>
+                </div>
+                <div>
+                  {/* 首頁推薦 feed 的手動加權（migration 604）：試營運由老闆決定要推什麼；
+                      資料長出來後會被點擊率學習權重自然稀釋。0 時「熱賣商品＝是」算 ×1.5 */}
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">首頁推薦加權</label>
+                  <SelectField value={formData.feedBoost} onChange={e => setFormData({ ...formData, feedBoost: e.target.value })}>
+                    <option value="0">無</option>
+                    <option value="1">×1.5</option>
+                    <option value="2">×2</option>
+                    <option value="3">×3</option>
                   </SelectField>
                 </div>
               </div>}

@@ -72,6 +72,7 @@ import { PRODUCT_PUBLIC_COLUMNS, PRIZE_PUBLIC_COLUMNS } from '@/lib/productColum
 import { useQueryClient } from '@tanstack/react-query';
 import { swrLoad } from '@/lib/swr';
 import { productKey, fetchProductDetail } from '@/lib/queries/product';
+import { noteInteraction } from '@/lib/feed/session';
 import { useRequireLogin } from '@/hooks/useRequireLogin';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { isCategoryHidden, isCategoryUnderMaintenance, categoryFlagKey, CATEGORY_LABELS } from '@/lib/categoryFlags';
@@ -664,6 +665,8 @@ export default function ProductDetailPage() {
               series: (product as any)?.series ?? undefined,
             });
           });
+          // 這一趟看過的：回首頁下一刷馬上偏向同系列／同類型（lib/feed/session.ts）
+          noteInteraction({ id: productId, series: (product as any)?.series ?? null, type: (product as any)?.type ?? null, price: (product as any)?.price ?? null }, 'view');
         }
       }, 2000); // 2 seconds delay to count as a "view"
       return () => clearTimeout(timer);

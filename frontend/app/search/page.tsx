@@ -97,10 +97,12 @@ export default function SearchPage() {
         const { data, error } = await supabase
           .from('products')
           .select(PRODUCT_PUBLIC_COLUMNS)
-          .eq('type', 'gacha')
+          // 以前只載轉蛋（.eq('type','gacha')）—— 頁籤明明有一番賞／盒玩／抽卡，搜不到
+          // （老闆 2026-08-22：文章「更多」要跳來搜 IP 關鍵字）。改全類別，機台除外。
+          .neq('type', 'slot')
           .neq('status', 'pending')
           .order('created_at', { ascending: false })
-          .limit(200);
+          .limit(600);
 
         if (error) {
           console.error('Error fetching products for search:', error);
@@ -365,8 +367,11 @@ export default function SearchPage() {
   const filteredProducts = useMemo(() => {
     const base = trimmedQuery
       ? allProducts.filter((product) => {
-          const name = product.name || '';
-          return name.toLowerCase().includes(trimmedQuery.toLowerCase());
+          // 名稱或系列命中都算（吉伊卡哇可能只在 series 欄）
+          const q = trimmedQuery.toLowerCase();
+          const name = (product.name || '').toLowerCase();
+          const series = ((product as { series?: string | null }).series || '').toLowerCase();
+          return name.includes(q) || series.includes(q);
         })
       : allProducts;
 
@@ -434,6 +439,20 @@ export default function SearchPage() {
     trimmedQuery,
     productHeat,
   ]);
+
+  /*
+   * 搜尋紀錄 → search_logs（推薦 feed 的話題訊號；以前這張表沒人在寫）。
+   * 不綁在按 Enter 上：從文章「更多」帶 ?q= 進來也算一次搜尋。同一個關鍵字只記一次，
+   * 等商品載完、結果數算好才送。
+   */
+  const loggedQueryRef = useRef<string>('');
+  useEffect(() => {
+    if (!trimmedQuery || isLoading || trimmedQuery === loggedQueryRef.current) return;
+    loggedQueryRef.current = trimmedQuery;
+    fetch('/api/search/log', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keyword: trimmedQuery, result_count: filteredProducts.length }), keepalive: true }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trimmedQuery, isLoading]);
 
   const filteredSellListings = useMemo(() => {
     if (!flags.sell) return [];

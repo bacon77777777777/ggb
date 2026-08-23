@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client';
 import { prefetch } from '@/lib/swr';
 import { productKey, fetchProductDetail } from '@/lib/queries/product';
 import { recordImpression, recordClick } from '@/lib/feed/events';
+import { noteInteraction } from '@/lib/feed/session';
 import type { FeedBucket } from '@/lib/feed/assemble';
 
 interface ProductCardProps {
@@ -35,6 +36,8 @@ interface ProductCardProps {
   /** 推薦 feed 的桶別／位置（首頁推薦頁籤才有）：有帶就記曝光與點擊（lib/feed/events） */
   feedBucket?: FeedBucket;
   feedPosition?: number;
+  /** 系列（session 意圖／item-to-item 用） */
+  series?: string | null;
   unitLabel?: string;
   /** 抽卡卡包模式：一包幾張。>=2 時價格單位與庫存都以「包」呈現 */
   cardsPerPack?: number;
@@ -62,6 +65,7 @@ export default function ProductCard(props: ProductCardProps) {
     hrefOverride,
     feedBucket,
     feedPosition,
+    series,
     unitLabel,
     cardsPerPack,
     showRemainingText = true,
@@ -150,6 +154,8 @@ export default function ProductCard(props: ProductCardProps) {
       className="group block h-full"
       onClick={() => {
         if (feedBucket !== undefined) recordClick(Number(id), feedBucket, feedPosition);
+        // 這一趟的意圖：下一次刷新馬上偏向同系列／同類型（lib/feed/session.ts）
+        noteInteraction({ id, series, type, price }, 'click');
         onNavigate?.()
       }}
     >
