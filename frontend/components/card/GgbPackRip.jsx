@@ -24,7 +24,7 @@ const PARAM_DEFAULTS = {
   vortexScale: 100, vortexOffsetY: 0,
   energyScale: 100, energyOffsetY: 0,
   fxOpacity: 0.9,
-  dealStagger: 90, flipDelay: 500, skipFlyMs: 55,
+  dealStagger: 90, flipDelay: 500, skipFlyMs: 55, fastFlyMs: 28,
   sfxVolume: 1,
   peelCurl: 45,
 };
@@ -179,9 +179,17 @@ export default function GGBPackRip({
    */
   prizeTiers: prizeTiersProp = /** @type {('blue'|'purple')[] | null} */ (null),
   soundDefault = true,
-  /** 略過撕包步驟，直接進發牌（商品頁左上角的閃電） */
-  skipIntro = false,
-  /** 一包幾張。SKIP 用它算出「最後一包的開頭」 */
+  /**
+   * 快速模式（商品頁左上角的閃電，玩家設定會記住）。開啟時：
+   *   1. 略過撕包步驟，直接進發牌
+   *   2. SKIP 從「跳到本包壓軸」變成「直衝整筆最後一張」
+   *   3. 飛牌節奏改用 fastFlyMs（比 skipFlyMs 快，不然十包飛 99 張要五秒）
+   * **每包壓軸照樣浮起等點擊** —— 那是抽獎的爽點，加速鍵不該吃掉它。
+   */
+  fast = false,
+  /** 演出畫面裡也有一顆同樣的閃電，切了要回寫商品頁的偏好 */
+  onFastChange,
+  /** 一包幾張。SKIP 用它算出「本包的壓軸在哪」 */
   cardsPerPack = 1,
   onFinish,
   onExit,
@@ -197,6 +205,27 @@ export default function GGBPackRip({
   // 玩家在商品頁關掉聲音，進了演出又自己響起來的話，那顆開關等於管不到這裡
   const muted = useSoundMuted();
   const sound = !muted;
+  /*
+   * 快速模式的本地狀態。演出畫面裡也有一顆閃電（SKIP 正上方），按下去要當場生效，
+   * 不能等商品頁把 prop 傳回來 —— 那一趟 re-render 玩家會看到按鈕慢半拍。
+   * prop 變動時同步過來，商品頁與演出內才不會各說各話。
+   */
+  const [fastOn, setFastOn] = useState(fast);
+  useEffect(() => { setFastOn(fast); }, [fast]);
+  const fastRef = useRef(fastOn); fastRef.current = fastOn;
+  const toggleFast = () => {
+    setFastOn(prev => {
+      const next = !prev;
+      hapticLight();
+      if (onFastChange) onFastChange(next);
+      return next;
+    });
+  };
+  /*
+   * 撕包要不要略過，只看**掛載當下**的值。演出中途才打開閃電時撕包早就過了，
+   * 拿即時值去判斷會害 useEffect 重跑、把已經在發牌的流程再踢一次。
+   */
+  const skipIntro = useRef(fast).current;
   const [cardIdx, setCardIdx] = useState(0);
   /*
    * 逐包演出。
@@ -207,6 +236,23 @@ export default function GGBPackRip({
    * 「第 91 張才開始有特效」。
    */
   const packSize = Math.max(1, cardsPerPack);
+  /*
+   * 「這張是不是某一包的壓軸」。買 3 包 × 10 張 → index 9 / 19 / 29 都算。
+   * 光環、火花、閃電、醞釀音、浮動待點擊全部吃這個判定，
+   * SKIP 的落點與自動翻牌的例外也都以它為準，只留這一份定義。
+   */
+  const isPackLast = (idx) => (idx + 1) % packSize === 0 || idx === cards.length - 1;
+  /** 從 idx 往後數，本包的壓軸在哪一張（已經是壓軸就回自己） */
+  const packLastOf = (idx) =>
+    Math.min(cards.length - 1, (Math.floor(idx / packSize) + 1) * packSize - 1);
+  /*
+   * 逐包收尾只在「卡包模式」成立（每包 ≥ 2 張）。
+   * 單抽模式 packSize 是 1，那時每一張都會被 isPackLast 判成壓軸 ——
+   * 若照卡包規則辦，買五張單抽就變成每張都要點一下才翻，太黏。
+   */
+  const packCeremony = packSize >= 2;
+  /** 這張要不要停下來等玩家點（不自動翻）：整筆最後一張永遠要，其餘看是不是卡包壓軸 */
+  const waitsForTap = (idx) => idx === cards.length - 1 || (packCeremony && isPackLast(idx));
   const tierAt = (idx) =>
     Array.isArray(prizeTiersProp)
       ? prizeTiersProp[Math.floor(idx / packSize)] || "blue"
@@ -375,7 +421,8 @@ export default function GGBPackRip({
     for (let i = 0; i < n; i++) later(() => { sfx.current.deal(); hapticLight(); }, i * cfg.dealStagger);
     const dealDone = (n - 1) * cfg.dealStagger + DEAL_DUR;
     later(() => setDealing(false), dealDone);
-    later(() => { if (cards.length > 1) flipTop(0); }, dealDone + cfg.flipDelay); // 只剩最後一張時等玩家點
+    // 第一張若本身就是要等玩家點的（只買一張、或每包只有一張）就不自動翻
+    later(() => { if (!waitsForTap(0)) flipTop(0); }, dealDone + cfg.flipDelay);
   };
 
   const flipTop = (idx) => {
@@ -384,7 +431,7 @@ export default function GGBPackRip({
     sfx.current.stopHype(); // 翻下去的瞬間收掉醞釀音，讓中獎音接手
     sfx.current.flip();
     // 每包的最後一張都要有收尾，不是只有整筆的最後一張
-    if ((idx + 1) % packSize === 0 || idx === cards.length - 1) {
+    if (isPackLast(idx)) {
       later(() => {
         setAuraOn(true);
         setFlash(true); later(() => setFlash(false), 450);
@@ -400,56 +447,30 @@ export default function GGBPackRip({
   };
 
   /**
-   * SKIP：直接跳到最後一張並翻開（老闆指定）。
-   * 中間那幾張不逐張演，但最後一張的光環／火花照跑 —— 那是整包的收尾，跳掉就沒有壓軸了。
+   * 把 from ~ target 之間的牌一張張卡背朝上往右飛出去，最後停在 target（老闆 2026-08-19）。
+   * 原本是瞬間跳過去，看不出中間發生什麼事。
+   *
+   * 節奏由後台參數控制：一般「SKIP 飛牌速度」55ms／張，快速模式另一格 28ms／張。
+   * 飛出動畫 .14s 比間隔略長，牌才會有殘影般的連續感而不是一格一格跳。
+   *
+   * **target 一定是某一包的壓軸**，所以落地一律不自動翻 —— 留著給玩家點。
    */
-  /**
-   * SKIP 三段式（老闆指定），按鈕一直在：
-   *   還沒到最後一張 → 快速翻過中間幾張，停在最後一張的卡背
-   *   已在最後一張但沒翻 → 翻開它
-   *   最後一張已翻開   → 收掉演出，回商品頁跳「恭喜獲得」
-   */
-  const skipToLast = () => {
-    if (phaseRef.current !== "cards") return;
-    const lastIdx = cards.length - 1;
+  const flyThrough = (from, target) => {
+    /*
+     * 先把待辦計時器清乾淨。接在 dismissCard 後面呼叫時，它內部那支
+     * 「380ms 後換下一張、再 500ms 自動翻」還排著 —— 不清掉的話，
+     * 牌都飛到下一包了才突然翻開一張，畫面會亂掉。
+     */
     timers.current.forEach(clearTimeout); timers.current = [];
-    if (cardIdx >= lastIdx) {
-      // 已在最後一張：沒翻就翻開，翻開了就收掉演出回商品頁
-      if (!flipped) { flipTop(lastIdx); return; }
-      setAuraOn(false);
-      if (onFinish) onFinish();
-      return;
-    }
-    /*
-     * 跳到「最後一包的開頭」（老闆 2026-08-18）：總張數 − 每包張數。
-     *   買 10 包共 100 張、每包 10 → 跳到第 91 張
-     *   買 10 包共  70 張、每包  7 → 跳到第 64 張
-     * 這樣最後一包仍會完整演到它的最後一張（大賞的位置），前面幾包直接略過。
-     *
-     * 為什麼不是逐張快翻：先前每張間隔 130ms，100 張光跳過就十幾秒，比不按還久。
-     * 為什麼不是直接跳最後一張：那會連最後一包的過程都吃掉。
-     *
-     * 只買一包時 lastPackStart 會是 0（等於沒跳），這時就照三段式跳到最後一張。
-     */
-    const lastPackStart = Math.max(0, cards.length - Math.max(1, cardsPerPack));
-    const target = cardIdx < lastPackStart ? lastPackStart : lastIdx;
-
-    /*
-     * 跳過的牌**一張一張**卡背朝上往右飛出去，最後停在 target（老闆 2026-08-19）。
-     * 原本是瞬間跳過去，看不出中間發生什麼事。
-     *
-     * 節奏由後台參數「SKIP 飛牌速度」控制（預設 55ms／張）：買一包（跳 6~9 張）約半秒；
-     * 買十包跳 90 張約 5 秒 —— 那是「快速發牌」該有的長度。
-     * 先前逐張快翻被退回是因為當時 130ms／張，100 張要十幾秒，比不按 SKIP 還久。
-     * 飛出動畫 .14s 比間隔略長，牌才會有殘影般的連續感而不是一格一格跳。
-     */
-    const STEP_MS = Math.max(20, Number(cfg.skipFlyMs) || 55);
+    const STEP_MS = fastRef.current
+      ? Math.max(15, Number(cfg.fastFlyMs) || 28)
+      : Math.max(20, Number(cfg.skipFlyMs) || 55);
 
     setSkipping(true);
     setCardOffset({ x: 0, y: 0 });
 
-    for (let at = cardIdx; at < target; at++) {
-      const k = at - cardIdx;
+    for (let at = from; at < target; at++) {
+      const k = at - from;
       later(() => {
         setFlipped(false);            // 一律卡背，不翻正面
         setFlying({ dir: 1 });        // 往右飛
@@ -474,9 +495,57 @@ export default function GGBPackRip({
       setCardIdx(target);
       setSettled(true);
       setFlipped(false);
-      // 落在最後一包的中間時，該張照原本規則自動翻開；只有整包最後一張留給玩家點
-      if (target < lastIdx) later(() => flipTop(target), 160);
-    }, (target - cardIdx) * STEP_MS + 140);
+    }, (target - from) * STEP_MS + 140);
+  };
+
+  /**
+   * SKIP 四段式（老闆 2026-08-23 改為逐包），按鈕一直在：
+   *   還沒到本包壓軸   → 中間幾張飛掉，停在本包最後一張的卡背（浮起、不翻）
+   *   已在壓軸但沒翻   → 翻開它（光環／火花／中獎音照跑）
+   *   壓軸翻了、還有下一包 → 收掉這張，接著飛到下一包的壓軸
+   *   壓軸翻了、是整筆最後一張 → 收演出，回商品頁跳「恭喜獲得」
+   *
+   * 落點為什麼是「本包壓軸」而不是舊版的「最後一包開頭」：
+   * 舊版 `cards.length - cardsPerPack` 會把前面每一包的壓軸整個吃掉 ——
+   * 買 3 包在 1/30 按 SKIP 直接飛到 21/30，玩家看到的是莫名其妙翻開一張普通牌。
+   *
+   * 閃電（快速模式）開著時落點改成整筆最後一張，那是給趕時間的人的逃生口；
+   * 每包壓軸仍然浮起等點擊，加速鍵不吃掉抽獎的爽點。
+   */
+  const skipToLast = () => {
+    if (phaseRef.current !== "cards") return;
+    if (skipping) return;           // 飛牌途中不重複觸發，不然會卡在 skipping 狀態
+    const lastIdx = cards.length - 1;
+    timers.current.forEach(clearTimeout); timers.current = [];
+    /*
+     * 發牌動畫還沒跑完就按 SKIP 的話，上面那行會把「發牌結束」的計時器一起清掉，
+     * dealing 會永遠停在 true（階梯延遲不收）。這裡直接把發牌狀態收尾。
+     */
+    setDealing(false); setDealt(true);
+
+    const targetOf = (from) => (fastRef.current || !packCeremony ? lastIdx : packLastOf(from));
+    const target = targetOf(cardIdx);
+
+    if (cardIdx < target) { flyThrough(cardIdx, target); return; }
+
+    // 已經站在落點（本包壓軸）上
+    if (!flipped) { flipTop(cardIdx); return; }
+    if (cardIdx >= lastIdx) {           // 整筆看完了
+      setAuraOn(false);
+      if (onFinish) onFinish();
+      return;
+    }
+    /*
+     * 壓軸已經看過 → 收掉它，並且接著飛到下一包的壓軸（合併成一次按壓）。
+     * 分成兩次按的話，買十包要按到二十次；合併後是「按一下前進、按一下翻開」的節奏。
+     * 420ms 是等 dismissCard 內部那支 380ms 的飛出動畫收完，牌才不會疊在一起。
+     */
+    const from = cardIdx + 1;
+    dismissCard(1);
+    later(() => {
+      const next = targetOf(from);
+      if (from < next) flyThrough(from, next);
+    }, 420);
   };
 
   /*
@@ -496,7 +565,10 @@ export default function GGBPackRip({
   const [flying, setFlying] = useState(null);
   const [skipping, setSkipping] = useState(false);
   // 每一包的最後一張都是壓軸（最末張同時也是整筆的結束）
-  const isLast = (cardIdx + 1) % packSize === 0 || cardIdx === cards.length - 1;
+  const isLast = isPackLast(cardIdx);
+  // 計數器用：現在在第幾包／共幾包（買多包時「最後一張」要指明是哪一包的）
+  const packNo = Math.floor(cardIdx / packSize) + 1;
+  const packTotal = Math.ceil(cards.length / packSize);
 
   /* 紫/金等級：最後一張卡背周圍閃電電弧（參考站紫光閃電，隨機劈啪） */
   /*
@@ -574,7 +646,12 @@ export default function GGBPackRip({
         setFlipped(false);
         setSettled(false); // 新頂牌先停在堆疊位（較小較暗）
         requestAnimationFrame(() => requestAnimationFrame(() => setSettled(true))); // 平滑升上頂位
-        if (next < cards.length - 1) later(() => flipTop(next), 500); // 最後一張改成「點擊才翻」
+        /*
+         * 每包的壓軸都改成「點擊才翻」（老闆 2026-08-23）。
+         * 先前只放過整筆最後一張，所以 10/30、20/30 雖然浮起來、有光環電弧，
+         * 卻在 500ms 後被自動翻掉 —— 玩家根本來不及點，逐包的壓軸感等於沒有。
+         */
+        if (!waitsForTap(next)) later(() => flipTop(next), 500);
       }
     }, 380);
   };
@@ -1011,12 +1088,38 @@ export default function GGBPackRip({
           </div>
 
           <div style={S.counter} data-ui>
-            <span style={S.counterChip}>{cardIdx + 1} / {cards.length}</span>
+            <span style={S.counterChip}>
+              {cardIdx + 1} / {cards.length}
+              {packCeremony && <span style={{ opacity: .7 }}>{`　第 ${packNo}/${packTotal} 包`}</span>}
+            </span>
             <div style={{ marginTop: 6, fontSize: 12, opacity: .65 }}>
-              {flipped ? "滑動或點擊看下一張" : (isLast && dealt && settled ? "✨ 點擊卡片翻開最後一張！" : "翻牌中…")}
+              {/* 買多包時講「最後一張」語意是錯的 —— 10/30 那張是第 1 包的最後一張 */}
+              {flipped
+                ? "滑動或點擊看下一張"
+                : (isLast && dealt && settled
+                    ? (packCeremony ? `✨ 點擊翻開第 ${packNo} 包最後一張！` : "✨ 點擊卡片翻開最後一張！")
+                    : "翻牌中…")}
             </div>
           </div>
         </div>
+      )}
+
+      {/* 閃電（快速模式）：SKIP 正上方。
+          為什麼不是放左上角對齊商品頁 —— 演出裡左上是空舞台，玩家不會去那找；
+          跟 SKIP 疊在一起才看得出「這兩顆都是加速」。狀態與商品頁共用同一個偏好。
+          每包只有一張時 SKIP 本來就直達最後，這顆沒有意義，不顯示。 */}
+      {phase === "cards" && packCeremony && (
+        <button
+          data-ui
+          onClick={toggleFast}
+          aria-pressed={fastOn}
+          title={fastOn ? "快速模式：開（SKIP 一次跳到最後一張）" : "快速模式：關（SKIP 逐包停在壓軸）"}
+          style={{ ...S.fastBtn, ...(fastOn ? S.fastBtnOn : null) }}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+            <path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12l1-8.5z" />
+          </svg>
+        </button>
       )}
 
       {/* SKIP：右下角，樣式與一番賞過場影片那顆一致 */}
@@ -1060,6 +1163,24 @@ const S = {
     background: "rgba(0,0,0,.6)", border: "1px solid rgba(255,255,255,.3)",
     color: "#fff", fontSize: 14, fontWeight: 900, letterSpacing: "0.25em",
     display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+  },
+  /* 快速模式的閃電：關著時跟 SKIP 同一套暗底，開著時整顆轉金（與商品頁那顆同色） */
+  fastBtn: {
+    position: "absolute", right: 16, bottom: 66, zIndex: 60,
+    width: 40, height: 40, borderRadius: 999,
+    background: "rgba(0,0,0,.6)", border: "1px solid rgba(255,255,255,.3)",
+    color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+    cursor: "pointer", transition: "background .18s ease, color .18s ease, box-shadow .18s ease",
+  },
+  fastBtnOn: {
+    border: "1px solid rgba(255,255,255,.35)",
+    background:
+      "radial-gradient(115% 100% at 50% -10%, rgba(255,255,255,0.7) 0%, rgba(253,220,110,0.96) 30%," +
+      " rgba(243,175,26,1) 66%, rgba(192,124,8,1) 100%)",
+    color: "#4a3200",
+    boxShadow:
+      "0 6px 14px rgba(170,110,0,0.36), inset 0 2px 4px -2px rgba(255,255,255,0.95)," +
+      " inset 0 -8px 12px -7px rgba(120,76,0,0.55)",
   },
   iconBtn: {
     background: "#ffffff1e", border: "1px solid #ffffff30", borderRadius: 10,

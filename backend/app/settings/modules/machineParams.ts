@@ -69,7 +69,9 @@ export const MACHINE_PARAM_SPECS: Record<string, ParamSpec[]> = {
     { key: 'dealStagger', label: '發牌間隔', group: '開包節奏', type: 'range', min: 40, max: 200, step: 10, default: 90, unit: 'ms',
       hint: '卡片一張張頂上來的間隔。' },
     { key: 'skipFlyMs',   label: 'SKIP 飛牌速度', group: '開包節奏', type: 'range', min: 20, max: 200, step: 5, default: 55, unit: 'ms',
-      hint: '按 SKIP 時，跳過的牌一張張往右飛出去的間隔。越小飛越快；買十包要跳 90 張，55ms 約 5 秒。' },
+      hint: '按 SKIP 時，跳過的牌一張張往右飛出去的間隔。越小飛越快。SKIP 一次只跳到「本包壓軸」，所以最多飛「每包張數−1」張。' },
+    { key: 'fastFlyMs',   label: '快速模式飛牌速度', group: '開包節奏', type: 'range', min: 15, max: 120, step: 5, default: 28, unit: 'ms',
+      hint: '玩家開了閃電（快速模式）時的飛牌間隔。那時 SKIP 會直衝整筆最後一張，買十包要飛 99 張，所以預設比一般 SKIP 快一倍。' },
     { key: 'flipDelay',   label: '翻牌延遲', group: '開包節奏', type: 'range', min: 200, max: 1200, step: 50, default: 500, unit: 'ms',
       hint: '發完牌到最上張自動翻面的等待時間。' },
 

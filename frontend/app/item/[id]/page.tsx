@@ -534,6 +534,12 @@ export default function ProductDetailPage() {
   useEffect(() => {
     try { setSkipPackIntro(localStorage.getItem('ggb_skip_pack_intro') === '1'); } catch { /* 無痕模式 */ }
   }, []);
+  /* localStorage key 沿用舊的 `ggb_skip_pack_intro`：語意雖然從「略過撕包」擴充成
+     「快速模式」，但換 key 會讓已經開過這顆的老玩家設定被重置。 */
+  const setSkipPackIntroPref = useCallback((next: boolean) => {
+    setSkipPackIntro(next);
+    try { localStorage.setItem('ggb_skip_pack_intro', next ? '1' : '0'); } catch { /* 忽略 */ }
+  }, []);
   const toggleSkipPackIntro = useCallback(() => {
     setSkipPackIntro(prev => {
       const next = !prev;
@@ -1569,14 +1575,17 @@ export default function ProductDetailPage() {
               backgroundRepeat: 'no-repeat',
             }}
           >
-            {/* 閃電：略過撕卡包，直接看第一張（老闆指定，位置在機台區左上角）。
-                只有卡包模式、且演出會演撕包的兩款模組才有意義；過場影片沒有撕包步驟 */}
-            {isPackMode && (cardThemeForMachine === 'card_peel' || cardThemeForMachine === 'card_pack') && (
+            {/* 閃電＝快速模式（略過撕包＋SKIP 一次跳到最後），位置在機台區左上角。
+                只掛在 card_peel：`card_pack` 走的是 CardDrawAnimation，那支沒有撕包步驟
+                也沒有 SKIP，先前把它一起列進條件，玩家按了會轉金但完全沒作用。 */}
+            {isPackMode && cardThemeForMachine === 'card_peel' && (
               <button
                 type="button"
                 onClick={toggleSkipPackIntro}
                 aria-pressed={skipPackIntro}
-                title={skipPackIntro ? '已開啟：直接看第一張卡' : '略過撕卡包，直接看第一張卡'}
+                title={skipPackIntro
+                  ? '快速模式：開（略過撕包，SKIP 一次跳到最後一張）'
+                  : '快速模式：關（要撕包，SKIP 逐包停在壓軸）'}
                 /* 尺寸與質感對齊右上角的靜音鈕：漸層＋內緣高光＋外投影，
                    按下時往下沉一格。開啟時整顆轉成金色，一眼看得出狀態 */
                 className="absolute flex h-[38px] w-[38px] items-center justify-center rounded-full transition-all active:translate-y-[1px] active:scale-95"
@@ -2062,7 +2071,10 @@ export default function ProductDetailPage() {
                 prizeTier={packTiers[0] ?? 'blue'}
                 prizeTiers={packTiers}
                 soundDefault={!isVideoMuted}
-                skipIntro={skipPackIntro}
+                /* 快速模式：略過撕包＋SKIP 一次跳到最後。演出裡也有同一顆閃電，
+                   在那邊切了要寫回這裡的偏好，兩處才是同一個狀態 */
+                fast={skipPackIntro}
+                onFastChange={setSkipPackIntroPref}
                 cardsPerPack={cardsPerPack}
                 title={product.name}
                 onFinish={handleVideoEnd}
