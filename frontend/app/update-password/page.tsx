@@ -2,8 +2,15 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button, Input } from '@/components/ui'
-import { Lock, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import {
+  AuthScreen,
+  AuthHeading,
+  PRIMARY_BTN,
+  FIELD_ROW,
+  FIELD_INPUT,
+} from '@/components/auth/AuthScreen'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { translateAuthError } from '@/lib/authErrors'
@@ -72,85 +79,84 @@ function UpdatePasswordContent() {
     setIsLoading(false)
   }
 
-  // Common styles
-  const inputBaseClass = "border-0 border-b border-neutral-200 dark:border-neutral-700 rounded-none bg-transparent focus:ring-0 focus:border-primary focus:bg-transparent h-12 text-base placeholder:text-neutral-400"
-  const buttonBaseClass = "w-full rounded bg-primary hover:bg-primary-dark text-white h-11 text-base font-medium shadow-none"
-
   if (authLoading) {
-     return <div className="min-h-[calc(100vh-64px)] flex justify-center items-center">Loading...</div>
+    return <div className="flex min-h-[100dvh] items-center justify-center" />
   }
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-white dark:bg-neutral-950 flex flex-col relative">
-      <div className="flex-1 flex flex-col justify-start items-center pt-8 px-6 pb-8 z-10">
-        <div className="w-full max-w-sm">
-          <div className="mb-8 text-center">
-            <h2 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50 mb-2">
-              設定新密碼
-            </h2>
+    <AuthScreen
+      onBack={() => router.push('/')}
+      banner={
+        error ? (
+          <div className="mb-6 flex items-center justify-center rounded-lg border border-red-100 bg-red-50 p-3 text-center text-sm text-red-600">
+            {error}
+          </div>
+        ) : null
+      }
+    >
+      <AuthHeading
+        title="設定新密碼"
+        subtitle={success ? '密碼已更新，可以用新密碼登入了' : '至少 8 碼，需同時包含英文與數字'}
+      />
+
+      {success ? (
+        <div className="mt-12 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="rounded-xl border border-accent-emerald/20 bg-accent-emerald/10 p-4 text-center text-accent-emerald">
+            <p className="mb-1 font-bold">密碼更新成功</p>
+            <p className="text-sm">您現在可以使用新密碼登入。</p>
+            <p className="mt-2 text-xs text-neutral-500">3 秒後自動回到首頁…</p>
+          </div>
+          <button type="button" onClick={() => router.push('/')} className={cn(PRIMARY_BTN, 'mt-6')}>
+            立即前往首頁
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={handleUpdatePassword} className="mt-12 animate-in fade-in slide-in-from-right-4 duration-300">
+          <div className={cn(FIELD_ROW, 'flex items-center')}>
+            <input
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              placeholder="輸入新密碼"
+              required
+              autoFocus
+              className={FIELD_INPUT}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? '隱藏密碼' : '顯示密碼'}
+              className="shrink-0 px-1 text-neutral-400 transition-colors hover:text-neutral-600"
+            >
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </button>
           </div>
 
-          {/* Global Error/Message */}
-          {error && (
-            <div className="mb-6 p-3 rounded-lg text-sm flex items-center justify-center text-center bg-red-50 text-red-600 border border-red-100">
-              {error}
-            </div>
-          )}
+          <div className={cn(FIELD_ROW, 'mt-4')}>
+            <input
+              name="confirmPassword"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              placeholder="再輸入一次新密碼"
+              required
+              className={FIELD_INPUT}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+          </div>
 
-          {success ? (
-            <div className="text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-              <div className="bg-accent-emerald/10 text-accent-emerald p-4 rounded-xl border border-accent-emerald/20">
-                <p className="font-bold mb-1">密碼更新成功</p>
-                <p className="text-sm">您現在可以使用新密碼登入。</p>
-                <p className="text-xs mt-2 text-neutral-500">3秒後自動跳轉至首頁...</p>
-              </div>
-              <Button
-                onClick={() => router.push('/')}
-                className={buttonBaseClass}
-              >
-                立即前往首頁
-              </Button>
-            </div>
-          ) : (
-            <div className="w-full animate-in fade-in slide-in-from-right-4 duration-300">
-              <div className="space-y-4 mb-8">
-                <Input
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="新密碼（至少 8 碼，含英文與數字）"
-                  required
-                  className={inputBaseClass}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  leftIcon={<Lock className="w-5 h-5 text-neutral-400" />}
-                  rightIcon={showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  onRightIconClick={() => setShowPassword(!showPassword)}
-                />
-                <Input
-                  name="confirmPassword"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="確認新密碼"
-                  required
-                  className={inputBaseClass}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  leftIcon={<Lock className="w-5 h-5 text-neutral-400" />}
-                />
-              </div>
-
-              <Button
-                onClick={handleUpdatePassword}
-                className={buttonBaseClass}
-                isLoading={isLoading}
-                disabled={!!error && error.includes('失效')}
-              >
-                確認修改
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+          <button
+            type="submit"
+            disabled={isLoading || (!!error && error.includes('失效'))}
+            className={cn(PRIMARY_BTN, 'mt-6')}
+          >
+            {isLoading ? '更新中…' : '確認修改'}
+          </button>
+        </form>
+      )}
+    </AuthScreen>
   )
 }
 

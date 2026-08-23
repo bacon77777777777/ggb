@@ -1,13 +1,24 @@
 'use client'
 
 import Link from 'next/link'
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
-import SimplePageHeader from '@/components/ui/SimplePageHeader'
+import Image from 'next/image'
+import { Eye, EyeOff } from 'lucide-react'
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Input } from '@/components/ui'
-import Button from '@/components/ui/Button'
-import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons'
+import {
+  SocialLoginButtons,
+  LOGIN_BUTTON_BASE,
+} from '@/components/auth/SocialLoginButtons'
+import { asset } from '@/lib/asset'
+import {
+  AuthScreen,
+  AuthHeading,
+  OtpBoxes,
+  PRIMARY_BTN,
+  FIELD_ROW,
+  FIELD_INPUT,
+  SUB_LINK_ROW,
+} from '@/components/auth/AuthScreen'
 import { useAuth } from '@/contexts/AuthContext'
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
 import { useAlert } from '@/components/ui/AlertDialog'
@@ -31,7 +42,13 @@ import { translateAuthError } from '@/lib/authErrors'
  * 新玩家看到密碼欄會以為要設密碼，摩擦感就回來了。
  */
 
-type View = 'main' | 'otp' | 'password'
+/**
+ * main     社群登入＋兩個入口（Figma 480:3532）
+ * email    「驗證碼登入」按下去才出現的信箱輸入
+ * otp      收到的 6 位數
+ * password 老玩家的帳號密碼登入
+ */
+type View = 'main' | 'email' | 'otp' | 'password'
 
 function AuthContent() {
   const searchParams = useSearchParams()
@@ -186,201 +203,199 @@ function AuthContent() {
     }
   }
 
-  const getTitle = () => {
-    if (view === 'otp') return '輸入驗證碼'
-    return '登入'
-  }
-
   const handleBack = () => {
-    if (view === 'otp' || view === 'password') {
-      setView('main')
-      setError(null)
-    } else {
-      router.push('/')
-    }
+    // otp 退回信箱輸入那一步，不是一路退回主畫面 —— 打錯信箱時才改得動
+    if (view === 'otp') { setView('email'); setError(null); return }
+    if (view === 'email' || view === 'password') { setView('main'); setError(null); return }
+    router.push('/')
   }
 
   // --- Renders ---
 
-  const inputBaseClass = "border-0 border-b border-neutral-200 dark:border-neutral-700 rounded-none bg-transparent focus:ring-0 focus:border-primary focus:bg-transparent h-12 text-base placeholder:text-neutral-400"
-  const divider = (
-    <div className="relative my-6">
-      <div className="absolute inset-0 flex items-center">
-        <div className="w-full border-t border-neutral-200 dark:border-neutral-800"></div>
-      </div>
-      <div className="relative flex justify-center text-xs">
-        <span className="bg-white dark:bg-neutral-950 px-4 text-neutral-400">或</span>
-      </div>
-    </div>
-  )
 
+  /**
+   * 主畫面（Figma 480:3532）。
+   *
+   * 跟其他 view 不同，它**不走 SimplePageHeader** —— 稿上右上角的裝飾要出血到
+   * 螢幕頂邊、蓋到狀態列底下，套一條白底頂欄就把它切掉了。返回鍵改用全站共用的
+   * `PageHeaderBack`（老闆 2026-08-23：跟商品頁同一顆），標題留空只出箭頭。
+   *
+   * 信箱欄不再放在門口：稿上第一層只有四顆按鈕，Email 收進「驗證碼登入」。
+   * 新玩家看到輸入框會以為要填一堆東西，四顆按鈕的心理成本低得多。
+   */
   const renderMain = () => (
-    <div className="w-full animate-in fade-in slide-in-from-right-4 duration-300">
-      <SocialLoginButtons />
-
-      {divider}
-
-      <form onSubmit={sendOtp} className="space-y-5">
-        <Input
-          name="email"
-          type="email"
-          placeholder="請輸入電子信箱"
-          required
-          className={inputBaseClass}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          leftIcon={<Mail className="w-5 h-5 text-neutral-400" />}
+    <div className="flex w-full flex-1 flex-col animate-in fade-in duration-300">
+      <div className="flex justify-center pt-2">
+        <Image
+          src={asset('/images/logo-stacked.png')}
+          alt="吉吉比"
+          width={125}
+          height={97}
+          priority
+          className="h-[97px] w-auto"
         />
-        <Button variant="solid" fullWidth size="lg" type="submit" isLoading={isLoading}>
-          繼續
-        </Button>
-      </form>
+      </div>
 
-      <p className="mt-3 text-center text-xs text-neutral-400">
-        首次登入即註冊
-      </p>
+      <div className="mt-20 flex flex-col gap-4">
+        <SocialLoginButtons />
 
-      <div className="mt-8 text-center">
+        {/*
+          驗證碼登入＝Email OTP，站上原本的主要路徑（有帳號就登入、沒帳號自動開戶）。
+          底色與字色走主題 token（--primary-soft / --primary），不寫死稿上的
+          #FFF1EF／#FF3E00 —— 後台換主題色時這顆才會跟著走，跟頁尾的連結一致。
+        */}
         <button
           type="button"
-          onClick={() => { setView('password'); setError(null) }}
-          className="text-sm font-medium text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200"
+          onClick={() => { setView('email'); setError(null) }}
+          className={cn(LOGIN_BUTTON_BASE, 'bg-primary-soft text-primary dark:bg-primary/10')}
         >
-          改用密碼登入
+          驗證碼登入
         </button>
       </div>
+
+      <button
+        type="button"
+        onClick={() => { setView('password'); setError(null) }}
+        className="mt-8 text-center text-[14px] text-[#A2A2A2] transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
+      >
+        帳號密碼登入
+      </button>
+
     </div>
   )
 
-  const renderOtp = () => (
+  /** 驗證碼登入 1/2：輸入信箱（Figma 480:3577） */
+  const renderEmail = () => (
     <div className="w-full animate-in fade-in slide-in-from-right-4 duration-300">
-      <div className="mb-8 mt-4">
-        <p className="text-sm text-neutral-500 mb-8 text-center">
-          驗證碼已寄至 <br /><span className="font-medium text-neutral-900 dark:text-neutral-200">{email}</span>
-        </p>
-      </div>
-
-      <form onSubmit={verifyCode}>
-        <div className="mb-8">
+      <AuthHeading title="驗證碼登入" subtitle="請輸入電子郵件及驗證碼" step={{ current: 1, total: 2 }} />
+      <form onSubmit={sendOtp} className="mt-12">
+        <div className={FIELD_ROW}>
           <input
-            type="text"
-            inputMode="numeric"
-            maxLength={6}
-            autoFocus
-            className="w-full text-center text-3xl font-bold tracking-[0.5em] h-14 border-b-2 border-neutral-200 focus:border-primary focus:outline-none bg-transparent dark:text-white"
-            placeholder="000000"
-            value={otp}
-            onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
-          />
-        </div>
-
-        <Button variant="solid" fullWidth size="lg" type="submit" isLoading={isLoading}>
-          進入 GGB
-        </Button>
-      </form>
-
-      <div className="mt-6 text-center">
-        {countdown > 0 ? (
-          <span className="text-neutral-400 text-sm">請稍等 {countdown} 秒重新傳送</span>
-        ) : (
-          <button
-            onClick={() => sendOtp()}
-            className="text-neutral-500 hover:text-neutral-900 text-sm font-medium"
-            disabled={isLoading}
-          >
-            重新傳送驗證碼
-          </button>
-        )}
-      </div>
-    </div>
-  )
-
-  const renderPassword = () => (
-    <div className="w-full animate-in fade-in slide-in-from-right-4 duration-300">
-      <form onSubmit={loginWithPassword}>
-        <div className="space-y-4 mb-8">
-          <Input
             name="email"
             type="email"
-            placeholder="請輸入電子信箱"
+            inputMode="email"
+            autoComplete="email"
+            placeholder="輸入電子郵件"
             required
-            className={inputBaseClass}
+            autoFocus
+            className={FIELD_INPUT}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            leftIcon={<Mail className="w-5 h-5 text-neutral-400" />}
           />
-          <Input
-            name="password"
-            type={showPassword ? 'text' : 'password'}
-            placeholder="請輸入密碼"
+        </div>
+        <button type="submit" disabled={isLoading} className={cn(PRIMARY_BTN, 'mt-6')}>
+          {isLoading ? '傳送中…' : '繼續'}
+        </button>
+      </form>
+    </div>
+  )
+
+  /**
+   * 驗證碼登入 2/2：六格驗證碼（Figma 480:3626）。
+   *
+   * 六個獨立輸入格而不是一個長輸入框：手機鍵盤上看得出還要打幾位，
+   * 而且填錯時能單獨改一格。真正的值仍然是同一個 `otp` 字串，
+   * 送出的邏輯（verifyCode）完全沒動。
+   */
+  const renderOtp = () => (
+    <div className="w-full animate-in fade-in slide-in-from-right-4 duration-300">
+      <AuthHeading title="驗證碼登入" subtitle="請輸入Email及驗證碼" step={{ current: 2, total: 2 }} />
+
+      <form onSubmit={verifyCode} className="mt-12">
+        <OtpBoxes value={otp} onChange={setOtp} autoFocus />
+
+        {/* 稿上這行永遠在，倒數中就把它換成剩幾秒（不然玩家會一直按沒反應的字） */}
+        <div className={SUB_LINK_ROW}>
+          {countdown > 0 ? (
+            <span className="text-[#999999]">{countdown} 秒後可重新傳送</span>
+          ) : (
+            <button type="button" onClick={() => sendOtp()} disabled={isLoading} className="text-primary">
+              重新傳送驗證碼
+            </button>
+          )}
+        </div>
+
+        <button type="submit" disabled={isLoading} className={cn(PRIMARY_BTN, 'mt-6')}>
+          {isLoading ? '驗證中…' : '驗證'}
+        </button>
+      </form>
+    </div>
+  )
+
+  /** 帳號密碼登入（Figma 480:3602）—— 給設過密碼的老玩家 */
+  const renderPassword = () => (
+    <div className="w-full animate-in fade-in slide-in-from-right-4 duration-300">
+      <AuthHeading title="帳號密碼登入" subtitle="請輸入電子郵件及密碼" />
+
+      <form onSubmit={loginWithPassword} className="mt-12">
+        <div className={FIELD_ROW}>
+          <input
+            name="email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            placeholder="輸入電子郵件"
             required
-            className={inputBaseClass}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            leftIcon={<Lock className="w-5 h-5 text-neutral-400" />}
-            rightIcon={
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); setShowPassword(!showPassword) }}
-                  className="text-neutral-400 hover:text-neutral-600 focus:outline-none"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-                <div className="w-[1px] h-4 bg-neutral-300 dark:bg-neutral-700"></div>
-                <Link
-                  href="/forgot-password"
-                  className="text-sm text-blue-500 hover:underline whitespace-nowrap"
-                >
-                  忘記密碼
-                </Link>
-              </div>
-            }
+            className={FIELD_INPUT}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </div>
 
-        <Button variant="solid" fullWidth size="lg" type="submit" isLoading={isLoading}>
-          登入
-        </Button>
-      </form>
+        <div className={cn(FIELD_ROW, 'mt-4 flex items-center')}>
+          <input
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            placeholder="輸入密碼"
+            required
+            className={FIELD_INPUT}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {/* 稿上沒有這顆，但沒有它就只能盲打；放在列尾不影響版面 */}
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            aria-label={showPassword ? '隱藏密碼' : '顯示密碼'}
+            className="shrink-0 px-1 text-neutral-400 transition-colors hover:text-neutral-600"
+          >
+            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+          </button>
+        </div>
 
-      <div className="mt-8 text-center">
-        <button
-          type="button"
-          onClick={() => { setView('main'); setError(null) }}
-          className="text-sm font-medium text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200"
-        >
-          改用驗證碼登入
+        <div className={SUB_LINK_ROW}>
+          <Link href="/forgot-password" className="text-primary">忘記密碼</Link>
+        </div>
+
+        <button type="submit" disabled={isLoading} className={cn(PRIMARY_BTN, 'mt-6')}>
+          {isLoading ? '登入中…' : '登入'}
         </button>
-      </div>
+      </form>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col relative">
-      <SimplePageHeader title={getTitle()} onBack={handleBack} darkBg="page" />
-
-      <div className="flex-1 flex flex-col justify-start items-center pt-[calc(88px+env(safe-area-inset-top))] px-6 pb-8 z-10">
-        <div className="w-full max-w-sm">
-          {(error || messageParam || errorParam) && (
-            <div className={cn(
-              "mb-6 p-3 rounded-lg text-sm flex items-center justify-center text-center",
-              error || errorParam
-                ? "bg-red-50 text-red-600 border border-red-100"
-                : "bg-accent-emerald/10 text-accent-emerald border border-accent-emerald/20"
-            )}>
-              {error || translateAuthError(errorParam) || messageParam}
-            </div>
-          )}
-
-          <div className="bg-white dark:bg-neutral-950">
-            {view === 'main' && renderMain()}
-            {view === 'otp' && renderOtp()}
-            {view === 'password' && renderPassword()}
+    <AuthScreen
+      onBack={handleBack}
+      banner={
+        (error || messageParam || errorParam) ? (
+          <div className={cn(
+            "mb-6 p-3 rounded-lg text-sm flex items-center justify-center text-center",
+            error || errorParam
+              ? "bg-red-50 text-red-600 border border-red-100"
+              : "bg-accent-emerald/10 text-accent-emerald border border-accent-emerald/20"
+          )}>
+            {error || translateAuthError(errorParam) || messageParam}
           </div>
-        </div>
-      </div>
-    </div>
+        ) : null
+      }
+    >
+      {view === 'main' && renderMain()}
+      {view === 'email' && renderEmail()}
+      {view === 'otp' && renderOtp()}
+      {view === 'password' && renderPassword()}
+    </AuthScreen>
   )
 }
 

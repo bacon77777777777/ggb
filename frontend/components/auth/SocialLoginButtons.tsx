@@ -8,7 +8,38 @@ import { useToast } from '@/components/ui/Toast';
 import { native } from '@/lib/native/bridge';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { closeInAppBrowser, openPayment } from '@/lib/native/browser';
-import { LINE_ICON, GOOGLE_ICON } from '@/lib/inlineIcons';
+import { LINE_ICON, GOOGLE_ICON, APPLE_ICON } from '@/lib/inlineIcons';
+import { cn } from '@/lib/utils';
+
+/**
+ * 登入頁按鈕的共用底樣式（Figma 480:3532：327×48、圓角 6、字 16px、圖標 24px）。
+ * 這裡與 app/login/page.tsx 的「驗證碼登入」共用同一份，改一邊就會走鐘。
+ */
+export const LOGIN_BUTTON_BASE =
+  'flex h-12 w-full items-center justify-center gap-2.5 rounded-md text-[16px] leading-none transition-transform active:scale-[.99]';
+
+/**
+ * 圖標框與文字框都是**固定尺寸**，三顆按鈕才會對齊（Figma 480:3532）。
+ *
+ * 稿上三個標籤的文字節點都是 `180×45 @ 同一個 x`，也就是 90px 等寬置中；
+ * 圖標框一律 48×48（＝24 CSS）。先前用自動寬度 + 各自來源的圖，
+ * 「LINE登入／Google登入／Apple登入」三行的起點與圖標大小全都不一樣（老闆截圖）。
+ */
+const ICON_BOX = 'flex h-6 w-6 shrink-0 items-center justify-center';
+const LABEL_BOX = 'w-[90px] text-center';
+
+/** 三顆社群鈕的圖標：同一組 Figma 節點匯出，塞進同一個 24×24 框 */
+function BrandIcon({ src }: { src: string }) {
+  return (
+    <span className={ICON_BOX}>
+      <Image src={src} alt="" width={24} height={24} unoptimized className="h-6 w-6 object-contain" />
+    </span>
+  );
+}
+
+/** 白底描邊款（Google／Apple）：稿上是 1px #EFEFEF */
+export const LOGIN_BUTTON_OUTLINE =
+  'border border-[#EFEFEF] bg-white font-semibold text-[#686868] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200';
 
 /**
  * 社群登入
@@ -284,7 +315,6 @@ export function SocialLoginButtons() {
     popupRef.current = window.open(authorizeUrl(state), '_blank');
   };
 
-  if (!LINE_CHANNEL_ID) return null;
 
   /*
    * 「等待授權中…」那塊只給偽 app 看 —— 它的授權開在另一個視窗，玩家要自己
@@ -315,27 +345,52 @@ export function SocialLoginButtons() {
   }
 
   return (
-    <div className="flex flex-col gap-2.5 w-full">
+    <div className="flex w-full flex-col gap-4">
+      {/*
+        沒設 NEXT_PUBLIC_LINE_LOGIN_CHANNEL_ID 就不出 LINE 那顆（按了也只會被 LINE 擋）。
+        ⚠️ 這條 guard 原本是整個元件 `return null`，Google 與 Apple 會被一起藏掉 ——
+        本機沒有那把 key，登入頁就只剩「驗證碼登入」一顆，版面看起來像壞掉。
+        只藏該藏的那一顆。
+      */}
+      {LINE_CHANNEL_ID && (
       <button
         type="button"
         onClick={startLineLogin}
-        className="relative h-12 w-full rounded-xl border border-neutral-200 bg-white text-[15px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
+        /* 綠色與陰影照 Figma（#17C417 / 0 5px 8px rgba(17,194,17,.2)）。
+           note：LINE 官方品牌綠是 #06C755，稿上用的是另一支綠，以稿為準。 */
+        className={cn(
+          LOGIN_BUTTON_BASE,
+          'bg-[#17C417] text-white shadow-[0_5px_8px_rgba(17,194,17,0.2)]',
+        )}
       >
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center">
-          <Image src={LINE_ICON} alt="" width={22} height={22} unoptimized />
-        </span>
-        使用 LINE 帳號登入
+        <BrandIcon src={LINE_ICON} />
+        <span className={LABEL_BOX}>LINE登入</span>
       </button>
+      )}
+
       <button
         type="button"
         onClick={() => showToast('Google 登入即將開放', 'info')}
-        className="relative h-12 w-full rounded-xl border border-neutral-200 bg-white text-[15px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
+        className={cn(LOGIN_BUTTON_BASE, LOGIN_BUTTON_OUTLINE)}
       >
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center">
-          <Image src={GOOGLE_ICON} alt="" width={20} height={20} unoptimized />
-        </span>
-        使用 Google 帳號登入
+        <BrandIcon src={GOOGLE_ICON} />
+        <span className={LABEL_BOX}>Google登入</span>
+      </button>
+
+      {/*
+        Apple 登入：按鈕先上（稿上有），點了顯示「即將開放」——
+        Sign in with Apple 需要付費的 Apple Developer 帳號才能開通，
+        目前卡在公司登記（同 Google 卡統編）。開通後把 onClick 換成真流程即可。
+      */}
+      <button
+        type="button"
+        onClick={() => showToast('Apple 登入即將開放', 'info')}
+        className={cn(LOGIN_BUTTON_BASE, LOGIN_BUTTON_OUTLINE)}
+      >
+        <BrandIcon src={APPLE_ICON} />
+        <span className={LABEL_BOX}>Apple登入</span>
       </button>
     </div>
   );
 }
+

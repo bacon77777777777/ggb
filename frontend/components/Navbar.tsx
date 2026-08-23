@@ -547,9 +547,16 @@ function NavbarInner() {
   const isExchangeManagePage = pathname === '/exchange/manage';
   const exchangeManageView = searchParams.get('view') || '';
 
-  // Hide Navbar on Mission page and Auth pages (Login, Register, Forgot Password)
-  // Auth pages have their own custom top navigation
-  if (pathname === '/mission' || pathname === '/login' || pathname === '/register' || pathname === '/forgot-password') return null;
+  /* 任務頁與帳號流程各頁都有自己的頂部導航，隱藏全域 Navbar。
+     ⚠️ `/update-password` 先前漏在這裡：它會拿到一條白底頂欄（標題「重置密碼」），
+     疊在頁面自己的浮動返回箭頭上，變成兩個返回鍵（老闆 2026-08-23 截圖）。 */
+  if (
+    pathname === '/mission' ||
+    pathname === '/login' ||
+    pathname === '/register' ||
+    pathname === '/forgot-password' ||
+    pathname === '/update-password'
+  ) return null;
   if (pathname.startsWith('/events/')) return null;
   // 機台內頁改用頁內浮動導航（返回 + 音效），隱藏全域 Navbar
   if (/^\/challenge\/[^/]+$/.test(pathname)) return null;
