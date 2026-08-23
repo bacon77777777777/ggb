@@ -1039,10 +1039,16 @@ export default function GGBPackRip({
             /* 原本這裡還有一圈 conic-gradient 放射光，跟漩渦影片疊起來又亂又髒，
                改成只留柔光讓影片當主角。
 
-               `!flying` 是必要的：這層柔光釘在卡片的home位置、**不跟著 cardTransform 走**，
-               牌滑出去的那 380ms 它會原地留下一塊卡片形狀的亮框（老闆 2026-08-23 截圖）。
-               逐包壓軸上線後每一包都會看到，所以牌一開始飛就收掉。 */
-            <div style={{ ...S.auraGlow, boxShadow: `0 0 90px 30px ${T.glow}66` }} />
+               ⚠️ 這層柔光**必須跟著 cardTransform 走**，跟漩渦／電弧影片同一套做法。
+               先前它釘死在 cardArea 的中心：玩家一把卡片拖開，柔光就原地留下一塊
+               卡片形狀的亮框，看起來像背景有塊陰影（老闆 2026-08-23 截圖兩次）。
+               只擋 `flying` 不夠 —— 拖曳中根本還沒開始飛。 */
+            <div style={{
+              position: "absolute", inset: 0, zIndex: 6, pointerEvents: "none",
+              transform: cardTransform, transition: cardTransition,
+            }}>
+              <div style={{ ...S.auraGlow, boxShadow: `0 0 90px 30px ${T.glow}66` }} />
+            </div>
           )}
 
           {/* 底下的牌（卡背，往下露出、扇形微轉） */}
@@ -1261,7 +1267,8 @@ const S = {
     //    寬度會被夾在 100%，參數調了完全沒反應（實測 200% 與 150% 都算出 270px）。
     maxWidth: "none",
   },
-  auraGlow: { position: "absolute", inset: "8%", borderRadius: 20, zIndex: 6, pointerEvents: "none" },
+  /* 形狀而已；定位與 z-index 由外層那個跟著 cardTransform 走的容器負責 */
+  auraGlow: { position: "absolute", inset: "8%", borderRadius: 20, pointerEvents: "none" },
   prizeTag: {
     position: "absolute", top: -54, left: 0, right: 0, textAlign: "center", zIndex: 30,
     fontSize: 26, fontWeight: 900, letterSpacing: 3, animation: "ggbCardIn .5s cubic-bezier(.2,1.6,.4,1)",
