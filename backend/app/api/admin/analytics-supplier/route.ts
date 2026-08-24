@@ -25,6 +25,20 @@ function pct(cur: number, prev: number) {
   return Math.round((cur - prev) / prev * 1000) / 10
 }
 
+/**
+ * 排行榜用的同期成長率。**前期是 0 就回 null**（畫面顯示「新」），不要回 100%。
+ *
+ * 老闆 2026-08-24：「排行榜上面有 +100%，如果是同期兩倍成長就對，不是就不要顯示。」
+ * 判斷正確 —— `pct()` 的慣例是「前期 0、本期有」回 100，對 KPI 卡沒差，
+ * 但在逐項排行榜上，**每一個新上架／上期沒人搜的項目都會變成 +100%**，
+ * 看起來像翻倍成長，實際上是「這期才第一次出現」。兩者是完全不同的決策訊號。
+ * 營運儀表板的賞池表早就這樣處理了（prevSpend > 0 才算），這裡補上同一套。
+ */
+function pctOrNull(cur: number, prev: number): number | null {
+  if (!prev) return null
+  return Math.round((cur - prev) / prev * 1000) / 10
+}
+
 const CAT: Record<string, string> = {
   gacha: '轉蛋', ichiban: '一番賞', blindbox: '盒玩', card: '抽卡', custom: '自製賞',
 }
@@ -280,7 +294,7 @@ export async function GET(req: NextRequest) {
         .slice(0, 15)
         .map(([id, value], i) => ({
           rank: i + 1, id, name: nameById.get(id) ?? `#${id}`,
-          value, growth: pct(value, prev[id] ?? 0),
+          value, growth: pctOrNull(value, prev[id] ?? 0),
         }))
 
     const topViewed = toRanking(viewCur, viewPrev)
@@ -292,7 +306,7 @@ export async function GET(req: NextRequest) {
       .map(([id, v], i) => ({
         rank: i + 1, id, ...v,
         label: CAT[v.type] ?? v.type,
-        growth: pct(v.sales, prevByProduct[id] ?? 0),
+        growth: pctOrNull(v.sales, prevByProduct[id] ?? 0),
       }))
 
     return NextResponse.json({

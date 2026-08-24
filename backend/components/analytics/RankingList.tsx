@@ -12,7 +12,7 @@ import React from 'react'
  */
 export function RankingList({ title, data, limit = 10, extra }: {
   title: string
-  data: Array<{ name: string; value: number | string; change?: number }>
+  data: Array<{ name: string; value: number | string; change?: number | null }>
   limit?: number
   /** 標題列最右側，通常放藍色驚嘆號說明 */
   extra?: React.ReactNode
@@ -45,8 +45,10 @@ export function RankingList({ title, data, limit = 10, extra }: {
             </div>
             <div className="flex items-center gap-10 flex-shrink-0">
               {item.change !== undefined && (
-                <div className={`text-xs text-right w-16 ${item.change >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                  {item.change >= 0 ? '+' : ''}{item.change}%
+                /* change 為 null＝上期沒有這一項（新上架／上期沒人搜），顯示「新」而不是 +100%
+                   —— 那不是翻倍成長，是沒有比較基準（老闆 2026-08-24） */
+                <div className={`text-xs text-right w-16 ${item.change == null ? 'text-neutral-400' : item.change >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                  {item.change == null ? '新' : `${item.change >= 0 ? '+' : ''}${item.change}%`}
                 </div>
               )}
               <div className="text-right w-20">

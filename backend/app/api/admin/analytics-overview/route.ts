@@ -14,6 +14,12 @@ function pct(cur: number, prev: number) {
   return Math.round((cur - prev) / prev * 1000) / 10
 }
 
+/** 逐項排行用：前期為 0 回 null（畫面顯示「新」）。理由見 analytics-supplier 的同名函數 */
+function pctOrNull(cur: number, prev: number): number | null {
+  if (!prev) return null
+  return Math.round((cur - prev) / prev * 1000) / 10
+}
+
 export async function GET(req: NextRequest) {
   const session = await requireAdminSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -205,7 +211,7 @@ export async function GET(req: NextRequest) {
       .sort(([, a], [, b]) => b - a).slice(0, 8)
       .map(([keyword, count], i) => ({
         rank: i + 1, keyword, count,
-        growth: pct(count, kwPrevMap[keyword] ?? 0),
+        growth: pctOrNull(count, kwPrevMap[keyword] ?? 0),
       }))
 
     // Categories

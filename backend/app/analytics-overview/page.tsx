@@ -95,7 +95,7 @@ interface AnalyticsData {
     convRate: number
     bars: { label: string; sales: number; draws: number; visits: number; recharges: number }[]
     spark: { x: number; date: string; sales: number; draws: number; visits: number }[]
-    keywords: { rank: number; keyword: string; count: number; growth: number }[]
+    keywords: { rank: number; keyword: string; count: number; growth: number | null }[]
     topProducts: { name: string; value: number }[]
     peakHours: { hour: number; label: string; draws: number; visits: number }[]
     categories: { type: string; label: string; count: number; amount: number }[]

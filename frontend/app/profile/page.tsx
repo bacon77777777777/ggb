@@ -8,6 +8,9 @@ import { Modal } from '@/components/ui/Modal';
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
 import PageHeader from '@/components/ui/PageHeader';
 import { TopFadeBlur } from '@/components/ui/TopFadeBlur';
+import PrizeShareCard from '@/components/warehouse/PrizeShareCard';
+import DeliverySteps from '@/components/warehouse/DeliverySteps';
+import { fetchPrizeShareData, type PrizeShareData } from '@/lib/prizeShare';
 
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -2054,6 +2057,27 @@ function ProfileContent() {
     }
   };
 
+  /*
+   * 曬獎圖（老闆 2026-08-24）：勾**單一**大獎品項時底部多一顆「曬圖」。
+   * 按鈕的顯示條件用前台的 isMajorGrade 粗篩（免得每張卡都打一次 API），
+   * 真正的「是不是大獎」由 DB 的 get_prize_share_data 說（migration 610）——
+   * 前台判定改了就能亂曬，規則只能有一份。
+   */
+  const [shareData, setShareData] = useState<PrizeShareData | null>(null);
+  const [isLoadingShare, setIsLoadingShare] = useState(false);
+  const handleShareClick = async () => {
+    if (selectedForDelivery.length !== 1) return;
+    setIsLoadingShare(true);
+    try {
+      const d = await fetchPrizeShareData(supabase, selectedForDelivery[0]);
+      if (!d) { toast.error('讀不到獎品資料，請稍後再試'); return; }
+      if (!d.isMajor) { toast.info('只有大獎可以製作曬圖'); return; }
+      setShareData(d);
+    } finally {
+      setIsLoadingShare(false);
+    }
+  };
+
   const handleDismantleClick = () => {
     if (selectedForDelivery.length === 0) return;
 
@@ -2645,6 +2669,17 @@ function ProfileContent() {
                         </div>
                         <div className="flex-1 flex gap-2 justify-end">
                             <button onClick={handleDismantleClick} className="flex-1 bg-accent-red text-white h-[44px] rounded-xl text-base font-black">分解</button>
+                            {/* 曬圖：只在勾單一件、且賞等看起來是大獎時出現（真正判定在 DB） */}
+                            {selectedForDelivery.length === 1
+                              && warehouseItems.find(i => i.id === selectedForDelivery[0] && isMajorGrade(i.grade)) && (
+                              <button
+                                onClick={handleShareClick}
+                                disabled={isLoadingShare}
+                                className="flex-1 bg-[#6d3bd6] text-white h-[44px] rounded-xl text-base font-black disabled:opacity-60"
+                              >
+                                {isLoadingShare ? '處理中' : '曬圖'}
+                              </button>
+                            )}
                             {selectedForDelivery.length <= 10 && (
                               <>
                                 {/* 這顆按鈕寫的是交易所（marketplace）的資料，
@@ -3226,6 +3261,9 @@ function ProfileContent() {
             </div>
             {/* Delivery Modal */}
             <AnimatePresence>
+              {/* 曬獎圖彈窗（Canvas 合成，見 components/warehouse/PrizeShareCard） */}
+              {shareData && <PrizeShareCard data={shareData} onClose={() => setShareData(null)} />}
+
               {showDeliveryModal && (
                 <div className={cn("fixed inset-0 z-[100] flex justify-center bg-black/50 backdrop-blur-sm", isDesktop ? "items-center p-4" : "items-end p-0")}>
                   <motion.div 
@@ -3253,8 +3291,12 @@ function ProfileContent() {
                         <X className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
                       </button>
                     </div>
-                    <div className={cn("flex-1 overflow-y-auto", isDesktop ? "p-6 space-y-4" : "p-3 space-y-3")}>
-                      <div className={cn("bg-neutral-50 dark:bg-neutral-800 rounded-xl space-y-2", isDesktop ? "p-4" : "p-3")}>
+                    {/* 配送彈窗改用商城訂單彈層的語言（老闆 2026-08-24）：灰底 + 白色區塊卡（.blk）
+                        + 標籤／值兩欄列（.kv）+ 底部紅色主鈕（.abar）。欄位維持抽獎這邊原有的
+                        （件數／運費／抽籤價金／配送方式／門市／收件資料），只換視覺不動動線 ——
+                        倉庫勾選進來是單向流程，不是商城的「同一片 sheet 換內容」。*/}
+                    <div className={cn("flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-950", isDesktop ? "p-5 space-y-3" : "p-3 space-y-2.5")}>
+                      <div className={cn("bg-white dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-800 space-y-2", isDesktop ? "p-4" : "p-3")}>
                         <div className={cn("flex justify-between", isDesktop ? "text-sm" : "text-[13px]")}>
                           <span className="text-neutral-500 dark:text-neutral-400 font-bold">配送件數</span>
                           <span className="font-black text-neutral-900 dark:text-white">{selectedForDelivery.length.toLocaleString()} 件</span>
@@ -3287,7 +3329,7 @@ function ProfileContent() {
                           </div>
                         )}
                       </div>
-                      <div className="space-y-3">
+                      <div className={cn("bg-white dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-800 space-y-3", isDesktop ? "p-4" : "p-3")}>
                         <p className={cn("font-black text-neutral-900 dark:text-white", isDesktop ? "text-sm" : "text-[13px]")}>配送方式</p>
                         
                         {/* Logistics Type Selection */}
@@ -3296,9 +3338,9 @@ function ProfileContent() {
                             type="button"
                             onClick={() => setLogisticsType('HOME')}
                             className={cn(
-                              "flex-1 py-2.5 px-3 rounded-xl border-2 font-black text-sm transition-all",
+                              "flex-1 py-2.5 px-3 rounded-xl border font-bold text-sm transition-all",
                               logisticsType === 'HOME'
-                                ? "border-primary bg-primary/5 text-primary"
+                                ? "border-accent-red bg-accent-red/5 text-accent-red font-black"
                                 : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-500"
                             )}
                           >
@@ -3309,11 +3351,11 @@ function ProfileContent() {
                             onClick={() => !hasLargePackage && setLogisticsType('CVS')}
                             disabled={hasLargePackage}
                             className={cn(
-                              "flex-1 py-2.5 px-3 rounded-xl border-2 font-black text-sm transition-all",
+                              "flex-1 py-2.5 px-3 rounded-xl border font-bold text-sm transition-all",
                               hasLargePackage
                                 ? "border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600 cursor-not-allowed"
                                 : logisticsType === 'CVS'
-                                ? "border-primary bg-primary/5 text-primary"
+                                ? "border-accent-red bg-accent-red/5 text-accent-red font-black"
                                 : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-500"
                             )}
                           >
@@ -3497,7 +3539,7 @@ function ProfileContent() {
                         onClick={handleConfirmDelivery}
                         disabled={isSubmittingDelivery || !settingsForm.recipientName || !settingsForm.recipientPhone || (logisticsType === 'CVS' ? !storeId : !settingsForm.recipientAddress)}
                         className={cn(
-                          "flex-1 bg-primary text-white rounded-xl font-black shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100",
+                          "flex-1 bg-accent-red text-white rounded-xl font-black active:scale-[0.98] transition-transform disabled:opacity-50 disabled:active:scale-100",
                           isDesktop ? "h-[52px] text-lg" : "h-[44px] text-base"
                         )}
                       >
@@ -4428,7 +4470,7 @@ function ProfileContent() {
                             className={cn(
                               "sticky top-0 z-30 p-3 space-y-2 transition-colors cursor-pointer",
                               !isExpanded && "bg-white dark:bg-neutral-900 active:bg-neutral-50 dark:active:bg-neutral-800/50",
-                              isExpanded && "bg-yellow-50 dark:bg-yellow-950 border-b border-yellow-200 dark:border-yellow-800"
+                              isExpanded && "bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800"
                             )}
                           >
                             {/* Layer 1: ID & Date */}
@@ -4493,9 +4535,15 @@ function ProfileContent() {
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
-                                className="bg-yellow-50 dark:bg-yellow-950 border-t border-yellow-200 dark:border-yellow-800 overflow-hidden"
+                                className="bg-neutral-50 dark:bg-neutral-950 border-t border-neutral-100 dark:border-neutral-800 overflow-hidden"
                               >
                                 <div className="p-3 space-y-3">
+                                  {/* 配送進度（照商城訂單彈層那套步驟條，老闆 2026-08-24） */}
+                                  <div className="bg-white dark:bg-neutral-900 px-3 pb-2 pt-1 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+                                    {order.status === 'cancelled'
+                                      ? <div className="py-2 text-center text-[12px] font-bold text-neutral-400">訂單已結束</div>
+                                      : <DeliverySteps status={order.status} />}
+                                  </div>
                                   {/* Shipping Info */}
                                   <div className="bg-white dark:bg-neutral-900 p-3 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm space-y-2">
                                     <div className="flex items-center justify-between pb-2 border-b border-neutral-50 dark:border-neutral-800">
@@ -6654,7 +6702,7 @@ function ProfileContent() {
                     
                     {/* Bottom Row: Amount (Left) and Topup (Right) */}
                     <div className="flex justify-between items-end">
-                      <div className="text-[40px] leading-none font-black tracking-[0.05em] text-transparent bg-clip-text bg-gradient-to-b from-[#ffa800] to-white drop-shadow-sm font-amount">
+                      <div className="text-[40px] leading-none tracking-[0.05em] text-transparent bg-clip-text bg-gradient-to-b from-[#ffa800] to-white drop-shadow-sm font-amount" style={{ fontWeight: 800 }}>
                         {isGuest ? '0' : (user.tokens?.toLocaleString() || '0')}
                       </div>
                       

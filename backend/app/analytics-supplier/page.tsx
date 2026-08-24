@@ -39,8 +39,8 @@ const ColumnChart = dynamic(
 )
 
 interface Supplier { id: number | string; name: string }
-interface TopProduct { rank: number; id: string; name: string; type: string; label: string; draws: number; sales: number; growth: number }
-interface RankRow { rank: number; id: string; name: string; value: number; growth: number }
+interface TopProduct { rank: number; id: string; name: string; type: string; label: string; draws: number; sales: number; growth: number | null }
+interface RankRow { rank: number; id: string; name: string; value: number; growth: number | null }
 interface Payload {
   supplierName: string
   current: {
