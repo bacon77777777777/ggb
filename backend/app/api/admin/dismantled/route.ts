@@ -7,11 +7,34 @@ import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 const VALID_STATUS = ['pending', 'reused', 'scrapped'] as const
 type RecycleStatus = (typeof VALID_STATUS)[number]
 
-export async function GET() {
+export async function GET(request: Request) {
   const admin = await requireAdminSession()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const supabase = getSupabaseAdmin()
+  const url = new URL(request.url)
+
+  /*
+   * 品項庫存：回答「這件商品的這個賞，平台手上還有幾件」——
+   * 廠商要把回收品包成自製賞時，唯一需要的那個數字。
+   *
+   * ⚠️ 預設排除轉蛋／盒玩。那兩類回收後 dismantle_prizes 會 remaining +1
+   * 把庫存還回去，廠商實體根本沒動、之後還會再被抽走；但它們同樣會寫進
+   * admin_recycle_pool，所以池子裡有一半以上是幽靈。直接拿池子的數字
+   * 給廠商看會錯一半，聚合邏輯在 recycle_inventory_summary()（migration 618）。
+   */
+  if (url.searchParams.get('view') === 'inventory') {
+    const includeRestocked = url.searchParams.get('include_restocked') === '1'
+    const [{ data: rows, error }, { data: suppliersData }] = await Promise.all([
+      supabase.rpc('recycle_inventory_summary', {
+        p_include_restocked: includeRestocked,
+        p_supplier_id: null,
+      }),
+      supabase.from('suppliers').select('id, name').order('name'),
+    ])
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ rows: rows ?? [], suppliers: suppliersData ?? [] })
+  }
 
   const [{ data: botRows }, { data: suppliersData }] = await Promise.all([
     supabase.from('users').select('id').eq('is_bot', true),
