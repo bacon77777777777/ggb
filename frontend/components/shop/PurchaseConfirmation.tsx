@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { GAmount } from './PurchaseConfirmationModal';
-import { fetchProductPromotion, promoBonusDraws, type ProductPromotion } from '@/lib/promotions';
+import { fetchProductPromotion, fetchPromoQuote, promoBonusDraws, type ProductPromotion, type PromoQuote } from '@/lib/promotions';
 import { asset } from '@/lib/asset';
 
 type UserCoupon = Database['public']['Tables']['user_coupons']['Row'] & {
@@ -116,6 +116,21 @@ export function PurchaseConfirmation({
     ? 0
     : Math.max(0, Math.min(promoBonusDraws(promo, currentCount), remainingStock - currentCount));
 
+  /*
+   * 折扣型促銷試算（migration 608：前 N 抽折扣／每人首抽折扣）。
+   * 張數一變就重問伺服器 —— first_n 的配額全站共享，前端自己算會跟實際收費對不上。
+   * 只做顯示，實際價格由 play_ichiban 在同一筆交易內重算。
+   */
+  const [quote, setQuote] = useState<PromoQuote | null>(null);
+  useEffect(() => {
+    if (usePoints || currentCount < 1) { setQuote(null); return; }
+    let alive = true;
+    void fetchPromoQuote(createClient(), product.id, currentCount).then(q => {
+      if (alive) setQuote(q);
+    });
+    return () => { alive = false; };
+  }, [usePoints, currentCount, product.id]);
+
   const selectedCoupon = coupons.find(c => c.id === selectedCouponId);
   let discountAmount = 0;
 
@@ -130,7 +145,10 @@ export function PurchaseConfirmation({
     }
   }
 
-  const finalPrice = Math.max(0, totalPrice - discountAmount);
+  // 買 N 送 M 不折價；折扣型促銷（前 N 抽／首抽）才減金額，且與優惠券不併用（同 play_* 的規則）
+  const promoDiscount = usePoints ? 0 : (quote?.discount ?? 0);
+  const effectiveCouponDiscount = promoDiscount > 0 ? 0 : discountAmount;
+  const finalPrice = Math.max(0, totalPrice - effectiveCouponDiscount - promoDiscount);
   const pointsCost = totalPrice * 4;
   
   const isInsufficientTokens = userTokens < finalPrice;
@@ -405,10 +423,19 @@ export function PurchaseConfirmation({
                    <span>加贈 {promoBonusCount} 抽</span>
                 </div>
               )}
-              {discountAmount > 0 && !usePoints && (
+              {promoDiscount > 0 && !usePoints && (
+                <div className="flex justify-between items-center text-[13px] md:text-[15px] font-bold text-accent-red">
+                   <span>
+                     活動折扣{quote?.badgeText ? `（${quote.badgeText}）` : ''}
+                     {quote && quote.discountedCount < currentCount ? ` · 前 ${quote.discountedCount} 抽` : ''}
+                   </span>
+                   <GAmount value={promoDiscount} negative />
+                </div>
+              )}
+              {effectiveCouponDiscount > 0 && !usePoints && (
                 <div className="flex justify-between items-center text-[13px] md:text-[15px] font-bold text-accent-red">
                    <span>折扣金額</span>
-                   <GAmount value={discountAmount} negative />
+                   <GAmount value={effectiveCouponDiscount} negative />
                 </div>
               )}
 

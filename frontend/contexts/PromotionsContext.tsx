@@ -20,9 +20,14 @@ import { createClient } from '@/lib/supabase/client';
 export interface ProductPromotion {
   promotionId: number;
   badgeText: string;
-  type: 'bundle';
+  /** bundle=買N送M；first_n=前N抽折扣；first_per_user=每人首抽折扣（migration 608） */
+  type: 'bundle' | 'first_n' | 'first_per_user';
   buy: number;
   free: number;
+  /** 折扣型：折幾 % */
+  offPct: number;
+  /** first_n：總配額 */
+  n: number;
 }
 
 type State = {
@@ -49,15 +54,24 @@ export function PromotionsProvider({ children }: { children: React.ReactNode }) 
         const m = new Map<number, ProductPromotion>();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         for (const r of (data ?? []) as any[]) {
+          const type = String(r.type || 'bundle') as ProductPromotion['type'];
           const buy = Number(r.config?.buy) || 0;
           const free = Number(r.config?.free) || 0;
-          if (!buy || !free) continue;
+          const offPct = Number(r.config?.off_pct) || 0;
+          const n = Number(r.config?.n) || 0;
+          // 設定不完整的方案不掛角標：寧可沒標籤，也不要標一個算不出來的優惠
+          if (type === 'bundle' ? (!buy || !free) : !offPct) continue;
+          const fallbackBadge = type === 'bundle'
+            ? `買${buy}送${free}`
+            : type === 'first_n' ? `前${n}抽${(100 - offPct) / 10}折` : `首抽${(100 - offPct) / 10}折`;
           m.set(Number(r.product_id), {
             promotionId: Number(r.promotion_id),
-            badgeText: String(r.badge_text || `買${buy}送${free}`),
-            type: 'bundle',
+            badgeText: String(r.badge_text || fallbackBadge),
+            type,
             buy,
             free,
+            offPct,
+            n,
           });
         }
         if (!cancelled) setByProduct(m);

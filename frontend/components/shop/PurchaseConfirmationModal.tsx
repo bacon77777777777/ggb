@@ -11,7 +11,7 @@ import { Database } from '@/types/database.types';
 import { cn } from '@/lib/utils';
 import { useAlert } from '@/components/ui/AlertDialog';
 import Image from 'next/image';
-import { fetchProductPromotion, promoBonusDraws, type ProductPromotion } from '@/lib/promotions';
+import { fetchProductPromotion, fetchPromoQuote, promoBonusDraws, type ProductPromotion, type PromoQuote } from '@/lib/promotions';
 import { asset } from '@/lib/asset';
 
 type UserCoupon = Database['public']['Tables']['user_coupons']['Row'] & {
@@ -168,6 +168,21 @@ export function PurchaseConfirmationModal({
   // Freeze displayed quantity during processing so prices stay consistent with button selection
   const effectiveQuantity = isProcessing ? processingQuantityRef.current : quantity;
 
+  /*
+   * 折扣型促銷試算（migration 608：前 N 抽折扣／每人首抽折扣）。
+   * 數量一變就重問伺服器 —— first_n 的配額是全站共享的，別人抽走了折扣就會變少，
+   * 前端自己算會跟實際收費對不上。**這裡只做顯示**，真正的價格由 play_* 重算。
+   */
+  const [quote, setQuote] = useState<PromoQuote | null>(null);
+  useEffect(() => {
+    if (!isOpen || usePoints || effectiveQuantity < 1) { setQuote(null); return; }
+    let alive = true;
+    void fetchPromoQuote(createClient(), product.id, effectiveQuantity).then(q => {
+      if (alive) setQuote(q);
+    });
+    return () => { alive = false; };
+  }, [isOpen, usePoints, effectiveQuantity, product.id]);
+
   // Calculations
   const totalPrice = product.price * effectiveQuantity;
 
@@ -193,8 +208,11 @@ export function PurchaseConfirmationModal({
     }
   }
 
-  // 促銷不折價（收全額，多送的是抽數），只有優惠券會減金額
-  const finalPrice = Math.max(0, totalPrice - discountAmount);
+  // 買 N 送 M 不折價（收全額，多送的是抽數）；折扣型促銷（前 N 抽／首抽）才會減金額。
+  // 優惠券與折扣型促銷不併用 —— 跟 play_* 的規則一致（那邊 v_promo_discount > 0 就不吃券）
+  const promoDiscount = usePoints ? 0 : (quote?.discount ?? 0);
+  const effectiveCouponDiscount = promoDiscount > 0 ? 0 : discountAmount;
+  const finalPrice = Math.max(0, totalPrice - effectiveCouponDiscount - promoDiscount);
   const pointsCost = totalPrice * 4;
   
   // Calculate remaining balance after purchase for immediate feedback
@@ -484,10 +502,19 @@ export function PurchaseConfirmationModal({
                             <span>加贈 {promoBonusCount} 抽</span>
                         </div>
                       )}
-                      {discountAmount > 0 && !usePoints && (
+                      {promoDiscount > 0 && !usePoints && (
+                        <div className={cn("flex justify-between items-center font-bold text-accent-red", isDesktop ? "text-[15px]" : "text-[13px]")}>
+                            <span>
+                              活動折扣{quote?.badgeText ? `（${quote.badgeText}）` : ''}
+                              {quote && quote.discountedCount < effectiveQuantity ? ` · 前 ${quote.discountedCount} 抽` : ''}
+                            </span>
+                            <GAmount value={promoDiscount} negative />
+                        </div>
+                      )}
+                      {effectiveCouponDiscount > 0 && !usePoints && (
                         <div className={cn("flex justify-between items-center font-bold text-accent-red", isDesktop ? "text-[15px]" : "text-[13px]")}>
                             <span>折扣金額</span>
-                            <GAmount value={discountAmount} negative />
+                            <GAmount value={effectiveCouponDiscount} negative />
                         </div>
                       )}
                       

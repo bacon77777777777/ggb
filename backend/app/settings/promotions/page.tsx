@@ -14,16 +14,22 @@ import { formatDateTime } from '@/utils/dateFormat'
 /**
  * 促銷方案
  *
- * 目前只有「買 N 送 M」。在轉蛋平台上「買」就是「抽」，所以買五送一的意思是
- * 付 5 抽的錢、平台多送 1 抽 —— 玩家拿 6 顆、庫存扣 6，收入不打折（migration 517）。
+ * 三種型別：
+ *   買 N 送 M（bundle）      付 5 抽的錢多送 1 抽 —— 庫存扣 6，收入不打折（migration 517）
+ *   前 N 抽折扣（first_n）    全站共享配額，前 N 個付費抽打折，搶完為止（migration 608）
+ *   首抽折扣（first_per_user）每人在該商品的付費首抽打折、限一次（migration 608）
+ * 折扣一律由 play_ichiban／play_gacha 在伺服器端算，前端只顯示。
  *
  * 適用範圍掛在分類上時，之後往那個分類丟商品會自動繼承，不必逐一設定。
  */
 
+type PromoType = 'bundle' | 'first_n' | 'first_per_user'
+
 interface Promo {
   id: number
   name: string
-  config: { buy?: number; free?: number }
+  type: PromoType
+  config: { buy?: number; free?: number; n?: number; off_pct?: number }
   badge_text: string | null
   scope: 'product' | 'category' | 'all'
   starts_at: string | null
@@ -37,7 +43,7 @@ interface Promo {
 }
 
 const EMPTY = {
-  name: '', buy: '5', free: '1', badgeText: '',
+  name: '', type: 'bundle' as PromoType, buy: '5', free: '1', n: '100', offPct: '20', badgeText: '',
   scope: 'category' as 'category' | 'all',
   startsAt: '', endsAt: '', priority: '0',
   categoryIds: [] as string[],
@@ -84,8 +90,11 @@ export default function PromotionsPage() {
     setEditingId(p.id)
     setForm({
       name: p.name,
+      type: (p.type ?? 'bundle') as PromoType,
       buy: String(p.config?.buy ?? 5),
       free: String(p.config?.free ?? 1),
+      n: String(p.config?.n ?? 100),
+      offPct: String(p.config?.off_pct ?? 20),
       badgeText: p.badge_text ?? '',
       scope: p.scope === 'all' ? 'all' : 'category',
       startsAt: toLocalInput(p.starts_at),
@@ -108,7 +117,9 @@ export default function PromotionsPage() {
         body: JSON.stringify({
           ...(editingId ? { id: editingId } : {}),
           ...form,
-          buy: Number(form.buy), free: Number(form.free), priority: Number(form.priority),
+          buy: Number(form.buy), free: Number(form.free),
+          n: Number(form.n), offPct: Number(form.offPct),
+          priority: Number(form.priority),
         }),
       })
       const json = await res.json()
@@ -148,7 +159,11 @@ export default function PromotionsPage() {
         <div>
           <div>{p.name}</div>
           <div className="mt-0.5 text-xs text-neutral-400">
-            抽 {(p.config?.buy ?? 0) + (p.config?.free ?? 0)} 次收 {p.config?.buy ?? 0} 次的錢
+            {p.type === 'first_n'
+              ? `前 ${p.config?.n ?? 0} 個付費抽打 ${(100 - (p.config?.off_pct ?? 0)) / 10} 折（全站共享）`
+              : p.type === 'first_per_user'
+                ? `每人首抽打 ${(100 - (p.config?.off_pct ?? 0)) / 10} 折（限一次）`
+                : `抽 ${(p.config?.buy ?? 0) + (p.config?.free ?? 0)} 次收 ${p.config?.buy ?? 0} 次的錢`}
           </div>
         </div>
       ),
@@ -220,8 +235,9 @@ export default function PromotionsPage() {
     <AdminLayout pageTitle="促銷方案">
       <div className="space-y-6">
         <p className="text-sm text-neutral-500">
-          買 N 送 M。在轉蛋平台上「買」就是「抽」—— 買五送一的意思是付 5 抽的錢多送 1 抽，
-          玩家拿 6 顆、庫存扣 6，收入不打折。
+          三種玩法：<b>買 N 送 M</b>（付 5 抽的錢多送 1 抽、庫存扣 6、收入不打折）、
+          <b>前 N 抽折扣</b>（全站前 N 個付費抽打折，搶完為止）、
+          <b>首抽折扣</b>（每人在該商品第一次付費抽打折，限一次）。折扣由伺服器端計價，玩家改不了。
         </p>
 
         <ListTableCard
@@ -246,24 +262,62 @@ export default function PromotionsPage() {
             <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="例：夏日買五送一" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-neutral-500">買幾抽</label>
-              <Input type="number" min={1} value={form.buy} onChange={e => setForm(f => ({ ...f, buy: e.target.value }))} />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-neutral-500">送幾抽</label>
-              <Input type="number" min={1} value={form.free} onChange={e => setForm(f => ({ ...f, free: e.target.value }))} />
-            </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-neutral-500">促銷型別</label>
+            <SelectField value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as PromoType }))}>
+              <option value="bundle">買 N 送 M（多送抽數，收入不打折）</option>
+              <option value="first_n">前 N 抽折扣（全站共享配額）</option>
+              <option value="first_per_user">首抽折扣（每人限一次）</option>
+            </SelectField>
           </div>
-          <p className="-mt-2 text-xs text-neutral-400">
-            玩家買滿 {Number(form.buy) || 0} 抽就多送 {Number(form.free) || 0} 抽（庫存多扣 {Number(form.free) || 0}）。買不滿不送，前台會提示還差幾抽。
-          </p>
+
+          {form.type === 'bundle' ? (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-neutral-500">買幾抽</label>
+                  <Input type="number" min={1} value={form.buy} onChange={e => setForm(f => ({ ...f, buy: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-neutral-500">送幾抽</label>
+                  <Input type="number" min={1} value={form.free} onChange={e => setForm(f => ({ ...f, free: e.target.value }))} />
+                </div>
+              </div>
+              <p className="-mt-2 text-xs text-neutral-400">
+                玩家買滿 {Number(form.buy) || 0} 抽就多送 {Number(form.free) || 0} 抽（庫存多扣 {Number(form.free) || 0}）。買不滿不送，前台會提示還差幾抽。
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                {form.type === 'first_n' && (
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-neutral-500">前幾抽</label>
+                    <Input type="number" min={1} value={form.n} onChange={e => setForm(f => ({ ...f, n: e.target.value }))} />
+                  </div>
+                )}
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-neutral-500">折扣百分比（1～90）</label>
+                  <Input type="number" min={1} max={90} value={form.offPct} onChange={e => setForm(f => ({ ...f, offPct: e.target.value }))} />
+                </div>
+              </div>
+              <p className="-mt-2 text-xs text-neutral-400">
+                {form.type === 'first_n'
+                  ? `全站合計前 ${Number(form.n) || 0} 個付費抽，每抽折 ${Number(form.offPct) || 0}%（打 ${(100 - (Number(form.offPct) || 0)) / 10} 折）。額度用完就恢復原價，一次抽多顆只有還在額度內的那幾抽有折。`
+                  : `每個玩家在該商品的第一次付費抽折 ${Number(form.offPct) || 0}%（打 ${(100 - (Number(form.offPct) || 0)) / 10} 折），一人限一次。抽過這檔商品的老玩家不適用。`}
+                {' '}折扣上限 90%，積分支付與優惠券不併用。
+              </p>
+            </>
+          )}
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-neutral-500">卡片標籤</label>
             <Input value={form.badgeText} onChange={e => setForm(f => ({ ...f, badgeText: e.target.value }))}
-              placeholder={`留空自動用「買${form.buy}送${form.free}」`} />
+              placeholder={form.type === 'bundle'
+                ? `留空自動用「買${form.buy}送${form.free}」`
+                : form.type === 'first_n'
+                  ? `留空自動用「前${form.n}抽${(100 - (Number(form.offPct) || 0)) / 10}折」`
+                  : `留空自動用「首抽${(100 - (Number(form.offPct) || 0)) / 10}折」`} />
           </div>
 
           {/* 掛鉤定案：方案這邊只圈「分類」（可留空）；圈單一商品

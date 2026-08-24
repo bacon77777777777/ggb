@@ -14,6 +14,34 @@ export const runtime = 'nodejs'
  */
 
 const VALID_SCOPE = ['product', 'category', 'all']
+/**
+ * 促銷型別（migration 608）：
+ *   bundle          買 N 送 M（收入不打折、多送庫存）
+ *   first_n         全站前 N 個付費抽打折（配額共享，搶完為止）
+ *   first_per_user  每人在該商品的付費首抽打折（限一次）
+ * 折扣一律在 play_ichiban／play_gacha 伺服器端算，這裡只存設定。
+ */
+const VALID_TYPE = ['bundle', 'first_n', 'first_per_user']
+
+/** 依型別組 config 與預設標籤；不合法回 { error } */
+function buildTypeConfig(b: Record<string, unknown>) {
+  const type = String(b?.type ?? 'bundle')
+  if (!VALID_TYPE.includes(type)) return { error: '促銷型別不正確' }
+  if (type === 'bundle') {
+    const buy = Number(b?.buy), free = Number(b?.free)
+    if (!(buy >= 1) || !(free >= 1)) return { error: '買幾抽送幾抽要大於 0' }
+    return { type, config: { buy, free }, defaultBadge: `買${buy}送${free}` }
+  }
+  const offPct = Number(b?.offPct)
+  // 上限 90：全免會被小號蹭爆，而且 0 元抽獎在帳上也很難解釋
+  if (!(offPct >= 1) || offPct > 90) return { error: '折扣百分比請填 1～90' }
+  if (type === 'first_n') {
+    const n = Number(b?.n)
+    if (!(n >= 1)) return { error: '前幾抽要大於 0' }
+    return { type, config: { n, off_pct: offPct }, defaultBadge: `前${n}抽${(100 - offPct) / 10}折` }
+  }
+  return { type, config: { off_pct: offPct }, defaultBadge: `首抽${(100 - offPct) / 10}折` }
+}
 
 export async function GET() {
   const session = await requireAdminSession()
@@ -58,12 +86,11 @@ export async function POST(request: Request) {
     const b = await request.json()
     const name = String(b?.name ?? '').trim()
     const scope = String(b?.scope ?? '')
-    const buy = Number(b?.buy)
-    const free = Number(b?.free)
 
     if (!name) return NextResponse.json({ error: '請輸入方案名稱' }, { status: 400 })
     if (!VALID_SCOPE.includes(scope)) return NextResponse.json({ error: '適用範圍不正確' }, { status: 400 })
-    if (!(buy >= 1) || !(free >= 1)) return NextResponse.json({ error: '買幾抽送幾抽要大於 0' }, { status: 400 })
+    const typed = buildTypeConfig(b)
+    if ('error' in typed) return NextResponse.json({ error: typed.error }, { status: 400 })
 
     const targets: { product_id?: number; category_id?: string }[] =
       scope === 'product' ? (b?.productIds ?? []).map((id: number) => ({ product_id: Number(id) }))
@@ -78,9 +105,9 @@ export async function POST(request: Request) {
     const supabase = getSupabaseAdmin()
     const { data: promo, error } = await supabase.from('promotions').insert({
       name,
-      type: 'bundle',
-      config: { buy, free },
-      badge_text: String(b?.badgeText ?? '').trim() || `買${buy}送${free}`,
+      type: typed.type,
+      config: typed.config,
+      badge_text: String(b?.badgeText ?? '').trim() || typed.defaultBadge,
       scope,
       starts_at: b?.startsAt || null,
       ends_at: b?.endsAt || null,
@@ -102,7 +129,7 @@ export async function POST(request: Request) {
     await logAdminAction({
       adminId: session.adminId, action: '建立促銷方案',
       targetType: 'promotions', targetId: String(promo.id),
-      detail: { name, scope, buy, free }, ip: getClientIp(request),
+      detail: { name, scope, type: typed.type, config: typed.config }, ip: getClientIp(request),
     })
     return NextResponse.json({ id: promo.id })
   } catch (e: unknown) {
@@ -135,11 +162,12 @@ export async function PATCH(request: Request) {
     if (!name) return NextResponse.json({ error: '請輸入方案名稱' }, { status: 400 })
     patch.name = name
   }
-  if (b.buy !== undefined || b.free !== undefined) {
-    const buy = Number(b.buy), free = Number(b.free)
-    if (!(buy >= 1) || !(free >= 1)) return NextResponse.json({ error: '買幾抽送幾抽要大於 0' }, { status: 400 })
-    patch.config = { buy, free }
-    if (b.badgeText !== undefined && !String(b.badgeText).trim()) patch.badge_text = `買${buy}送${free}`
+  if (b.type !== undefined || b.buy !== undefined || b.free !== undefined || b.n !== undefined || b.offPct !== undefined) {
+    const typed = buildTypeConfig(b)
+    if ('error' in typed) return NextResponse.json({ error: typed.error }, { status: 400 })
+    patch.type = typed.type
+    patch.config = typed.config
+    if (b.badgeText !== undefined && !String(b.badgeText).trim()) patch.badge_text = typed.defaultBadge
   }
   if (b.badgeText !== undefined && String(b.badgeText).trim()) patch.badge_text = String(b.badgeText).trim()
   if (b.scope !== undefined) {

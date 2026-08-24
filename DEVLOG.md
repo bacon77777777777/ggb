@@ -4,6 +4,41 @@
 
 ---
 
+## v2026.08.24b｜2026-08-24｜促銷新增兩種折扣型：前 N 抽折扣（A）與每人首抽折扣（B）
+
+老闆 2026-08-24：促銷「前幾抽折扣」A、B 兩種都做。
+
+**型別**（migration 608，`promotions.type` 從只有 bundle 放寬成三種）
+- `first_n`：`{"n": 100, "off_pct": 20}` ＝ **全站合計**前 100 個付費抽打 8 折。配額看
+  `promotion_redemptions` 的 `draw_count` 累計，搶完恢復原價；一次抽多顆時只有還在額度內的那幾抽有折
+  （抽 4 抽但只剩 3 個額度 → 折 3 抽）。呼叫端在商品鎖內執行，配額不會超發。
+- `first_per_user`：`{"off_pct": 50}` ＝ **每人**在該商品的付費首抽 5 折、限一次。
+  判定「沒領過這檔促銷 **且** 沒抽過這個商品」，老玩家不適用、小號要重新註冊才蹭得到。
+- 兩型共通：折扣上限 90%（全免會被小號蹭爆、帳也難解釋）；積分支付不吃；**與優惠券不併用**
+  （play_* 的 coupon 條件加了 `v_promo_discount = 0`）；同商品同時間只會套一個促銷
+  （`get_product_promotion` 取優先權最高的），所以不會跟買 N 送 M 疊加。
+
+**計價位置**：折扣寫在 `play_ichiban`／`play_gacha` 的伺服器端計價段（函數本體取自現行版、
+兩環境 md5 相同，只插入 DECLARE 三個變數＋折扣段＋優惠券互斥條件）。**前端傳什麼都不影響收費。**
+用量記 `promotion_redemptions`（`bonus_count = 0` 區分於買 N 送 M，`discount` 是折抵金額）。
+
+**前台試算** `promo_discount_quote(product_id, count)`：伺服器同一套邏輯的唯讀版，回
+discount／discounted_count／off_pct／badge_text。購買彈窗（轉蛋 `PurchaseConfirmationModal`、
+一番賞 `PurchaseConfirmation`）數量一變就重問 —— first_n 的配額全站共享，前端自己算會跟實收對不上。
+金額列新增「活動折扣（標籤）」，額度不夠時附註「· 前 N 抽」。商品卡角標沿用 `badge_text`
+（`PromotionsContext` 支援新型別，設定不完整的方案不掛標籤）。
+
+**後台**：促銷方案頁加「促銷型別」下拉，依型別切換欄位（買 N 送 M：買幾抽/送幾抽；
+前 N 抽：前幾抽＋折扣%；首抽：折扣%），列表副標與預設標籤（`前50抽8折`／`首抽5折`）跟著型別走。
+API 的型別驗證抽成 `buildTypeConfig()`，POST／PATCH 共用。
+
+**驗證**（STG 交易內實測後 ROLLBACK）：單價 200 →
+A：抽 2 抽收 320（折 80），配額用掉 2 後再問 4 抽只折 3 抽；
+B：3 抽收 500（首抽折 100），同帳號再抽 2 抽收 400（不再折）。
+瀏覽器：商品卡角標、購買彈窗「商品總額 200 / 活動折扣（前50抽8折）−40 / 實付 160」皆正確。
+兩環境 migration 已執行，測試用促銷已清除。
+---
+
 ## v2026.08.24a｜2026-08-24｜宅配報錯與門市地圖卡住（PROD 補課）；收件資料驗證；暱稱去信箱化；餘額字級
 
 **① 宅配「function delivery_has_large_item does not exist」**
