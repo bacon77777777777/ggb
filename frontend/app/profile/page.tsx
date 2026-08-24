@@ -1903,7 +1903,9 @@ function ProfileContent() {
     setStoreName(sName || '');
     setStoreAddress(sAddr || '');
     if (!hasLargePackage) setLogisticsType('CVS');
-    if (lSub) setLogisticsSubType(lSub as 'UNIMART' | 'FAMI' | 'HILIFE' | 'OKMART');
+    // 後端已把綠界的 UNIMARTC2C 還原成品牌代號，這裡再擋一次：
+    // 舊的 cvs_pending_selections 可能還留著帶後綴的值，直接塞進 state 會讓超商按鈕全部不亮
+    if (lSub) setLogisticsSubType(lSub.replace(/C2C$/i, '') as 'UNIMART' | 'FAMI' | 'HILIFE' | 'OKMART');
     setShowDeliveryModal(true);
     if (cvsPollingRef.current) { clearInterval(cvsPollingRef.current); cvsPollingRef.current = null; }
     setPendingCvsToken(null);
@@ -3476,7 +3478,9 @@ function ProfileContent() {
                                   { id: 'UNIMART', label: '7-11' },
                                   { id: 'FAMI', label: '全家' },
                                   { id: 'HILIFE', label: '萊爾富' },
-                                  { id: 'OKMART', label: 'OK超商' }
+                                  // OK超商拿掉：綠界的店到店已停止此服務，點下去地圖只會回
+                                  // 「OK超商暫停服務(若有寄件需求，請使用711、全家、萊爾富)」。
+                                  // 後台運費設定的 OK 那欄先留著，恢復服務時把這行加回來就好。
                                 ].map((store) => (
                                   <button
                                     key={store.id}
@@ -6774,7 +6778,8 @@ function ProfileContent() {
                     
                     {/* Bottom Row: Amount (Left) and Topup (Right) */}
                     <div className="flex justify-between items-end">
-                      <div className="text-[40px] leading-none tracking-[0.05em] text-transparent bg-clip-text bg-gradient-to-b from-[#ffa800] to-white drop-shadow-sm font-amount" style={{ fontWeight: 800 }}>
+                      {/* 字距回到 tracking-tight：字級從 36 拉到 40 那次順手放寬成 0.05em，數字被拉開變得像分開的（老闆 2026-08-24）。站上其他金額用的也是負字距。 */}
+                      <div className="text-[40px] leading-none tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-[#ffa800] to-white drop-shadow-sm font-amount" style={{ fontWeight: 800 }}>
                         {isGuest ? '0' : (user.tokens?.toLocaleString() || '0')}
                       </div>
                       
@@ -7494,7 +7499,7 @@ function ProfileContent() {
                   { id: 'UNIMART', label: '7-11' },
                   { id: 'FAMI', label: '全家' },
                   { id: 'HILIFE', label: '萊爾富' },
-                  { id: 'OKMART', label: 'OK超商' }
+                  // OK超商已停止店到店服務（同上面出貨彈窗那份）
                 ].map((store) => (
                   <button
                     key={store.id}

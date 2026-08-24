@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateLogisticsParams } from '@/lib/ecpay_logistics'
+import { generateLogisticsParams, toEcpayCvsSubType } from '@/lib/ecpay_logistics'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
 
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       {
         MerchantTradeNo:   order.order_number,
         LogisticsType:     logisticsType,
-        LogisticsSubType:  logisticsSubType,
+        LogisticsSubType:  toEcpayCvsSubType(logisticsSubType),   // 品牌代號 → 綠界的 B2C／C2C 代號
         GoodsAmount:       Math.max(1, order.shipping_fee || 1),
         GoodsName:         'GGB吉吉比商品',
         SenderName:        senderName,

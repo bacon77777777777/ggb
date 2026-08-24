@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateMapParams } from '@/lib/ecpay_logistics'
+import { generateMapParams, toEcpayCvsSubType } from '@/lib/ecpay_logistics'
 
 /**
  * GET：給 App 用（老闆 2026-08-24：不要跳轉出去 Safari）。
@@ -55,7 +55,10 @@ async function buildMapPage(req: NextRequest, logisticsSubType: string, requestI
       ? `${baseUrl}/api/logistics/map-callback?request_id=${encodeURIComponent(requestId)}`
       : `${baseUrl}/api/logistics/map-callback`
 
-    const params = generateMapParams(merchantTradeNo, logisticsSubType, callbackUrl, MerchantID, HashKey, HashIV)
+    // 前台送品牌代號（UNIMART…），這裡才依廠商編號開通的是 B2C 還是 C2C 補後綴
+    const ecpaySubType = toEcpayCvsSubType(logisticsSubType)
+
+    const params = generateMapParams(merchantTradeNo, ecpaySubType, callbackUrl, MerchantID, HashKey, HashIV)
 
     const inputs = Object.entries(params)
       .map(([k, v]) => `<input type="hidden" name="${k}" value="${v.replace(/"/g, '&quot;')}" />`)

@@ -110,6 +110,38 @@ export function generateLogisticsParams(
   return params
 }
 
+/**
+ * 超商代號的 B2C／C2C 兩套寫法（UNIMART vs UNIMARTC2C）
+ *
+ * 一組廠商編號只會開通其中一套，送錯那套綠界會回
+ * 「找不到加密金鑰，請確認是否有申請開通此物流方式!」——
+ * 2026-08-24 老闆在 App 點「選擇取貨門市」看到的白畫面就是這句：
+ * 前台送的是 B2C 的 `UNIMART`，而 env 裡的是綠界 C2C 測試帳號（2000933）。
+ *
+ * 所以站內（前台 state、orders.logistics_subtype）一律只存**品牌代號**
+ * UNIMART / FAMI / HILIFE，要送去綠界前才在這裡補後綴。
+ * 之後申請到正式合約，是 B2C 就把 `ECPAY_LOGISTICS_MODE=B2C` 設上去，
+ * DB 與前台都不用動。宅配（TCAT／POST）不經過轉換，原樣送出。
+ */
+const CVS_BRANDS = ['UNIMART', 'FAMI', 'HILIFE', 'OKMART'] as const
+export type CvsBrand = (typeof CVS_BRANDS)[number]
+
+/** 綠界回來的 `UNIMARTC2C` → 站內的 `UNIMART`；不是超商代號就回 null */
+export function cvsBrandOf(subType: string): CvsBrand | null {
+  const upper = (subType || '').trim().toUpperCase()
+  const brand = upper.endsWith('C2C') ? upper.slice(0, -3) : upper
+  return (CVS_BRANDS as readonly string[]).includes(brand) ? (brand as CvsBrand) : null
+}
+
+/** 站內的 `UNIMART` → 送給綠界的 `UNIMARTC2C`（或 B2C 模式下維持 `UNIMART`） */
+export function toEcpayCvsSubType(subType: string): string {
+  const brand = cvsBrandOf(subType)
+  if (!brand) return subType    // TCAT／POST 等宅配代號原樣送出
+  // OK超商只有店到店（C2C），沒有 B2C 版本
+  const b2c = (process.env.ECPAY_LOGISTICS_MODE || 'C2C').toUpperCase() === 'B2C'
+  return b2c && brand !== 'OKMART' ? brand : `${brand}C2C`
+}
+
 export function generateMapParams(
   merchantTradeNo: string,
   logisticsSubType: string,

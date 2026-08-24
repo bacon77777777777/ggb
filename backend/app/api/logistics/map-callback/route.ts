@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { cvsBrandOf } from '@/lib/ecpay_logistics'
 
 // 綠界選店地圖 callback：明文 form POST，不需要解密
 export async function POST(req: NextRequest) {
@@ -10,7 +11,10 @@ export async function POST(req: NextRequest) {
     const storeId          = String(formData.get('CVSStoreID')      || '')
     const storeName        = String(formData.get('CVSStoreName')     || '')
     const storeAddress     = String(formData.get('CVSAddress')       || '')
-    const logisticsSubType = String(formData.get('LogisticsSubType') || 'UNIMARTC2C')
+    // 綠界回的是 UNIMARTC2C 這種帶後綴的寫法，站內一律只存品牌代號，
+    // 不然前台的「已選超商」按鈕會對不上、orders 也會混兩種值
+    const rawSubType       = String(formData.get('LogisticsSubType') || 'UNIMARTC2C')
+    const logisticsSubType = cvsBrandOf(rawSubType) || rawSubType
     const requestId        = url.searchParams.get('request_id') || ''
 
     console.log('ECPay Map Callback:', { storeId, storeName, storeAddress, logisticsSubType, requestId })

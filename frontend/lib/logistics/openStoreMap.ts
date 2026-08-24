@@ -16,7 +16,11 @@ import { openInAppBrowser } from '@/lib/native/browser';
  * ServerReplyURL 都在後端算與收，前台沒有金鑰。
  */
 export interface StoreMapOptions {
-  /** UNIMARTC2C / FAMIC2C / HILIFEC2C / OKMARTC2C */
+  /**
+   * 品牌代號 UNIMART / FAMI / HILIFE。**不要在這裡加 C2C 後綴** ——
+   * 要送 B2C 還是 C2C 由後端 `toEcpayCvsSubType()` 依廠商編號決定，
+   * 前台猜錯綠界只會回「找不到加密金鑰」一片白。
+   */
   logisticsSubType: string;
   /** 這一趟的識別碼，回呼寫進 cvs_pending_selections，前台靠它輪詢 */
   requestId: string;
