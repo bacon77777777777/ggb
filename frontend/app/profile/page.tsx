@@ -2383,9 +2383,9 @@ function ProfileContent() {
 
   /*
    * 曬獎圖（老闆 2026-08-24）：勾**單一**大獎品項時底部多一顆「曬圖」。
-   * 按鈕的顯示條件用前台的 isMajorGrade 粗篩（免得每張卡都打一次 API），
-   * 真正的「是不是大獎」由 DB 的 get_prize_share_data 說（migration 610）——
-   * 前台判定改了就能亂曬，規則只能有一份。
+   * 不分賞等，勾單一件就能曬（老闆 2026-08-25）。
+   * `get_prize_share_data` 仍會回 `is_major`，只是前台不再拿它當門檻 ——
+   * 那個欄位留著，哪天要依賞等換模板或加標記時直接可以用。
    */
   const [shareData, setShareData] = useState<PrizeShareData | null>(null);
   const [isLoadingShare, setIsLoadingShare] = useState(false);
@@ -2395,7 +2395,6 @@ function ProfileContent() {
     try {
       const d = await fetchPrizeShareData(supabase, selectedForDelivery[0]);
       if (!d) { toast.error('讀不到獎品資料，請稍後再試'); return; }
-      if (!d.isMajor) { toast.info('只有大獎可以製作曬圖'); return; }
       setShareData(d);
     } finally {
       setIsLoadingShare(false);
@@ -3015,7 +3014,7 @@ function ProfileContent() {
                       <div className="divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
                         {filteredDismantledItems.map((item) => (
                           <div key={item.id} className="flex items-center gap-3 px-4 py-2">
-                            <div className="relative w-[56px] h-[56px] rounded-[8px] bg-item-bg overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
+                            <div className="relative w-[56px] h-[56px] rounded-[8px] bg-white overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
                               <Image
                                 src={item.image || asset('/images/item_defaulet.webp')}
                                 alt={item.name}
@@ -3074,9 +3073,10 @@ function ProfileContent() {
                             >
                               取消
                             </button>
-                            {/* 曬圖：只在勾單一件、且賞等看起來是大獎時出現（真正判定在 DB） */}
-                            {selectedForDelivery.length === 1
-                              && warehouseItems.find(i => i.id === selectedForDelivery[0] && isMajorGrade(i.grade)) && (
+                            {/* 曬圖：勾單一件就能曬，不分賞等（老闆 2026-08-25：曬圖形式無所謂，
+                                同一張底圖就好）。原本卡在「只有大獎」，但轉蛋／盒玩根本沒有賞等分級，
+                                那兩類 1,193 件永遠曬不了 —— 等於把一半的玩家排除在分享之外 */}
+                            {selectedForDelivery.length === 1 && (
                               <button
                                 onClick={handleShareClick}
                                 disabled={isLoadingShare}
@@ -3292,7 +3292,7 @@ function ProfileContent() {
                                       {item.grade}
                                     </span>
                                   </div>
-                                  <div className="relative w-14 h-14 rounded-xl bg-item-bg overflow-hidden flex-shrink-0">
+                                  <div className="relative w-14 h-14 rounded-xl bg-white overflow-hidden flex-shrink-0">
                                     <Image
                                       src={item.image || asset('/images/item_defaulet.webp')}
                                       alt={item.name}
@@ -3520,7 +3520,7 @@ function ProfileContent() {
                           <div className="md:hidden divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
                             {filteredDismantledItems.map((item) => (
                               <div key={item.id} className="flex items-center gap-3 px-4 py-2">
-                                <div className="relative w-[56px] h-[56px] rounded-[8px] bg-item-bg overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
+                                <div className="relative w-[56px] h-[56px] rounded-[8px] bg-white overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
                                   <Image
                                     src={item.image || asset('/images/item_defaulet.webp')}
                                     alt={item.name}

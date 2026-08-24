@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const ALLOWED_HOST_SUFFIXES = [
   '.r2.dev',              // Cloudflare R2 公開 bucket（商品／品項圖）
   '.supabase.co',         // Supabase Storage
+  '.line-scdn.net',       // LINE 登入帶回來的玩家頭像（曬圖要畫頭像，migration 614）
 ];
 const MAX_BYTES = 8 * 1024 * 1024;
 /** 圖是 immutable 的（檔名帶時間戳），可以放心長快取 */

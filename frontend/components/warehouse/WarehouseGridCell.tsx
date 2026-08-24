@@ -63,7 +63,10 @@ export default function WarehouseGridCell({
           : 'border-neutral-100 dark:border-neutral-800',
       )}
     >
-      <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-item-bg">
+      {/* 白底不是 bg-item-bg（#28324E 深藍灰）：品項圖走 contain 會留白邊，
+          深底會在每張圖周圍框一圈深藍灰，卡牌那種滿版直式圖尤其明顯（老闆 2026-08-25）。
+          商品照本來就多半是白背景，白底接得起來 */}
+      <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-white">
         {showFallback && (
           <Image
             src={fallback}

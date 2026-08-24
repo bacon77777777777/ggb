@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { X, Share2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  SHARE_BG, SHARE_LAYOUT, formatWonAt, formatWonMonth, formatTokensShort, type PrizeShareData,
+  SHARE_BG, SHARE_AVATAR_FALLBACK, SHARE_LAYOUT, formatWonAt, formatWonMonth, formatTokensShort, type PrizeShareData,
 } from '@/lib/prizeShare';
 
 /**
@@ -28,6 +28,103 @@ function loadImage(src: string, cors = false): Promise<HTMLImageElement> {
     img.onerror = reject;
     img.src = src;
   });
+}
+
+/*
+ * 品項圖去背（老闆 2026-08-24）。成本 0：純 Canvas 像素運算，不呼叫任何服務
+ * （CLAUDE.md 的取材成本原則）。之所以做得到，是因為外部圖本來就走同源代理 ——
+ * 沒有那層，canvas 會被污染、getImageData 直接拋 SecurityError。
+ *
+ * 演算法是踩過兩個坑之後定下來的，改之前先看這段：
+ *
+ * ❌ **不能「把接近白的像素都挖掉」**：商品照裡白色不只在背景 —— 那隻公仔的靴子、
+ *    圍巾、刀刃都是淺色，一律挖掉會在人物身上開洞。
+ * ❌ **不能「跟四角平均色差太遠就留著」**：商品照的背景常常是漸層（實測那張是
+ *    上緣 232、下緣 255），用固定參考色會把純白的下半部判成「不是背景」，
+ *    結果留下一塊灰。
+ * ❌ **不能沿著鄰居色差漫延**：能跟著漸層走，但淺色刀刃與背景之間是平滑過渡，
+ *    會被一路吃掉。
+ *
+ * ✅ 現在的作法：用「亮度高且彩度低」算出背景分數，**只挖跟畫面邊緣連得起來的**
+ *    （flood fill），所以人物內部的白留著；判定是二值的（不做半透明漸變），
+ *    最後對 alpha 做一次 3×3 平均當 1px 柔邊，接住照片本身的抗鋸齒。
+ */
+function removeBackdrop(img: HTMLImageElement): HTMLCanvasElement | HTMLImageElement {
+  const MAX = 900;
+  const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+  const w = Math.max(1, Math.round(img.width * scale));
+  const h = Math.max(1, Math.round(img.height * scale));
+
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const cx = c.getContext('2d', { willReadFrequently: true });
+  if (!cx) return img;
+  cx.drawImage(img, 0, 0, w, h);
+
+  let px: ImageData;
+  try { px = cx.getImageData(0, 0, w, h); } catch { return img; }
+  const d = px.data;
+
+  // 已經是透明背景的 PNG 就不用處理
+  if (d[3] === 0) return c;
+
+  /** 背景分數：亮度 185→220、彩度 34→18 之間過渡，兩者取小 */
+  const score = (i: number) => {
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+    const sat = Math.max(r, g, b) - Math.min(r, g, b);
+    return Math.max(0, Math.min(1, Math.min((lum - 185) / 35, (34 - sat) / 16)));
+  };
+  const CUT = 0.8;
+
+  const seen = new Uint8Array(w * h);
+  const stack: number[] = [];
+  const push = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= w || y >= h) return;
+    const p = y * w + x;
+    if (seen[p]) return;
+    if (score(p * 4) < CUT) return;
+    seen[p] = 1;
+    stack.push(x, y);
+  };
+  for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); }
+  for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
+
+  // 邊緣一圈都不像背景（深底、有花紋的照片）就別硬做
+  if (stack.length === 0) return img;
+
+  while (stack.length) {
+    const y = stack.pop()!;
+    const x = stack.pop()!;
+    push(x + 1, y); push(x - 1, y); push(x, y + 1); push(x, y - 1);
+  }
+
+  let removed = 0;
+  const alpha = new Uint8Array(w * h);
+  for (let p = 0; p < w * h; p++) {
+    if (seen[p]) removed++;
+    else alpha[p] = 255;
+  }
+  // 幾乎整張被吃掉＝判斷錯了（白底白物），退回原圖
+  if (removed > w * h * 0.97) return img;
+
+  // 3×3 平均當柔邊。讀 alpha[]、寫回 d[]，不會自我回饋
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let sum = 0, n = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const yy = y + dy, xx = x + dx;
+          if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+          sum += alpha[yy * w + xx]; n++;
+        }
+      }
+      d[(y * w + x) * 4 + 3] = Math.round(sum / n);
+    }
+  }
+
+  cx.putImageData(px, 0, 0);
+  return c;
 }
 
 /** 依字數折行，最多 maxLines 行，超出的最後一行加省略號 */
@@ -79,11 +176,13 @@ export function PrizeShareCard({ data, onClose }: { data: PrizeShareData; onClos
             ? `/api/image-proxy?url=${encodeURIComponent(data.prizeImage)}`
             : data.prizeImage;
           const img = await loadImage(src, true);
+          // 白底商品照去背，讓品項直接站在底圖的紫色上（見 removeBackdrop）
+          const cut = removeBackdrop(img);
           const box = L.prizeImage;
-          const scale = Math.min(box.w / img.width, box.h / img.height);
-          const w = img.width * scale;
-          const h = img.height * scale;
-          ctx.drawImage(img, box.x + (box.w - w) / 2, box.y + (box.h - h) / 2, w, h);
+          const scale = Math.min(box.w / cut.width, box.h / cut.height);
+          const w = cut.width * scale;
+          const h = cut.height * scale;
+          ctx.drawImage(cut, box.x + (box.w - w) / 2, box.y + (box.h - h) / 2, w, h);
         } catch {
           // 品項圖載不到（外站擋 CORS、圖被刪）就只留底圖，其餘照畫
         }
@@ -97,7 +196,9 @@ export function PrizeShareCard({ data, onClose }: { data: PrizeShareData; onClos
       // 品項名稱
       const n = L.prizeName;
       ctx.fillStyle = L.colors.white;
-      ctx.font = `700 ${n.size}px ${cjk}`;
+      /* 斜體（老闆 2026-08-24）：底圖那條紫帶本身是斜的，正體字擺上去會覺得沒對齊。
+         中文字型沒有真正的義大利體，瀏覽器會合成傾斜 —— 這裡要的就是傾斜 */
+      ctx.font = `italic 700 ${n.size}px ${cjk}`;
       const nameLines = wrapText(ctx, data.prizeName || data.productName, n.maxWidth, n.maxLines);
       nameLines.forEach((line, i) => ctx.fillText(line, n.cx, n.y + i * n.lineHeight));
 
@@ -162,8 +263,41 @@ export function PrizeShareCard({ data, onClose }: { data: PrizeShareData; onClos
         ctx.textAlign = 'center';
       });
 
-      // 玩家名與完整時間
       const p = L.player;
+
+      /*
+       * 頭像（老闆 2026-08-24）。底圖左下角那個黑框本來就是留給它的。
+       * avatar_url 三種形態都要吃：外部網址（R2／LINE CDN）走同源代理，
+       * 站內路徑直接用，沒設過就退預設圖。載不到也照畫預設圖 ——
+       * 少一張頭像不該讓整張曬圖畫不出來。
+       */
+      const a = p.avatar;
+      const avatarSrc = data.playerAvatar
+        ? (/^https?:\/\//i.test(data.playerAvatar)
+          ? `/api/image-proxy?url=${encodeURIComponent(data.playerAvatar)}`
+          : data.playerAvatar)
+        : SHARE_AVATAR_FALLBACK;
+      let avatarImg: HTMLImageElement | null = null;
+      try {
+        avatarImg = await loadImage(avatarSrc, true);
+      } catch {
+        try { avatarImg = await loadImage(SHARE_AVATAR_FALLBACK); } catch { /* 連預設圖都掛就不畫 */ }
+      }
+      if (avatarImg) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(a.cx, a.cy, a.size / 2, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        // cover：頭像是方的或長的都填滿圓形，不留缺角
+        const scale = Math.max(a.size / avatarImg.width, a.size / avatarImg.height);
+        const w = avatarImg.width * scale;
+        const h = avatarImg.height * scale;
+        ctx.drawImage(avatarImg, a.cx - w / 2, a.cy - h / 2, w, h);
+        ctx.restore();
+      }
+
+      // 玩家名與完整時間
       ctx.textAlign = 'left';
       ctx.fillStyle = L.colors.white;
       ctx.font = `700 ${p.nameSize}px ${cjk}`;

@@ -20,6 +20,8 @@ export interface PrizeShareData {
   productName: string;
   productType: string;
   playerName: string;
+  /** 玩家頭像：站內路徑、外部網址或 null（migration 614） */
+  playerAvatar: string | null;
   wonAt: string;
   drawCount: number;
   totalSpent: number;
@@ -41,6 +43,7 @@ export async function fetchPrizeShareData(
     productName: String(d.product_name ?? ''),
     productType: String(d.product_type ?? ''),
     playerName: String(d.player_name ?? ''),
+    playerAvatar: (d.player_avatar as string | null) ?? null,
     wonAt: String(d.won_at ?? ''),
     drawCount: Number(d.draw_count ?? 0),
     totalSpent: Number(d.total_spent ?? 0),
@@ -57,6 +60,9 @@ export async function fetchPrizeShareData(
  */
 export const SHARE_BG = asset('/images/congrats/bg.webp');
 
+/** 玩家沒設頭像時用的預設圖 */
+export const SHARE_AVATAR_FALLBACK = asset('/images/avatar.webp');
+
 /**
  * 版位設定 —— **換底圖時只要改這裡的數字**。
  *
@@ -68,7 +74,7 @@ export const SHARE_LAYOUT = {
   canvas: { w: 941, h: 1672 },
   /** 品項圖：等比縮放塞進這個框，置中（contain，不裁切 —— 商品圖直式橫式都有） */
   prizeImage: { x: 196, y: 446, w: 548, h: 660 },
-  /** 品項名稱：紫色斜帶上的白字，最多兩行 */
+  /** 品項名稱：紫色斜帶上的白字，斜體、最多兩行 */
   prizeName: { cx: 470, y: 1178, maxWidth: 600, size: 40, lineHeight: 54, maxLines: 2 },
   /** 三個數據欄的中心 x；label 與 value 各自的 y */
   stats: {
@@ -83,8 +89,20 @@ export const SHARE_LAYOUT = {
     /** 每欄可用寬度：數字（含單位）超過就自動縮字級，避免五六位數的花費撞到隔欄 */
     cellWidth: 200,
   },
-  /** 玩家名與時間（左下角小卡） */
-  player: { x: 492, nameY: 1570, timeY: 1604, nameSize: 30, timeSize: 22 },
+  /*
+   * 左下角小卡：頭像 ＋ 暱稱 ＋ 時間（老闆 2026-08-24 指定要帶當前頭像）。
+   * 黑色圓角框量出來是 x 270–655、y 1518–1650（中線 1584），
+   * 頭像沿用舊版樣稿的位置與大小（直徑 88，圓心 345/1584），文字接在它右邊。
+   */
+  player: {
+    // 頭像往右挪 13px、與暱稱的間距從 25 收到 12（老闆 2026-08-24）
+    avatar: { cx: 358, cy: 1584, size: 88 },
+    x: 414,
+    nameY: 1580,
+    timeY: 1614,
+    nameSize: 30,
+    timeSize: 22,
+  },
   colors: {
     white: '#ffffff',
     lime: '#c6f432',

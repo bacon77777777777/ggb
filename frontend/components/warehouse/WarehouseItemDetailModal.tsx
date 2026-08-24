@@ -34,7 +34,7 @@ export function WarehouseItemDetailModal({ item, isOpen, onClose }: WarehouseIte
     >
       <div className="space-y-6">
         {/* Image Section */}
-        <div className="relative aspect-square w-full bg-item-bg rounded-2xl overflow-hidden shadow-inner">
+        <div className="relative aspect-square w-full bg-white rounded-2xl overflow-hidden shadow-inner">
           <Image 
             src={item.image || asset('/images/item_defaulet.webp')} 
             alt={item.name} 
