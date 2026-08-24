@@ -10,6 +10,8 @@ import PageHeader from '@/components/ui/PageHeader';
 import { TopFadeBlur } from '@/components/ui/TopFadeBlur';
 import PrizeShareCard from '@/components/warehouse/PrizeShareCard';
 import DeliverySteps from '@/components/warehouse/DeliverySteps';
+import { openStoreMap, newStoreMapRequestId } from '@/lib/logistics/openStoreMap';
+import { closeInAppBrowser } from '@/lib/native/browser';
 import { fetchPrizeShareData, type PrizeShareData } from '@/lib/prizeShare';
 
 import { cn } from '@/lib/utils';
@@ -594,6 +596,9 @@ function ProfileContent() {
   const [storeName, setStoreName] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
   const [pendingCvsToken, setPendingCvsToken] = useState<string | null>(null);
+  /* 這一趟選店要寫回哪裡：配送彈窗（delivery）或個資的常用門市（settings）。
+     兩者共用同一支輪詢，寫錯地方玩家會看到「選了門市但沒填進去」 */
+  const [cvsTarget, setCvsTarget] = useState<'delivery' | 'settings'>('delivery');
   const cvsPollingRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Shipping fee settings (from platform_settings)
@@ -1941,12 +1946,26 @@ function ProfileContent() {
         const res = await fetch(`/api/logistics/cvs-pending?token=${encodeURIComponent(pendingCvsToken)}`);
         const data = await res.json();
         if (data.found) {
-          applyCvsStoreData(data.storeId, data.storeName, data.storeAddress, data.logisticsSubType);
+          /* App 內地圖是開在 in-app browser 裡，拿到門市就主動收掉 ——
+             不關的話玩家會停在綠界的回呼頁，以為卡住了（老闆 2026-08-24：不要跳轉出去） */
+          void closeInAppBrowser();
+          if (cvsTarget === 'settings') {
+            if (cvsPollingRef.current) { clearInterval(cvsPollingRef.current); cvsPollingRef.current = null; }
+            setPendingCvsToken(null);
+            setSettingsForm(prev => ({
+              ...prev,
+              cvsStoreId: data.storeId,
+              cvsStoreName: data.storeName || '',
+              cvsStoreAddress: data.storeAddress || '',
+            }));
+          } else {
+            applyCvsStoreData(data.storeId, data.storeName, data.storeAddress, data.logisticsSubType);
+          }
         }
       } catch { /* network errors are expected during ECPay redirect, keep polling */ }
     }, 2000);
     return () => { if (cvsPollingRef.current) { clearInterval(cvsPollingRef.current); cvsPollingRef.current = null; } };
-  }, [pendingCvsToken, applyCvsStoreData]);
+  }, [pendingCvsToken, applyCvsStoreData, cvsTarget]);
 
   // Mobile warehouse lazy load
   useEffect(() => {
@@ -3490,25 +3509,11 @@ function ProfileContent() {
                                       console.error('Failed to save delivery items:', e);
                                     }
 
-                                    const reqId2 = Math.random().toString(36).substring(2) + Date.now().toString(36);
-                                          setPendingCvsToken(reqId2);
-                                          const form = document.createElement('form');
-                                          form.method = 'POST';
-                                          form.target = '_blank';
-                                          const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
-                                          form.action = `${baseUrl}/api/logistics/map`;
-                                          const input = document.createElement('input');
-                                          input.name = 'logisticsSubType';
-                                          input.value = logisticsSubType;
-                                          input.type = 'hidden';
-                                          form.appendChild(input);
-                                          const ridInput2 = document.createElement('input');
-                                          ridInput2.name = 'requestId';
-                                          ridInput2.value = reqId2;
-                                          ridInput2.type = 'hidden';
-                                          form.appendChild(ridInput2);
-                                          document.body.appendChild(form);
-                                          form.submit();
+                                    const rid = newStoreMapRequestId();
+                                          setPendingCvsToken(rid);
+                                          setCvsTarget('delivery');
+                                          // App 內走 in-app browser（不跳出去 Safari），網頁維持開新分頁
+                                          void openStoreMap({ logisticsSubType, requestId: rid });
                                         }}
                                         className="text-[11px] font-black text-neutral-400 hover:text-primary transition-colors"
                                       >
@@ -3530,25 +3535,11 @@ function ProfileContent() {
                                                console.error('Failed to save delivery items:', e);
                                              }
 
-                                             const reqId = Math.random().toString(36).substring(2) + Date.now().toString(36);
-                                          setPendingCvsToken(reqId);
-                                          const form = document.createElement('form');
-                                          form.method = 'POST';
-                                          form.target = '_blank';
-                                          const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
-                                          form.action = `${baseUrl}/api/logistics/map`;
-                                          const input = document.createElement('input');
-                                          input.name = 'logisticsSubType';
-                                          input.value = logisticsSubType;
-                                          input.type = 'hidden';
-                                          form.appendChild(input);
-                                          const ridInput = document.createElement('input');
-                                          ridInput.name = 'requestId';
-                                          ridInput.value = reqId;
-                                          ridInput.type = 'hidden';
-                                          form.appendChild(ridInput);
-                                          document.body.appendChild(form);
-                                          form.submit();
+                                             const rid = newStoreMapRequestId();
+                                          setPendingCvsToken(rid);
+                                          setCvsTarget('delivery');
+                                          // App 內走 in-app browser（不跳出去 Safari），網頁維持開新分頁
+                                          void openStoreMap({ logisticsSubType, requestId: rid });
                                         }}
                                         className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 py-2.5 rounded-lg font-black text-sm shadow-lg hover:scale-[1.02] transition-all"
                                      >
@@ -7529,26 +7520,11 @@ function ProfileContent() {
                       <button
                         type="button"
                         onClick={() => {
-                          const form = document.createElement('form');
-                          form.method = 'POST';
-                          form.target = '_blank';
-                          const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
-                          form.action = `${baseUrl}/api/logistics/map`;
-                          const input = document.createElement('input');
-                          input.name = 'logisticsSubType';
-                          input.value = logisticsSubType;
-                          input.type = 'hidden';
-                          form.appendChild(input);
-                          
-                          // Add action for profile update
-                          const actionInput = document.createElement('input');
-                          actionInput.name = 'action';
-                          actionInput.value = 'update_profile_cvs';
-                          actionInput.type = 'hidden';
-                          form.appendChild(actionInput);
-
-                          document.body.appendChild(form);
-                          form.submit();
+                          const rid = newStoreMapRequestId();
+                          setPendingCvsToken(rid);
+                          setCvsTarget('settings');
+                          // 常用門市也走同一支：App 內用 in-app browser，選完由輪詢寫回表單
+                          void openStoreMap({ logisticsSubType, requestId: rid });
                         }}
                         className="text-[11px] font-black text-neutral-400 hover:text-primary transition-colors"
                       >
@@ -7563,26 +7539,11 @@ function ProfileContent() {
                      <button 
                         type="button" 
                         onClick={() => {
-                          const form = document.createElement('form');
-                          form.method = 'POST';
-                          form.target = '_blank';
-                          const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
-                          form.action = `${baseUrl}/api/logistics/map`;
-                          const input = document.createElement('input');
-                          input.name = 'logisticsSubType';
-                          input.value = logisticsSubType;
-                          input.type = 'hidden';
-                          form.appendChild(input);
-
-                          // Add action for profile update
-                          const actionInput = document.createElement('input');
-                          actionInput.name = 'action';
-                          actionInput.value = 'update_profile_cvs';
-                          actionInput.type = 'hidden';
-                          form.appendChild(actionInput);
-
-                          document.body.appendChild(form);
-                          form.submit();
+                          const rid = newStoreMapRequestId();
+                          setPendingCvsToken(rid);
+                          setCvsTarget('settings');
+                          // 常用門市也走同一支：App 內用 in-app browser，選完由輪詢寫回表單
+                          void openStoreMap({ logisticsSubType, requestId: rid });
                         }}
                         className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 py-2.5 rounded-lg font-black text-sm shadow-lg hover:scale-[1.02] transition-all"
                      >

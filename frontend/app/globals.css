@@ -141,6 +141,20 @@ img {
   user-select: none;
 }
 
+/*
+ * 長按**連結**也不要彈原生預覽（老闆 2026-08-24：按著圖會原生彈出、可下載、露出網址）。
+ *
+ * 只擋 img 是不夠的：商品卡是「<Link> 包著圖片」，長按時 iOS 給的是**連結的 peek 預覽**，
+ * 上面直接寫著完整網址、還能存圖。要擋的是 <a> 本身。
+ * 這裡只設 touch-callout（不設 user-select: none）—— 桌機不受 touch-callout 影響，
+ * 但 user-select 會連桌機的文字選取一起關掉，那是另一回事。
+ * 原生殼另有 webview 層的開關（mobile/capacitor.config.ts 的 allowsLinkPreview: false），
+ * 兩邊都關才保險：CSS 只在有掛到的元素生效，webview 開關是整個 App。
+ */
+a, video, canvas {
+  -webkit-touch-callout: none;
+}
+
 .dark body {
 }
 

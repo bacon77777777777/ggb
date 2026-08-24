@@ -1,11 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateMapParams } from '@/lib/ecpay_logistics'
 
-export async function POST(req: NextRequest) {
-  try {
-    let logisticsSubType = 'UNIMARTC2C'
+/**
+ * GET：給 App 用（老闆 2026-08-24：不要跳轉出去 Safari）。
+ *
+ * 原本只有 POST，前台是「動態建 form + target=_blank」送出 —— 在 Capacitor 裡
+ * `_blank` 會被交給系統瀏覽器，玩家被丟到 Safari、選完店又停在一片空白，回不來。
+ * 改成 App 端用 in-app browser 開一個**網址**（開得起來、關得掉、回得來），
+ * 所以這支要能吃 query string。網頁端維持原本的 POST + _blank，不動。
+ */
+export async function GET(req: NextRequest) {
+  const sp = req.nextUrl.searchParams
+  return buildMapPage(req, sp.get('logisticsSubType') || 'UNIMARTC2C', sp.get('requestId') || '')
+}
 
-    let requestId = ''
+export async function POST(req: NextRequest) {
+  let logisticsSubType = 'UNIMARTC2C'
+  let requestId = ''
+  try {
     const contentType = req.headers.get('content-type') || ''
     if (contentType.includes('application/json')) {
       const body = await req.json()
@@ -16,7 +28,15 @@ export async function POST(req: NextRequest) {
       logisticsSubType = (formData.get('logisticsSubType') as string) || 'UNIMARTC2C'
       requestId = (formData.get('requestId') as string) || ''
     }
+  } catch {
+    // 參數讀不到就用預設，讓玩家至少看得到 7-11 的地圖
+  }
+  return buildMapPage(req, logisticsSubType, requestId)
+}
 
+/** 產生「自動送出到綠界選店地圖」的中繼頁（GET／POST 共用） */
+async function buildMapPage(req: NextRequest, logisticsSubType: string, requestId: string) {
+  try {
     const baseUrl =
       process.env.NEXT_PUBLIC_BASE_URL ||
       (() => {

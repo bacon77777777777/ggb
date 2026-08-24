@@ -63,6 +63,13 @@ const config: CapacitorConfig = {
      * 的頁一併補齊，不再裁頂。viewportFit:'cover' 已設（app/layout.tsx），env() 有值。
      */
     contentInset: 'never',
+    /*
+     * 關掉 WKWebView 的長按連結預覽（老闆 2026-08-24：按著圖都會原生彈出、可以下載、
+     * 而且會露出網址）。商品卡是「連結包著圖片」，長按時 iOS 會給連結的 peek 預覽，
+     * 上面就是完整網址。CSS 的 `-webkit-touch-callout: none` 也擋（見 globals.css），
+     * 但那是網頁層、只在有掛到的元素生效；這個開關是 webview 層，整個 App 一次關掉。
+     */
+    allowsLinkPreview: false,
     limitsNavigationsToAppBoundDomains: false,
     backgroundColor: '#ffffff',
   },

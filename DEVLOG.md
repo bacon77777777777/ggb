@@ -4,6 +4,49 @@
 
 ---
 
+## v2026.08.24h｜2026-08-24｜宅配報錯的真因是 PROD 缺欄位（611）；超商選店不再跳出 Safari；長按不再露網址
+
+**① 宅配「確認支付」報錯 —— PROD 的 orders 表缺 shipping_fee**
+在 PROD 用真實帳號的倉庫品項跑 `create_delivery_order()`（交易內回滾）抓到：
+```
+ERROR: column "shipping_fee" of relation "orders" does not exist
+```
+函數的 INSERT 一直在寫這個欄位，而 **PROD 沒有這個欄位** —— 也就是說宅配／超商申請
+**從 425/426 那批上線以來在 PROD 就沒有成功過**，跟 605／606 無關（PROD 的函數本體與 STG md5 相同）。
+
+⚠️ **這是我自己埋的隱患**：做 605 函數補課時我寫「表結構兩邊本來就一致」，那句沒有驗證過。
+這次對 `information_schema.columns` 做欄位級 diff，找到 **22 個 STG 有、PROD 沒有的欄位**，
+migration 611 全部照 STG 的定義補上（純 `ADD COLUMN IF NOT EXISTS`，不動既有資料）：
+- `orders.shipping_fee` / `updated_at` → 宅配、超商整條流程（本次的病根）
+- `users.cvs_*`（5 個）→ 會員的「常用超商門市」預填
+- `exchange_orders.*`（6 個）→ 卡片交換的評價、收貨備註、物流單號
+- `user_coupons.expiry_reminder_sent`、`search_logs.user_id/metadata`、`small_items.*`、`products.*_time`
+另有 18 個欄位只是型別寫法不同（text vs varchar、numeric vs integer），無害不動；
+`small_items.id` PROD 是 bigint／STG 是 uuid，是真結構差異，**刻意不碰**（改主鍵風險大於收益）。
+補完在 PROD 重測：宅配建單成功（運費 60）、超商建單成功、格式驗證照樣擋掉亂填的姓名電話。
+
+**② 超商選店會跳出 Safari 然後一片空白（老闆：不要跳轉出去）**
+病根：前台是「動態建 form + `target='_blank'`」送到後台網域 —— `_blank` 在 Capacitor
+會被交給**系統瀏覽器**，玩家被丟到 Safari，選完店停在綠界的回呼頁，回不來也沒有下一步。
+- 後端 `/api/logistics/map` 加 **GET** 支援（原本只有 POST），這樣 App 能用「開一個網址」的方式進去。
+- 新 `lib/logistics/openStoreMap.ts`：App 內走 **in-app browser**（`openInAppBrowser`，蓋在 App 上、
+  關得掉、回得來）；網頁維持原本的 POST + `_blank`（那條路本來就正常，不動）。
+- 輪詢命中門市後主動 `closeInAppBrowser()`，玩家自動回到原本畫面。
+- 四處呼叫（配送彈窗兩處、個資常用門市兩處）全部收斂到這支函式，`document.createElement('form')`
+  在 profile 頁歸零。常用門市那兩處原本靠 `postMessage`（App 內跨 context 收不到），
+  現在也帶 requestId 走輪詢；新增 `cvsTarget` 區分寫回配送彈窗或個資表單。
+- 驗證：GET 產出的中繼頁簽章正確，實打綠界 stage 回 7760 bytes 的地圖頁。
+
+**③ 長按圖片會原生彈出、可下載、露出網址**
+`globals.css` 早就有 `img { -webkit-touch-callout: none }`，但**擋錯對象**：商品卡是
+「`<Link>` 包著圖片」，長按時 iOS 給的是**連結的 peek 預覽**，上面直接寫著完整網址還能存圖。
+- CSS 補 `a, video, canvas { -webkit-touch-callout: none }`（不加 `user-select: none`，
+  那會連桌機的文字選取一起關掉）。
+- 原生殼再加一道 `mobile/capacitor.config.ts` 的 **`allowsLinkPreview: false`**（webview 層，
+  整個 App 一次關掉）。CSS 只在有掛到的元素生效，兩邊都關才保險。
+  ⚠️ 這條要**重編殼**才生效，網頁推版不會帶到。
+---
+
 ## v2026.08.24g｜2026-08-24｜曬圖彈窗的關閉鈕看不到（被 canvas 蓋掉）＋曬圖與分解位置互換
 
 老闆實機截圖：曬圖彈窗沒有可以關的地方。
