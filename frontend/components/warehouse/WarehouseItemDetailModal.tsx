@@ -70,16 +70,22 @@ export function WarehouseItemDetailModal({ item, isOpen, onClose }: WarehouseIte
             </div>
             <div className="space-y-1">
               <span className="text-xs text-neutral-400 font-bold block">回收價值</span>
-              <div className="flex items-center gap-1">
-                <span className="text-sm font-black text-accent-red block">+{item.recycleValue}</span>
-                <Image
-                  src={asset("/images/gcoin.webp")}
-                  alt="G"
-                  width={14}
-                  height={14}
-                  className="object-contain"
-                />
-              </div>
+              {/* 已申請寄送、抽籤中籤品收不了，金額會是 0 ——
+                  寫「+0」看起來像壞掉，直接講不能收比較清楚 */}
+              {item.recycleValue > 0 ? (
+                <div className="flex items-center gap-1">
+                  <span className="text-sm font-black text-accent-red block">+{item.recycleValue}</span>
+                  <Image
+                    src={asset("/images/gcoin.webp")}
+                    alt="G"
+                    width={14}
+                    height={14}
+                    className="object-contain"
+                  />
+                </div>
+              ) : (
+                <span className="text-sm font-black text-neutral-400 block">不可回收</span>
+              )}
             </div>
           </div>
         </div>

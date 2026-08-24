@@ -1563,10 +1563,31 @@ function ProfileContent() {
               .range(from, to),
           );
 
+          /*
+           * 回收價一律問 DB（migration 616 的 estimate_recycle_value）。
+           * 這裡以前是寫死 `recycleValue = 10`，但 DB 對大賞其實給 單價×20%
+           * （309 元的一番賞大賞給 61），玩家看到的跟實際入帳的不是同一個數。
+           * 預覽與入帳現在共用同一支 calc_recycle_value，不會再各算各的。
+           */
+          const recycleMap = new Map<number, { value: number; canRecycle: boolean }>();
+          if (data.length > 0) {
+            const { data: estimates, error: estimateError } = await supabase.rpc('estimate_recycle_value', {
+              p_record_ids: data.map((item) => Number(item.id)),
+            });
+            if (estimateError) {
+              // 估價掛掉不該讓整個倉庫開不了；下面會退回 0 並把回收鈕的金額留白
+              console.error('estimate_recycle_value failed', estimateError);
+            }
+            (estimates ?? []).forEach((row: { draw_record_id: number; recycle_value: number; can_recycle: boolean }) => {
+              recycleMap.set(Number(row.draw_record_id), {
+                value: Number(row.recycle_value) || 0,
+                canRecycle: Boolean(row.can_recycle),
+              });
+            });
+          }
+
           const items = data.map((item) => {
-            let recycleValue = item.product_prizes?.recycle_value || 0;
-            const price = item.products?.price || 0;
-            const quantity = item.product_prizes?.total || 0;
+            const estimate = recycleMap.get(Number(item.id));
             const productType = item.products?.type || 'unknown';
             const isPreorder = false;
             const preorderAvailableAt = null;
@@ -1580,7 +1601,8 @@ function ProfileContent() {
             const grade = rawGrade; // 等級 DB 已統一（migration 514），一般版/特別設定照實顯示
             const name = item.product_prizes?.name || item.prize_name || '未知獎品';
 
-            recycleValue = 10;
+            // 收不了的（抽籤中籤品、已申請寄送）顯示 0，不要對玩家開一張兌不了的支票
+            const recycleValue = estimate?.canRecycle ? estimate.value : 0;
 
             return {
               id: item.id.toString(),
