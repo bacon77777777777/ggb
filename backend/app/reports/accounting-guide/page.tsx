@@ -35,7 +35,7 @@ const REPORTS = [
   { name: '儲值明細', path: '/recharges', use: '玩家真實付款紀錄（綠界）。收入端對帳的起點：每筆付款對應一筆入帳。' },
   { name: '手動調整明細', path: '/reports/adjustments', use: '所有「手動補幣」依會計分類拆開（行銷贈點／帳務更正／內部測試／運費／商城…）。稽核重點。' },
   { name: '消費明細', path: '/reports/products', use: '抽獎消耗紀錄——收入實現的依據（代幣在哪個商品被消耗）。' },
-  { name: '分解明細', path: '/reports/dismantled', use: '玩家把獎品分解退還代幣的紀錄，屬代幣負債的增減。' },
+  { name: '回收明細', path: '/reports/dismantled', use: '玩家把獎品回收退還代幣的紀錄，屬代幣負債的增減。' },
   { name: '折價券明細', path: '/reports/coupons', use: '折價券發放與使用，影響實收金額。' },
   { name: '物流明細', path: '/reports/logistics', use: '出貨與運費（運費走手動調整的 shipping_fee 分類）。' },
   { name: '廠商結算', path: '/reports/settlement', use: '廠商供貨、平台抽成，算應付貨款與分潤。' },

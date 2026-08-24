@@ -413,7 +413,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
     </svg>
   )
-  // 分解明細（剪刀）
+  // 回收明細（剪刀）
   const IconScissors = () => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" />
@@ -718,7 +718,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '物流明細', path: '/reports/logistics', icon: IconTruck },
           { name: '折價券明細', path: '/reports/coupons', icon: IconCoupons },
           { name: '消費明細', path: '/reports/products', icon: IconCart },
-          { name: '分解明細', path: '/reports/dismantled', icon: IconScissors },
+          { name: '回收明細', path: '/reports/dismantled', icon: IconScissors },
           { name: '手動調整明細', path: '/reports/adjustments', icon: IconSliders },
           { name: '廠商結算', path: '/reports/settlement', icon: IconReceipt },
           { name: '廠商月結管理', path: '/settlement-snapshots', icon: IconLedger },
@@ -802,7 +802,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/reports/logistics': '出貨訂單的物流費用統計，按物流商別與配送方式分類，可查看各期間費用趨勢。',
     '/reports/coupons': '折價券使用統計，包含各券別兌換張數與總折抵金額。',
     '/reports/products': '玩家抽獎消費統計，以商品／系列維度分析銷售數字與代幣消耗量。',
-    '/reports/dismantled': '玩家倉庫拆解紀錄，統計退還代幣總量，用於核對代幣帳本平衡。',
+    '/reports/dismantled': '玩家倉庫回收紀錄，統計退還代幣總量，用於核對代幣帳本平衡。',
     '/reports/adjustments': '所有非儲值、非抽獎的代幣增減（GB哥補幣、帳務更正、出貨運費扣款、商城／交易所／機台）依會計分類列出，淨額即對帳公式的 manual_total，可匯出 CSV。',
     '/reports/settlement': '依廠商統計銷售金額，計算應付款項與平台毛利，作為廠商請款依據。',
     '/settlement-snapshots': '廠商月結快照管理，可鎖定當期數據並匯出正式對帳報表給廠商。',

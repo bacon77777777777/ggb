@@ -39,7 +39,7 @@ export const LINE_PUSH_LABELS: Record<LinePushKey, string> = {
   line_push_recharge:            '待審核儲值',
   line_push_content:             'AI 文案生成',
   line_push_cto:                 'AI CTO 報告',
-  line_push_warehouse_dismantle: '倉庫自動分解',
+  line_push_warehouse_dismantle: '倉庫自動回收',
   line_push_weekly:              'GB哥週報',
 }
 

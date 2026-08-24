@@ -25,7 +25,7 @@ interface PeriodData {
   hasActualFee: boolean
   allocatedActualFee: number | null  // 分攤後的實際手續費
   platformTotalFee?: number | null   // 平台手續費總額（僅平台管理員）
-  dismantleTotal: number         // 分解退代幣（廠商吸收）
+  dismantleTotal: number         // 回收退代幣（廠商吸收）
   couponTotal: number            // 折價券折抵總額（雙方各吸收一半）
   shippingTotal: number          // 運費總額（雙方各吸收一半）
   pointsTotal: number            // 積分支付 G 等值（模式 A 時廠商吸收一半）
@@ -198,7 +198,7 @@ export default function SettlementPage() {
   const supplierGross = Math.round(distributableBase * (supplierShare / 100))
   const platformShare = distributableBase - supplierGross
 
-  // 最後扣除分解退代幣（廠商全吸收）
+  // 最後扣除回收退代幣（廠商全吸收）
   const supplierNet = Math.max(0, supplierGross - dismantleTotal)
 
   /*
@@ -232,7 +232,7 @@ export default function SettlementPage() {
       可分潤基礎: distributableBase,
       [`廠商分潤(${supplierShare}%)`]: supplierGross,
       [`平台留存(${100 - supplierShare}%)`]: platformShare,
-      '分解退代幣(廠商吸收100%)': -dismantleTotal,
+      '回收退代幣(廠商吸收100%)': -dismantleTotal,
       實際應付廠商: supplierNet,
       // 平台級數字只給平台管理員，廠商那份完全不帶（API 也不會回）
       ...(isSupplier ? {} : {
@@ -534,16 +534,16 @@ export default function SettlementPage() {
               <Row label={<><span className="text-neutral-400">平台留存</span><span className="text-xs text-neutral-400 ml-1">{100 - supplierShare}%</span></>} value={`−${fmt(platformShare)}`} red indent />
               <div className="border-t border-neutral-200 my-0.5" />
 
-              {/* ⑤ 廠商分潤 → 再扣分解 */}
+              {/* ⑤ 廠商分潤 → 再扣回收 */}
               <Row label={<><span className="font-semibold text-neutral-800">廠商分潤</span><span className="text-xs text-neutral-400 ml-1">{supplierShare}%</span></>} value={fmt(supplierGross)} indigo />
-              <Row label={<><span className="text-neutral-600">分解退代幣</span><span className="text-xs text-neutral-400 ml-1.5">廠商吸收 100%</span></>} value={`−${fmt(dismantleTotal)}`} red indent />
+              <Row label={<><span className="text-neutral-600">回收退代幣</span><span className="text-xs text-neutral-400 ml-1.5">廠商吸收 100%</span></>} value={`−${fmt(dismantleTotal)}`} red indent />
 
               {/* 最終結果 */}
               <div className="border-t-2 border-neutral-300 mt-2 pt-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <span className="text-base font-bold text-neutral-800">實際應付廠商</span>
-                    <InfoTooltip text={`① 消費 G − 綠界手續費 = 淨收入\n② 淨收入 − 折價券（50%）− 運費（50%）${pointsMode === 'A' ? ' + 積分補償（50%）' : ''} = 可分潤基礎\n③ 可分潤基礎 × ${supplierShare}% = 廠商分潤\n④ 廠商分潤 − 分解退代幣 = 實際應付廠商`} />
+                    <InfoTooltip text={`① 消費 G − 綠界手續費 = 淨收入\n② 淨收入 − 折價券（50%）− 運費（50%）${pointsMode === 'A' ? ' + 積分補償（50%）' : ''} = 可分潤基礎\n③ 可分潤基礎 × ${supplierShare}% = 廠商分潤\n④ 廠商分潤 − 回收退代幣 = 實際應付廠商`} />
                   </div>
                   <span className="text-xl font-bold text-green-600 tabular-nums">{fmt(supplierNet)}</span>
                 </div>

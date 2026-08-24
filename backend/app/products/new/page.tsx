@@ -849,7 +849,7 @@ export default function NewProductPage() {
                 <div className="p-3 bg-primary/5 border border-primary/10 rounded-lg space-y-3">
                   <p className="text-xs text-neutral-600 leading-relaxed">
                     玩家免費抽，抽中才有資格買。中籤品項在申請寄出時支付各品項的「寄出應付」金額，
-                    不可分解，30 天內未申請寄送就失效。上方的「售價」不適用。
+                    不可回收，30 天內未申請寄送就失效。上方的「售價」不適用。
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -950,7 +950,7 @@ export default function NewProductPage() {
                 />
                 <div>
                   <span className="text-sm font-medium text-neutral-700">預購商品</span>
-                  <p className="text-xs text-neutral-500 mt-0.5">勾選後，抽中至預計出貨時間前不可配送與上架，但可分解</p>
+                  <p className="text-xs text-neutral-500 mt-0.5">勾選後，抽中至預計出貨時間前不可配送與上架，但可回收</p>
                 </div>
               </label>
               {formData.isPreorder && (

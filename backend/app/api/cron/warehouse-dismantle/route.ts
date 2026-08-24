@@ -28,8 +28,8 @@ export async function POST(req: NextRequest) {
 
   if (dismantledCount > 0) {
     await pushLine(
-      `🗑️ 倉庫自動分解完成\n` +
-      `共分解 ${dismantledCount} 件逾期品項\n` +
+      `🗑️ 倉庫自動回收完成\n` +
+      `共回收 ${dismantledCount} 件逾期品項\n` +
       `退還代幣：${totalTokens} G`
     ).catch(() => {})
   }

@@ -50,7 +50,7 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   in_warehouse:     { label: '倉庫中',   className: 'bg-neutral-100 text-neutral-600' },
   pending_delivery: { label: '待出貨',   className: 'bg-blue-50 text-blue-700' },
   shipped:          { label: '已出貨',   className: 'bg-green-50 text-green-700' },
-  dismantled:       { label: '已拆解',   className: 'bg-amber-50 text-amber-700' },
+  dismantled:       { label: '已回收',   className: 'bg-amber-50 text-amber-700' },
   exchanged:        { label: '已兌換',   className: 'bg-purple-50 text-purple-700' },
   success:          { label: '成功',     className: 'bg-green-50 text-green-700' },
   failed:           { label: '失敗',     className: 'bg-red-50 text-red-600' },
@@ -417,7 +417,7 @@ export default function DrawsPage() {
                   { value: 'in_warehouse', label: '倉庫中' },
                   { value: 'pending_delivery', label: '待出貨' },
                   { value: 'shipped', label: '已出貨' },
-                  { value: 'dismantled', label: '已拆解' },
+                  { value: 'dismantled', label: '已回收' },
                   { value: 'exchanged', label: '已兌換' }
                 ]
               },

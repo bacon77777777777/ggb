@@ -167,7 +167,7 @@ export default function ProductsPage() {
       in_warehouse:     { label: '倉庫中', cls: 'bg-blue-100 text-primary' },
       pending_delivery: { label: '待出貨', cls: 'bg-yellow-100 text-yellow-700' },
       shipped:          { label: '已出貨', cls: 'bg-green-100 text-green-700' },
-      dismantled:       { label: '已拆解', cls: 'bg-red-100 text-red-500' },
+      dismantled:       { label: '已回收', cls: 'bg-red-100 text-red-500' },
       exchanged:        { label: '已兌換', cls: 'bg-purple-100 text-purple-600' },
       listing:          { label: '市場上架', cls: 'bg-orange-100 text-orange-600' },
       cancelled:        { label: '已取消', cls: 'bg-neutral-100 text-neutral-400' },
@@ -770,7 +770,7 @@ export default function ProductsPage() {
             activeColor="primary"
           />
           <StatsCard
-            title="分解數"
+            title="回收數"
             value={dismantledCount}
             onClick={() => router.push('/dismantled')}
             isActive={false}

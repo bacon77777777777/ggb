@@ -275,8 +275,8 @@ export const PRIZE_IMPORT_FIELDS: ImportFieldDef[] = [
   // 機率欄也會被忽略 —— 之前小數/百分比單位混用造成十連固定出
   // 同一品項（migration 515），把欄位拿掉才是根治。
   {
-    key: 'recycle_value', label: '分解值', kind: 'int', requiredFor: ['slot'], onlyFor: ['slot'], fallback: 0,
-    aliases: [/分解/i, /回收/i, /recycle/i, /折抵/i],
+    key: 'recycle_value', label: '回收值', kind: 'int', requiredFor: ['slot'], onlyFor: ['slot'], fallback: 0,
+    aliases: [/回收/i, /回收/i, /recycle/i, /折抵/i],
     example: '0', note: '機台必填且需大於 0',
   },
   {

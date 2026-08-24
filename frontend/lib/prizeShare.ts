@@ -74,7 +74,9 @@ export const SHARE_LAYOUT = {
   stats: {
     cx: [246, 470, 698],
     labelY: 1352,
-    valueY: 1424,
+    /* 1424 → 1452：欄位標題是印在底圖上的美術字，數字貼太近（老闆 2026-08-24）。
+       1452 是舊版樣稿裡數字實際的基線位置，量出來的不是猜的 */
+    valueY: 1452,
     labelSize: 24,
     valueSize: 62,
     unitSize: 24,
@@ -96,6 +98,19 @@ export function formatWonAt(iso: string): string {
   const d = new Date(iso);
   const p = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/**
+ * 曬圖的「花費代幣」用 K（老闆 2026-08-24）。
+ * 五六位數的原字串（25,200／120,000）會把欄寬撐爆，逼得字級縮小，
+ * 三欄的數字就一大一小。改成 25.2K／120K 之後三欄可以同一個字級。
+ * 一萬以下維持原樣 —— 9.8K 反而比 9,800 難讀。
+ */
+export function formatTokensShort(n: number): string {
+  if (!Number.isFinite(n)) return '0';
+  if (n < 10000) return n.toLocaleString();
+  const k = n / 1000;
+  return `${k >= 100 ? Math.round(k) : Math.round(k * 10) / 10}K`;
 }
 
 /** 「2026 年 08 月」—— 曬圖數據欄的「中獎時間」只到年月（老闆指定） */

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { X, Share2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  SHARE_BG, SHARE_LAYOUT, formatWonAt, formatWonMonth, type PrizeShareData,
+  SHARE_BG, SHARE_LAYOUT, formatWonAt, formatWonMonth, formatTokensShort, type PrizeShareData,
 } from '@/lib/prizeShare';
 
 /**
@@ -106,35 +106,48 @@ export function PrizeShareCard({ data, onClose }: { data: PrizeShareData; onClos
        * 數字用 Oswald（跟站上金額同一套），單位用中文字型接在右邊。
        */
       const s = L.stats;
-      const cells: { label: string; value: string; unit: string }[] = [
-        { label: '總共抽了', value: data.drawCount.toLocaleString(), unit: '抽' },
-        { label: '花費代幣', value: data.totalSpent.toLocaleString(), unit: '代幣' },
-        { label: '中獎時間', value: formatWonMonth(data.wonAt), unit: '' },
+      /*
+       * ⚠️ 只畫數字，**不要畫欄位標題**。「總共抽了／花費代幣／獲得時間」在
+       * 2026-08-24 換上的挖空版底圖裡已經是印好的美術字，程式再畫一次會疊字。
+       * 換底圖時如果新圖沒有印標題，要把標題畫回來（labelSize／labelY 還留著）。
+       */
+      const cells: { value: string; unit: string }[] = [
+        { value: data.drawCount.toLocaleString(), unit: '抽' },
+        // 花費代幣走 K（25,200 → 25.2K）：原字串太寬會逼字級縮小，三欄就一大一小
+        { value: formatTokensShort(data.totalSpent), unit: '代幣' },
+        { value: formatWonMonth(data.wonAt), unit: '' },
       ];
+
+      /*
+       * 三欄的數字**一律同一個字級**（老闆 2026-08-24）。
+       * 先各自算出「塞得進欄寬」的最大字級，再取三者的最小值套用到全部 ——
+       * 逐欄各縮各的會變成 71 很大、2026.08 很小，看起來像做壞了。
+       */
+      // 型別要寫 number：SHARE_LAYOUT 是 as const，直接推導會變成字面量型別（62／24）不能重新賦值
+      const fitSize = (value: string, unit: string) => {
+        let vs: number = s.valueSize;
+        let us: number = s.unitSize;
+        for (;;) {
+          ctx.font = `700 ${vs}px ${num}`;
+          const vw = ctx.measureText(value).width;
+          ctx.font = `500 ${us}px ${cjk}`;
+          const uw = unit ? ctx.measureText(unit).width + 6 : 0;
+          if (vw + uw <= s.cellWidth || vs <= 34) return { vs, us };
+          vs -= 2;
+          us = Math.max(18, us - 1);
+        }
+      };
+      const fitted = cells.map(c => fitSize(c.value, c.unit));
+      const valueSize = Math.min(...fitted.map(f => f.vs));
+      const unitSize = Math.min(...fitted.map(f => f.us));
+
       cells.forEach((cell, i) => {
         const cx = s.cx[i];
-        ctx.fillStyle = L.colors.white;
-        ctx.font = `500 ${s.labelSize}px ${cjk}`;
-        ctx.fillText(cell.label, cx, s.labelY);
 
-        /*
-         * 數字＋單位要塞進欄寬（cellWidth）。花費代幣可能是五六位數（12,000／120,000），
-         * 用固定字級會撞到隔欄，所以量過寬度就等比縮字級（最小 34px 還是看得清）。
-         */
-        // 型別要寫 number：SHARE_LAYOUT 是 as const，直接推導會變成字面量型別（62／24）不能重新賦值
-        let valueSize: number = s.valueSize;
-        let unitSize: number = s.unitSize;
-        let vw = 0;
-        let uw = 0;
-        for (;;) {
-          ctx.font = `700 ${valueSize}px ${num}`;
-          vw = ctx.measureText(cell.value).width;
-          ctx.font = `500 ${unitSize}px ${cjk}`;
-          uw = cell.unit ? ctx.measureText(cell.unit).width + 6 : 0;
-          if (vw + uw <= s.cellWidth || valueSize <= 34) break;
-          valueSize -= 2;
-          unitSize = Math.max(18, unitSize - 1);
-        }
+        ctx.font = `700 ${valueSize}px ${num}`;
+        const vw = ctx.measureText(cell.value).width;
+        ctx.font = `500 ${unitSize}px ${cjk}`;
+        const uw = cell.unit ? ctx.measureText(cell.unit).width + 6 : 0;
         const startX = cx - (vw + uw) / 2;
 
         ctx.textAlign = 'left';

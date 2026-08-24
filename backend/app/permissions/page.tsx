@@ -42,7 +42,7 @@ const PERMISSION_GROUPS = [
       { id: 'recharges',           label: '儲值明細' },
       { id: 'reports_logistics',   label: '物流明細' },
       { id: 'reports_products',    label: '消費明細' },
-      { id: 'reports_dismantled',   label: '分解明細' },
+      { id: 'reports_dismantled',   label: '回收明細' },
       { id: 'reports_adjustments',  label: '手動調整明細' },
       { id: 'coupons_report',       label: '折價券明細' },
       { id: 'reports_settlement',   label: '廠商結算' },

@@ -143,10 +143,10 @@ export default function DismantledPage() {
   ]
 
   return (
-    <AdminLayout pageTitle="回收池 / 分解品管理">
+    <AdminLayout pageTitle="回收池 / 回收品管理">
       <div className="space-y-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatsCard title="總分解數量" value={filtered.length} />
+          <StatsCard title="總回收數量" value={filtered.length} />
           <StatsCard title="總退還代幣" value={totalTokens} unit="G" />
         </div>
 

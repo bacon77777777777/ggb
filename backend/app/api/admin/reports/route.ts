@@ -420,7 +420,7 @@ export async function GET(request: NextRequest) {
         ? Math.round(totalG * effectiveFeeRate)
         : null
 
-      // 分解退代幣（廠商須吸收，從結算中扣除）
+      // 回收退代幣（廠商須吸收，從結算中扣除）
       const dismantleTotal = recycleRows
         .filter((r: any) => String(r.product?.supplier_id) === supplierId)
         .reduce((s: number, r: any) => s + (r.recycle_value || 0), 0)
@@ -582,7 +582,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ topSearches, topSeries, conversionRate, clickTotal, converted, trialTotal, trialUsers, dailyActiveUsers })
     }
 
-    // ── 分解明細 ────────────────────────────────────────────────────────────
+    // ── 回收明細 ────────────────────────────────────────────────────────────
     if (tab === 'dismantled') {
       let query = supabase
         .from('admin_recycle_pool')

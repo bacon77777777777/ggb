@@ -2,7 +2,9 @@ import { cn } from '@/lib/utils';
 import { Flame, Box, Dna, Gift, Star } from 'lucide-react';
 
 export type ProductType = 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom';
-export type BadgeType = ProductType | 'hot' | 'new';
+/* 'slot'（機台）只在 BadgeType，不進 ProductType —— 商品卡的 type 是 products.type，
+   機台不在那張表，把它併進 ProductType 會讓所有用到 ProductType 的地方都跟著放寬 */
+export type BadgeType = ProductType | 'hot' | 'new' | 'slot';
 
 interface ProductBadgeProps {
   type: BadgeType;
@@ -34,6 +36,12 @@ export default function ProductBadge({ type, className, icon = false }: ProductB
       text: '抽卡',
       color: 'bg-amber-500',
       shadow: 'shadow-amber-500/20',
+      icon: Dna,
+    },
+    slot: {
+      text: '機台',
+      color: 'bg-indigo-500',
+      shadow: 'shadow-indigo-500/20',
       icon: Dna,
     },
     custom: {

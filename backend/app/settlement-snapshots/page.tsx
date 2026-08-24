@@ -78,7 +78,7 @@ export default function SettlementSnapshotsPage() {
     },
     {
       key: "c3",
-      label: "分解退",
+      label: "回收退",
       className: "text-right font-mono text-amber-600",
       render: (row) => {
         const sm = STATUS_META[row.status as keyof typeof STATUS_META]

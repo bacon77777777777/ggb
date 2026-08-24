@@ -20,7 +20,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePromos, type SitePromo, type NewArrivalProduct } from './usePromos';
 import { hideForToday } from '@/lib/promoDismiss';
 import { useRouteTransition } from '@/components/ui/RouteTransition';
-import { CATEGORY_LABELS, categoryFlagKey } from '@/lib/categoryFlags';
+import { categoryFlagKey } from '@/lib/categoryFlags';
+import ProductBadge from '@/components/ui/ProductBadge';
 import { asset } from '@/lib/asset';
 
 /** 卡片版的統一模板底圖（含外框、緞帶、喇叭與按鈕），版位百分比由此圖量測而來 */
@@ -235,11 +236,13 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                             {/* 類別膠囊擺在商品名上面、與名稱切齊左緣（老闆指定）。
                                 固定寬 46px：兩字（抽卡）與三字（自製賞）等寬，
                                 一排看下來邊緣才是一直線。
-                                底色與字色都調深過 —— neutral-100/500 在粉紅漸層上看不清楚 */}
+                                顏色走商品小卡的同一顆 ProductBadge（老闆 2026-08-24：
+                                要跟小卡上的標籤同色）—— 這裡只覆蓋尺寸與圓角，配色不自己另開一套 */}
                             {cat && (
-                              <span className="mb-0.5 inline-flex w-[46px] items-center justify-center rounded-md bg-neutral-200 py-0.5 text-[10px] font-black leading-none text-neutral-700">
-                                {CATEGORY_LABELS[cat]}
-                              </span>
+                              <ProductBadge
+                                type={cat}
+                                className="mb-0.5 inline-flex h-auto w-[46px] justify-center rounded-md px-1 py-0.5 text-[10px] font-black normal-case tracking-normal leading-none backdrop-blur-none shadow-none"
+                              />
                             )}
                             <span className="block truncate text-[13px] font-bold leading-[1.25] text-neutral-900">{p.name}</span>
                             {/* 金額比照商品小卡：G 幣圖示 ＋ font-amount ＋ 主題色。

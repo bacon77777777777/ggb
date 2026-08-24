@@ -36,7 +36,7 @@ const TYPE_META: Record<ReportType, { title: string }> = {
 const STATUS_LABEL: Record<string, string> = {
   completed: '完成', pending: '待處理', failed: '失敗', refunded: '已退款',
   success: '成功', in_warehouse: '倉庫中', pending_delivery: '待配送',
-  shipped: '已出貨', exchanged: '已兌換', dismantled: '已拆解',
+  shipped: '已出貨', exchanged: '已兌換', dismantled: '已回收',
   listing: '上架中', cancelled: '已取消',
 }
 const STATUS_COLOR: Record<string, string> = {

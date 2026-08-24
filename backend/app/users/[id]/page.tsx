@@ -103,7 +103,7 @@ export default function UserDetailPage() {
                                 const typeMap: Record<string, { label: string; cls: string }> = {
                                   recharge:  { label: '儲值',     cls: 'bg-green-50 text-green-700' },
                                   draw:      { label: '抽獎',     cls: 'bg-rose-50 text-rose-700' },
-                                  dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
+                                  dismantle: { label: '回收退',   cls: 'bg-amber-50 text-amber-700' },
                                   manual:    { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
                                   marketing: { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
                                   test:      { label: '測試',     cls: 'bg-neutral-100 text-neutral-500' },
@@ -124,7 +124,7 @@ export default function UserDetailPage() {
                                 const typeMap: Record<string, { label: string; cls: string }> = {
                                   recharge:  { label: '儲值',     cls: 'bg-green-50 text-green-700' },
                                   draw:      { label: '抽獎',     cls: 'bg-rose-50 text-rose-700' },
-                                  dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
+                                  dismantle: { label: '回收退',   cls: 'bg-amber-50 text-amber-700' },
                                   manual:    { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
                                   marketing: { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
                                   test:      { label: '測試',     cls: 'bg-neutral-100 text-neutral-500' },
@@ -152,7 +152,7 @@ export default function UserDetailPage() {
                                 const typeMap: Record<string, { label: string; cls: string }> = {
                                   recharge:  { label: '儲值',     cls: 'bg-green-50 text-green-700' },
                                   draw:      { label: '抽獎',     cls: 'bg-rose-50 text-rose-700' },
-                                  dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
+                                  dismantle: { label: '回收退',   cls: 'bg-amber-50 text-amber-700' },
                                   manual:    { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
                                   marketing: { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
                                   test:      { label: '測試',     cls: 'bg-neutral-100 text-neutral-500' },
@@ -172,7 +172,7 @@ export default function UserDetailPage() {
                                 const typeMap: Record<string, { label: string; cls: string }> = {
                                   recharge:  { label: '儲值',     cls: 'bg-green-50 text-green-700' },
                                   draw:      { label: '抽獎',     cls: 'bg-rose-50 text-rose-700' },
-                                  dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
+                                  dismantle: { label: '回收退',   cls: 'bg-amber-50 text-amber-700' },
                                   manual:    { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
                                   marketing: { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
                                   test:      { label: '測試',     cls: 'bg-neutral-100 text-neutral-500' },
@@ -194,7 +194,7 @@ export default function UserDetailPage() {
                                 const typeMap: Record<string, { label: string; cls: string }> = {
                                   recharge:  { label: '儲值',     cls: 'bg-green-50 text-green-700' },
                                   draw:      { label: '抽獎',     cls: 'bg-rose-50 text-rose-700' },
-                                  dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
+                                  dismantle: { label: '回收退',   cls: 'bg-amber-50 text-amber-700' },
                                   manual:    { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
                                   marketing: { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
                                   test:      { label: '測試',     cls: 'bg-neutral-100 text-neutral-500' },
@@ -215,7 +215,7 @@ export default function UserDetailPage() {
                                 const typeMap: Record<string, { label: string; cls: string }> = {
                                   recharge:  { label: '儲值',     cls: 'bg-green-50 text-green-700' },
                                   draw:      { label: '抽獎',     cls: 'bg-rose-50 text-rose-700' },
-                                  dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
+                                  dismantle: { label: '回收退',   cls: 'bg-amber-50 text-amber-700' },
                                   manual:    { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
                                   marketing: { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
                                   test:      { label: '測試',     cls: 'bg-neutral-100 text-neutral-500' },
@@ -237,7 +237,7 @@ export default function UserDetailPage() {
                                 const typeMap: Record<string, { label: string; cls: string }> = {
                                   recharge:  { label: '儲值',     cls: 'bg-green-50 text-green-700' },
                                   draw:      { label: '抽獎',     cls: 'bg-rose-50 text-rose-700' },
-                                  dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
+                                  dismantle: { label: '回收退',   cls: 'bg-amber-50 text-amber-700' },
                                   manual:    { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
                                   marketing: { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
                                   test:      { label: '測試',     cls: 'bg-neutral-100 text-neutral-500' },
@@ -381,7 +381,7 @@ export default function UserDetailPage() {
           })
           setUserDraws(mappedDraws)
 
-          // 分解紀錄
+          // 回收紀錄
           const dismantled = drawsData
             .filter((d: any) => d.status === 'dismantled')
             .map((d: any) => ({
@@ -1106,7 +1106,7 @@ export default function UserDetailPage() {
                         : 'text-neutral-500 hover:text-neutral-700'
                     }`}
                   >
-                    分解紀錄
+                    回收紀錄
                     {userDismantled.length > 0 && (
                       <span className="ml-2 px-1.5 py-0.5 bg-red-50 text-red-500 rounded text-xs">
                         {userDismantled.length}
@@ -1260,7 +1260,7 @@ export default function UserDetailPage() {
                 </div>
               )}
 
-              {/* 分解紀錄 */}
+              {/* 回收紀錄 */}
               {activeTab === 'dismantled' && (
                 <>
                   {userDismantled.length > 0 ? (
@@ -1278,7 +1278,7 @@ export default function UserDetailPage() {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <p className="text-neutral-500">暫無分解紀錄</p>
+                      <p className="text-neutral-500">暫無回收紀錄</p>
                     </div>
                   )}
                 </>

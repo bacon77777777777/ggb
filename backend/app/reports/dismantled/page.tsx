@@ -127,7 +127,7 @@ export default function DismantledReportPage() {
   const handleExport = () => {
     if (!rows.length) return
     const BOM = '﻿'
-    const header = ['時間', '用戶', '商品', '賞項', '等級', '分解代幣', '廠商']
+    const header = ['時間', '用戶', '商品', '賞項', '等級', '回收代幣', '廠商']
     const body = rows.map(r => [
       new Date(r.created_at).toLocaleString('zh-TW', { hour12: false }),
       r.userName,
@@ -142,15 +142,15 @@ export default function DismantledReportPage() {
     const url  = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `分解明細_${startDate}_${endDate}.csv`
-    void logExport('分解明細', `分解明細_${startDate}_${endDate}.csv`)
+    a.download = `回收明細_${startDate}_${endDate}.csv`
+    void logExport('回收明細', `回收明細_${startDate}_${endDate}.csv`)
     a.click()
     URL.revokeObjectURL(url)
   }
 
   return (
     <AdminLayout
-      pageTitle="分解明細"
+      pageTitle="回收明細"
     >
       <div className="space-y-4">
 
@@ -189,7 +189,7 @@ export default function DismantledReportPage() {
         {/* 摘要 KPI */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div className="bg-white rounded-xl border border-neutral-200 p-4">
-            <p className="text-xs text-neutral-500 mb-1">分解筆數</p>
+            <p className="text-xs text-neutral-500 mb-1">回收筆數</p>
             <p className="text-2xl font-black text-neutral-900">{loading ? '—' : fmt(rows.length)}</p>
           </div>
           <div className="bg-white rounded-xl border border-neutral-200 p-4">
@@ -215,7 +215,7 @@ export default function DismantledReportPage() {
   keyField="id"
   rowClassName={() => "border-b border-neutral-100 hover:bg-neutral-50 transition-colors"}
   isLoading={loading}
-  emptyMessage="此區間無分解紀錄"
+  emptyMessage="此區間無回收紀錄"
   footer={<><tr className="bg-neutral-50 border-t-2 border-neutral-200">
                     <td colSpan={5} className="px-4 py-3 text-sm font-semibold text-neutral-700">
                       合計 {fmt(rows.length)} 筆

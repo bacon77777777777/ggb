@@ -46,7 +46,7 @@ export default function PageHeader({
 }: {
   title: React.ReactNode;
   onBack: () => void;
-  /** 右側插槽：各頁自己配（分解紀錄、交易紀錄、輸入優惠代碼…），沒有就留空 */
+  /** 右側插槽：各頁自己配（回收紀錄、交易紀錄、輸入優惠代碼…），沒有就留空 */
   right?: React.ReactNode;
   className?: string;
 }) {

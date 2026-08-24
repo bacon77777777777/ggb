@@ -46,7 +46,7 @@ const EVENT_LABEL: Record<string, string> = {
   delivery_logistics_select: '選擇物流方式',
   delivery_success: '確認送出配送',
   delivery_abandon: '關閉配送彈窗',
-  dismantle: '分解按鈕',
+  dismantle: '回收按鈕',
   list_to_market: '上架市集',
   banner_click: 'Banner 點擊',
   leaderboard_view: '排行榜',

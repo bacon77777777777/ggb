@@ -1202,7 +1202,7 @@ export default function EditProductPage() {
               <div className="mt-3 p-3 bg-primary/5 border border-primary/10 rounded-lg">
                 <p className="text-xs text-neutral-600 mb-3 leading-relaxed">
                   玩家免費抽，抽中才有資格買。中籤品項在申請寄出時支付下方各品項的「寄出應付」金額，
-                  不可分解，30 天內未申請寄送就失效。上方的「售價」對這個模式不生效。
+                  不可回收，30 天內未申請寄送就失效。上方的「售價」對這個模式不生效。
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -1528,9 +1528,9 @@ export default function EditProductPage() {
                         </button>
                       )}
 
-                      {/* 分解設定 */}
+                      {/* 回收設定 */}
                       <div className="pt-2.5 border-t border-neutral-100">
-                        <label className="block text-xs font-medium text-neutral-500 mb-1.5">分解設定</label>
+                        <label className="block text-xs font-medium text-neutral-500 mb-1.5">回收設定</label>
                         {formData.type !== 'gacha' && formData.type !== 'blindbox' ? (
                           <div className="flex gap-2 items-start">
                             <div className="w-28 flex-shrink-0">
@@ -1544,7 +1544,7 @@ export default function EditProductPage() {
                                   setPrizes(updated)
                                 }}
                               >
-                                <option value="auto">智能分解</option>
+                                <option value="auto">智能回收</option>
                                 <option value="percent">百分比 (%)</option>
                                 <option value="fixed">固定代幣</option>
                               </SelectField>

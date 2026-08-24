@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Box, Truck, Trophy, Settings, LogOut, ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, HelpCircle, Info, FileText, Shield, RefreshCcw, RefreshCw, Wallet, Heart, User, ChevronDown, X, Loader2, CreditCard, Copy, Ticket, Store, History, MessageCircle, Star, UserPlus } from 'lucide-react';
+import { Box, Truck, Trophy, Settings, LogOut, ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, HelpCircle, Info, FileText, Shield, RefreshCcw, RefreshCw, Wallet, Heart, User, ChevronDown, X, Loader2, CreditCard, Copy, Ticket, Store, History, MessageCircle, Star, UserPlus, Search } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
 import PageHeader from '@/components/ui/PageHeader';
@@ -20,6 +20,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { ProfileSkeleton } from '@/components/Skeletons';
 import { WarehouseItemDetailModal } from '@/components/warehouse/WarehouseItemDetailModal';
+import WarehouseGridCell from '@/components/warehouse/WarehouseGridCell';
+import WarehouseSearchPanel from '@/components/warehouse/WarehouseSearchPanel';
 import ProductCard from '@/components/ProductCard';
 import ProductCardSkeleton from '@/components/ProductCardSkeleton';
 import { ProductType } from '@/components/ui/ProductBadge';
@@ -99,6 +101,8 @@ interface WarehouseItem {
   supplierId?: number | null;
   supplierName?: string;
   prizeTotal?: number;
+  /** 品項 id：倉庫格狀把同一品項堆成一格，用它當堆疊鍵 */
+  prizeId?: number | null;
   /** 抽籤販售中籤品項：申請寄出時要付的價金。一般商品為 0 */
   salePrice?: number;
   /** 抽籤販售中籤品項的保留到期時間 */
@@ -120,6 +124,8 @@ interface DeliveryOrder {
   address?: string;
   storeName?: string;
   logisticsType?: string;
+  /** 供貨廠商。舊訂單 orders.supplier_id 可能還是 NULL，那時退回從訂單品項推 */
+  supplierName?: string;
 }
 
 interface DrawHistoryItem {
@@ -150,6 +156,24 @@ interface FollowedProduct {
 }
 
 const MAJOR_LEVELS = ['SP賞', 'S賞', 'A賞', 'B賞', 'C賞', 'SP', 'S', 'A', 'B', 'C', 'LAST ONE', '最後賞'];
+
+/*
+ * 賞等的名次（數字小＝大獎）。用於倉庫「賞等 高到低」排序。
+ * 最後賞排在最前面 —— 一款商品只有一支，比 A賞 還稀有。
+ * 一般版與看不懂的賞等一律丟到最後，不要卡在中間讓大獎往下沉。
+ */
+const gradeRank = (grade: string | undefined | null): number => {
+  if (!grade) return 999;
+  const trimmed = grade.trim();
+  if (!trimmed) return 999;
+  if (trimmed.toUpperCase() === 'LAST ONE' || trimmed === '最後賞') return 0;
+  const prizeIndex = trimmed.indexOf('賞');
+  const base = (prizeIndex !== -1 ? trimmed.slice(0, prizeIndex) : trimmed).trim().toUpperCase();
+  if (base === 'SP') return 1;
+  if (base === 'S') return 2;
+  if (/^[A-Z]$/.test(base)) return 3 + (base.charCodeAt(0) - 65);
+  return 900;
+};
 
 const isMajorGrade = (grade: string | undefined | null) => {
   if (!grade) return false;
@@ -247,11 +271,13 @@ interface DbOrder {
   recipient_phone?: string | null;
   address?: string | null;
   store_name?: string | null;
+  suppliers?: { name: string } | null;
   draw_records: {
     product_prizes: {
       level: string;
       name: string;
     } | null;
+    products?: { suppliers?: { name: string } | null } | null;
   }[];
 }
 
@@ -338,6 +364,7 @@ interface GroupedDrawHistoryItem {
     prize_name?: string | null;
     /** 抽籤販售中籤品項的保留到期時間 */
     expires_at?: string | null;
+    product_prize_id?: number | null;
     product_prizes: {
       level: string;
       name: string;
@@ -419,6 +446,32 @@ const getTopupStatusConfig = (status: string) => {
   return { label: status, color: 'text-neutral-500', bg: 'bg-neutral-100', border: 'border-neutral-200' };
 };
 
+/*
+ * Supabase（PostgREST）單次查詢預設最多回 1000 列，超過的部分**靜默截斷**——
+ * 不報錯、不給提示。倉庫破千的玩家因此看到「全選 (1000)」而實際有更多
+ * （老闆 2026-08-24 回報）。凡是筆數會隨玩家抽獎量成長的查詢都要走這支分頁撈到底。
+ *
+ * 用法：把 supabase query 建好、最後接 .range(from, to) 回傳即可。
+ * 排序務必帶一個唯一鍵（id）當第二排序，否則同秒建立的資料在分頁邊界會重複或漏掉。
+ */
+/** 倉庫格狀每次載入的格數：三欄 × 四列，捲一下補一屏 */
+const WAREHOUSE_PAGE = 12;
+
+const SUPABASE_PAGE_SIZE = 1000;
+
+async function fetchAllRows<T>(
+  buildPage: (from: number, to: number) => PromiseLike<{ data: unknown; error: unknown }>,
+): Promise<T[]> {
+  const all: T[] = [];
+  for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
+    const { data, error } = await buildPage(from, from + SUPABASE_PAGE_SIZE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as T[];
+    all.push(...rows);
+    if (rows.length < SUPABASE_PAGE_SIZE) return all;
+  }
+}
+
 function ProfileContent() {
   const { user, logout, refreshProfile, isLoading: isAuthLoading } = useAuth();
   const { showAlert } = useAlert();
@@ -480,20 +533,39 @@ function ProfileContent() {
   ];
 
   /*
-   * 倉庫的篩選／排序（老闆 2026-08-24：頁籤列最右邊加篩選圖標，UI 照首頁那顆）。
-   * 跟首頁一樣是**單選**下拉（首頁也把排序與篩選混在一個選單：最新上架／價格／已完抽）：
-   *   時間   ＝ 依取得時間新到舊（預設，資料本來就是這個順序）
-   *   大賞   ＝ 只看大獎品項（A賞／最後賞那類，用既有的 isMajorGrade 判斷）
-   *   配送中 ＝ 只看已申請配送、還沒出貨的（status = pending_delivery）
+   * 倉庫的篩選（老闆 2026-08-24 第二版：原本是頁籤列右邊的篩選圖標下拉，
+   * 改版後跟類別頁籤一起收進搜尋的推薦面板，由 chip 切換）：
+   *   latest     ＝ 不篩，依取得時間新到舊（資料本來就是這個順序）
+   *   major      ＝ 只看大獎品項（A賞／最後賞那類，用既有的 isMajorGrade 判斷）
+   *   delivering ＝ 只看已申請配送、還沒出貨的（status = pending_delivery）
    */
   type WarehouseFilter = 'latest' | 'major' | 'delivering';
   const [warehouseFilter, setWarehouseFilter] = useState<WarehouseFilter>('latest');
-  const [isWarehouseFilterOpen, setIsWarehouseFilterOpen] = useState(false);
-  const WAREHOUSE_FILTERS: { id: WarehouseFilter; label: string }[] = [
-    { id: 'latest', label: '時間' },
-    { id: 'major', label: '大賞' },
-    { id: 'delivering', label: '配送中' },
+
+  /*
+   * 排序（老闆 2026-08-24：原本「清除」的位置改放排序圖標）。
+   * 這是**排序**不是篩選 —— 篩選在搜尋的推薦面板裡，兩者不要混在同一個選單。
+   */
+  type WarehouseSort = 'time_desc' | 'time_asc' | 'grade' | 'same_item' | 'expiry';
+  const [warehouseSort, setWarehouseSort] = useState<WarehouseSort>('time_desc');
+  const [isWarehouseSortOpen, setIsWarehouseSortOpen] = useState(false);
+  const WAREHOUSE_SORTS: { id: WarehouseSort; label: string; hint?: string }[] = [
+    { id: 'time_desc', label: '時間 新到舊' },
+    { id: 'time_asc', label: '時間 舊到新' },
+    { id: 'grade', label: '賞等 高到低' },
+    { id: 'same_item', label: '同款集中' },
+    { id: 'expiry', label: '到期日 近到遠' },
   ];
+
+  /*
+   * 倉庫搜尋（老闆 2026-08-24，照 Pokémon GO）：類別不再是頁籤，收進「點搜尋才展開」
+   * 的推薦按鈕裡。搜尋框空的時候顯示推薦面板，一開始打字就即時濾下面的格狀清單。
+   */
+  const [warehouseSearch, setWarehouseSearch] = useState('');
+  const [isWarehouseSearchOpen, setIsWarehouseSearchOpen] = useState(false);
+  /** 廠商篩選：出貨以廠商為單位，所以「我靈感文創的貨有哪些」是常見問題 */
+  const [warehouseSupplier, setWarehouseSupplier] = useState<string | null>(null);
+  const warehouseSearchInputRef = useRef<HTMLInputElement>(null);
 
   const warehouseSubTabs = [
     { id: 'all', label: '全部' },
@@ -503,17 +575,9 @@ function ProfileContent() {
   ] as const;
 
   const [activeMarketTab, setActiveMarketTab] = useState<'listing' | 'sold_records'>('listing');
-  // 倉庫／配送的內容清單左右滑 = 切該區的頁籤（老闆指定：有頁籤就要能滑）
-  // 滑的是「類別頁籤」（全部／一番賞／盒玩…），不是 倉庫↔分解紀錄 ——
-  // 原本綁後者，在倉庫裡一滑就整個跳去分解紀錄，玩家以為換頁了
-  const swipeWarehouseTabs = useSwipeTabs(
-    warehouseTabs.map(t => t.id),
-    activeWarehouseCategory,
-    setActiveWarehouseCategory,
-  );
   const [activeMarketCategory, setActiveMarketCategory] = useState<ProductCategoryId>('all');
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
-  
+
   // Data States
   const [warehouseItems, setWarehouseItems] = useState<WarehouseItem[]>([]);
   const [dismantledItems, setDismantledItems] = useState<DismantledItem[]>([]);
@@ -521,10 +585,9 @@ function ProfileContent() {
   const [soldItems, setSoldItems] = useState<MarketListing[]>([]);
   const [deliveryHistory, setDeliveryHistory] = useState<DeliveryOrder[]>([]);
   const [drawHistory, setDrawHistory] = useState<DrawHistoryItem[]>([]);
-  const [topupHistory, setTopupHistory] = useState<TopupHistoryItem[]>([]); 
+  const [topupHistory, setTopupHistory] = useState<TopupHistoryItem[]>([]);
   const [followedProducts, setFollowedProducts] = useState<FollowedProduct[]>([]);
   const [activeFollowsTab, setActiveFollowsTab] = useState<'all' | 'selling' | 'soldout'>('all');
-  // const [activeDrawTab, setActiveDrawTab] = useState<'all'>('all'); // unused
   const [activeDeliveryTab, setActiveDeliveryTab] = useState<'all' | 'submitted' | 'shipping' | 'completed' | 'cancelled'>('all');
   const swipeDeliveryTabs = useSwipeTabs(
     ['all', 'submitted', 'shipping', 'completed', 'cancelled'] as const,
@@ -559,7 +622,6 @@ function ProfileContent() {
   const [desktopCouponsStatus, setDesktopCouponsStatus] = useState<'all' | 'unused' | 'used' | 'expired'>('all');
   const [desktopCouponsPage, setDesktopCouponsPage] = useState(1);
   const [desktopCouponsPageSize, setDesktopCouponsPageSize] = useState(10);
-  const [activeDismantleTimeTab, setActiveDismantleTimeTab] = useState<'today' | '7days' | '30days'>('today');
   const [activeSoldTimeTab, setActiveSoldTimeTab] = useState<'today' | '7days' | '30days'>('today');
   // 手機版儲值紀錄不再有日期 tab，固定顯示近 30 天（老闆 2026-08-20）；
   // 桌機版仍有下拉可切，預設同樣近 30 天
@@ -575,7 +637,12 @@ function ProfileContent() {
   const [selectedMarketItems, setSelectedMarketItems] = useState<string[]>([]);
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [showDismantleModal, setShowDismantleModal] = useState(false);
-  const [dismantleSummary, setDismantleSummary] = useState({ count: 0, totalValue: 0 });
+  const [dismantleSummary, setDismantleSummary] = useState<{
+    count: number;
+    totalValue: number;
+    /** 這批裡的大賞（SP／S／A／B／C／最後賞）。有的話回收前要先讓玩家看清楚 */
+    majors: { name: string; grade: string }[];
+  }>({ count: 0, totalValue: 0, majors: [] });
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [expandedDrawId, setExpandedDrawId] = useState<string | null>(null);
   const [isSubmittingDelivery, setIsSubmittingDelivery] = useState(false);
@@ -615,15 +682,17 @@ function ProfileContent() {
 
   // Auto-scroll refs
   const warehouseSubTabsRef = useRef<HTMLDivElement>(null);
-  const dismantleTimeTabsRef = useRef<HTMLDivElement>(null);
-  const [mobileWarehouseDisplayCount, setMobileWarehouseDisplayCount] = useState(10);
+  const [mobileWarehouseDisplayCount, setMobileWarehouseDisplayCount] = useState(WAREHOUSE_PAGE);
   const mobileWarehouseSentinelRef = useRef<HTMLDivElement>(null);
   const mobileWarehouseScrollRef = useRef<HTMLDivElement>(null);
   const [mobileDeliveryDisplayCount, setMobileDeliveryDisplayCount] = useState(10);
   const mobileDeliveryScrollRef = useRef<HTMLDivElement>(null);
   const [mobileDrawDisplayCount, setMobileDrawDisplayCount] = useState(10);
   const mobileDrawScrollRef = useRef<HTMLDivElement>(null);
-  const [lockedSupplierName, setLockedSupplierName] = useState<string | null>(null);
+  /*
+   * 選取中的獎品分屬哪幾家廠商。一張配送訂單只能有一家（migration 612 起 RPC 也會擋），
+   * 所以跨廠商的選取只能回收 —— 不擋你選，只是把「這批能做什麼」寫在按鈕上。
+   */
 
   useEffect(() => {
     if (warehouseSubTabsRef.current) {
@@ -633,15 +702,6 @@ function ProfileContent() {
       }
     }
   }, [activeWarehouseSubCategory]);
-
-  useEffect(() => {
-    if (dismantleTimeTabsRef.current) {
-      const activeTabElement = dismantleTimeTabsRef.current.querySelector(`[data-tab-id="${activeDismantleTimeTab}"]`);
-      if (activeTabElement) {
-        activeTabElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-      }
-    }
-  }, [activeDismantleTimeTab]);
 
   // Forms
   const [settingsForm, setSettingsForm] = useState({
@@ -797,22 +857,217 @@ function ProfileContent() {
       items = items.filter(item => item.status === 'pending_delivery');
     }
 
+    // 4. 廠商
+    if (warehouseSupplier) {
+      items = items.filter(item => item.supplierName === warehouseSupplier);
+    }
+
+    // 5. 關鍵字：品名／系列／賞等／廠商都比對，玩家不必先知道我們怎麼分欄位
+    const q = warehouseSearch.trim().toLowerCase();
+    if (q) {
+      items = items.filter(item =>
+        item.name.toLowerCase().includes(q)
+        || item.series.toLowerCase().includes(q)
+        || item.grade.toLowerCase().includes(q)
+        || (item.supplierName ?? '').toLowerCase().includes(q),
+      );
+    }
+
     return items;
-  }, [warehouseItems, activeWarehouseCategory, activeWarehouseSubCategory, warehouseFilter]);
+  }, [warehouseItems, activeWarehouseCategory, activeWarehouseSubCategory, warehouseFilter, warehouseSupplier, warehouseSearch]);
 
   const sortedWarehouseItems = React.useMemo(() => {
+    /*
+     * 排序（老闆 2026-08-24）。基準排完之後，下面兩件事一定要在最外層再蓋一次：
+     * 鎖定廠商往前、待配送沉底 —— 那是操作性的排序，不該被使用者選的排序推翻。
+     *
+     * 資料本來就是「取得時間新到舊」，所以 time_desc 不用動。
+     */
     let items = filteredWarehouseItems;
-    if (lockedSupplierName) {
-      const same = items.filter(i => i.supplierName === lockedSupplierName);
-      const others = items.filter(i => i.supplierName !== lockedSupplierName);
-      items = [...same, ...others];
+    if (warehouseSort !== 'time_desc') {
+      const byId = (a: WarehouseItem, b: WarehouseItem) => Number(b.id) - Number(a.id);
+      items = [...items].sort((a, b) => {
+        switch (warehouseSort) {
+          case 'time_asc':
+            return Number(a.id) - Number(b.id);
+          case 'grade': {
+            const d = gradeRank(a.grade) - gradeRank(b.grade);
+            return d !== 0 ? d : byId(a, b);
+          }
+          case 'same_item': {
+            // 同款集中：同一個品項的全部排在一起（不合併成一格，只是排在一起，
+            // 「留一張、其餘回收」才好操作）。同款之內再依系列與時間
+            const ka = `${a.series}\u0000${a.prizeId ?? a.name}`;
+            const kb = `${b.series}\u0000${b.prizeId ?? b.name}`;
+            return ka === kb ? byId(a, b) : ka.localeCompare(kb, 'zh-Hant');
+          }
+          case 'expiry': {
+            // 沒有到期日的（一般商品）沉到最後，不要卡在有期限的中間
+            const ta = a.expiresAt ? new Date(a.expiresAt).getTime() : Number.POSITIVE_INFINITY;
+            const tb = b.expiresAt ? new Date(b.expiresAt).getTime() : Number.POSITIVE_INFINITY;
+            return ta === tb ? byId(a, b) : ta - tb;
+          }
+          default:
+            return 0;
+        }
+      });
     }
+
     // 待配送的沉到最後（不能再操作）—— 但「配送中」篩選下整批都是待配送，不用再沉
     if (warehouseFilter === 'delivering') return items;
     const active = items.filter(i => i.status !== 'pending_delivery');
     const pending = items.filter(i => i.status === 'pending_delivery');
     return [...active, ...pending];
-  }, [filteredWarehouseItems, lockedSupplierName, warehouseFilter]);
+  }, [filteredWarehouseItems, warehouseFilter, warehouseSort]);
+
+  const selectedForDeliverySet = React.useMemo(
+    () => new Set(selectedForDelivery),
+    [selectedForDelivery],
+  );
+
+  /*
+   * 推薦按鈕的內容與數量。數量一律對「整個倉庫」算（不受其他篩選影響）——
+   * PoGO 也是絕對數字。互相牽動的話，玩家點掉一個類別之後其他數字全變，
+   * 反而看不出自己到底有什麼。
+   */
+  // warehouseTabs 每次 render 都是新陣列，memo 相依只能追它的內容
+  const warehouseTabIds = warehouseTabs.map(t => t.id).join();
+  const warehouseChipGroups = React.useMemo(() => {
+    const all = warehouseItems;
+    const countBy = (fn: (i: WarehouseItem) => boolean) => all.filter(fn).length;
+
+    const categoryChips = warehouseTabs.map(tab => ({
+      key: `cat:${tab.id}`,
+      label: tab.label,
+      count: tab.id === 'all' ? all.length : countBy(i => i.type === tab.id),
+      active: activeWarehouseCategory === tab.id,
+      onSelect: () => {
+        setActiveWarehouseCategory(tab.id);
+        setIsWarehouseSearchOpen(false);
+      },
+    }));
+
+    const gradeChips = [
+      {
+        key: 'grade:major',
+        label: '大賞',
+        count: countBy(i => isMajorGrade(i.grade)),
+        active: warehouseFilter === 'major',
+        onSelect: () => {
+          setWarehouseFilter(warehouseFilter === 'major' ? 'latest' : 'major');
+          setIsWarehouseSearchOpen(false);
+        },
+      },
+      {
+        key: 'grade:small',
+        label: '小賞',
+        count: countBy(i => !isMajorGrade(i.grade)),
+        active: activeWarehouseSubCategory === 'small_prize',
+        onSelect: () => {
+          setActiveWarehouseSubCategory(activeWarehouseSubCategory === 'small_prize' ? 'all' : 'small_prize');
+          setIsWarehouseSearchOpen(false);
+        },
+      },
+      {
+        key: 'state:delivering',
+        label: '出貨中',
+        count: countBy(i => i.status === 'pending_delivery'),
+        active: warehouseFilter === 'delivering',
+        onSelect: () => {
+          setWarehouseFilter(warehouseFilter === 'delivering' ? 'latest' : 'delivering');
+          setIsWarehouseSearchOpen(false);
+        },
+      },
+    ];
+
+    // 廠商是資料裡有什麼就列什麼，不寫死 —— 廠商會增加
+    const supplierNames = Array.from(new Set(all.map(i => i.supplierName).filter((n): n is string => !!n)));
+    const supplierChips = supplierNames.map(supplierName => ({
+      key: `sup:${supplierName}`,
+      label: supplierName,
+      count: countBy(i => i.supplierName === supplierName),
+      active: warehouseSupplier === supplierName,
+      onSelect: () => {
+        setWarehouseSupplier(warehouseSupplier === supplierName ? null : supplierName);
+        setIsWarehouseSearchOpen(false);
+      },
+    }));
+
+    const groups = [
+      { title: '類別', chips: categoryChips },
+      { title: '賞等與狀態', chips: gradeChips },
+    ];
+    if (supplierChips.length > 1) groups.push({ title: '廠商', chips: supplierChips });
+    return groups;
+  // warehouseTabs 每次 render 都是新陣列，放進相依會讓 memo 每次都失效，改追它的內容
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    warehouseItems, activeWarehouseCategory, activeWarehouseSubCategory,
+    warehouseFilter, warehouseSupplier, warehouseTabIds,
+  ]);
+
+  /** 倉庫裡件數最多的幾個系列，當成現成的關鍵字（省得玩家自己想要打什麼） */
+  const warehouseTopSeries = React.useMemo(() => {
+    const tally = new Map<string, number>();
+    for (const item of warehouseItems) {
+      if (!item.series || item.series === '未知系列') continue;
+      tally.set(item.series, (tally.get(item.series) ?? 0) + 1);
+    }
+    return Array.from(tally.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([seriesName]) => seriesName);
+  }, [warehouseItems]);
+
+  /** 搜尋膠囊上顯示什麼：有關鍵字就顯示關鍵字，否則列出正在套用的篩選 */
+  const warehouseActiveFilterLabels = React.useMemo(() => {
+    const labels: string[] = [];
+    if (activeWarehouseCategory !== 'all') {
+      labels.push(warehouseTabs.find(t => t.id === activeWarehouseCategory)?.label ?? '');
+    }
+    if (warehouseFilter === 'major') labels.push('大賞');
+    if (warehouseFilter === 'delivering') labels.push('出貨中');
+    if (activeWarehouseSubCategory === 'small_prize') labels.push('小賞');
+    if (activeWarehouseSubCategory === 'tradable') labels.push('可上架');
+    if (activeWarehouseSubCategory === 'preorder') labels.push('預購');
+    if (warehouseSupplier) labels.push(warehouseSupplier);
+    return labels.filter(Boolean);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeWarehouseCategory, activeWarehouseSubCategory, warehouseFilter, warehouseSupplier]);
+
+  const clearWarehouseFilters = () => {
+    setWarehouseSearch('');
+    setActiveWarehouseCategory('all');
+    setActiveWarehouseSubCategory('all');
+    setWarehouseFilter('latest');
+    setWarehouseSupplier(null);
+  };
+
+  /*
+   * 全選 ＝ 選滿「目前清單上看得到的」，不預設任何廠商（老闆 2026-08-24）。
+   *
+   * 舊版會自動挑第一件的廠商並鎖住，畫面上就變成「全選 靈感文創 (12)」——
+   * 玩家沒設任何條件卻被塞了一個他沒選的廠商。現在廠商只有一個來源：
+   * 搜尋面板裡的廠商 chip。清單被它濾過了，全選自然就只會選到那一家。
+   * 沒設 chip 時全選就是整個倉庫，那種跨廠商的選取只能回收。
+   */
+  const selectAllTarget = React.useMemo(() => {
+    const ids = filteredWarehouseItems
+      .filter(i => i.status !== 'pending_delivery')
+      .map(i => i.id);
+    return { ids };
+  }, [filteredWarehouseItems]);
+
+  /** 選取中的獎品共跨了幾家廠商 —— 超過一家就不能配送，只能回收 */
+  const selectedSupplierNames = React.useMemo(() => {
+    const names = new Set<string>();
+    for (const item of warehouseItems) {
+      if (selectedForDeliverySet.has(item.id)) names.add(item.supplierName ?? '未知廠商');
+    }
+    return Array.from(names);
+  }, [warehouseItems, selectedForDeliverySet]);
+
+  const canDeliverSelection = selectedSupplierNames.length === 1;
 
   // 抽籤販售的價金：與運費分開算、分開顯示。
   // 這只是給玩家看的，實際扣款由 create_delivery_order 用
@@ -860,21 +1115,10 @@ function ProfileContent() {
   const filteredDismantledItems = React.useMemo(() => {
     let items = dismantledItems;
 
-    // Time Filtering
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    if (activeDismantleTimeTab === 'today') {
-      items = items.filter(item => item.raw_dismantled_at && item.raw_dismantled_at >= startOfToday);
-    } else if (activeDismantleTimeTab === '7days') {
-      const sevenDaysAgo = new Date(now);
-      sevenDaysAgo.setDate(now.getDate() - 7);
-      items = items.filter(item => item.raw_dismantled_at && item.raw_dismantled_at >= sevenDaysAgo);
-    } else if (activeDismantleTimeTab === '30days') {
-      const thirtyDaysAgo = new Date(now);
-      thirtyDaysAgo.setDate(now.getDate() - 30);
-      items = items.filter(item => item.raw_dismantled_at && item.raw_dismantled_at >= thirtyDaysAgo);
-    }
+    // 固定只看近 30 天（老闆 2026-08-24：今天／近7天／近30天三個頁籤拿掉）
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    items = items.filter(item => item.raw_dismantled_at && item.raw_dismantled_at >= thirtyDaysAgo);
 
     // 1. Filter by Primary Category
     if (activeWarehouseCategory !== 'all') {
@@ -889,7 +1133,7 @@ function ProfileContent() {
     }
     
     return items;
-  }, [dismantledItems, activeWarehouseCategory, activeWarehouseSubCategory, activeDismantleTimeTab]);
+  }, [dismantledItems, activeWarehouseCategory, activeWarehouseSubCategory]);
 
   const filteredSoldItems = React.useMemo(() => {
     let items = soldItems;
@@ -958,7 +1202,7 @@ function ProfileContent() {
 
   useEffect(() => {
     setDesktopDismantledPage(1);
-  }, [activeDismantleTimeTab, desktopDismantledSearch, activeWarehouseCategory, activeWarehouseSubCategory]);
+  }, [desktopDismantledSearch, activeWarehouseCategory, activeWarehouseSubCategory]);
 
   useEffect(() => {
     setDesktopMarketPage(1);
@@ -1296,26 +1540,30 @@ function ProfileContent() {
     try {
       if (activeTab === 'warehouse') {
         if (activeWarehouseTab === 'all') {
-          const { data, error } = await supabase
-            .from('draw_records')
-            .select(`
-              id,
-              ticket_number,
-              created_at,
-              status,
-              prize_level,
-              prize_name,
-              expires_at,
-              product_prizes ( level, name, image_url, recycle_value, total, sale_price ),
-              products ( name, price, type, sale_mode, supplier_id, suppliers ( id, name ) )
-            `)
-            .eq('user_id', user.id)
-            .in('status', ['in_warehouse', 'pending_delivery'])
-            .order('created_at', { ascending: false });
+          // 倉庫筆數會隨抽獎量無上限成長，必須分頁撈完（見 fetchAllRows）
+          const data = await fetchAllRows<DbDrawRecord>((from, to) =>
+            supabase
+              .from('draw_records')
+              .select(`
+                id,
+                ticket_number,
+                created_at,
+                status,
+                prize_level,
+                prize_name,
+                expires_at,
+                product_prize_id,
+                product_prizes ( level, name, image_url, recycle_value, total, sale_price ),
+                products ( name, price, type, sale_mode, supplier_id, suppliers ( id, name ) )
+              `)
+              .eq('user_id', user.id)
+              .in('status', ['in_warehouse', 'pending_delivery'])
+              .order('created_at', { ascending: false })
+              .order('id', { ascending: false })
+              .range(from, to),
+          );
 
-          if (error) throw error;
-
-          const items = (data as unknown as DbDrawRecord[]).map((item) => {
+          const items = data.map((item) => {
             let recycleValue = item.product_prizes?.recycle_value || 0;
             const price = item.products?.price || 0;
             const quantity = item.product_prizes?.total || 0;
@@ -1350,31 +1598,34 @@ function ProfileContent() {
               supplierId: item.products?.supplier_id ?? null,
               supplierName: item.products?.suppliers?.name ?? '未知廠商',
               prizeTotal: item.product_prizes?.total ?? 999,
+              prizeId: item.product_prize_id ?? null,
               salePrice,
               expiresAt,
             };
           });
           setWarehouseItems(items);
         } else if (activeWarehouseTab === 'dismantled') {
-           const { data, error } = await supabase
-            .from('draw_records')
-            .select(`
-              id,
-              created_at,
-              status,
-              prize_level,
-              prize_name,
-              product_prizes ( level, name, image_url, recycle_value ),
-              admin_recycle_pool ( recycle_value, created_at ),
-              products ( name, type, suppliers ( id, name ) )
-            `)
-            .eq('user_id', user.id)
-            .eq('status', 'dismantled')
-            .order('created_at', { ascending: false });
+          const data = await fetchAllRows<DbDrawRecord>((from, to) =>
+            supabase
+              .from('draw_records')
+              .select(`
+                id,
+                created_at,
+                status,
+                prize_level,
+                prize_name,
+                product_prizes ( level, name, image_url, recycle_value ),
+                admin_recycle_pool ( recycle_value, created_at ),
+                products ( name, type, suppliers ( id, name ) )
+              `)
+              .eq('user_id', user.id)
+              .eq('status', 'dismantled')
+              .order('created_at', { ascending: false })
+              .order('id', { ascending: false })
+              .range(from, to),
+          );
 
-          if (error) throw error;
-
-          const items = (data as unknown as DbDrawRecord[]).map((item) => {
+          const items = data.map((item) => {
             const productType = item.products?.type || 'unknown';
             const rawGrade = item.product_prizes?.level || item.prize_level || '一般版';
             const grade = rawGrade; // 等級 DB 已統一（migration 514），一般版/特別設定照實顯示
@@ -1496,9 +1747,10 @@ function ProfileContent() {
           .from('orders')
           .select(`
             *,
+            suppliers ( name ),
             draw_records (
               product_prizes ( level, name ),
-              products ( name, type )
+              products ( name, type, suppliers ( name ) )
             )
           `)
           .eq('user_id', user.id)
@@ -1558,35 +1810,49 @@ function ProfileContent() {
              address: order.address || undefined,
              storeName: order.store_name || undefined,
              logisticsType: method,
+             supplierName: (() => {
+               // 正常情況讀 orders.supplier_id（migration 612 起會寫）。
+               // 612 之前的訂單如果商品沒設廠商就回填不到，那時從品項往回推；
+               // 真的湊不出來才給 '—'，不要瞎猜一個廠商名。
+               if (order.suppliers?.name) return order.suppliers.name;
+               const fromItems = Array.from(new Set(
+                 (order.draw_records || [])
+                   .map((dh) => dh.products?.suppliers?.name)
+                   .filter((n): n is string => !!n),
+               ));
+               return fromItems.length > 0 ? fromItems.join('、') : '—';
+             })(),
            };
          });
         setDeliveryHistory(orders);
       }
       else if (activeTab === 'draw-history') {
-        const { data, error } = await supabase
-          .from('draw_records')
-          .select(`
-            id,
-            product_id,
-            ticket_number,
-            created_at,
-            prize_level,
-            prize_name,
-            txid_hash,
-            points_used,
-            tokens_spent,
-            product_prizes ( level, name ),
-            products ( name, price, status, remaining, type )
-          `)
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-          
-        if (error) throw error;
-        
+        const data = await fetchAllRows<DbDrawRecord>((from, to) =>
+          supabase
+            .from('draw_records')
+            .select(`
+              id,
+              product_id,
+              ticket_number,
+              created_at,
+              prize_level,
+              prize_name,
+              txid_hash,
+              points_used,
+              tokens_spent,
+              product_prizes ( level, name ),
+              products ( name, price, status, remaining, type )
+            `)
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .order('id', { ascending: false })
+            .range(from, to),
+        );
+
         // Group records by created_at (transaction time)
         const groupedHistory: GroupedDrawHistoryItem[] = [];
-        
-        const records = data as unknown as DbDrawRecord[];
+
+        const records = data;
         records.forEach((item) => {
           const currentTimestamp = item.created_at;
           const lastGroup = groupedHistory.length > 0 ? groupedHistory[groupedHistory.length - 1] : null;
@@ -1631,19 +1897,21 @@ function ProfileContent() {
         }
       }
       else if (activeTab === 'topup-history') {
-        const { data, error } = await supabase
-          .from('recharge_records')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+        const data = await fetchAllRows<DbTopup>((from, to) =>
+          supabase
+            .from('recharge_records')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .order('id', { ascending: false })
+            .range(from, to),
+        );
 
-        if (error) throw error;
-        
         // Group records by created_at (transaction time)
         // Although topup is usually single item, we follow DrawHistory structure
         const groupedHistory: TopupHistoryItem[] = [];
-        
-        (data as unknown as DbTopup[]).forEach((item) => {
+
+        data.forEach((item) => {
           groupedHistory.push({
             id: item.id,
             order_number: item.order_number,
@@ -1970,9 +2238,15 @@ function ProfileContent() {
   }, [pendingCvsToken, applyCvsStoreData, cvsTarget]);
 
   // Mobile warehouse lazy load
+  // 換排序／換篩選／改關鍵字都要收回第一頁並捲回頂端 —— 不然捲到第 300 格時
+  // 換個排序，看到的是新順序的第 300 格，玩家會以為清單壞了
   useEffect(() => {
-    setMobileWarehouseDisplayCount(10);
-  }, [activeWarehouseCategory, activeWarehouseSubCategory, activeWarehouseTab]);
+    setMobileWarehouseDisplayCount(WAREHOUSE_PAGE);
+    mobileWarehouseScrollRef.current?.scrollTo({ top: 0 });
+  }, [
+    activeWarehouseCategory, activeWarehouseSubCategory, activeWarehouseTab,
+    warehouseSort, warehouseSearch, warehouseSupplier, warehouseFilter,
+  ]);
 
   // Mobile delivery lazy load reset
   useEffect(() => {
@@ -1991,7 +2265,7 @@ function ProfileContent() {
       if (!container) return;
       if (container.scrollHeight <= container.clientHeight + 50) {
         setMobileWarehouseDisplayCount(prev =>
-          Math.min(prev + 10, sortedWarehouseItems.length)
+          Math.min(prev + WAREHOUSE_PAGE, sortedWarehouseItems.length)
         );
       }
     }, 100);
@@ -2001,20 +2275,22 @@ function ProfileContent() {
   const toggleDeliverySelection = (id: string) => {
     const item = warehouseItems.find(i => i.id === id);
     if (item?.status === 'pending_delivery') return;
-    if (lockedSupplierName !== null && item?.supplierName !== lockedSupplierName) return;
 
-    const isCurrentlySelected = selectedForDelivery.includes(id);
-    if (isCurrentlySelected) {
-      const newSelected = selectedForDelivery.filter(i => i !== id);
-      setSelectedForDelivery(newSelected);
-      if (newSelected.length === 0) setLockedSupplierName(null);
-    } else {
-      if (selectedForDelivery.length === 0) {
-        setLockedSupplierName(item?.supplierName ?? null);
-        mobileWarehouseScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-      setSelectedForDelivery(prev => [...prev, id]);
+    if (selectedForDelivery.includes(id)) {
+      setSelectedForDelivery(prev => prev.filter(i => i !== id));
+      return;
     }
+
+    /*
+     * 從空的選取點下第一件時，順手把搜尋面板的廠商篩選切到那一家（老闆 2026-08-24）。
+     * 出貨本來就以廠商為單位，這樣「你正在配的是這家的貨」就變成畫面上看得到的狀態
+     * （搜尋膠囊會寫廠商名、chip 也會亮），而不是靠把別家的格子打灰去暗示。
+     * 全選（跨廠商）不會走到這裡 —— 那是刻意要一次回收整個倉庫的路徑。
+     */
+    if (selectedForDelivery.length === 0 && !warehouseSupplier && item?.supplierName) {
+      setWarehouseSupplier(item.supplierName);
+    }
+    setSelectedForDelivery(prev => [...prev, id]);
   };
 
   const handleConfirmDelivery = async () => {
@@ -2091,6 +2367,8 @@ function ProfileContent() {
         toast.error('聯絡電話請填 09 開頭的 10 碼手機號碼');
       } else if (msg.includes('INVALID_ADDRESS')) {
         toast.error('收件地址請填 8～60 個字並包含縣市');
+      } else if (msg.includes('MULTIPLE_SUPPLIERS')) {
+        toast.error('一次只能寄同一家廠商的獎品，請分批申請');
       } else if (msg.includes('LARGE_ITEM_REQUIRES_HOME_DELIVERY')) {
         toast.error('內含大型獎品，請改用宅配');
       } else if (msg.includes('FEE_MISMATCH')) {
@@ -2129,9 +2407,9 @@ function ProfileContent() {
 
     const selectedItems = warehouseItems.filter(item => selectedForDelivery.includes(item.id));
 
-    // 抽籤販售的中籤品項是 0 元抽來的，能分解就等於沒付錢換到 G 幣。
+    // 抽籤販售的中籤品項是 0 元抽來的，能回收就等於沒付錢換到 G 幣。
     // DB 那邊已經擋死（dismantle_prizes 直接跳過），這裡先擋是為了給看得懂的訊息 ——
-    // 不然玩家會看到「分解 0 件、獲得 0 代幣」而不知道為什麼。
+    // 不然玩家會看到「回收 0 件、獲得 0 代幣」而不知道為什麼。
     const lotteryItems = selectedItems.filter(i => (i.salePrice ?? 0) > 0);
     if (lotteryItems.length > 0) {
       showToast('抽籤商品不能回收成 G 幣，只能申請寄送', 'error');
@@ -2140,8 +2418,18 @@ function ProfileContent() {
 
     const totalValue = selectedItems.reduce((sum, item) => sum + (item.recycleValue || 0), 0);
     const count = selectedItems.length;
-    
-    setDismantleSummary({ count, totalValue });
+
+    /*
+     * 大賞混在裡面時要在確認彈窗裡點名（老闆 2026-08-24）。
+     * 全選之後一鍵回收，最怕的就是把 A賞／最後賞跟著一般版一起收掉 ——
+     * 回收不可復原，事後補不回來。判定沿用既有的 isMajorGrade
+     *（SP／S／A／B／C 賞與最後賞），規則只留一份。
+     */
+    const majors = selectedItems
+      .filter(item => isMajorGrade(item.grade))
+      .map(item => ({ name: item.name, grade: item.grade }));
+
+    setDismantleSummary({ count, totalValue, majors });
     setShowDismantleModal(true);
   };
 
@@ -2174,11 +2462,11 @@ function ProfileContent() {
       const totalRefund = readNumberField(row, 'total_refund') || readNumberField(row, 'totalRefund');
 
       if (!successCount || successCount <= 0) {
-        toast.error('沒有可分解的獎項，請刷新後重試');
+        toast.error('沒有可回收的獎項，請刷新後重試');
         return;
       }
 
-      toast.success(`成功分解 ${successCount} 件獎項，獲得 ${totalRefund} 代幣！`);
+      toast.success(`成功回收 ${successCount} 件獎項，獲得 ${totalRefund} 代幣！`);
       trackEvent('dismantle', { path: '/profile', meta: { count: successCount, refund_tokens: totalRefund } });
       setShowDismantleModal(false);
       setSelectedForDelivery([]);
@@ -2187,7 +2475,7 @@ function ProfileContent() {
       
     } catch (error) {
       console.error('Dismantle Error:', error);
-      toast.error((error as Error)?.message || '分解失敗，請稍後再試');
+      toast.error((error as Error)?.message || '回收失敗，請稍後再試');
     } finally {
       setIsSubmittingDismantle(false);
     }
@@ -2453,7 +2741,7 @@ function ProfileContent() {
               {/* Top Nav */}
                             {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
               <PageHeader
-                title={activeWarehouseTab === 'all' ? '我的倉庫' : '分解紀錄'}
+                title={activeWarehouseTab === 'all' ? '我的倉庫' : '回收紀錄'}
                 onBack={() => {
                     if (activeWarehouseTab === 'all') {
                       router.push('/profile', { scroll: false });
@@ -2471,7 +2759,7 @@ function ProfileContent() {
                       }}
                       className="text-[13px] font-bold text-neutral-500"
                     >
-                      分解紀錄
+                      回收紀錄
                     </button>
                   </div>
                 )}</>}
@@ -2483,102 +2771,149 @@ function ProfileContent() {
                   <div className={cn(
                     "max-w-7xl mx-auto space-y-2 pt-0 pb-0"
                   )}>
-                    {activeWarehouseTab === 'all' && warehouseTabs.length > 2 && (
-                      /* 頁籤列 + 最右邊的篩選圖標（老闆 2026-08-24）。
-                         圖標與下拉的樣式完全照首頁那顆（app/page.tsx 的 isFilterOpen 區塊）：
-                         三橫線 svg、未套用時灰色、套用或展開時主題色底，下拉是右對齊的白色小卡。
-                         底線本來畫在 TabsList 上，加了右側按鈕後改畫在外層，兩者才對齊。*/
-                      <div className="flex items-end border-b border-neutral-100 dark:border-neutral-800">
-                        <Tabs
-                          value={activeWarehouseCategory}
-                          onValueChange={(val) => setActiveWarehouseCategory(val as ProductCategoryId)}
-                          className="min-w-0 flex-1"
-                        >
-                          <TabsList className="bg-transparent dark:bg-transparent px-0 justify-start mb-0 pb-0">
-                            {warehouseTabs.map((tab) => (
-                               <TabsTrigger key={tab.id} value={tab.id}>
-                                 {tab.label}
-                               </TabsTrigger>
-                             ))}
-                          </TabsList>
-                        </Tabs>
-                        <div className="relative flex-shrink-0 pb-1.5">
-                          <button
-                            type="button"
-                            aria-label="篩選"
-                            onClick={() => setIsWarehouseFilterOpen(prev => !prev)}
-                            className={cn(
-                              "ml-1 mr-1 p-1.5 rounded-full active:scale-95 transition-all",
-                              warehouseFilter === 'latest' && !isWarehouseFilterOpen
-                                ? "text-neutral-500 hover:text-primary hover:bg-primary/5"
-                                : "text-primary bg-primary/5"
-                            )}
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              className="w-4 h-4"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              fill="none"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
+                    {activeWarehouseTab === 'all' && (
+                      /*
+                       * 搜尋列（老闆 2026-08-24，照 Pokémon GO）。
+                       *
+                       * 類別頁籤原本擺在這裡：一排只塞得下六個，「自製賞」在 iPhone 上
+                       * 還被右邊的篩選圖標切掉。現在類別收進「點搜尋才展開」的推薦面板
+                       * （WarehouseSearchPanel），這一列只剩搜尋框與清除鍵。
+                       *
+                       * 沒在搜尋時，膠囊上顯示目前套用的篩選（例：一番賞・大賞），
+                       * 玩家才知道自己看到的不是全部。
+                       */
+                      <div className="flex items-center gap-2 px-3 py-2">
+                        {isWarehouseSearchOpen ? (
+                          /* 展開狀態沒有返回箭頭（老闆 2026-08-24）：唯一的控制鍵就是框內的叉叉，
+                             有東西就清掉、已經是空的就收起搜尋。兩個離開的出口只會讓人猶豫按哪個 */
+                          <div className="flex h-10 flex-1 items-center gap-2 rounded-full bg-neutral-100 px-3 dark:bg-neutral-800">
+                            <Search className="h-4 w-4 shrink-0 text-neutral-400" />
+                            <input
+                              ref={warehouseSearchInputRef}
+                              value={warehouseSearch}
+                              onChange={(e) => setWarehouseSearch(e.target.value)}
+                              placeholder="搜尋獎品、系列、賞等"
+                              autoFocus
+                              className="min-w-0 flex-1 bg-transparent text-[14px] font-bold text-neutral-900 placeholder:font-medium placeholder:text-neutral-400 focus:outline-none dark:text-white"
+                            />
+                            <button
+                              type="button"
+                              aria-label={warehouseSearch || warehouseActiveFilterLabels.length > 0 ? '清除搜尋條件' : '關閉搜尋'}
+                              onClick={() => {
+                                if (warehouseSearch || warehouseActiveFilterLabels.length > 0) clearWarehouseFilters();
+                                else setIsWarehouseSearchOpen(false);
+                              }}
+                              className="-mr-1 shrink-0 p-1 text-neutral-400 active:scale-90"
                             >
-                              <path d="M4 4h16" />
-                              <path d="M6 12h12" />
-                              <path d="M10 20h4" />
-                            </svg>
-                          </button>
-                          {isWarehouseFilterOpen && (
-                            <>
-                              <div className="fixed inset-0 z-30" onClick={() => setIsWarehouseFilterOpen(false)} />
-                              <div className="absolute right-0 mt-2 w-36 bg-white dark:bg-neutral-900 rounded-lg shadow-modal border border-neutral-100 dark:border-neutral-800 py-2 z-40">
-                                {WAREHOUSE_FILTERS.map((opt) => (
-                                  <button
-                                    key={opt.id}
-                                    type="button"
-                                    onClick={() => { setWarehouseFilter(opt.id); setIsWarehouseFilterOpen(false); }}
-                                    className={cn(
-                                      "w-full text-left px-4 py-2.5 text-[13px] font-black transition-colors",
-                                      warehouseFilter === opt.id
-                                        ? "bg-primary/5 text-primary"
-                                        : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white"
-                                    )}
-                                  >
-                                    {opt.label}
-                                  </button>
-                                ))}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {activeWarehouseTab === 'dismantled' && (
-                      <div className="flex items-center gap-1.5 pb-2 px-2 pt-2">
-                        <div ref={dismantleTimeTabsRef} className="flex-1 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide">
-                          <div className="flex items-center gap-1.5">
-                            {[
-                              { id: 'today', label: '今天' },
-                              { id: '7days', label: '近7天' },
-                              { id: '30days', label: '近30天' },
-                            ].map((tab) => (
-                              <button
-                                key={tab.id}
-                                data-tab-id={tab.id}
-                                onClick={() => setActiveDismantleTimeTab(tab.id as 'today' | '7days' | '30days')}
-                                className={cn(
-                                  "px-3 py-1 rounded-full text-[12px] font-black whitespace-nowrap transition-colors",
-                                  activeDismantleTimeTab === tab.id
-                                    ? "bg-primary text-white"
-                                    : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
-                                )}
-                              >
-                                {tab.label}
-                              </button>
-                            ))}
+                              <X className="h-4 w-4" />
+                            </button>
                           </div>
-                        </div>
+                        ) : (
+                          /* 清除鍵是叉叉、擺在搜尋框**裡面**的最右邊（老闆 2026-08-24）。
+                             外框因此不能是 <button> —— 按鈕不能包按鈕，改成 div 包
+                             一顆佔滿的觸發鈕加一顆叉叉 */
+                          <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full bg-neutral-100 px-3 dark:bg-neutral-800">
+                            <button
+                              type="button"
+                              onClick={() => setIsWarehouseSearchOpen(true)}
+                              className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                            >
+                              <Search className="h-4 w-4 shrink-0 text-neutral-400" />
+                              {/* 套用中的篩選畫成膠囊、關鍵字維持單純文字（老闆 2026-08-24）——
+                                  一串「大賞・小賞・靈感文創」看起來像玩家自己打的字，
+                                  分不出哪些是點出來的條件 */}
+                              {warehouseActiveFilterLabels.length > 0 || warehouseSearch ? (
+                                <span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+                                  {warehouseActiveFilterLabels.map(label => (
+                                    <span
+                                      key={label}
+                                      className="shrink-0 rounded-full border border-neutral-200 bg-white px-2 py-[3px] text-[12px] font-black text-neutral-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
+                                    >
+                                      <span className="cjk-optical-center">{label}</span>
+                                    </span>
+                                  ))}
+                                  {warehouseSearch && (
+                                    <span className="truncate text-[14px] font-bold text-neutral-900 dark:text-white">
+                                      {warehouseSearch}
+                                    </span>
+                                  )}
+                                </span>
+                              ) : (
+                                <span className="truncate text-[14px] font-medium text-neutral-400">
+                                  搜尋獎品、系列、賞等
+                                </span>
+                              )}
+                            </button>
+                            {(warehouseSearch || warehouseActiveFilterLabels.length > 0) && (
+                              <button
+                                type="button"
+                                aria-label="清除搜尋條件"
+                                onClick={clearWarehouseFilters}
+                                className="-mr-1 shrink-0 p-1 text-neutral-400 active:scale-90"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 排序：老闆 2026-08-24 指定放在原本「清除」的位置。
+                            搜尋展開時收起來，那時整條框要留給輸入 */}
+                        {!isWarehouseSearchOpen && (
+                          <div className="relative shrink-0">
+                            <button
+                              type="button"
+                              aria-label="排序"
+                              onClick={() => setIsWarehouseSortOpen(prev => !prev)}
+                              /* 圖標與下拉樣式完全照首頁那顆（app/page.tsx 的 isFilterOpen 區塊）：
+                                 三橫線 svg、未套用時灰色、套用或展開時主題色底。
+                                 全站的排序入口長一樣，玩家不用重新學 */
+                              className={cn(
+                                'ml-1 mr-1 p-1.5 rounded-full transition-all active:scale-95',
+                                warehouseSort === 'time_desc' && !isWarehouseSortOpen
+                                  ? 'text-neutral-500 hover:text-primary hover:bg-primary/5'
+                                  : 'text-primary bg-primary/5',
+                              )}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                className="w-4 h-4"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                fill="none"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M4 4h16" />
+                                <path d="M6 12h12" />
+                                <path d="M10 20h4" />
+                              </svg>
+                            </button>
+                            {isWarehouseSortOpen && (
+                              <>
+                                <div className="fixed inset-0 z-30" onClick={() => setIsWarehouseSortOpen(false)} />
+                                <div className="absolute right-0 z-40 mt-2 w-44 rounded-lg border border-neutral-100 bg-white py-2 shadow-modal dark:border-neutral-800 dark:bg-neutral-900">
+                                  {WAREHOUSE_SORTS.map(opt => (
+                                    <button
+                                      key={opt.id}
+                                      type="button"
+                                      onClick={() => { setWarehouseSort(opt.id); setIsWarehouseSortOpen(false); }}
+                                      className={cn(
+                                        'w-full px-4 py-2.5 text-left text-[13px] font-black transition-colors',
+                                        warehouseSort === opt.id
+                                          ? 'bg-primary/5 text-primary'
+                                          : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white',
+                                      )}
+                                    >
+                                      {opt.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -2597,104 +2932,67 @@ function ProfileContent() {
               {/* Content List */}
               <div
                 ref={mobileWarehouseScrollRef}
-                {...swipeWarehouseTabs}
                 className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950"
                 onScroll={(e) => {
                   const el = e.currentTarget;
                   if (el.scrollHeight - el.scrollTop - el.clientHeight < 150) {
                     setMobileWarehouseDisplayCount(prev =>
-                      prev < sortedWarehouseItems.length ? prev + 10 : prev
+                      prev < sortedWarehouseItems.length ? prev + WAREHOUSE_PAGE : prev
                     );
                   }
                 }}
               >
                 {isLoadingData ? (
-                  <div className="p-4 space-y-3">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <div key={i} className="flex items-center gap-3 p-3 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-800">
-                        <div className="w-12 h-12 rounded-xl bg-neutral-200 dark:bg-neutral-800 animate-pulse flex-shrink-0" />
-                        <div className="flex-1 space-y-1.5">
-                          <div className="h-4 bg-neutral-200 dark:bg-neutral-800 rounded-lg animate-pulse w-1/2" />
-                          <div className="h-3 bg-neutral-200 dark:bg-neutral-800 rounded-lg animate-pulse w-1/3" />
-                        </div>
+                  <div className="grid grid-cols-3 gap-2 p-2">
+                    {Array.from({ length: 9 }).map((_, i) => (
+                      <div key={i} className="rounded-xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-1.5">
+                        <div className="aspect-square w-full rounded-lg bg-neutral-200 dark:bg-neutral-800 animate-pulse" />
+                        <div className="mt-1.5 h-3 w-2/3 rounded bg-neutral-200 dark:bg-neutral-800 animate-pulse" />
                       </div>
                     ))}
                   </div>
+                ) : activeWarehouseTab === 'all' && isWarehouseSearchOpen && !warehouseSearch.trim() ? (
+                  /* 搜尋展開、還沒打字 → 推薦面板（PoGO 的作法）。
+                     一開始打字就換回下面的格狀清單，即時濾 —— 不打字也要有東西可點，
+                     否則把類別藏進搜尋等於斷掉休閒玩家的瀏覽路徑 */
+                  <WarehouseSearchPanel
+                    groups={warehouseChipGroups}
+                    recentTerms={warehouseTopSeries}
+                    onPickTerm={(term) => setWarehouseSearch(term)}
+                  />
                 ) : activeWarehouseTab === 'all' ? (
                   filteredWarehouseItems.length === 0 ? (
                     <div className="py-20 text-center text-neutral-400">
                       <Box className="w-12 h-12 mx-auto mb-4 opacity-20" />
                       <p className="font-black text-sm uppercase tracking-widest">沒有相關獎項</p>
+                      {(warehouseSearch || warehouseActiveFilterLabels.length > 0) && (
+                        <button
+                          type="button"
+                          onClick={clearWarehouseFilters}
+                          className="mt-4 rounded-full border border-neutral-200 px-4 py-2 text-[13px] font-black text-neutral-600 dark:border-neutral-800 dark:text-neutral-300"
+                        >
+                          清除搜尋條件
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <>
-                    <div className="divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
+                    {/* 格狀三欄，一支一格（不合併同品項 —— 玩家常要留一張、其餘回收）。
+                        一屏從 7 件變 15 格 */}
+                    <div className="grid grid-cols-3 gap-2 p-2">
                       {sortedWarehouseItems.slice(0, mobileWarehouseDisplayCount).map((item) => {
-                        const isSelected = selectedForDelivery.includes(item.id);
                         const isPending = item.status === 'pending_delivery';
-                        const isDisabled = isPending || (lockedSupplierName !== null && item.supplierName !== lockedSupplierName);
                         return (
-                          <div
+                          <WarehouseGridCell
                             key={item.id}
-                            onClick={() => !isDisabled && toggleDeliverySelection(item.id)}
-                            className={cn(
-                              "flex items-center gap-3 px-4 py-2 transition-all",
-                              isDisabled
-                                ? "opacity-35 cursor-not-allowed"
-                                : "active:bg-neutral-50 dark:active:bg-neutral-800/70",
-                              isSelected && !isDisabled && "bg-accent-emerald/5"
-                            )}
-                          >
-                            <div className="relative w-[56px] h-[56px] rounded-[8px] bg-item-bg overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
-                              <Image
-                                src={item.image || asset('/images/item_defaulet.webp')}
-                                alt={item.name}
-                                fill
-                                className="object-cover"
-                                unoptimized
-                              />
-                            </div>
-                            <div className="flex-1 min-w-0 py-0.5 space-y-0.5">
-                              <p className="text-[11px] text-neutral-400 font-medium truncate">
-                                {item.supplierName}
-                              </p>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[11px] text-primary font-black bg-primary/8 px-1.5 py-0.5 rounded-xl border border-primary/10 whitespace-nowrap flex-shrink-0">
-                                  {item.grade}
-                                </span>
-                                <h4 className="text-[13px] font-bold text-neutral-900 dark:text-white leading-tight truncate">
-                                  {item.name}
-                                </h4>
-                              </div>
-                              <p className="text-[11px] text-neutral-400 font-medium truncate">
-                                {item.series}
-                              </p>
-                            </div>
-                            <div
-                              className="ml-1 pl-2 flex-shrink-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!isDisabled) toggleDeliverySelection(item.id);
-                              }}
-                            >
-                              {isPending ? (
-                                <span className="text-[11px] font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-lg whitespace-nowrap">
-                                  出貨中
-                                </span>
-                              ) : (
-                                <div
-                                  className={cn(
-                                    "w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center transition-all bg-white dark:bg-neutral-900",
-                                    isSelected
-                                      ? "border-accent-emerald bg-accent-emerald"
-                                      : "border-neutral-300 dark:border-neutral-700"
-                                  )}
-                                >
-                                  {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                            name={item.name}
+                            grade={item.grade}
+                            image={item.image}
+                            selected={selectedForDeliverySet.has(item.id)}
+                            major={isMajorGrade(item.grade)}
+                            pending={isPending}
+                            onToggle={() => toggleDeliverySelection(item.id)}
+                          />
                         );
                       })}
                     </div>
@@ -2708,7 +3006,7 @@ function ProfileContent() {
                   filteredDismantledItems.length === 0 ? (
                     <div className="py-20 text-center text-neutral-400">
                       <RefreshCw className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                      <p className="font-black text-sm uppercase tracking-widest">尚無分解紀錄</p>
+                      <p className="font-black text-sm uppercase tracking-widest">尚無回收紀錄</p>
                     </div>
                   ) : (
                     <>
@@ -2758,18 +3056,24 @@ function ProfileContent() {
                 <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] z-[60] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] flex items-center px-3">
                   {selectedForDelivery.length === 0 ? (
                     <button
-                      onClick={() => { setSelectedForDelivery(filteredWarehouseItems.filter(i => i.status !== 'pending_delivery').map(i => i.id)); setLockedSupplierName(null); }}
-                      className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 h-[44px] rounded-xl text-base font-black"
+                      onClick={() => setSelectedForDelivery(selectAllTarget.ids)}
+                      disabled={selectAllTarget.ids.length === 0}
+                      className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 h-[44px] rounded-xl text-base font-black disabled:opacity-40"
                     >
-                      全選 ({filteredWarehouseItems.length})
+                      全選 ({selectAllTarget.ids.length})
                     </button>
                   ) : (
-                    <div className="flex items-center gap-3 w-full">
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm font-black text-neutral-900 dark:text-white">已選 {selectedForDelivery.length}</span>
-                            <button onClick={() => { setSelectedForDelivery([]); setLockedSupplierName(null); }} className="text-xs text-neutral-400 font-bold">取消</button>
-                        </div>
-                        <div className="flex-1 flex gap-2 justify-end">
+                    /* 整排就一層 flex、一個 gap：取消跟右邊那幾顆同高（h-[44px]）、
+                       間距也一樣（gap-2）。之前分兩組包起來，組間是 gap-3、組內 gap-2，
+                       取消跟曬圖中間就比其他縫大一截（老闆 2026-08-24） */
+                    <div className="flex w-full items-center gap-2">
+                            <span className="shrink-0 text-sm font-black text-neutral-900 dark:text-white">已選 {selectedForDelivery.length}</span>
+                            <button
+                              onClick={() => setSelectedForDelivery([])}
+                              className="h-[44px] shrink-0 rounded-xl bg-neutral-100 px-4 text-base font-black text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+                            >
+                              取消
+                            </button>
                             {/* 曬圖：只在勾單一件、且賞等看起來是大獎時出現（真正判定在 DB） */}
                             {selectedForDelivery.length === 1
                               && warehouseItems.find(i => i.id === selectedForDelivery[0] && isMajorGrade(i.grade)) && (
@@ -2781,8 +3085,8 @@ function ProfileContent() {
                                 {isLoadingShare ? '處理中' : '曬圖'}
                               </button>
                             )}
-                            <button onClick={handleDismantleClick} className="flex-1 bg-accent-red text-white h-[44px] rounded-xl text-base font-black">分解</button>
-                            {selectedForDelivery.length <= 10 && (
+                            <button onClick={handleDismantleClick} className="flex-1 bg-accent-red text-white h-[44px] rounded-xl text-base font-black">回收</button>
+                            {selectedForDelivery.length <= 10 && canDeliverSelection && (
                               <>
                                 {/* 這顆按鈕寫的是交易所（marketplace）的資料，
                                     旗標卻掛在卡牌交換上 —— 關掉卡牌交換會連帶讓
@@ -2813,7 +3117,6 @@ function ProfileContent() {
                                 </button>
                               </>
                             )}
-                        </div>
                     </div>
                   )}
                 </div>
@@ -2830,11 +3133,11 @@ function ProfileContent() {
                     <>
                       <button
                         type="button"
-                        onClick={() => setSelectedForDelivery(filteredWarehouseItems.filter(i => i.status !== 'pending_delivery').map(i => i.id))}
-                        disabled={selectedForDelivery.length >= filteredWarehouseItems.length || filteredWarehouseItems.length === 0}
+                        onClick={() => setSelectedForDelivery(selectAllTarget.ids)}
+                        disabled={selectAllTarget.ids.length === 0 || selectedForDelivery.length >= selectAllTarget.ids.length}
                         className="h-9 px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-black text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        全選{filteredWarehouseItems.length > 0 ? ` (${filteredWarehouseItems.length})` : ''}
+                        {`全選${selectAllTarget.ids.length > 0 ? ` (${selectAllTarget.ids.length})` : ''}`}
                       </button>
                       {selectedForDelivery.length > 0 && (
                         <>
@@ -2850,7 +3153,7 @@ function ProfileContent() {
                             onClick={handleDismantleClick}
                             className="h-9 px-3 rounded-lg bg-accent-red text-white text-[13px] font-black"
                           >
-                            分解 ({selectedForDelivery.length})
+                            回收 ({selectedForDelivery.length})
                           </button>
                           {flags.market && !inApp && (() => {
                             if (selectedForDelivery.length > 10) return null;
@@ -2895,7 +3198,7 @@ function ProfileContent() {
                   全部獎項 ({warehouseItems.length})
                 </TabsTrigger>
                 <TabsTrigger value="dismantled">
-                  已分解 ({dismantledItems.length})
+                  已回收 ({dismantledItems.length})
                 </TabsTrigger>
               </TabsList>
 
@@ -3181,15 +3484,6 @@ function ProfileContent() {
                             placeholder="搜尋賞別 / 獎項"
                             className="h-9 w-[320px] max-w-full px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-bold text-neutral-800 dark:text-neutral-100 placeholder:text-neutral-400"
                           />
-                          <select
-                            value={activeDismantleTimeTab}
-                            onChange={(e) => setActiveDismantleTimeTab(e.target.value as 'today' | '7days' | '30days')}
-                            className="h-9 px-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-bold text-neutral-700 dark:text-neutral-200"
-                          >
-                            <option value="today">今天</option>
-                            <option value="7days">近7天</option>
-                            <option value="30days">近30天</option>
-                          </select>
                         </>
                       }
                       right={
@@ -3218,7 +3512,7 @@ function ProfileContent() {
                       {dismantledItems.length === 0 ? (
                         <div className="py-20 text-center text-neutral-400">
                           <RefreshCw className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                          <p className="font-black text-sm uppercase tracking-widest">尚無分解紀錄</p>
+                          <p className="font-black text-sm uppercase tracking-widest">尚無回收紀錄</p>
                         </div>
                       ) : (
                         <>
@@ -3310,7 +3604,7 @@ function ProfileContent() {
                                       },
                                       {
                                         key: 'date',
-                                        header: '分解日期',
+                                        header: '回收日期',
                                         className: 'w-[160px]',
                                         render: (item) => (
                                           <div className="text-[13px] font-bold text-neutral-700 dark:text-neutral-200 whitespace-nowrap">
@@ -3334,7 +3628,7 @@ function ProfileContent() {
                                     ]}
                                     rows={pageRows}
                                     rowKey={(r) => String(r.id)}
-                                    empty="尚無分解紀錄"
+                                    empty="尚無回收紀錄"
                                   />
 
                                   <ProfilePagination
@@ -3653,7 +3947,7 @@ function ProfileContent() {
                       "flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 shrink-0",
                       isDesktop ? "p-6" : "px-4 py-3"
                     )}>
-                      <h3 className={cn("font-black text-neutral-900 dark:text-white", isDesktop ? "text-xl" : "text-base")}>確認分解項目</h3>
+                      <h3 className={cn("font-black text-neutral-900 dark:text-white", isDesktop ? "text-xl" : "text-base")}>確認回收項目</h3>
                       <button onClick={() => setShowDismantleModal(false)} className="w-8 h-8 rounded-full bg-neutral-50 dark:bg-neutral-800 flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors">
                         <X className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
                       </button>
@@ -3661,7 +3955,7 @@ function ProfileContent() {
                     <div className={cn("flex-1 overflow-y-auto", isDesktop ? "p-6 space-y-4" : "p-3 space-y-3")}>
                       <div className={cn("bg-neutral-50 dark:bg-neutral-800 rounded-xl space-y-2", isDesktop ? "p-4" : "p-3")}>
                         <div className={cn("flex justify-between", isDesktop ? "text-sm" : "text-[13px]")}>
-                          <span className="text-neutral-500 dark:text-neutral-400 font-bold">分解數量</span>
+                          <span className="text-neutral-500 dark:text-neutral-400 font-bold">回收數量</span>
                           <span className="font-black text-neutral-900 dark:text-white">{dismantleSummary.count.toLocaleString()} 件</span>
                         </div>
                         <div className={cn("flex justify-between", isDesktop ? "text-sm" : "text-[13px]")}>
@@ -3672,13 +3966,44 @@ function ProfileContent() {
                           </span>
                         </div>
                       </div>
+                      {dismantleSummary.majors.length > 0 && (
+                        /* 大賞警告擺在數量上面 —— 這是玩家最需要先看到的一件事 */
+                        <div className={cn("rounded-xl border border-amber-300 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10", isDesktop ? "p-4" : "p-3")}>
+                          <div className="flex">
+                            <div className="min-w-0 flex-1 space-y-1.5">
+                              <p className={cn("font-black text-amber-700 dark:text-amber-300", isDesktop ? "text-sm" : "text-[13px]")}>
+                                這批裡有 {dismantleSummary.majors.length} 件大賞
+                              </p>
+                              <ul className="space-y-1">
+                                {dismantleSummary.majors.slice(0, 5).map((m, i) => (
+                                  /* 膠囊用固定高的 inline-flex 置中；品名也套 cjk-optical-center，
+                                     兩邊的中文字才會落在同一條視覺中線 —— 只有膠囊套的話，
+                                     品名會比膠囊裡的字高約 1.5px（PingFang 的墨水本來就偏上） */
+                                  <li key={i} className="flex items-center gap-1.5">
+                                    <span className="inline-flex h-[18px] shrink-0 items-center justify-center rounded bg-primary px-1.5 text-[10px] font-black leading-none text-white">
+                                      <span className="cjk-optical-center">{m.grade}</span>
+                                    </span>
+                                    <span className={cn("cjk-optical-center truncate font-bold text-amber-800 dark:text-amber-200", isDesktop ? "text-[13px]" : "text-[12px]")}>
+                                      {m.name}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                              {dismantleSummary.majors.length > 5 && (
+                                <p className={cn("font-bold text-amber-600 dark:text-amber-400", isDesktop ? "text-xs" : "text-[11px]")}>
+                                  還有 {dismantleSummary.majors.length - 5} 件
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       <div className={cn("bg-accent-red/5 dark:bg-accent-red/10 rounded-xl border border-accent-red/10 dark:border-accent-red/20", isDesktop ? "p-4" : "p-3")}>
-                        <div className="flex gap-3">
-                          <AlertCircle className="w-5 h-5 text-accent-red flex-shrink-0" />
+                        <div className="flex">
                           <div className="space-y-1">
-                            <p className={cn("font-black text-accent-red", isDesktop ? "text-sm" : "text-[13px]")}>注意：分解後無法復原</p>
+                            <p className={cn("font-black text-accent-red", isDesktop ? "text-sm" : "text-[13px]")}>注意：回收後無法復原</p>
                             <p className={cn("text-accent-red/80 font-bold leading-relaxed", isDesktop ? "text-xs" : "text-[11px]")}>
-                              確認分解後，獎項將會從倉庫移除並轉換為代幣。代幣可用於再次抽獎或兌換其他商品。
+                              確認回收後，獎項將會從倉庫移除並轉換為代幣。代幣可用於再次抽獎或兌換其他商品。
                             </p>
                           </div>
                         </div>
@@ -3711,7 +4036,7 @@ function ProfileContent() {
                             <span>處理中...</span>
                           </>
                         ) : (
-                          <span>確認分解</span>
+                          <span>{dismantleSummary.majors.length > 0 ? '仍要回收' : '確認回收'}</span>
                         )}
                       </button>
                     </div>
@@ -4623,6 +4948,10 @@ function ProfileContent() {
                                   {/* Shipping Info */}
                                   <div className="bg-white dark:bg-neutral-900 p-3 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm space-y-2">
                                     <div className="flex items-center justify-between pb-2 border-b border-neutral-50 dark:border-neutral-800">
+                                      <span className="text-[11px] text-neutral-400 font-bold">配送廠商</span>
+                                      <span className="text-[12px] font-black text-neutral-900 dark:text-white">{order.supplierName || '—'}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between pb-2 border-b border-neutral-50 dark:border-neutral-800">
                                       <span className="text-[11px] text-neutral-400 font-bold">物流方式</span>
                                       <span className="text-[12px] font-black text-neutral-900 dark:text-white">{order.method}</span>
                                     </div>
@@ -4805,6 +5134,16 @@ function ProfileContent() {
                           header: '狀態',
                           className: 'w-[120px]',
                           render: (order) => <ProfileStatusBadge config={getStatusConfig(order.status)} />,
+                        },
+                        {
+                          key: 'vendor',
+                          header: '配送廠商',
+                          className: 'w-[110px]',
+                          render: (order) => (
+                            <div className="text-[13px] font-black text-neutral-900 dark:text-white truncate">
+                              {order.supplierName || '—'}
+                            </div>
+                          ),
                         },
                         {
                           key: 'logistics',
@@ -6771,7 +7110,7 @@ function ProfileContent() {
                            改成壓暗，底圖被蓋住、白字也更讀得出來。 */
                         className="h-7 px-2 rounded-full bg-black/30 border border-white/25 flex items-center gap-1 active:scale-95 transition-transform"
                       >
-                        <span className="text-xs text-white font-bold">儲值紀錄</span>
+                        <span className="cjk-optical-center text-xs text-white font-bold">儲值紀錄</span>
                         <ChevronRight className="w-3 h-3 text-white/70" />
                       </button>
                     </div>
@@ -6910,8 +7249,8 @@ function ProfileContent() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     {item.badge && (
-                      <span className="rounded-full bg-accent-red px-2 py-[4px] text-[11px] font-bold leading-none text-white">
-                        {item.badge}
+                      <span className="inline-flex h-[19px] items-center rounded-full bg-accent-red px-2 text-[11px] font-bold leading-none text-white">
+                        <span className="cjk-optical-center">{item.badge}</span>
                       </span>
                     )}
                     <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-neutral-500 group-hover:translate-x-1 transition-all" />
@@ -7119,8 +7458,8 @@ function ProfileContent() {
                 >
                   <UserPlus className="w-5 h-5 stroke-[2.5] text-violet-500 group-hover:text-primary transition-colors" />
                   <span className="truncate">邀請好友</span>
-                  <span className="ml-auto rounded-full bg-accent-red px-2 py-[4px] text-[11px] font-bold leading-none text-white">
-                    無限拿積分
+                  <span className="ml-auto inline-flex h-[19px] items-center rounded-full bg-accent-red px-2 text-[11px] font-bold leading-none text-white">
+                    <span className="cjk-optical-center">無限拿積分</span>
                   </span>
                   <ChevronRight className="w-4 h-4 hidden sm:block text-neutral-200 group-hover:text-neutral-400" />
                 </button>
