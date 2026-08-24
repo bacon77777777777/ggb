@@ -477,6 +477,22 @@ function ProfileContent() {
     { id: 'custom', label: '自製賞' },
   ];
 
+  /*
+   * 倉庫的篩選／排序（老闆 2026-08-24：頁籤列最右邊加篩選圖標，UI 照首頁那顆）。
+   * 跟首頁一樣是**單選**下拉（首頁也把排序與篩選混在一個選單：最新上架／價格／已完抽）：
+   *   時間   ＝ 依取得時間新到舊（預設，資料本來就是這個順序）
+   *   大賞   ＝ 只看大獎品項（A賞／最後賞那類，用既有的 isMajorGrade 判斷）
+   *   配送中 ＝ 只看已申請配送、還沒出貨的（status = pending_delivery）
+   */
+  type WarehouseFilter = 'latest' | 'major' | 'delivering';
+  const [warehouseFilter, setWarehouseFilter] = useState<WarehouseFilter>('latest');
+  const [isWarehouseFilterOpen, setIsWarehouseFilterOpen] = useState(false);
+  const WAREHOUSE_FILTERS: { id: WarehouseFilter; label: string }[] = [
+    { id: 'latest', label: '時間' },
+    { id: 'major', label: '大賞' },
+    { id: 'delivering', label: '配送中' },
+  ];
+
   const warehouseSubTabs = [
     { id: 'all', label: '全部' },
     { id: 'tradable', label: '可上架' },
@@ -769,8 +785,15 @@ function ProfileContent() {
       items = items.filter(item => !isMajorGrade(item.grade));
     }
 
+    // 3. 篩選圖標（老闆 2026-08-24）：時間＝預設順序、大賞＝只看大獎、配送中＝只看已申請的
+    if (warehouseFilter === 'major') {
+      items = items.filter(item => isMajorGrade(item.grade));
+    } else if (warehouseFilter === 'delivering') {
+      items = items.filter(item => item.status === 'pending_delivery');
+    }
+
     return items;
-  }, [warehouseItems, activeWarehouseCategory, activeWarehouseSubCategory]);
+  }, [warehouseItems, activeWarehouseCategory, activeWarehouseSubCategory, warehouseFilter]);
 
   const sortedWarehouseItems = React.useMemo(() => {
     let items = filteredWarehouseItems;
@@ -779,10 +802,12 @@ function ProfileContent() {
       const others = items.filter(i => i.supplierName !== lockedSupplierName);
       items = [...same, ...others];
     }
+    // 待配送的沉到最後（不能再操作）—— 但「配送中」篩選下整批都是待配送，不用再沉
+    if (warehouseFilter === 'delivering') return items;
     const active = items.filter(i => i.status !== 'pending_delivery');
     const pending = items.filter(i => i.status === 'pending_delivery');
     return [...active, ...pending];
-  }, [filteredWarehouseItems, lockedSupplierName]);
+  }, [filteredWarehouseItems, lockedSupplierName, warehouseFilter]);
 
   // 抽籤販售的價金：與運費分開算、分開顯示。
   // 這只是給玩家看的，實際扣款由 create_delivery_order 用
@@ -2438,19 +2463,75 @@ function ProfileContent() {
                     "max-w-7xl mx-auto space-y-2 pt-0 pb-0"
                   )}>
                     {activeWarehouseTab === 'all' && warehouseTabs.length > 2 && (
-                      <Tabs
-                        value={activeWarehouseCategory}
-                        onValueChange={(val) => setActiveWarehouseCategory(val as ProductCategoryId)}
-                        className="w-full"
-                      >
-                        <TabsList className="bg-transparent dark:bg-transparent px-0 justify-start mb-0 border-b border-neutral-100 dark:border-neutral-800 pb-0">
-                          {warehouseTabs.map((tab) => (
-                             <TabsTrigger key={tab.id} value={tab.id}>
-                               {tab.label}
-                             </TabsTrigger>
-                           ))}
-                        </TabsList>
-                      </Tabs>
+                      /* 頁籤列 + 最右邊的篩選圖標（老闆 2026-08-24）。
+                         圖標與下拉的樣式完全照首頁那顆（app/page.tsx 的 isFilterOpen 區塊）：
+                         三橫線 svg、未套用時灰色、套用或展開時主題色底，下拉是右對齊的白色小卡。
+                         底線本來畫在 TabsList 上，加了右側按鈕後改畫在外層，兩者才對齊。*/
+                      <div className="flex items-end border-b border-neutral-100 dark:border-neutral-800">
+                        <Tabs
+                          value={activeWarehouseCategory}
+                          onValueChange={(val) => setActiveWarehouseCategory(val as ProductCategoryId)}
+                          className="min-w-0 flex-1"
+                        >
+                          <TabsList className="bg-transparent dark:bg-transparent px-0 justify-start mb-0 pb-0">
+                            {warehouseTabs.map((tab) => (
+                               <TabsTrigger key={tab.id} value={tab.id}>
+                                 {tab.label}
+                               </TabsTrigger>
+                             ))}
+                          </TabsList>
+                        </Tabs>
+                        <div className="relative flex-shrink-0 pb-1.5">
+                          <button
+                            type="button"
+                            aria-label="篩選"
+                            onClick={() => setIsWarehouseFilterOpen(prev => !prev)}
+                            className={cn(
+                              "ml-1 mr-1 p-1.5 rounded-full active:scale-95 transition-all",
+                              warehouseFilter === 'latest' && !isWarehouseFilterOpen
+                                ? "text-neutral-500 hover:text-primary hover:bg-primary/5"
+                                : "text-primary bg-primary/5"
+                            )}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              className="w-4 h-4"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              fill="none"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M4 4h16" />
+                              <path d="M6 12h12" />
+                              <path d="M10 20h4" />
+                            </svg>
+                          </button>
+                          {isWarehouseFilterOpen && (
+                            <>
+                              <div className="fixed inset-0 z-30" onClick={() => setIsWarehouseFilterOpen(false)} />
+                              <div className="absolute right-0 mt-2 w-36 bg-white dark:bg-neutral-900 rounded-lg shadow-modal border border-neutral-100 dark:border-neutral-800 py-2 z-40">
+                                {WAREHOUSE_FILTERS.map((opt) => (
+                                  <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => { setWarehouseFilter(opt.id); setIsWarehouseFilterOpen(false); }}
+                                    className={cn(
+                                      "w-full text-left px-4 py-2.5 text-[13px] font-black transition-colors",
+                                      warehouseFilter === opt.id
+                                        ? "bg-primary/5 text-primary"
+                                        : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white"
+                                    )}
+                                  >
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     )}
                     {activeWarehouseTab === 'dismantled' && (
                       <div className="flex items-center gap-1.5 pb-2 px-2 pt-2">
