@@ -373,14 +373,21 @@ export default function NewsPage() {
   useEffect(() => { setVisibleCount(PAGE_SIZE); }, [activeTab]);
   const visibleListItems = listItems.slice(0, visibleCount);
   const hasMoreArticles = listItems.length > visibleCount;
-  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  /*
+   * 觸底哨兵用屬性選取器一次觀察全部，不用 ref：手機版與桌機版**兩塊都在 DOM 裡**
+   * （靠 md:hidden／hidden md:block 切換顯示），共用一個 ref 會被後掛載的桌機那塊搶走，
+   * 而它在手機上是 display:none、永遠不會進視口 → 分頁完全不會觸發
+   *（2026-08-24 正式站實測：捲到底沒有加載）。display:none 的元素本來就不會 intersect，
+   * 兩塊都觀察剛好只有看得見的那塊會觸發。
+   */
   useEffect(() => {
-    const el = loadMoreRef.current;
-    if (!el || !hasMoreArticles || typeof IntersectionObserver === 'undefined') return;
+    if (!hasMoreArticles || typeof IntersectionObserver === 'undefined') return;
+    const els = Array.from(document.querySelectorAll('[data-news-load-more]'));
+    if (!els.length) return;
     const io = new IntersectionObserver(entries => {
       if (entries.some(e => e.isIntersecting)) setVisibleCount(c => c + PAGE_STEP);
     }, { rootMargin: '400px' });
-    io.observe(el);
+    els.forEach(el => io.observe(el));
     return () => io.disconnect();
   }, [hasMoreArticles, visibleCount]);
 
@@ -415,7 +422,7 @@ export default function NewsPage() {
               ) : (
                 <>
                   {visibleListItems.map(item => <ArticleRow key={item.id} item={item} onLike={handleLike} />)}
-                  {hasMoreArticles && <div ref={loadMoreRef} className="h-10" aria-hidden />}
+                  {hasMoreArticles && <div data-news-load-more className="h-10" aria-hidden />}
                 </>
               )}
             </div>
@@ -456,7 +463,7 @@ export default function NewsPage() {
             <div className="grid grid-cols-3 gap-5">
               {filtered.slice(0, visibleCount).map(item => <ArticleCard key={item.id} item={item} onLike={handleLike} />)}
             </div>
-            {filtered.length > visibleCount && <div ref={loadMoreRef} className="h-10" aria-hidden />}
+            {filtered.length > visibleCount && <div data-news-load-more className="h-10" aria-hidden />}
           </>
         )}
       </div>
