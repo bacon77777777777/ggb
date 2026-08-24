@@ -565,7 +565,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     // 這兩頁已併進「數據分析」，不再掛選單；舊書籤還是要能開，權限跟著數據分析走
     '/reports/overview': 'analytics_overview',
     '/reports/behavior': 'analytics_overview',
-    '/reports/feed': ['reports_feed', 'analytics_overview'],
+    '/reports/feed': 'reports_feed',
     // 金流報表
     '/recharges': 'recharges',
     '/recharge-review': 'recharge_review',
@@ -577,9 +577,16 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/reports/dismantled': 'reports_dismantled',
     '/reports/adjustments': 'reports_adjustments',
     '/reports/settlement': 'reports_settlement',
-    // 會計對接說明自己一組權限（老闆 2026-08-24）——「看得到廠商結算」不等於
-    // 「該看會計怎麼接帳」。舊帳號沿用 reports_settlement 也放行，不用重勾
-    '/reports/accounting-guide': ['reports_accounting_guide', 'reports_settlement'],
+    /*
+     * 會計對接說明自己一組權限（老闆 2026-08-24）。
+     *
+     * ⚠️ 不可以把 reports_settlement 當備援放行 —— **廠商角色就有 reports_settlement**
+     * （他們要看自己的結算），一放行廠商左側欄就會出現「會計對接說明」
+     * （老闆 2026-08-24 截圖）。點了沒反應是因為 middleware 那邊被 `/reports` 的
+     * 保底規則擋掉：選單表放行、middleware 擋下，兩張表對不上。
+     * 需要看的角色請在權限管理頁勾 reports_accounting_guide。
+     */
+    '/reports/accounting-guide': 'reports_accounting_guide',
     '/settlement-snapshots': 'settlement_snapshots',
     // 抽獎管理
     '/products': 'products',

@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "check:permissions": "node scripts/check_permissions.mjs",
     "db:clear": "node scripts/clear_db.js",
     "db:sql": "node scripts/run_sql.js",
     "db:reset-and-seed": "node scripts/run_sql.js ../reset_and_seed.sql",

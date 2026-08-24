@@ -470,19 +470,27 @@ curl -X POST https://admin.ggb.com.tw/api/admin/storage/clear-products \
 **寫之前先確認上表真的沒有** —— 過去多次「自創畫面」都是因為只看了這幾行配方就動手，
 沒去翻 `components/` 目錄。
 
-### ⚠️ 新增後台頁面：一律要進權限清單（三個地方缺一不可）
+### ⚠️ 新增後台頁面：一律要進權限清單（**四張表**缺一不可）
 
-老闆 2026-08-24 指定。少任何一項，這頁不是「所有人看得到」就是「勾了也進不去」：
+老闆 2026-08-24 指定。改完**一定要跑 `cd backend && npm run check:permissions`**，
+它會交叉比對這幾張表，對不上就報錯（腳本在 `backend/scripts/check_permissions.mjs`）：
 
-1. `backend/app/permissions/page.tsx` —— 新增一筆 `{ id: '<權限key>', label: '<選單名>' }`，
-   放進對應群組（營運總覽／對帳報表／抽獎管理…）
-2. `backend/components/AdminLayout.tsx` 的 `PATH_PERMISSION_MAP` —— `'<路徑>': '<權限key>'`。
-   值可給陣列＝任一符合即可（沿用舊權限時用，例：
-   `'/reports/accounting-guide': ['reports_accounting_guide', 'reports_settlement']`）
-3. 同檔的 `menuGroups` —— 把選單項目掛上去（沒掛就只有直接輸網址進得去）
+1. `backend/app/permissions/page.tsx` —— 權限清單，新增 `{ id: '<權限key>', label: '<選單名>' }`
+   放進對應群組。**漏了＝超管看得到、其他角色永遠勾不到。**
+2. `backend/components/AdminLayout.tsx` 的 `PATH_PERMISSION_MAP` —— 選單可見性。
+   **漏了＝那頁在選單上消失**（`canAccess()` 是「沒有對應權限就不顯示」，不是放行）。
+3. `backend/middleware.ts` 的 `PATH_PERMISSIONS` —— **真正的伺服器端把關**。
+   漏了會落到 `/reports` 這類父層保底規則。
+4. `backend/lib/permissionPaths.ts` 的 `MENU_PATH_ORDER` —— 登入後「導到第一個有權限的頁」的順序。
 
-`canAccess()` 的規則是「**沒有對應權限的選單一律不顯示**」（不是放行），所以漏掉第 2 項
-不會出安全問題、但那頁會整個消失；漏掉第 1 項則是超級管理員看得到、其他角色永遠勾不到。
+**第 2 與第 3 張表必須成對，而且是「選單放行的每一個權限，middleware 都要接受」**：
+只要有一個權限只被選單認、middleware 不認，持有那個權限的人就會「看得到、點了沒反應」
+（實際是被踢回第一個有權限的頁）。2026-08-24 的實例：`/reports/accounting-guide` 在選單表
+拿 `reports_settlement` 當備援放行，而**廠商角色就有 `reports_settlement`** ——
+廠商左側欄因此出現「會計對接說明」，點了被 middleware 擋回去。**不要用別的角色也有的權限當備援**，
+需要看的角色就去權限管理頁勾新權限。同一次稽核還抓到 9 處舊的不一致（會計的待審退款、
+管理員的客服工單看得到卻進不去；挑戰機台／機台報表對所有非超管隱形），已一併對齊。
+
 `super_admin` 一律全開，測權限要用一般管理員帳號。
 
 **寫新頁面前必看參考**：`backend/app/slot/page.tsx`（列表 + 篩選 + modal）、`backend/app/slot/prizes/page.tsx`（同類型 CRUD）。

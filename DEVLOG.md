@@ -4,6 +4,38 @@
 
 ---
 
+## v2026.08.24e｜2026-08-24｜廠商左側欄看得到「會計對接說明」——兩張權限表對不上，稽核出 10 處並加自動檢查
+
+老闆截圖：廠商帳號的左側欄有「會計對接說明」，但點了沒反應。
+
+**病根：後台有兩張權限表，而且對不上。**
+- 選單可見性（`AdminLayout` 的 `PATH_PERMISSION_MAP`）把 `/reports/accounting-guide` 設成
+  `['reports_accounting_guide', 'reports_settlement']` —— 我 08.24 那版為了「舊帳號不用重勾」
+  留的備援。**但廠商角色就有 `reports_settlement`**（他們要看自己的結算），所以選單放行了廠商。
+- 真正把關的 `middleware.ts` 沒有這條路徑的規則，落到父層保底 `{'/reports': reports_overview}`，
+  廠商沒有 → 被踢回第一個有權限的頁 → 玩家感覺是「按了沒反應」。
+- 修法：選單表改成只認 `reports_accounting_guide`（**不再用別的角色也有的權限當備援**），
+  middleware 與 `permissionPaths` 補上對應規則；`/reports/feed` 同樣處理（原本備援 analytics_overview）。
+  DB 授權：`reports_accounting_guide` → 會計；`reports_feed` → 管理員＋行銷；**廠商兩個都沒有**。
+  兩環境已執行。稽核後廠商可見頁只剩：廠商結算／商品管理／配送管理／商品匯入／廠商儀表板。
+
+**同一次稽核抓到 9 處舊的不一致**（都是「看得到點不進去」或「有權限卻看不到」）：
+- 會計的「待審退款」（選單認 `header_refunds`、middleware 只認 `orders`）
+- 管理員的「客服工單」「客服操作手冊」（選單認 `cs_tickets`／`cs_sop`、middleware 只認 `cs_management`）
+- 「挑戰機台」「機台報表」對所有非超管**隱形**（選單認 `slot`／`slot_reports`，但沒有角色有這兩個權限，
+  而 middleware 認的是 `products`）
+- `/reports/overview`、`/reports/behavior`（選單認 `analytics_overview`、middleware 認舊的 `reports_*`）
+- `/ai-usage`（選單認 `ai_usage`、middleware 認 `tools`）
+middleware 一律改成接受「選單認的那些權限」的聯集，不放寬任何選單沒顯示的東西。
+
+**加自動檢查（防止再走鐘）**：`backend/npm run check:permissions`
+（`scripts/check_permissions.mjs`）交叉比對四張表 ——
+權限清單頁／選單可見性／middleware／登入導向。不變式是
+**「選單放行的每一個權限，middleware 都必須接受」**（用「至少一個相符」會漏掉這次的廠商 bug，
+已實測：故意還原成有問題的版本，檢查器確實報錯）。CLAUDE.md 的章節從「三個地方」更正為「四張表」，
+並註明不要用別的角色也有的權限當備援。
+---
+
 ## v2026.08.24d｜2026-08-24｜曬獎圖片、配送 UI 改商城那套、排行榜「+100%」改「新」、餘額字重
 
 **① 曬獎圖片（新功能）**

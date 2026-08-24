@@ -107,11 +107,20 @@ const SUPPLIER_API_DENY_SUFFIX: string[] = ['/seal', '/seal-now', '/close-out', 
 // Path prefix → required permission
 // Built from MENU_PATH_ORDER + additional sub-paths that share permissions
 // permission 可給陣列＝任一符合即可（例如廠商分析：營運看報表、廠商看自己的結算，兩邊都該進得去）
+/*
+ * ⚠️ 這張表必須跟 `components/AdminLayout.tsx` 的 `PATH_PERMISSION_MAP`（選單可見性）**成對**。
+ * 兩邊對不上的後果分兩種，都很難查：
+ *   選單放行、這裡擋 → 「看得到、點了沒反應」（實際是被踢回第一個有權限的頁）
+ *   選單擋、這裡放行 → 有權限的人在選單上找不到那一頁，只能手打網址
+ * 2026-08-24 稽核抓到 10 處（廠商看得到會計對接說明、會計看得到待審退款卻進不去、
+ * 管理員的客服工單同樣狀況、挑戰機台在選單上對所有非超管隱形…）。
+ * 有 `npm run check:permissions` 可以驗，新增頁面請跑一次（見 CLAUDE.md）。
+ */
 const PATH_PERMISSIONS: Array<{ prefix: string; permission: string | string[] }> = [
   // 營運總覽
   { prefix: '/dashboard',           permission: 'dashboard' },
-  { prefix: '/reports/overview',    permission: 'reports_overview' },
-  { prefix: '/reports/behavior',    permission: 'reports_behavior' },
+  { prefix: '/reports/overview',    permission: ['reports_overview', 'analytics_overview'] },
+  { prefix: '/reports/behavior',    permission: ['reports_behavior', 'analytics_overview'] },
   // 對帳報表
   { prefix: '/recharges',           permission: 'recharges' },
   { prefix: '/recharge-review',     permission: 'recharge_review' },
@@ -121,12 +130,17 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string | string[] }>
   { prefix: '/reports/dismantled',  permission: 'reports_dismantled' },
   { prefix: '/reports/adjustments', permission: 'reports_adjustments' },
   { prefix: '/reports/settlement',  permission: 'reports_settlement' },
+  // 這兩頁原本沒有規則，會落到最下面 `/reports` 的保底（reports_overview）——
+  // 結果是「選單看得到、點進去被踢回去」（老闆 2026-08-24 廠商帳號截圖）。
+  // 選單表（AdminLayout 的 PATH_PERMISSION_MAP）與這張表必須成對維護。
+  { prefix: '/reports/accounting-guide', permission: 'reports_accounting_guide' },
+  { prefix: '/reports/feed',        permission: 'reports_feed' },
   { prefix: '/settlement-snapshots',permission: 'settlement_snapshots' },
   // 抽獎管理
   { prefix: '/draws',               permission: 'draws' },
   { prefix: '/orders',              permission: 'orders' },
   { prefix: '/referrals',           permission: 'referrals' },
-  { prefix: '/refund-requests',     permission: 'orders' },
+  { prefix: '/refund-requests',     permission: ['orders', 'header_refunds'] },
   { prefix: '/products',            permission: 'products' },
   { prefix: '/suppliers',           permission: 'suppliers' },
   { prefix: '/categories',          permission: 'categories' },
@@ -167,12 +181,15 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string | string[] }>
   { prefix: '/dismantled',             permission: 'reports_dismantled' },
   { prefix: '/reports/points',         permission: 'reports_overview' },
   { prefix: '/leaderboard-bots',       permission: 'users' },
-  { prefix: '/slot',                   permission: 'products' },
+  { prefix: '/slot/reports',           permission: ['slot_reports', 'slot', 'products'] },
+  { prefix: '/slot',                   permission: ['slot', 'products'] },
   { prefix: '/small-items',            permission: 'products' },
   { prefix: '/announcements',          permission: 'announcements' },
   { prefix: '/events',                 permission: 'events' },
+  { prefix: '/cs-management/tickets',  permission: ['cs_management', 'cs_tickets'] },
+  { prefix: '/cs-management/sop',      permission: ['cs_management', 'cs_sop'] },
   { prefix: '/cs-management',          permission: 'cs_management' },
-  { prefix: '/ai-usage',               permission: 'tools' },
+  { prefix: '/ai-usage',               permission: ['tools', 'ai_usage'] },
   // 維護頁本身不需要權限 —— 它就是給被擋下來的人看的
   { prefix: '/analytics-overview',     permission: 'analytics_overview' },
   { prefix: '/analytics-supplier',     permission: 'analytics_supplier' },
