@@ -2749,7 +2749,6 @@ function ProfileContent() {
                             <button onClick={() => { setSelectedForDelivery([]); setLockedSupplierName(null); }} className="text-xs text-neutral-400 font-bold">取消</button>
                         </div>
                         <div className="flex-1 flex gap-2 justify-end">
-                            <button onClick={handleDismantleClick} className="flex-1 bg-accent-red text-white h-[44px] rounded-xl text-base font-black">分解</button>
                             {/* 曬圖：只在勾單一件、且賞等看起來是大獎時出現（真正判定在 DB） */}
                             {selectedForDelivery.length === 1
                               && warehouseItems.find(i => i.id === selectedForDelivery[0] && isMajorGrade(i.grade)) && (
@@ -2761,6 +2760,7 @@ function ProfileContent() {
                                 {isLoadingShare ? '處理中' : '曬圖'}
                               </button>
                             )}
+                            <button onClick={handleDismantleClick} className="flex-1 bg-accent-red text-white h-[44px] rounded-xl text-base font-black">分解</button>
                             {selectedForDelivery.length <= 10 && (
                               <>
                                 {/* 這顆按鈕寫的是交易所（marketplace）的資料，

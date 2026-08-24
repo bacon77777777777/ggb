@@ -197,20 +197,26 @@ export function PrizeShareCard({ data, onClose }: { data: PrizeShareData; onClos
 
   return (
     <div className="fixed inset-0 z-[130] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm px-4 pt-[env(safe-area-inset-top)] pb-[calc(16px+env(safe-area-inset-bottom))]">
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="關閉"
-        className="absolute right-4 top-[calc(16px+env(safe-area-inset-top))] flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm active:scale-95"
-      >
-        <X className="h-5 w-5" />
-      </button>
-
       <div className="relative flex max-h-[76vh] w-full max-w-[420px] items-center justify-center">
-        <canvas
-          ref={canvasRef}
-          className={cn('max-h-[76vh] w-auto max-w-full rounded-2xl shadow-2xl transition-opacity', isRendering && 'opacity-0')}
-        />
+        {/* 叉叉蓋在圖的右上角（老闆 2026-08-24）。
+            包一層 relative 讓它貼齊 canvas 本身而不是外層容器 —— canvas 是等比縮放的，
+            寬度會隨螢幕變，貼外層在窄螢幕上就會離圖邊有一段空隙。
+            也一定要放在 canvas **後面**：兩者同一個堆疊層，先畫的會被後畫的蓋掉，
+            原本按鈕在前所以被整張圖蓋住（實機看不到，老闆截圖回報）。*/}
+        <div className="relative">
+          <canvas
+            ref={canvasRef}
+            className={cn('block max-h-[76vh] w-auto max-w-full rounded-2xl shadow-2xl transition-opacity', isRendering && 'opacity-0')}
+          />
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="關閉"
+            className="absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm active:scale-95"
+          >
+            <X className="h-[18px] w-[18px]" />
+          </button>
+        </div>
         {isRendering && (
           <div className="absolute inset-0 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-white/70" />
