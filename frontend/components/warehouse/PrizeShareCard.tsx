@@ -65,8 +65,16 @@ function removeBackdrop(img: HTMLImageElement): HTMLCanvasElement | HTMLImageEle
   try { px = cx.getImageData(0, 0, w, h); } catch { return img; }
   const d = px.data;
 
-  // 已經是透明背景的 PNG 就不用處理
-  if (d[3] === 0) return c;
+  /*
+   * 已經去過背的圖就原樣回傳（老闆 2026-08-25）。
+   * ⚠️ 不可以只看左上角那一個像素（舊版 `d[3] === 0`）—— 去背圖的四角常常不是
+   * 全透明（帶陰影、有 1px 白邊、或物件本來就頂到角落），漏判就會再去一次背，
+   * 而背景既然已經透明，flood fill 只好從物件本身的淺色吃進去 —— 就是老闆看到的
+   * 「去到品項圖」。改成抽樣整張：只要有像樣比例的透明像素就代表本來就有 alpha。
+   */
+  let clear = 0, sampled = 0;
+  for (let p = 0; p < w * h; p += 7) { sampled++; if (d[p * 4 + 3] < 250) clear++; }
+  if (clear > sampled * 0.02) return c;
 
   /** 背景分數：亮度 185→220、彩度 34→18 之間過渡，兩者取小 */
   const score = (i: number) => {
@@ -200,7 +208,10 @@ export function PrizeShareCard({ data, onClose }: { data: PrizeShareData; onClos
          中文字型沒有真正的義大利體，瀏覽器會合成傾斜 —— 這裡要的就是傾斜 */
       ctx.font = `italic 700 ${n.size}px ${cjk}`;
       const nameLines = wrapText(ctx, data.prizeName || data.productName, n.maxWidth, n.maxLines);
-      nameLines.forEach((line, i) => ctx.fillText(line, n.cx, n.y + i * n.lineHeight));
+      /* 只有一行時整塊往下推半行，讓它落在紫帶的中線上（老闆 2026-08-25）——
+         n.y 是「兩行版」第一行的基線，單行沿用會整個偏上 */
+      const nameY = n.y + (n.maxLines - nameLines.length) * n.lineHeight / 2;
+      nameLines.forEach((line, i) => ctx.fillText(line, n.cx, nameY + i * n.lineHeight));
 
       /*
        * 三個數據（老闆指定）：抽獎次數／總抽金額／中獎時間（年月）。
