@@ -117,6 +117,22 @@ export default function Home() {
   const [feedVariant, setFeedVariant] = useState<'v1' | 'v2'>('v2');
   const feedSeed = useRef<number>(Math.floor(Math.random() * 0xffffffff));
   const feedMeta = useRef<Map<string, { bucket: FeedBucket; position: number }>>(new Map());
+  /*
+   * 這一輪的「看過記憶」只在掛載時讀一次（老闆 2026-08-24：首頁推薦一直跳來跳去）。
+   * 以前每次重算都 loadSeenRounds()，而重算前一步才剛 saveRound() —— 等於把自己
+   * 剛顯示的六件標成「看過」再重排，形成回饋迴圈，畫面就一直翻。
+   */
+  const feedSeenRounds = useRef<string[][] | null>(null);
+  if (feedSeenRounds.current === null) feedSeenRounds.current = loadSeenRounds();
+  /*
+   * 凍結這一輪的排序。個人偏好／熱度／話題／點擊率是各自非同步到齊的，
+   * 每到一個就重算一次 assembleFeed → 玩家眼前的卡片位置整片換掉。
+   * 改成：同一輪（同一顆種子＋同一個頁籤＋同一批商品）只抽一次籤，之後沿用；
+   * 晚到的訊號留給下一輪（導航、下拉刷新、回首頁都會換種子）。
+   */
+  const feedOrder = useRef<{ key: string; order: Map<string, number> } | null>(null);
+  /** 這一輪算出來的首屏（等排序穩定後才寫進看過記憶，見下方 effect） */
+  const feedFirstScreen = useRef<string[] | null>(null);
   useEffect(() => {
     let alive = true;
     Promise.all([
@@ -729,10 +745,23 @@ export default function Home() {
           session: sessionIntent(),
           isGuest: !user,
         };
-        const items = assembleFeed(result, signals, loadSeenRounds(), seededRng(feedSeed.current));
-        feedMeta.current = new Map(items.map(i => [String(i.product.id), { bucket: i.bucket, position: i.position }]));
-        result = items.map(i => i.product);
-        saveRound(result.slice(0, 6).map(p => String(p.id)));
+        // 同一輪沿用既有順序（見 feedOrder 的說明）；商品清單本身變了才重抽
+        const orderKey = `${feedSeed.current}|${activePrimaryTab}|${result.length}|${result.map(p => p.id).join(',')}`;
+        if (feedOrder.current?.key === orderKey) {
+          const order = feedOrder.current.order;
+          result = [...result].sort(
+            (a, b) => (order.get(String(a.id)) ?? 1e9) - (order.get(String(b.id)) ?? 1e9),
+          );
+        } else {
+          const items = assembleFeed(result, signals, feedSeenRounds.current ?? [], seededRng(feedSeed.current));
+          feedMeta.current = new Map(items.map(i => [String(i.product.id), { bucket: i.bucket, position: i.position }]));
+          feedOrder.current = {
+            key: orderKey,
+            order: new Map(items.map(i => [String(i.product.id), i.position])),
+          };
+          result = items.map(i => i.product);
+          feedFirstScreen.current = result.slice(0, 6).map(p => String(p.id));
+        }
       } else if (activeSecondaryTab === 'featured') {
         const prefMap = userSeriesPref.size > 0 ? userSeriesPref : globalSeriesPop;
         /*
@@ -828,6 +857,17 @@ export default function Home() {
     () => applySortAndFilter(allProducts),
     [allProducts, applySortAndFilter]
   );
+
+  /*
+   * 這一輪首屏記進「看過記憶」，供下一輪降權。寫在 effect 而不是排序當下 ——
+   * 排序是 useMemo，會被重算好幾次，在裡面寫 sessionStorage 等於邊算邊改自己的輸入。
+   */
+  useEffect(() => {
+    const first = feedFirstScreen.current;
+    if (!first || !first.length) return;
+    feedFirstScreen.current = null;
+    saveRound(first);
+  }, [filteredProducts]);
 
   // Home page lazy load — reset on tab change
   useEffect(() => {

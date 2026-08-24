@@ -361,6 +361,29 @@ export default function NewsPage() {
   // 列表不重複顯示輪播中已出現的文章
   const listItems = filtered.filter(item => !carouselIds.has(item.id));
 
+  /*
+   * 分頁（老闆 2026-08-24：情報頁一次吃 60 篇很卡）。
+   * 一次只渲染 PAGE_SIZE 篇，捲到底再加 PAGE_STEP 篇 —— 資料本來就一次撈回來了，
+   * 卡的是「同時掛上 60 張卡片＋60 張圖」；限制渲染量就順了。
+   * 換分頁時重置回第一頁。
+   */
+  const PAGE_SIZE = 12;
+  const PAGE_STEP = 10;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [activeTab]);
+  const visibleListItems = listItems.slice(0, visibleCount);
+  const hasMoreArticles = listItems.length > visibleCount;
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el || !hasMoreArticles || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(entries => {
+      if (entries.some(e => e.isIntersecting)) setVisibleCount(c => c + PAGE_STEP);
+    }, { rootMargin: '400px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMoreArticles, visibleCount]);
+
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 pb-24">
 
@@ -390,7 +413,10 @@ export default function NewsPage() {
                   此分類目前沒有文章
                 </div>
               ) : (
-                listItems.map(item => <ArticleRow key={item.id} item={item} onLike={handleLike} />)
+                <>
+                  {visibleListItems.map(item => <ArticleRow key={item.id} item={item} onLike={handleLike} />)}
+                  {hasMoreArticles && <div ref={loadMoreRef} className="h-10" aria-hidden />}
+                </>
               )}
             </div>
           </div>
@@ -426,9 +452,12 @@ export default function NewsPage() {
         ) : filtered.length === 0 ? (
           <div className="py-24 text-center text-neutral-400 dark:text-neutral-500 text-sm font-bold">此分類目前沒有文章</div>
         ) : (
-          <div className="grid grid-cols-3 gap-5">
-            {filtered.map(item => <ArticleCard key={item.id} item={item} onLike={handleLike} />)}
-          </div>
+          <>
+            <div className="grid grid-cols-3 gap-5">
+              {filtered.slice(0, visibleCount).map(item => <ArticleCard key={item.id} item={item} onLike={handleLike} />)}
+            </div>
+            {filtered.length > visibleCount && <div ref={loadMoreRef} className="h-10" aria-hidden />}
+          </>
         )}
       </div>
     </div>

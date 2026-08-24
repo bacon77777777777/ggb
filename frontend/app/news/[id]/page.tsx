@@ -725,9 +725,9 @@ export default function NewsDetailPage() {
               </h2>
               <Link
                 href={`/search?q=${encodeURIComponent(related.keyword)}`}
-                className="flex items-center gap-0.5 text-[13px] font-bold text-primary"
+                className="flex items-center gap-0.5 text-[13px] sm:text-sm font-bold text-primary hover:text-primary/80"
               >
-                更多{related.total > related.products.length ? `（${related.total}）` : ''}
+                更多
                 <ChevronRight className="w-4 h-4" />
               </Link>
             </div>

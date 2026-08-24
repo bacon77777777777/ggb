@@ -470,6 +470,21 @@ curl -X POST https://admin.ggb.com.tw/api/admin/storage/clear-products \
 **寫之前先確認上表真的沒有** —— 過去多次「自創畫面」都是因為只看了這幾行配方就動手，
 沒去翻 `components/` 目錄。
 
+### ⚠️ 新增後台頁面：一律要進權限清單（三個地方缺一不可）
+
+老闆 2026-08-24 指定。少任何一項，這頁不是「所有人看得到」就是「勾了也進不去」：
+
+1. `backend/app/permissions/page.tsx` —— 新增一筆 `{ id: '<權限key>', label: '<選單名>' }`，
+   放進對應群組（營運總覽／對帳報表／抽獎管理…）
+2. `backend/components/AdminLayout.tsx` 的 `PATH_PERMISSION_MAP` —— `'<路徑>': '<權限key>'`。
+   值可給陣列＝任一符合即可（沿用舊權限時用，例：
+   `'/reports/accounting-guide': ['reports_accounting_guide', 'reports_settlement']`）
+3. 同檔的 `menuGroups` —— 把選單項目掛上去（沒掛就只有直接輸網址進得去）
+
+`canAccess()` 的規則是「**沒有對應權限的選單一律不顯示**」（不是放行），所以漏掉第 2 項
+不會出安全問題、但那頁會整個消失；漏掉第 1 項則是超級管理員看得到、其他角色永遠勾不到。
+`super_admin` 一律全開，測權限要用一般管理員帳號。
+
 **寫新頁面前必看參考**：`backend/app/slot/page.tsx`（列表 + 篩選 + modal）、`backend/app/slot/prizes/page.tsx`（同類型 CRUD）。
 
 ---

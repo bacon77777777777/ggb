@@ -565,7 +565,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     // 這兩頁已併進「數據分析」，不再掛選單；舊書籤還是要能開，權限跟著數據分析走
     '/reports/overview': 'analytics_overview',
     '/reports/behavior': 'analytics_overview',
-    '/reports/feed': 'analytics_overview',
+    '/reports/feed': ['reports_feed', 'analytics_overview'],
     // 金流報表
     '/recharges': 'recharges',
     '/recharge-review': 'recharge_review',
@@ -577,7 +577,9 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/reports/dismantled': 'reports_dismantled',
     '/reports/adjustments': 'reports_adjustments',
     '/reports/settlement': 'reports_settlement',
-    '/reports/accounting-guide': 'reports_settlement',
+    // 會計對接說明自己一組權限（老闆 2026-08-24）——「看得到廠商結算」不等於
+    // 「該看會計怎麼接帳」。舊帳號沿用 reports_settlement 也放行，不用重勾
+    '/reports/accounting-guide': ['reports_accounting_guide', 'reports_settlement'],
     '/settlement-snapshots': 'settlement_snapshots',
     // 抽獎管理
     '/products': 'products',

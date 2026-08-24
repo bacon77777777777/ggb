@@ -33,6 +33,7 @@ const PERMISSION_GROUPS = [
       { id: 'dashboard',          label: '營運儀表板' },
       { id: 'analytics_overview', label: '數據分析' },
       { id: 'analytics_supplier', label: '廠商儀表板' },
+      { id: 'reports_feed',       label: '推薦 feed 報表' },
     ],
   },
   {
@@ -46,6 +47,7 @@ const PERMISSION_GROUPS = [
       { id: 'coupons_report',       label: '折價券明細' },
       { id: 'reports_settlement',   label: '廠商結算' },
       { id: 'settlement_snapshots', label: '廠商月結管理' },
+      { id: 'reports_accounting_guide', label: '會計對接說明' },
     ],
   },
   {

@@ -4,6 +4,52 @@
 
 ---
 
+## v2026.08.24c｜2026-08-24｜首頁推薦不再跳動、文章相關商品即時出現、情報列表分頁、帳號改成驗證後才建檔
+
+**① 首頁推薦一直跳來跳去（老闆回報）**
+兩個原因疊在一起：
+- `applySortAndFilter` 的相依清單裡有 `userSeriesPref`／`globalSeriesPop`／`productHeat`／
+  `feedAux`／`follows`／`user` —— 這些是**各自非同步到齊**的，每到一個就重跑一次 `assembleFeed`，
+  玩家眼前的卡片整片換位置。
+- 更糟的是 `saveRound()` 寫在排序當下（useMemo 內），而下一次重算又 `loadSeenRounds()` 讀回來
+  → 把自己剛顯示的六件標成「看過」再降權重排，形成**回饋迴圈**。
+改法：同一輪（同一顆種子＋同一個頁籤＋同一批商品 id）只抽一次籤，順序凍結在 ref 裡沿用；
+看過記憶每輪只在掛載時讀一次；`saveRound` 移到 effect。晚到的訊號留給下一輪
+（導航、下拉刷新、回首頁都會換種子）。實測：同一輪 5 次取樣完全一致，重載才換一輪。
+
+**② 文章相關商品要下拉刷新才出現**
+API 對每個候選關鍵字各打一次 count —— N 個關鍵字＝N 趟資料庫來回，冷啟動 1.4 秒，
+玩家滑到底時還沒回來；下拉刷新時 CDN 已暖所以「看起來只有刷新才有」。
+改成一次撈 id/name/series 全表（百來筆）在記憶體比對，總共兩趟查詢：**1.4s → 0.10~0.18s**。
+
+**③「更多」文字統一**：猜你喜歡的「查看更多」與文章相關商品的「更多（N）」統一成
+`更多 ›`（ChevronRight、不帶數量、font-bold text-primary）。
+
+**④ 情報列表分頁**：PROD 有 687 篇、API 一次回 60 篇並**全部渲染**，進頁很卡。
+改成初始 12 篇、捲到底（IntersectionObserver rootMargin 400px）再 +10 篇；換分頁重置。
+手機與桌機兩套版面都套。
+
+**⑤ 帳號改成「驗證通過才建檔」（migration 609）**
+老闆：「感覺現在只要填寫就創建帳號了，沒填驗證碼也能創建成功。」確認屬實 ——
+`on_auth_user_created` 掛在 `auth.users` 的 AFTER INSERT，而登入頁是 `signInWithOtp`
+（shouldCreateUser: true），**按下「發送驗證碼」的當下 auth.users 就寫了一列**，
+public.users 的遊戲檔與邀請碼跟著開好（PROD 已有 1 筆未驗證卻有檔的）。
+改成觸發時機看 `email_confirmed_at`：INSERT 時已驗證（LINE 快速登入 `email_confirm: true`、
+後台建帳號）照舊；OTP 流程改在 `AFTER UPDATE OF email_confirmed_at`（NULL → 有值）才建檔。
+函數加 `ON CONFLICT (id) DO NOTHING`，與前台 ensure-profile 不會打架。
+STG 交易內實測三種情況：未驗證不建檔 ✓、驗證後建檔（隨機暱稱＋邀請碼）✓、LINE 登入照舊 ✓。
+> 未驗證的 auth.users 列仍會存在（Supabase OTP 流程本身寫的，動不了），但沒有遊戲檔、
+> 不進任何統計與排行榜。**另建議在 Supabase Auth 後台開啟 Turnstile／hCaptcha（免費）**
+> 擋機器人狂發驗證信 —— 那是設定不是程式碼。
+
+**⑥ 後台權限清單（老闆指定，並寫進 CLAUDE.md）**
+- 新增權限 `reports_accounting_guide`（會計對接說明）與 `reports_feed`（推薦 feed 報表），
+  兩者的 `PATH_PERMISSION_MAP` 都給陣列，舊權限（reports_settlement／analytics_overview）
+  也放行，既有帳號不用重勾。
+- CLAUDE.md 新增「新增後台頁面：一律要進權限清單（三個地方缺一不可）」章節 ——
+  權限清單頁、PATH_PERMISSION_MAP、menuGroups；並說明 `canAccess()` 是「沒對應權限就不顯示」。
+---
+
 ## v2026.08.24b｜2026-08-24｜促銷新增兩種折扣型：前 N 抽折扣（A）與每人首抽折扣（B）
 
 老闆 2026-08-24：促銷「前幾抽折扣」A、B 兩種都做。
