@@ -3600,7 +3600,7 @@ function ProfileContent() {
                     </div>
                     <div className={cn(
                       "border-t border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 flex items-center justify-center gap-3 shrink-0 mt-auto",
-                      isDesktop ? "h-24 px-6" : "h-16 px-4"
+                      isDesktop ? "h-24 px-6" : "min-h-16 px-4 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))]"
                     )}>
                       <button
                         onClick={() => setShowDeliveryModal(false)}
@@ -3686,7 +3686,7 @@ function ProfileContent() {
                     </div>
                     <div className={cn(
                       "border-t border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 flex items-center justify-center gap-3 shrink-0 mt-auto",
-                      isDesktop ? "h-24 px-6" : "h-16 px-4"
+                      isDesktop ? "h-24 px-6" : "min-h-16 px-4 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))]"
                     )}>
                       <button 
                         onClick={() => setShowDismantleModal(false)} 
@@ -3844,7 +3844,7 @@ function ProfileContent() {
                     </div>
                     <div className={cn(
                       "border-t border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 flex items-center justify-center gap-3 shrink-0 mt-auto",
-                      isDesktop ? "h-24 px-6" : "h-16 px-4"
+                      isDesktop ? "h-24 px-6" : "min-h-16 px-4 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))]"
                     )}>
                       <button 
                         onClick={() => setShowSellModal(false)} 
