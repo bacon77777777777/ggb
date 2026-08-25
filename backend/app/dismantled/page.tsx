@@ -573,17 +573,24 @@ export default function DismantledPage() {
 
         <PageCard>
           {/*
-            這段說明不是裝飾。轉蛋／盒玩回收後庫存已經還回去、實體根本沒離開廠商，
-            但它們一樣會寫進 admin_recycle_pool（池子裡有一半以上是這種）。
-            不講清楚，看的人會把「還會再被抽走的」當成「手上可以拿去包自製賞的」。
+            這段說明不是裝飾，它擋的是一個很容易犯的誤解。
+
+            平台不持有任何實體 —— 供貨與出貨都在廠商，平台只負責接單與流程。
+            所以這張表列的**不是平台庫存**，是「還躺在廠商倉庫、但已經沒有主人」的貨。
+
+            兩類的差別在於「能不能回到原商品繼續賣」：
+            轉蛋／盒玩 remaining +1 直接回到原商品，之後會再被抽走；
+            一番賞／抽卡／自製賞是序列商品，加回去會破壞封存驗證與籤號順序，
+            所以它們卡在「實體還在、但回不去原商品」的狀態 —— 這批才需要另外處理。
           */}
           <div className="mb-4 px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-lg text-xs text-neutral-600 leading-relaxed">
-            這裡列的是<span className="font-medium text-neutral-900">實體還在平台手上</span>的回收品
-            —— 一番賞／抽卡／自製賞是序列商品，回收後庫存不會還回去（還回去會破壞封存驗證與籤號順序），
-            所以實體由平台保管，可交給廠商重組成自製賞或另行處理。
+            <span className="font-medium text-neutral-900">實體一律在廠商倉庫，平台不持有貨。</span>
+            這裡列的是已經沒有主人、但<span className="font-medium text-neutral-900">回不去原商品</span>的貨
+            —— 一番賞／抽卡／自製賞是序列商品，庫存加回去會破壞封存驗證與籤號順序，
+            所以只能由廠商重組成自製賞或另行處理，這張表就是給廠商盤點用的。
             <br />
-            轉蛋／盒玩回收後庫存會自動加回（<code className="px-1 bg-neutral-200 rounded">remaining +1</code>）、會再被抽走，
-            <span className="font-medium text-neutral-900">不算平台庫存</span>，預設不列入。
+            轉蛋／盒玩回收後庫存會自動加回（<code className="px-1 bg-neutral-200 rounded">remaining +1</code>）
+            回到原商品、會再被抽走，<span className="font-medium text-neutral-900">不需要另外處理</span>，預設不列入。
           </div>
 
           <SearchToolbar
