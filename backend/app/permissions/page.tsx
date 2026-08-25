@@ -46,7 +46,6 @@ const PERMISSION_GROUPS = [
       { id: 'reports_adjustments',  label: '手動調整明細' },
       { id: 'coupons_report',       label: '折價券明細' },
       { id: 'reports_settlement',   label: '廠商結算' },
-      { id: 'settlement_snapshots', label: '廠商月結管理' },
       { id: 'reports_accounting_guide', label: '會計對接說明' },
     ],
   },

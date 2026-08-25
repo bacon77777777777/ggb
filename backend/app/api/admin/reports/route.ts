@@ -495,7 +495,7 @@ export async function GET(request: NextRequest) {
        */
       const { data: snapshotRows } = await supabase
         .from('settlement_snapshots')
-        .select('period_start, period_end, total_g, status, supplier_net, confirmed_at, paid_at, raw_data')
+        .select('id, period_start, period_end, total_g, status, supplier_net, confirmed_at, paid_at, raw_data')
         .eq('supplier_id', Number(supplierId))
 
       const snapshots = snapshotRows ?? []
@@ -520,14 +520,24 @@ export async function GET(request: NextRequest) {
       const lockedSnap = snapshots.find((sn: any) =>
         sn.period_start === start && sn.period_end === end
         && (sn.status === 'confirmed' || sn.status === 'paid'))
+      // 這一期的快照（不管什麼狀態），前端要靠它按確認／付款
+      const thisPeriodSnap = snapshots.find((sn: any) =>
+        sn.period_start === start && sn.period_end === end)
       const periodLock = lockedSnap
         ? {
+            id: lockedSnap.id as number,
             locked: true,
             status: lockedSnap.status as 'confirmed' | 'paid',
             net: Number(lockedSnap.supplier_net) || 0,
             at: lockedSnap.paid_at ?? lockedSnap.confirmed_at ?? null,
           }
-        : { locked: false as const }
+        : {
+            id: (thisPeriodSnap?.id as number) ?? null,
+            locked: false as const,
+            status: (thisPeriodSnap?.status as 'draft' | undefined) ?? null,
+            net: thisPeriodSnap ? Number(thisPeriodSnap.supplier_net) || 0 : null,
+            at: null,
+          }
 
       let crossPeriodAdjustment = 0
       let crossPeriodEstimated = false
@@ -612,8 +622,21 @@ export async function GET(request: NextRequest) {
       }
       if (scope.isSupplier) return NextResponse.json(body)
 
+      /*
+       * 未付款期別：取代原本 /settlement-snapshots 那一頁的清單功能。
+       * 只給平台管理員 —— 廠商只有自己一家，列出來沒意義，
+       * 而且會透露平台對其他期別的付款節奏。
+       */
+      const { data: unpaidRows } = await supabase
+        .from('settlement_snapshots')
+        .select('id, supplier_id, supplier_name, period_start, period_end, settlement_date, supplier_net, status')
+        .neq('status', 'paid')
+        .order('period_start', { ascending: false })
+        .limit(50)
+
       return NextResponse.json({
         ...body,
+        unpaid: unpaidRows ?? [],
         totalPlatformG,
         consumptionShare,
         rechargeTotal,

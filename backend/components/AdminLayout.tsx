@@ -587,7 +587,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
      * 需要看的角色請在權限管理頁勾 reports_accounting_guide。
      */
     '/reports/accounting-guide': 'reports_accounting_guide',
-    '/settlement-snapshots': 'settlement_snapshots',
     // 抽獎管理
     '/products': 'products',
     // 挑戰機台
@@ -744,7 +743,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '回收明細', path: '/reports/dismantled', icon: IconScissors },
           { name: '手動調整明細', path: '/reports/adjustments', icon: IconSliders },
           { name: '廠商結算', path: '/reports/settlement', icon: IconReceipt },
-          { name: '廠商月結管理', path: '/settlement-snapshots', icon: IconLedger },
           { name: '會計對接說明', path: '/reports/accounting-guide', icon: IconReceipt },
         ],
       },
@@ -832,7 +830,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/recycle-inventory': '回收品的實體盤點，按廠商→商品→品項統計還有幾件卡在那裡，可匯出給廠商重組成自製賞。實體一律在廠商倉庫，轉蛋／盒玩回收後會回到原商品，預設不列入。',
     '/reports/adjustments': '所有非儲值、非抽獎的代幣增減（GB哥補幣、帳務更正、出貨運費扣款、商城／交易所／機台）依會計分類列出，淨額即對帳公式的 manual_total，可匯出 CSV。',
     '/reports/settlement': '依廠商統計銷售金額，計算應付款項與平台毛利，作為廠商請款依據。',
-    '/settlement-snapshots': '廠商月結快照管理，可鎖定當期數據並匯出正式對帳報表給廠商。',
   }
 
   const flatMenuItems = useMemo(() => menuGroups.flatMap((g) => g.items), [menuGroups])
@@ -1101,7 +1098,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                       </div>
                       <div className="overflow-y-auto flex-1">
                         {settlementItems.length > 0 ? settlementItems.map((s: any) => (
-                          <button key={s.id} onClick={() => { router.push('/settlement-snapshots'); setIsSettlementOpen(false) }} className="w-full text-left px-4 py-3 hover:bg-neutral-50 border-b border-neutral-100 flex items-center justify-between">
+                          <button key={s.id} onClick={() => { router.push('/reports/settlement'); setIsSettlementOpen(false) }} className="w-full text-left px-4 py-3 hover:bg-neutral-50 border-b border-neutral-100 flex items-center justify-between">
                             <div>
                               <p className="text-sm font-medium text-neutral-900">{s.supplier_name ?? '—'}</p>
                               <p className="text-xs text-neutral-500">{s.period_start?.slice(0, 10)} ~ {s.period_end?.slice(0, 10)}</p>
@@ -1112,7 +1109,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                           <div className="p-8 text-center text-neutral-400"><p className="text-sm">目前沒有待確認月結</p></div>
                         )}
                       </div>
-                      {settlementItems.length > 0 && <div className="px-4 py-3 border-t border-neutral-200 bg-neutral-50"><button onClick={() => { router.push('/settlement-snapshots'); setIsSettlementOpen(false) }} className="w-full px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors">查看全部月結</button></div>}
+                      {settlementItems.length > 0 && <div className="px-4 py-3 border-t border-neutral-200 bg-neutral-50"><button onClick={() => { router.push('/reports/settlement'); setIsSettlementOpen(false) }} className="w-full px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors">查看廠商結算</button></div>}
                     </div>
                   </>)}
                 </div>}

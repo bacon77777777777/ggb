@@ -135,7 +135,6 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string | string[] }>
   // 選單表（AdminLayout 的 PATH_PERMISSION_MAP）與這張表必須成對維護。
   { prefix: '/reports/accounting-guide', permission: 'reports_accounting_guide' },
   { prefix: '/reports/feed',        permission: 'reports_feed' },
-  { prefix: '/settlement-snapshots',permission: 'settlement_snapshots' },
   // 抽獎管理
   { prefix: '/draws',               permission: 'draws' },
   { prefix: '/orders',              permission: 'orders' },

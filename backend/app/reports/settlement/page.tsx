@@ -4,6 +4,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import React, { useState, useEffect, useCallback } from 'react'
 import SelectField from '@/components/ui/SelectField'
+import { useToast } from '@/contexts/ToastContext'
 import { useAdmin } from '@/contexts/AdminContext'
 import { logExport } from '@/lib/logExport'
 // 費率設定浮層貼在畫面右緣，泡泡要能自己翻邊才不會被推出視窗 —— 用分析頁那顆 fixed 版
@@ -46,7 +47,19 @@ interface PeriodData {
   /** 找不到當期快照、用現在的分潤率估的 */
   crossPeriodEstimated?: boolean
   /** 這一期是否已鎖帳（月結快照 confirmed／paid） */
-  lock?: { locked: boolean; status?: 'confirmed' | 'paid'; net?: number; at?: string | null }
+  lock?: {
+    id: number | null
+    locked: boolean
+    status?: 'draft' | 'confirmed' | 'paid' | null
+    net?: number | null
+    at?: string | null
+  }
+  /** 未付款期別（僅平台管理員）。取代原本 /settlement-snapshots 那一頁的清單 */
+  unpaid?: {
+    id: number; supplier_id: number; supplier_name: string
+    period_start: string; period_end: string; settlement_date: string
+    supplier_net: number; status: 'draft' | 'confirmed'
+  }[]
   couponTotal: number            // 折價券折抵總額（雙方各吸收一半）
   shippingTotal: number          // 運費總額（雙方各吸收一半）
   pointsTotal: number            // 積分支付 G 等值（模式 A 時廠商吸收一半）
@@ -106,7 +119,16 @@ export default function SettlementPage() {
   // 廠商帳號：隱藏費率設定與所有平台級數字。伺服器端也不回那些欄位，
   // 這裡只是不要畫出空欄位；真正的牆在 API
   const { user: adminUser } = useAdmin()
+  const { toast } = useToast()
   const isSupplier = adminUser?.role === 'supplier'
+  /*
+   * 確認結算／標記已付款等於「這期對帳單定案了 / 錢付了」，收成 super_admin 專屬
+   * （老闆 2026-08-25）。原本那兩顆按鈕在 /settlement-snapshots，
+   * 只要有 settlement_snapshots 權限就按得動，而會計角色就有。
+   * 這裡只是不畫按鈕，真正的牆在 PATCH /api/admin/settlement-snapshots/[id]。
+   */
+  const canSettle = adminUser?.role === 'super_admin' || adminUser?.role === 'superadmin'
+  const [statusSaving, setStatusSaving] = useState(false)
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [selectedSupplierId, setSelectedSupplierId] = useState('')
   const [selectedPeriodIdx, setSelectedPeriodIdx] = useState(1) // default 上月
@@ -161,6 +183,28 @@ export default function SettlementPage() {
   }, [selectedSupplierId, period?.startDate, period?.endDate])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  const setSnapshotStatus = async (status: 'draft' | 'confirmed' | 'paid') => {
+    const id = data?.lock?.id
+    if (!id) return
+    setStatusSaving(true)
+    try {
+      const res = await fetch(`/api/admin/settlement-snapshots/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || '更新失敗')
+      toast(status === 'paid' ? '已標記為已付款' : status === 'confirmed' ? '已確認結算' : '已退回草稿')
+      await fetchData()
+    } catch (e: any) {
+      toast(e?.message ?? '更新失敗', 'error')
+    } finally {
+      setStatusSaving(false)
+    }
+  }
 
   // 結算基底：廠商商品消費 G（1G = NT$1）
   const totalTWD = data?.totalG ?? 0
@@ -398,6 +442,107 @@ export default function SettlementPage() {
             {period.isCurrent && (
               <span className="text-xs text-amber-500 font-medium">● 進行中（預估值）</span>
             )}
+
+            {/*
+              結算狀態。徽章連廠商都看得到 —— 他最想知道的就是「這期你確認了沒、付了沒」，
+              等於免掉一輪追問。按鈕只有 super_admin，而且伺服器端會再擋一次。
+            */}
+            {data?.lock?.status && (
+              <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                data.lock.status === 'paid' ? 'bg-green-50 text-green-700'
+                : data.lock.status === 'confirmed' ? 'bg-blue-50 text-blue-700'
+                : 'bg-neutral-100 text-neutral-500'
+              }`}>
+                {data.lock.status === 'paid' ? '已付款' : data.lock.status === 'confirmed' ? '已確認' : '草稿'}
+              </span>
+            )}
+
+            {canSettle && data?.lock?.id && (
+              <div className="ml-auto flex items-center gap-2">
+                {data.lock.status === 'draft' && (
+                  <button
+                    onClick={() => setSnapshotStatus('confirmed')}
+                    disabled={statusSaving}
+                    className="px-3 py-1.5 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60"
+                  >
+                    確認結算
+                  </button>
+                )}
+                {data.lock.status === 'confirmed' && (
+                  <>
+                    <button
+                      onClick={() => setSnapshotStatus('paid')}
+                      disabled={statusSaving}
+                      className="px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-60"
+                    >
+                      標記已付款
+                    </button>
+                    <button
+                      onClick={() => setSnapshotStatus('draft')}
+                      disabled={statusSaving}
+                      className="px-3 py-1.5 text-xs text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors disabled:opacity-60"
+                    >
+                      退回草稿
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 這期還沒有快照 —— 月結 cron 每月 1 日產生，沒跑就沒得確認 */}
+        {canSettle && !loading && data && !data.lock?.id && period && !period.isCurrent && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            本期尚未產生月結快照，無法確認結算。快照由月結排程（每月 1 日）自動產生。
+          </div>
+        )}
+
+        {/*
+          未付款期別。取代原本 /settlement-snapshots 那一頁的清單功能 ——
+          會計要的是「哪幾期哪幾家還沒付」，那不值得一整頁，放這裡剛好。
+          廠商不顯示：他只有自己一家，而且不該看到平台對其他期別的付款節奏。
+        */}
+        {!isSupplier && (data?.unpaid?.length ?? 0) > 0 && (
+          <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+            <div className="flex items-center gap-2 border-b border-neutral-100 px-4 py-3">
+              <h3 className="text-sm font-semibold text-neutral-700">未付款期別</h3>
+              <span className="text-xs text-neutral-400">{data?.unpaid?.length} 筆</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px] text-sm">
+                <thead className="border-b border-neutral-200 bg-neutral-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-neutral-500">期別</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-neutral-500">廠商</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-neutral-500">結算日</th>
+                    <th className="px-4 py-2 text-right text-xs font-semibold text-neutral-500">應付</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-neutral-500">狀態</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {data?.unpaid?.map(u => (
+                    <tr key={u.id} className="transition-colors hover:bg-neutral-50">
+                      <td className="whitespace-nowrap px-4 py-2 font-mono text-xs text-neutral-500">
+                        {u.period_start.slice(0, 7)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2 text-neutral-900">{u.supplier_name}</td>
+                      <td className="whitespace-nowrap px-4 py-2 font-mono text-xs text-neutral-500">{u.settlement_date}</td>
+                      <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums font-medium">
+                        {fmt(u.supplier_net)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2">
+                        <span className={`rounded px-2 py-0.5 text-xs font-medium ${
+                          u.status === 'confirmed' ? 'bg-blue-50 text-blue-700' : 'bg-neutral-100 text-neutral-500'
+                        }`}>
+                          {u.status === 'confirmed' ? '已確認・待付款' : '草稿'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
