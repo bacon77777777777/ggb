@@ -21,26 +21,11 @@ export async function GET() {
 
   const supabase = getSupabaseAdmin()
 
-  const [{ data: rates, error }, { data: settings }, { data: suppliers }] = await Promise.all([
-    supabase.from('recycle_rates').select('*').order('product_type').order('tier'),
-    supabase.from('platform_settings').select('key, value')
-      .in('key', ['recycle_settlement_mode', 'recycle_margin_supplier_share']),
-    supabase.from('suppliers')
-      .select('id, name, recycle_settlement_mode, recycle_margin_supplier_share')
-      .order('name'),
-  ])
+  const { data: rates, error } = await supabase
+    .from('recycle_rates').select('*').order('product_type').order('tier')
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const map = Object.fromEntries((settings ?? []).map((s: any) => [s.key, s.value]))
-
-  return NextResponse.json({
-    rates: rates ?? [],
-    settlement: {
-      mode: map.recycle_settlement_mode ?? 'margin',
-      supplierShare: Number(map.recycle_margin_supplier_share ?? 0),
-    },
-    suppliers: suppliers ?? [],
-  })
+  return NextResponse.json({ rates: rates ?? [] })
 }
 
 export async function PUT(request: Request) {
@@ -80,56 +65,18 @@ export async function PUT(request: Request) {
     }
   }
 
-  // ── 結算方式（全站預設）────────────────────────────────
-  if (body?.settlement) {
-    const mode = String(body.settlement.mode)
-    const share = Number(body.settlement.supplierShare)
-    if (!['charge', 'margin'].includes(mode)) {
-      return NextResponse.json({ error: '結算方式不正確' }, { status: 400 })
-    }
-    if (!Number.isFinite(share) || share < 0 || share > 100) {
-      return NextResponse.json({ error: '差額分潤必須介於 0 ~ 100' }, { status: 400 })
-    }
-    const { error } = await supabase.from('platform_settings').upsert(
-      [
-        { key: 'recycle_settlement_mode', value: mode },
-        { key: 'recycle_margin_supplier_share', value: String(share) },
-      ],
-      { onConflict: 'key' },
-    )
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  // ── 廠商層級覆蓋（null＝照全站預設）─────────────────────
-  if (Array.isArray(body?.supplierOverrides)) {
-    for (const o of body.supplierOverrides) {
-      const mode = o.mode === null || o.mode === '' ? null : String(o.mode)
-      if (mode !== null && !['charge', 'margin'].includes(mode)) {
-        return NextResponse.json({ error: '廠商結算方式不正確' }, { status: 400 })
-      }
-      const rawShare = o.supplierShare
-      const share = rawShare === null || rawShare === '' ? null : Number(rawShare)
-      if (share !== null && (!Number.isFinite(share) || share < 0 || share > 100)) {
-        return NextResponse.json({ error: '廠商差額分潤必須介於 0 ~ 100' }, { status: 400 })
-      }
-
-      const { error } = await supabase
-        .from('suppliers')
-        .update({ recycle_settlement_mode: mode, recycle_margin_supplier_share: share })
-        .eq('id', Number(o.id))
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-  }
+  /*
+   * 結算方式與廠商個別設定不在這支 API。
+   * 它們改由 /api/admin/supplier-settings 負責 —— 那條路會逐格寫入
+   * supplier_setting_logs（誰、何時、從多少改成多少）。
+   * 留兩個入口等於留一條「改了查不到」的後門。
+   */
 
   await logAdminAction({
     adminId: admin.adminId,
     action: 'recycle_rates_update',
     targetType: 'recycle_rates',
-    detail: {
-      rates: body?.rates ?? null,
-      settlement: body?.settlement ?? null,
-      supplierOverrides: body?.supplierOverrides ?? null,
-    },
+    detail: { rates: body?.rates ?? null },
     ip,
   })
 

@@ -142,6 +142,7 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string | string[] }>
   { prefix: '/referrals',           permission: 'referrals' },
   { prefix: '/refund-requests',     permission: ['orders', 'header_refunds'] },
   { prefix: '/products',            permission: 'products' },
+  { prefix: '/suppliers/settings',  permission: 'suppliers_settings' },
   { prefix: '/suppliers',           permission: 'suppliers' },
   { prefix: '/categories',          permission: 'categories' },
   { prefix: '/coupons',             permission: 'coupons' },
@@ -179,12 +180,12 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string | string[] }>
   // 廠商登入後直接打 /token-ledger 就看得到全站代幣帳本。
   // 規則排序是「前綴最長者優先」，所以 /reports 這種父層放最後當保底。
   { prefix: '/token-ledger',           permission: 'recharges' },
-  { prefix: '/dismantled',             permission: 'reports_dismantled' },
+  { prefix: '/dismantled',             permission: 'recycle_pool' },
   { prefix: '/reports/points',         permission: 'reports_overview' },
   { prefix: '/leaderboard-bots',       permission: 'users' },
   { prefix: '/slot/reports',           permission: ['slot_reports', 'slot', 'products'] },
   { prefix: '/slot',                   permission: ['slot', 'products'] },
-  { prefix: '/small-items',            permission: 'products' },
+  { prefix: '/small-items',            permission: 'small_items' },
   { prefix: '/announcements',          permission: 'announcements' },
   { prefix: '/events',                 permission: 'events' },
   { prefix: '/cs-management/tickets',  permission: ['cs_management', 'cs_tickets'] },
