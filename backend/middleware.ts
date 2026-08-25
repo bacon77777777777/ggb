@@ -181,6 +181,7 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string | string[] }>
   // 規則排序是「前綴最長者優先」，所以 /reports 這種父層放最後當保底。
   { prefix: '/token-ledger',           permission: 'recharges' },
   { prefix: '/dismantled',             permission: 'recycle_pool' },
+  { prefix: '/recycle-inventory',      permission: 'recycle_pool' },
   { prefix: '/reports/points',         permission: 'reports_overview' },
   { prefix: '/leaderboard-bots',       permission: 'users' },
   { prefix: '/slot/reports',           permission: ['slot_reports', 'slot', 'products'] },

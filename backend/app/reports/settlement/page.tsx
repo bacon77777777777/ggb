@@ -2,11 +2,10 @@
 
 import AdminLayout from '@/components/AdminLayout'
 import { CardSkeleton } from '@/components/ui/Skeleton'
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import SelectField from '@/components/ui/SelectField'
 import { useAdmin } from '@/contexts/AdminContext'
 import { logExport } from '@/lib/logExport'
-import NumberField from '@/components/ui/NumberField'
 // 費率設定浮層貼在畫面右緣，泡泡要能自己翻邊才不會被推出視窗 —— 用分析頁那顆 fixed 版
 import { InfoIcon as InfoTooltip } from '@/components/analytics/StatCard'
 
@@ -26,6 +25,14 @@ interface PeriodData {
   allocatedActualFee: number | null  // 分攤後的實際手續費
   platformTotalFee?: number | null   // 平台手續費總額（僅平台管理員）
   dismantleTotal: number         // 回收退代幣（charge 模式才從廠商扣，margin 模式為 0）
+  /** 這張單子實際套用的費率，由後端解析（廠商客製 ?? 全站預設）後帶下來 */
+  rates?: {
+    supplierShare: number
+    withholdingRate: number
+    pointsMode: 'A' | 'B'
+    ecpayRate: number
+    customized: string[]
+  }
   settlementMode?: 'charge' | 'margin'
   marginSupplierShare?: number   // margin 模式下差額分給廠商的 %
   recycleRefundTotal?: number    // 期內退給玩家的回收代幣總額
@@ -47,20 +54,6 @@ interface Period {
   isCurrent: boolean
 }
 
-/**
- * 費率設定浮層裡的欄位標題（文字 + 藍色驚嘆號）
- *
- * 原本每個欄位下面掛一行小灰字說明，浮層被撐長、字又擠。改成統一掛在驚嘆號裡，
- * 滑過去才看得到 —— 跟分析頁的做法一致。
- */
-function FeeLabel({ text, tip }: { text: string; tip: string }) {
-  return (
-    <div className="flex items-center gap-1.5 min-w-0">
-      <label className="text-sm text-neutral-600 whitespace-nowrap">{text}</label>
-      <InfoTooltip text={tip} width={280} />
-    </div>
-  )
-}
 
 function Row({ label, value, bold, red, green, muted, indigo, indent }: {
   label: React.ReactNode; value: string
@@ -113,28 +106,18 @@ export default function SettlementPage() {
   const [data, setData] = useState<PeriodData | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // 費率設定
-  const [ecpayRate, setEcpayRate] = useState(2.75)
-  const [supplierShare, setSupplierShare] = useState(70)
-  const [withholdingRate, setWithholdingRate] = useState(0)
-  const [pointsMode, setPointsMode] = useState<'A' | 'B'>('B') // B = 平台全吸收（預設）
-  const [showSettings, setShowSettings] = useState(false)
-  const settingsRef = useRef<HTMLDivElement>(null)
+  /*
+   * 費率一律由後端算好帶下來（廠商有客製就用廠商的，否則全站預設）。
+   * 這裡不再有可調的 state —— 以前那四個 useState 重整就跳回硬預設，
+   * 而且沒有任何地方記得某張對帳單是用幾 % 算的。
+   */
+  const ecpayRate = data?.rates?.ecpayRate ?? 2.75
+  const supplierShare = data?.rates?.supplierShare ?? 70
+  const withholdingRate = data?.rates?.withholdingRate ?? 0
+  const pointsMode: 'A' | 'B' = data?.rates?.pointsMode ?? 'B'
 
   const periods = generatePeriods(new Date(), 7)
   const period = periods[selectedPeriodIdx]
-
-  // 點外部關閉費率設定
-  useEffect(() => {
-    if (!showSettings) return
-    const handler = (e: MouseEvent) => {
-      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
-        setShowSettings(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [showSettings])
 
   // 載入廠商清單（API 回傳直接陣列）
   useEffect(() => {
@@ -374,100 +357,12 @@ export default function SettlementPage() {
                 匯出 CSV
               </button>
 
-              {/* 費率設定浮動：分潤比、代扣稅率、估算費率都是平台端的商業參數，
-                  廠商不該看到更不該調 */}
-              <div className="relative" ref={settingsRef}>
-                {!isSupplier && (
-                <button
-                  onClick={() => setShowSettings(v => !v)}
-                  className={`h-9 px-4 border rounded-lg transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap ${
-                    showSettings
-                      ? 'bg-neutral-100 border-neutral-300 text-neutral-800'
-                      : 'bg-white border-neutral-200 hover:border-neutral-300 text-neutral-600 hover:shadow-md'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  費率設定
-                </button>
-                )}
-
-                {!isSupplier && showSettings && (
-                  <div className="absolute right-0 top-full mt-2 z-20 bg-white border border-neutral-200 rounded-xl shadow-lg p-4 min-w-[260px]">
-                    <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-3">費率設定</p>
-                    <div className="space-y-3">
-                      {/*
-                        綠界手續費永遠是這一格可填的估算比例，不隨月份切換變成唯讀金額。
-                        原本有實際扣款的月份會換成「NT$ x 實際分攤」，切個月份設定欄位就長不一樣，
-                        看起來像設定被改掉了 —— 這裡是「設定」，本來就該長期固定；
-                        某個月有沒有採用它，寫在驚嘆號裡講就好。
-                      */}
-                      <div className="flex items-center justify-between gap-3">
-                        <FeeLabel
-                          text="綠界手續費"
-                          tip={
-                            '玩家儲值時被金流公司抽走的錢。\n' +
-                            '這裡填的是估算比例，只有在該月份沒有綠界實際扣款紀錄時才會拿來算。\n' +
-                            '有實際紀錄的月份，結算一律照綠界真的扣走的金額分攤，不受這格影響。'
-                          }
-                        />
-                        {/* 「估算」放輸入框左邊：先讀到這是估的，再看數字（老闆指定） */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          <span className="text-sm text-neutral-500">估算</span>
-                          <NumberField value={ecpayRate} onChange={setEcpayRate} min={0} max={10} step={0.05} className="w-16" />
-                          <span className="text-sm text-neutral-500">%</span>
-                        </div>
-                      </div>
-                      {[
-                        // 上限 100：自家廠商（吉吉比）可能整筆都算自己的，不該被 99 卡住
-                        {
-                          label: '廠商分潤比', value: supplierShare, setter: setSupplierShare, unit: '%', min: 0, max: 100,
-                          tip: '扣掉手續費、稅金、折價券與運費分攤之後，剩下的錢有多少比例要付給廠商。\n填 70 就是廠商拿七成、平台留三成。自家廠商可以填到 100。',
-                        },
-                        {
-                          label: '代扣稅率', value: withholdingRate, setter: setWithholdingRate, unit: '%', min: 0, max: 30,
-                          tip: '廠商是個人或工作室、沒有公司統編時，錢不能整筆匯出去，\n平台要先幫他把稅扣下來、之後代為繳給國稅局。\n有統編、開發票請款的廠商填 0。',
-                        },
-                      ].map(f => (
-                        <div key={f.label} className="flex items-center justify-between gap-3">
-                          <FeeLabel text={f.label} tip={f.tip} />
-                          <div className="flex items-center gap-1 shrink-0">
-                            <NumberField value={f.value} onChange={f.setter} min={f.min} max={f.max} className="w-16" />
-                            <span className="text-sm text-neutral-500">{f.unit}</span>
-                          </div>
-                        </div>
-                      ))}
-                      <div className="flex items-center justify-between gap-3 pt-2 border-t border-neutral-100">
-                        <FeeLabel
-                          text="積分扣除模式"
-                          tip={
-                            '玩家用積分折抵掉的那部分，這筆損失要不要算進結算。\n' +
-                            `計入：平台補一半給廠商（這期共 ${pointsTotal.toLocaleString()} G）。\n` +
-                            '不計：平台自己全部吸收，結算完全不算這筆。'
-                          }
-                        />
-                        <div className="flex rounded-lg border border-neutral-200 overflow-hidden text-xs font-medium shrink-0">
-                          <button
-                            onClick={() => setPointsMode('A')}
-                            className={`px-3 py-1.5 transition-colors ${pointsMode === 'A' ? 'bg-primary text-white' : 'bg-white text-neutral-500 hover:bg-neutral-50'}`}
-                          >
-                            計入
-                          </button>
-                          <button
-                            onClick={() => setPointsMode('B')}
-                            className={`px-3 py-1.5 transition-colors border-l border-neutral-200 ${pointsMode === 'B' ? 'bg-primary text-white' : 'bg-white text-neutral-500 hover:bg-neutral-50'}`}
-                          >
-                            不計
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              {/*
+                「費率設定」浮層已移除（老闆 2026-08-25）。
+                那四個值本來是頁面上的 useState，重整就跳回硬預設、也沒人記得某張對帳單
+                用了幾 %，而月結 cron 還另外寫死一份自己的常數 —— 兩張單子永遠對不起來。
+                現在一律讀 DB：全站預設在「廠商管理 → 廠商結算設定」，每家可在廠商編輯視窗覆蓋。
+              */}
             </div>
           </div>
         </div>

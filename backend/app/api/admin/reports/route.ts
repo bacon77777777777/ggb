@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminScope } from '@/lib/requireAdmin'
 import { fetchAllRows } from '@/lib/fetchAllRows'
+import { getSettlementDefaults, resolveRates } from '@/lib/settlementRates'
 
 export async function GET(request: NextRequest) {
   const scope = await requireAdminScope()
@@ -331,7 +332,7 @@ export async function GET(request: NextRequest) {
        */
       const [supplierRes, drawRows, rechargeRows, recycleRows, orderRows] = await Promise.all([
         supabase.from('suppliers')
-          .select('id, name, recycle_settlement_mode, recycle_margin_supplier_share')
+          .select('id, name, profit_share_percent, withholding_rate_percent, points_deduction_mode, recycle_settlement_mode, recycle_margin_supplier_share')
           .eq('id', supplierId).single(),
         fetchAllRows<any>(() => applyDateFilter(
           excBot(supabase.from('draw_records')
@@ -364,14 +365,13 @@ export async function GET(request: NextRequest) {
         }),
       ])
 
-      // 回收結算的全站預設，廠商沒個別設定時用這個
-      const { data: recycleSettingRows } = await supabase
-        .from('platform_settings')
-        .select('key, value')
-        .in('key', ['recycle_settlement_mode', 'recycle_margin_supplier_share'])
-      const platformDefaults: Record<string, string> = Object.fromEntries(
-        (recycleSettingRows ?? []).map((r: any) => [r.key, r.value]),
-      )
+      /*
+       * 費率一律由後端解析：廠商有客製就用廠商的，否則全站預設。
+       * 改版前這幾個值是結算頁上的 useState（重整就跳回硬預設），
+       * 月結 cron 又另外寫死一份 —— 兩張單子永遠對不起來。
+       */
+      const settlementDefaults = await getSettlementDefaults(supabase)
+      const rates = resolveRates(settlementDefaults, supplierRes.data as any)
 
       // 消費明細：只算該廠商商品
       const draws: any[] = drawRows.filter((d: any) => d.product?.type !== 'slot')
@@ -457,15 +457,8 @@ export async function GET(request: NextRequest) {
         (s: number, r: any) => s + (r.margin || 0), 0,
       )
 
-      const settlementMode: 'charge' | 'margin' =
-        (supplierRes.data as any)?.recycle_settlement_mode
-        ?? (platformDefaults.recycle_settlement_mode as 'charge' | 'margin')
-        ?? 'margin'
-      const marginSupplierShare = Number(
-        (supplierRes.data as any)?.recycle_margin_supplier_share
-        ?? platformDefaults.recycle_margin_supplier_share
-        ?? 0,
-      )
+      const settlementMode = rates.recycleMode
+      const marginSupplierShare = rates.recycleMarginShare
 
       // charge 模式才從結算扣回收價；margin 模式回收價由平台吸收
       const dismantleTotal = settlementMode === 'charge' ? recycleRefundTotal : 0
@@ -514,6 +507,13 @@ export async function GET(request: NextRequest) {
         couponTotal,
         shippingTotal,
         pointsTotal,
+        rates: {
+          supplierShare: rates.supplierShare,
+          withholdingRate: rates.withholdingRate,
+          pointsMode: rates.pointsMode,
+          ecpayRate: rates.ecpayRate,
+          customized: rates.customized,
+        },
         settlementMode,
         marginSupplierShare,
         recycleRefundTotal,

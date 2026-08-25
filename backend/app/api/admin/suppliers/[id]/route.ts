@@ -3,6 +3,58 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
+const RATE_LABEL: Record<string, string> = {
+  profit_share_percent: '廠商分潤比',
+  withholding_rate_percent: '代扣稅率',
+  points_deduction_mode: '積分扣除模式',
+  recycle_settlement_mode: '回收結算方式',
+  recycle_margin_supplier_share: '差額分給廠商',
+}
+
+const RATE_VALUE_LABEL: Record<string, string> = {
+  A: '廠商吸收 50%', B: '平台全吸收',
+  charge: '跟廠商收回收價', margin: '差額分潤',
+}
+
+function rateText(field: string, v: any): string {
+  if (v === null || v === undefined || v === '') return '照全站預設'
+  if (field === 'points_deduction_mode' || field === 'recycle_settlement_mode') {
+    return RATE_VALUE_LABEL[String(v)] ?? String(v)
+  }
+  return `${Number(v)}%`
+}
+
+/** 只列出真的變了的結算欄位，沒動的不寫 */
+function rateChangeDetail(prev: any, next: any) {
+  if (!prev || !next) return {}
+  const changes: string[] = []
+  for (const f of Object.keys(RATE_LABEL)) {
+    const a = prev[f] ?? null
+    const b = next[f] ?? null
+    if (String(a) === String(b)) continue
+    changes.push(`${RATE_LABEL[f]}：${rateText(f, a)} → ${rateText(f, b)}`)
+  }
+  return changes.length > 0 ? { changes } : {}
+}
+
+/**
+ * 結算設定的五個欄位：留空（null）＝跟隨全站預設，填了才是這家的客製值。
+ * 空字串一律正規化成 null —— 表單清空時送的是 ''，直接寫進去會變成
+ * 「有值但等於空」，之後 resolveRates 就分不出「沒設」與「設成空」。
+ */
+function normalizeRates(body: any) {
+  const num = (v: any) => (v === null || v === undefined || v === '' ? null : Number(v))
+  const enumv = (v: any, allowed: string[]) =>
+    v === null || v === undefined || v === '' || !allowed.includes(String(v)) ? null : String(v)
+  return {
+    profit_share_percent: num(body.profit_share_percent),
+    withholding_rate_percent: num(body.withholding_rate_percent),
+    points_deduction_mode: enumv(body.points_deduction_mode, ['A', 'B']),
+    recycle_settlement_mode: enumv(body.recycle_settlement_mode, ['charge', 'margin']),
+    recycle_margin_supplier_share: num(body.recycle_margin_supplier_share),
+  }
+}
+
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireAdminSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -28,9 +80,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       )
     }
   }
+  // 結算設定是「設定完很少再動」的東西，動的那一次要查得到 —— 先撈舊值做比對
+  const { data: prevRow } = await supabase
+    .from('suppliers')
+    .select('profit_share_percent, withholding_rate_percent, points_deduction_mode, recycle_settlement_mode, recycle_margin_supplier_share')
+    .eq('id', id).maybeSingle()
+
   const { data, error } = await supabase
     .from('suppliers')
-    .update({ name: name?.trim(), contact_name, contact_phone, contact_email, address, notes, is_active, tax_id: tax_id !== undefined ? (tax_id || null) : undefined, sender_name: sender_name !== undefined ? (sender_name || null) : undefined, sender_zip_code: sender_zip_code !== undefined ? (sender_zip_code || null) : undefined, sender_address: sender_address !== undefined ? (sender_address || null) : undefined, updated_at: new Date().toISOString() })
+    .update({ name: name?.trim(), contact_name, contact_phone, contact_email, address, notes, is_active, tax_id: tax_id !== undefined ? (tax_id || null) : undefined, sender_name: sender_name !== undefined ? (sender_name || null) : undefined, sender_zip_code: sender_zip_code !== undefined ? (sender_zip_code || null) : undefined, sender_address: sender_address !== undefined ? (sender_address || null) : undefined, ...normalizeRates(body), updated_at: new Date().toISOString() })
     .eq('id', id)
     .select()
     .single()
@@ -43,7 +101,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     action: is_active === false ? '停用廠商' : is_active === true ? '啟用廠商' : '修改廠商',
     targetType: 'supplier',
     targetId: String(id),
-    detail: { name: data?.name },
+    detail: { name: data?.name, ...rateChangeDetail(prevRow, data) },
     ip: getClientIp(request),
   })
   return NextResponse.json(data)

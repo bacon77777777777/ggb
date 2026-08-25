@@ -1,26 +1,23 @@
 'use client'
 
 /**
- * 廠商設定
+ * 廠商結算設定（全站預設）
  *
- * 老闆 2026-08-25：把「結算方式」與「廠商個別設定」從回收價格設定頁搬過來，
- * 用表格呈現、可直接編輯。
+ * 老闆 2026-08-25：結算費率不再是結算頁上手打的暫存值，一律存 DB。
+ * 這頁設的是**全站預設**；每家廠商可在「廠商管理」的新增／編輯視窗覆蓋，
+ * 留空就跟著這裡走 —— 所以改這頁會連動所有沒客製過的廠商，動過的不受影響。
  *
- * 變更紀錄不在這頁 —— 明細寫進 action_logs，統一在「系統設定 → 操作記錄」看
- * （老闆指定，不另開頁籤也不另建表）。
+ * 綠界手續費估算率只在這裡、不進廠商層級：那是平台與綠界之間的費率，
+ * 跟哪家廠商無關，而且結算優先採用實際帳算出的混合費率，這個值只是備援。
  *
- * 版型跟功能開關一致：左側分類、右側內容，共用 SettingsShell。
- * 說明文字一律收進標題旁的 ⓘ，頁面上不放小灰字。
+ * 變更明細寫進 action_logs，在「系統設定 → 操作記錄」看。
  */
 
 import { useState, useEffect } from 'react'
 import { AdminLayout, PageCard } from '@/components'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import SelectField from '@/components/ui/SelectField'
-import Badge from '@/components/ui/Badge'
 import { CardSkeleton } from '@/components/ui/Skeleton'
-import { TableEmpty } from '@/components/ui/EmptyState'
 import {
   SettingsShell,
   SettingsNav,
@@ -30,25 +27,59 @@ import {
 } from '@/components/settings/SettingsSection'
 import { useToast } from '@/contexts/ToastContext'
 
-interface Supplier {
-  id: number
-  name: string
-  recycle_settlement_mode: 'charge' | 'margin' | null
-  recycle_margin_supplier_share: number | null
-}
-
-type SectionKey = 'settlement' | 'suppliers'
+type SectionKey = 'rates' | 'recycle'
 
 const SECTIONS: { key: SectionKey; label: string }[] = [
-  { key: 'settlement', label: '回收結算' },
-  { key: 'suppliers', label: '廠商個別設定' },
+  { key: 'rates', label: '結算費率' },
+  { key: 'recycle', label: '回收結算' },
 ]
 
-export default function SupplierSettingsPage() {
-  const [section, setSection] = useState<SectionKey>('settlement')
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [globalMode, setGlobalMode] = useState<'charge' | 'margin'>('margin')
-  const [globalShare, setGlobalShare] = useState<number>(0)
+interface Defaults {
+  supplierShare: number
+  withholdingRate: number
+  pointsMode: 'A' | 'B'
+  ecpayRate: number
+  recycleMode: 'charge' | 'margin'
+  recycleMarginShare: number
+}
+
+const EMPTY: Defaults = {
+  supplierShare: 70,
+  withholdingRate: 0,
+  pointsMode: 'B',
+  ecpayRate: 2.75,
+  recycleMode: 'margin',
+  recycleMarginShare: 0,
+}
+
+/** 右側只放輸入框，單位貼在框內右側 */
+function PctInput({ value, onChange, disabled, unit = '%', step }: {
+  value: number
+  onChange: (v: number) => void
+  disabled?: boolean
+  unit?: string
+  step?: string
+}) {
+  return (
+    <div className="relative w-28">
+      <Input
+        type="number"
+        min={0}
+        max={100}
+        step={step}
+        value={String(value)}
+        onChange={e => onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+        className="pr-7 font-mono"
+        disabled={disabled}
+      />
+      <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm text-neutral-400">{unit}</span>
+    </div>
+  )
+}
+
+export default function SupplierSettlementSettingsPage() {
+  const [section, setSection] = useState<SectionKey>('rates')
+  const [d, setD] = useState<Defaults>(EMPTY)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const { toast } = useToast()
@@ -59,13 +90,7 @@ export default function SupplierSettingsPage() {
       const res = await fetch('/api/admin/supplier-settings')
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? '載入失敗')
-      setSuppliers((json.suppliers ?? []).map((s: any) => ({
-        ...s,
-        recycle_margin_supplier_share:
-          s.recycle_margin_supplier_share === null ? null : Number(s.recycle_margin_supplier_share),
-      })))
-      setGlobalMode(json.global?.mode ?? 'margin')
-      setGlobalShare(Number(json.global?.supplierShare ?? 0))
+      setD({ ...EMPTY, ...(json.defaults ?? {}) })
     } catch (err: any) {
       toast(err?.message ?? '載入失敗', 'error')
     } finally {
@@ -77,9 +102,7 @@ export default function SupplierSettingsPage() {
     load()
   }, [])
 
-  const setField = (id: number, field: keyof Supplier, value: any) => {
-    setSuppliers(prev => prev.map(s => (s.id === id ? { ...s, [field]: value } : s)))
-  }
+  const set = <K extends keyof Defaults>(k: K, v: Defaults[K]) => setD(prev => ({ ...prev, [k]: v }))
 
   const save = async () => {
     setSaving(true)
@@ -87,14 +110,7 @@ export default function SupplierSettingsPage() {
       const res = await fetch('/api/admin/supplier-settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          global: { mode: globalMode, supplierShare: globalShare },
-          suppliers: suppliers.map(s => ({
-            id: s.id,
-            mode: s.recycle_settlement_mode,
-            supplierShare: s.recycle_margin_supplier_share,
-          })),
-        }),
+        body: JSON.stringify({ defaults: d }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? '儲存失敗')
@@ -107,183 +123,77 @@ export default function SupplierSettingsPage() {
     }
   }
 
-  /** 那一列實際生效的值（廠商沒設就吃全站預設） */
-  const effective = (s: Supplier) => ({
-    mode: s.recycle_settlement_mode ?? globalMode,
-    share: s.recycle_margin_supplier_share ?? globalShare,
-  })
-
-  const overrideCount = suppliers.filter(
-    s => s.recycle_settlement_mode !== null || s.recycle_margin_supplier_share !== null,
-  ).length
-
-  /** 用老闆給的 100 G 例子即時試算，數字改了跟著動 */
-  const sampleRefund = 15
-  const sampleMargin = 100 - sampleRefund
-  const sampleToSupplier = Math.round((sampleMargin * globalShare) / 100)
-
   const SaveBar = (
     <div className="mt-5 flex justify-end">
-      <Button variant="primary" onClick={save} isLoading={saving}>
-        儲存設定
-      </Button>
+      <Button variant="primary" onClick={save} isLoading={saving}>儲存設定</Button>
     </div>
   )
 
   return (
-    <AdminLayout pageTitle="廠商設定">
+    <AdminLayout pageTitle="廠商結算設定">
       <PageCard>
         {loading ? (
           <CardSkeleton rows={6} />
         ) : (
-          <SettingsShell
-            nav={<SettingsNav sections={SECTIONS} value={section} onChange={setSection} />}
-          >
-            {section === 'settlement' && (
+          <SettingsShell nav={<SettingsNav sections={SECTIONS} value={section} onChange={setSection} />}>
+            {section === 'rates' && (
+              <>
+                <SectionHead
+                  title="結算費率"
+                  info="這裡是全站預設。每家廠商可在「廠商管理」的新增／編輯視窗覆蓋，留空就跟著這裡走 —— 所以改這頁會連動所有沒客製過的廠商，動過的不受影響。綠界手續費估算率只在這裡、不分廠商：那是平台與綠界之間的費率，而且結算優先採用實際帳算出的混合費率，這個值只在撈不到實際資料時當備援。異動會寫進「系統設定 → 操作記錄」。"
+                />
+                <div className="divide-y divide-neutral-100">
+                  <SettingsRow title="廠商分潤比">
+                    <PctInput value={d.supplierShare} onChange={v => set('supplierShare', v)} />
+                  </SettingsRow>
+                  <SettingsRow title="代扣稅率">
+                    <PctInput value={d.withholdingRate} onChange={v => set('withholdingRate', v)} />
+                  </SettingsRow>
+                  <SettingsRow title="積分扣除模式">
+                    <Segmented
+                      value={d.pointsMode}
+                      disabled={saving}
+                      onChange={v => set('pointsMode', v as 'A' | 'B')}
+                      options={[
+                        { v: 'A', label: '廠商吸收 50%', tone: 'warn' },
+                        { v: 'B', label: '平台全吸收', tone: 'on' },
+                      ]}
+                    />
+                  </SettingsRow>
+                  <SettingsRow title="綠界手續費估算">
+                    <PctInput value={d.ecpayRate} onChange={v => set('ecpayRate', v)} step="0.05" />
+                  </SettingsRow>
+                </div>
+                {SaveBar}
+              </>
+            )}
+
+            {section === 'recycle' && (
               <>
                 <SectionHead
                   title="回收結算"
-                  info="一筆抽獎被玩家回收之後，那筆營收怎麼跟廠商拆。兩種方式二選一，不會同時套用 —— 同時套用會重複計算（廠商既被扣回收價、又只分到部分差額）。這裡設的是全站預設，個別廠商可在「廠商個別設定」覆蓋。所有異動都會寫進「系統設定 → 操作記錄」。"
+                  info="一筆抽獎被玩家回收之後，那筆營收怎麼跟廠商拆。差額分潤＝被回收的抽獎不走一般分潤，改成差額（單抽價 − 回收價）依比例拆，回收價由平台吸收；跟廠商收回收價＝抽獎照一般分潤，回收價再從當期結算扣除。兩者互斥，同時套用會重複計算。這裡是全站預設，個別廠商可在「廠商管理」覆蓋。"
                 />
-
                 <div className="divide-y divide-neutral-100">
-                  <SettingsRow
-                    title="結算方式"
-                    desc={
-                      globalMode === 'margin'
-                        ? '被回收的抽獎不走一般分潤，改成差額 ＝（單抽價 − 回收價）依比例拆。回收價由平台吸收，不跟廠商收。'
-                        : '抽獎照一般分潤率分給廠商，回收價再從當期結算扣除。這是改版前的做法。'
-                    }
-                    state={globalMode === 'margin' ? 'on' : 'maintenance'}
-                  >
+                  <SettingsRow title="結算方式" state={d.recycleMode === 'margin' ? 'on' : 'maintenance'}>
                     <Segmented
-                      value={globalMode}
+                      value={d.recycleMode}
                       disabled={saving}
-                      onChange={v => setGlobalMode(v as 'charge' | 'margin')}
+                      onChange={v => set('recycleMode', v as 'charge' | 'margin')}
                       options={[
                         { v: 'margin', label: '差額分潤', tone: 'on' },
                         { v: 'charge', label: '跟廠商收回收價', tone: 'warn' },
                       ]}
                     />
                   </SettingsRow>
-
-                  <SettingsRow
-                    title="差額分給廠商"
-                    desc={
-                      <>
-                        0 ＝ 差額平台全拿。
-                        <span className="mt-1 block text-neutral-500">
-                          例：轉蛋單抽 100 G、玩家回收拿 {sampleRefund} G → 差額
-                          <span className="mx-1 font-medium text-neutral-700">{sampleMargin} G</span>
-                          ；廠商 <span className="font-mono">{sampleToSupplier}</span> G、
-                          平台 <span className="font-mono text-primary">{sampleMargin - sampleToSupplier}</span> G
-                        </span>
-                      </>
-                    }
-                    dimmed={globalMode === 'charge'}
-                  >
-                    <div className="relative w-28">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={String(globalShare)}
-                        onChange={e => setGlobalShare(e.target.value === '' ? 0 : Number(e.target.value))}
-                        className="pr-7 font-mono"
-                        disabled={globalMode === 'charge'}
-                      />
-                      <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
-                    </div>
+                  <SettingsRow title="差額分給廠商" dimmed={d.recycleMode === 'charge'}>
+                    <PctInput
+                      value={d.recycleMarginShare}
+                      onChange={v => set('recycleMarginShare', v)}
+                      disabled={d.recycleMode === 'charge'}
+                    />
                   </SettingsRow>
                 </div>
-
-                {SaveBar}
-              </>
-            )}
-
-            {section === 'suppliers' && (
-              <>
-                <SectionHead
-                  title="廠商個別設定"
-                  info="留空即照全站預設。只有合約條件談得不一樣的廠商才需要填 —— 每多一個例外，之後對帳就多一個要記得的規則。右邊的「實際生效」是那家廠商真正會套用的值（沒設就是全站預設）。所有異動都會寫進「系統設定 → 操作記錄」。"
-                  right={
-                    <span className="text-sm text-neutral-400">
-                      {overrideCount} / {suppliers.length} 家有個別設定
-                    </span>
-                  }
-                />
-
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] text-sm">
-                    <thead className="border-b border-neutral-200 bg-neutral-50">
-                      <tr>
-                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-neutral-500">廠商</th>
-                        <th className="w-60 px-4 py-2.5 text-left text-xs font-semibold text-neutral-500">結算方式</th>
-                        <th className="w-40 px-4 py-2.5 text-left text-xs font-semibold text-neutral-500">差額分給廠商</th>
-                        <th className="w-52 px-4 py-2.5 text-left text-xs font-semibold text-neutral-500">實際生效</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-100">
-                      {suppliers.length === 0 ? (
-                        <TableEmpty colSpan={4} />
-                      ) : suppliers.map(s => {
-                        const eff = effective(s)
-                        const isDefault =
-                          s.recycle_settlement_mode === null && s.recycle_margin_supplier_share === null
-                        return (
-                          <tr key={s.id} className="transition-colors hover:bg-neutral-50">
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-neutral-900">{s.name}</span>
-                                {isDefault && <Badge variant="default">預設</Badge>}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <SelectField
-                                value={s.recycle_settlement_mode ?? ''}
-                                onChange={e => setField(
-                                  s.id,
-                                  'recycle_settlement_mode',
-                                  e.target.value === '' ? null : e.target.value,
-                                )}
-                              >
-                                <option value="">照全站預設</option>
-                                <option value="margin">差額分潤</option>
-                                <option value="charge">跟廠商收回收價</option>
-                              </SelectField>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="relative">
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  max={100}
-                                  placeholder="預設"
-                                  value={s.recycle_margin_supplier_share === null
-                                    ? '' : String(s.recycle_margin_supplier_share)}
-                                  onChange={e => setField(
-                                    s.id,
-                                    'recycle_margin_supplier_share',
-                                    e.target.value === '' ? null : Number(e.target.value),
-                                  )}
-                                  className="pr-7 font-mono"
-                                  disabled={eff.mode === 'charge'}
-                                />
-                                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400">%</span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-xs text-neutral-500">
-                              {eff.mode === 'margin'
-                                ? <>差額分潤 · 廠商 <span className="font-mono text-neutral-700">{eff.share}%</span></>
-                                : '跟廠商收回收價'}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
                 {SaveBar}
               </>
             )}

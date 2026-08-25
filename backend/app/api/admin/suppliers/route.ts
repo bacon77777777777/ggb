@@ -3,6 +3,24 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession, requireAdminScope, scopeToSupplier } from '@/lib/requireAdmin'
 import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
+/**
+ * 結算設定的五個欄位：留空（null）＝跟隨全站預設，填了才是這家的客製值。
+ * 空字串一律正規化成 null —— 表單清空時送的是 ''，直接寫進去會變成
+ * 「有值但等於空」，之後 resolveRates 就分不出「沒設」與「設成空」。
+ */
+function normalizeRates(body: any) {
+  const num = (v: any) => (v === null || v === undefined || v === '' ? null : Number(v))
+  const enumv = (v: any, allowed: string[]) =>
+    v === null || v === undefined || v === '' || !allowed.includes(String(v)) ? null : String(v)
+  return {
+    profit_share_percent: num(body.profit_share_percent),
+    withholding_rate_percent: num(body.withholding_rate_percent),
+    points_deduction_mode: enumv(body.points_deduction_mode, ['A', 'B']),
+    recycle_settlement_mode: enumv(body.recycle_settlement_mode, ['charge', 'margin']),
+    recycle_margin_supplier_share: num(body.recycle_margin_supplier_share),
+  }
+}
+
 export async function GET() {
   const scope = await requireAdminScope()
   if (!scope) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -34,7 +52,7 @@ export async function POST(request: NextRequest) {
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase
     .from('suppliers')
-    .insert({ name: name.trim(), contact_name, contact_phone, contact_email, address, notes, is_active: is_active ?? true, tax_id: tax_id || null, sender_name: sender_name || null, sender_zip_code: sender_zip_code || null, sender_address: sender_address || null })
+    .insert({ name: name.trim(), contact_name, contact_phone, contact_email, address, notes, is_active: is_active ?? true, tax_id: tax_id || null, sender_name: sender_name || null, sender_zip_code: sender_zip_code || null, sender_address: sender_address || null, ...normalizeRates(body) })
     .select()
     .single()
 

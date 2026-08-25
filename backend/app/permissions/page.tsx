@@ -61,7 +61,7 @@ const PERMISSION_GROUPS = [
       { id: 'coupons',           label: '折價券管理' },
       { id: 'settings_shipping', label: '運費設定' },
       { id: 'small_items',       label: '小物管理' },
-      { id: 'recycle_pool',      label: '回收商品管理' },
+      { id: 'recycle_pool',      label: '回收紀錄／回收商品管理' },
       { id: 'settings_recycle',  label: '回收價格設定' },
     ],
   },
@@ -77,7 +77,7 @@ const PERMISSION_GROUPS = [
     title: '系統設定',
     items: [
       { id: 'suppliers',         label: '廠商管理' },
-      { id: 'suppliers_settings', label: '廠商設定' },
+      { id: 'suppliers_settings', label: '廠商結算設定' },
       { id: 'banners',           label: '輪播圖管理' },
       { id: 'news',              label: '文章管理' },
       { id: 'announcements',     label: '公告管理' },

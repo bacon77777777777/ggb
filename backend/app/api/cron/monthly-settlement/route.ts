@@ -2,17 +2,39 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createLinePusher } from '@/lib/linePush'
 import { fetchAllRows } from '@/lib/fetchAllRows'
+import { getSettlementDefaults, resolveRates, type SettlementDefaults } from '@/lib/settlementRates'
 const pushLine = createLinePusher('line_push_finance')
 
 export const dynamic = 'force-dynamic'
 
 const CRON_SECRET = process.env.CRON_SECRET ?? ''
 
-const ECPAY_RATE     = 2.75   // 手續費率（無實際資料時用）
-const SUPPLIER_SHARE = 70     // 廠商分潤比例
+/*
+ * 費率不再寫死在這裡（老闆 2026-08-25）。
+ *
+ * 以前這兩個常數跟結算頁上那四個 useState 是兩份互不相干的值 ——
+ * 頁面調成 65%、cron 出的快照還是 70%，同一期兩張單子對不起來。
+ * 現在一律讀 platform_settings，廠商可個別覆蓋（NULL＝跟隨全站預設）。
+ *
+ * 下面兩個只留作讀不到 DB 時的保底。
+ */
+const ECPAY_RATE_FALLBACK     = 2.75
+const SUPPLIER_SHARE_FALLBACK = 70
 
 
-async function calcSupplierSettlement(supabase: any, supplierId: number, start: string, end: string) {
+async function calcSupplierSettlement(
+  supabase: any,
+  supplierId: number,
+  start: string,
+  end: string,
+  defaults: SettlementDefaults,
+  supplierRow: any,
+) {
+  // 這家實際套用的費率：有客製用客製，否則全站預設
+  const rates = resolveRates(defaults, supplierRow)
+  const ECPAY_RATE     = rates.ecpayRate ?? ECPAY_RATE_FALLBACK
+  const SUPPLIER_SHARE = rates.supplierShare ?? SUPPLIER_SHARE_FALLBACK
+
   const endExclusive = new Date(end)
   endExclusive.setDate(endExclusive.getDate() + 1)
   const endStr = endExclusive.toISOString().slice(0, 10)
@@ -99,6 +121,20 @@ async function calcSupplierSettlement(supabase: any, supplierId: number, start: 
       rechargeTotal, rechargeCount,
       hasActualFee, allocatedActualFee, platformTotalFee: hasActualFee ? platformTotalFee : null,
       supplierGross, distributable, netRevenue,
+      /*
+       * 當期實際採用的費率一併存進快照。
+       * 沒存的話，之後要算「上期就這筆付了多少」（跨期回收調整）就沒有基準 ——
+       * 費率隨時可能被後台調動，用現在的值回推歷史一定算錯。
+       */
+      rates: {
+        supplierShare: SUPPLIER_SHARE,
+        ecpayRate: ECPAY_RATE,
+        withholdingRate: rates.withholdingRate,
+        pointsMode: rates.pointsMode,
+        recycleMode: rates.recycleMode,
+        recycleMarginShare: rates.recycleMarginShare,
+        customized: rates.customized,
+      },
     },
   }
 }
@@ -136,15 +172,21 @@ export async function POST(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  const { data: suppliers } = await supabase.from('suppliers').select('id, name').order('id')
+  // 費率欄位一起撈，每家各自解析（NULL＝跟隨全站預設）
+  const { data: suppliers } = await supabase
+    .from('suppliers')
+    .select('id, name, profit_share_percent, withholding_rate_percent, points_deduction_mode, recycle_settlement_mode, recycle_margin_supplier_share')
+    .order('id')
   if (!suppliers?.length) return NextResponse.json({ ok: true, created: 0, message: '無廠商' })
+
+  const settlementDefaults = await getSettlementDefaults(supabase)
 
   let created = 0
   let skipped = 0
   const results: { supplier: string; net: number; status: string }[] = []
 
   for (const sup of suppliers) {
-    const calc = await calcSupplierSettlement(supabase, sup.id, periodStart, periodEnd)
+    const calc = await calcSupplierSettlement(supabase, sup.id, periodStart, periodEnd, settlementDefaults, sup)
 
     const { error } = await supabase.from('settlement_snapshots').upsert({
       supplier_id:    sup.id,

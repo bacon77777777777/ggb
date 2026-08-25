@@ -5,6 +5,7 @@ import Modal from '@/components/Modal'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import Switch from '@/components/ui/Switch'
 import Input from '@/components/ui/Input'
+import SelectField from '@/components/ui/SelectField'
 import Textarea from '@/components/ui/Textarea'
 import { useState, useEffect } from 'react'
 import { formatDateTime } from '@/utils/dateFormat'
@@ -24,6 +25,12 @@ interface Supplier {
   sender_address: string | null
   notes: string | null
   is_active: boolean
+  /** 結算設定。null＝跟隨全站預設，改全站預設時這家跟著變 */
+  profit_share_percent: number | null
+  withholding_rate_percent: number | null
+  points_deduction_mode: 'A' | 'B' | null
+  recycle_settlement_mode: 'charge' | 'margin' | null
+  recycle_margin_supplier_share: number | null
   /** 平台自營。這一筆不可刪除，列表上也不顯示刪除鈕 */
   is_platform?: boolean
   created_at: string
@@ -42,6 +49,26 @@ const EMPTY_FORM = {
   sender_address: '',
   notes: '',
   is_active: true,
+  // 結算設定一律以空字串起手 —— 空＝跟隨全站預設，送出時正規化成 null
+  profit_share_percent: '',
+  withholding_rate_percent: '',
+  points_deduction_mode: '',
+  recycle_settlement_mode: '',
+  recycle_margin_supplier_share: '',
+}
+
+/** 全站預設，用來當表單的佔位提示，讓人看得出留空會套到什麼 */
+interface Defaults {
+  supplierShare: number
+  withholdingRate: number
+  pointsMode: 'A' | 'B'
+  recycleMode: 'charge' | 'margin'
+  recycleMarginShare: number
+}
+
+const MODE_TEXT: Record<string, string> = {
+  A: '廠商吸收 50%', B: '平台全吸收',
+  charge: '跟廠商收回收價', margin: '差額分潤',
 }
 
 export default function SuppliersPage() {
@@ -58,6 +85,15 @@ export default function SuppliersPage() {
   const [toggleTarget, setToggleTarget] = useState<Supplier | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('all')
+  // 全站預設只拿來當佔位提示，讓人看得出留空會套到什麼
+  const [defaults, setDefaults] = useState<Defaults | null>(null)
+
+  useEffect(() => {
+    fetch('/api/admin/supplier-settings')
+      .then(r => r.json())
+      .then(j => { if (j?.defaults) setDefaults(j.defaults) })
+      .catch(() => { /* 拿不到就不顯示佔位數字，不影響編輯 */ })
+  }, [])
 
   const fetchSuppliers = async () => {
     setLoading(true)
@@ -105,6 +141,12 @@ export default function SuppliersPage() {
       sender_address: s.sender_address ?? '',
       notes: s.notes ?? '',
       is_active: s.is_active,
+      profit_share_percent: s.profit_share_percent === null ? '' : String(s.profit_share_percent),
+      withholding_rate_percent: s.withholding_rate_percent === null ? '' : String(s.withholding_rate_percent),
+      points_deduction_mode: s.points_deduction_mode ?? '',
+      recycle_settlement_mode: s.recycle_settlement_mode ?? '',
+      recycle_margin_supplier_share:
+        s.recycle_margin_supplier_share === null ? '' : String(s.recycle_margin_supplier_share),
     })
     setIsModalOpen(true)
   }
@@ -125,6 +167,13 @@ export default function SuppliersPage() {
         sender_address: form.sender_address || null,
         notes: form.notes || null,
         is_active: form.is_active,
+        // 空＝跟隨全站預設。送 null 而不是 ''，否則之後分不出「沒設」與「設成空」
+        profit_share_percent: form.profit_share_percent === '' ? null : Number(form.profit_share_percent),
+        withholding_rate_percent: form.withholding_rate_percent === '' ? null : Number(form.withholding_rate_percent),
+        points_deduction_mode: form.points_deduction_mode || null,
+        recycle_settlement_mode: form.recycle_settlement_mode || null,
+        recycle_margin_supplier_share:
+          form.recycle_margin_supplier_share === '' ? null : Number(form.recycle_margin_supplier_share),
       }
       const res = editing
         ? await fetch(`/api/admin/suppliers/${editing.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
@@ -204,6 +253,31 @@ export default function SuppliersPage() {
       key: 'contactEmail', label: 'Email',
       className: 'text-xs',
       render: s => <>{s.contact_email ?? '—'}</>,
+    },
+    {
+      /*
+        列表只放摘要。這五個值是「設定完很少再動」的東西，
+        全部攤成欄位會讓這張表多出六欄、手機完全沒法看。
+      */
+      key: 'settlement', label: '結算設定',
+      className: 'text-xs whitespace-nowrap',
+      render: s => {
+        const custom = s.profit_share_percent !== null
+          || s.withholding_rate_percent !== null
+          || s.points_deduction_mode !== null
+          || s.recycle_settlement_mode !== null
+          || s.recycle_margin_supplier_share !== null
+        if (!custom) return <span className="text-neutral-400">預設</span>
+        const share = s.profit_share_percent ?? defaults?.supplierShare
+        const mode = s.recycle_settlement_mode ?? defaults?.recycleMode
+        const margin = s.recycle_margin_supplier_share ?? defaults?.recycleMarginShare
+        return (
+          <span className="text-neutral-700">
+            分潤 {share ?? '—'}%
+            {mode === 'charge' ? ' · 收回收價' : ` · 差額 ${margin ?? '—'}%`}
+          </span>
+        )
+      },
     },
     {
       key: 'status', label: '狀態',
@@ -365,6 +439,70 @@ export default function SuppliersPage() {
                 <Input
                   value={form.sender_address}
                   onChange={(e) => setForm((f) => ({ ...f, sender_address: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/*
+            結算設定：留空＝跟隨全站預設（「廠商管理 → 廠商結算設定」），
+            佔位提示直接把目前的預設值寫出來，才看得出空白會套到什麼。
+            綠界手續費不在這裡 —— 那是平台與綠界之間的費率，不分廠商。
+          */}
+          <div className="rounded-lg border border-neutral-200 p-3">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-sm font-medium text-neutral-700">結算設定</span>
+              <span className="text-xs text-neutral-400">留空＝跟隨全站預設</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-neutral-500">廠商分潤比 (%)</label>
+                <Input
+                  type="number" min={0} max={100} className="font-mono"
+                  placeholder={defaults ? `預設 ${defaults.supplierShare}` : '預設'}
+                  value={form.profit_share_percent}
+                  onChange={(e) => setForm((f) => ({ ...f, profit_share_percent: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-neutral-500">代扣稅率 (%)</label>
+                <Input
+                  type="number" min={0} max={100} className="font-mono"
+                  placeholder={defaults ? `預設 ${defaults.withholdingRate}` : '預設'}
+                  value={form.withholding_rate_percent}
+                  onChange={(e) => setForm((f) => ({ ...f, withholding_rate_percent: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-neutral-500">積分扣除模式</label>
+                <SelectField
+                  value={form.points_deduction_mode}
+                  onChange={(e) => setForm((f) => ({ ...f, points_deduction_mode: e.target.value }))}
+                >
+                  <option value="">{defaults ? `預設（${MODE_TEXT[defaults.pointsMode]}）` : '照全站預設'}</option>
+                  <option value="A">廠商吸收 50%</option>
+                  <option value="B">平台全吸收</option>
+                </SelectField>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-neutral-500">回收結算方式</label>
+                <SelectField
+                  value={form.recycle_settlement_mode}
+                  onChange={(e) => setForm((f) => ({ ...f, recycle_settlement_mode: e.target.value }))}
+                >
+                  <option value="">{defaults ? `預設（${MODE_TEXT[defaults.recycleMode]}）` : '照全站預設'}</option>
+                  <option value="margin">差額分潤</option>
+                  <option value="charge">跟廠商收回收價</option>
+                </SelectField>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-neutral-500">差額分給廠商 (%)</label>
+                <Input
+                  type="number" min={0} max={100} className="font-mono"
+                  placeholder={defaults ? `預設 ${defaults.recycleMarginShare}` : '預設'}
+                  value={form.recycle_margin_supplier_share}
+                  onChange={(e) => setForm((f) => ({ ...f, recycle_margin_supplier_share: e.target.value }))}
+                  disabled={(form.recycle_settlement_mode || defaults?.recycleMode) === 'charge'}
                 />
               </div>
             </div>

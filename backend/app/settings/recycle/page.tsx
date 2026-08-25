@@ -40,37 +40,31 @@ type TypeKey = 'gacha' | 'blindbox' | 'ichiban' | 'card' | 'custom'
 const TYPE_META: Record<TypeKey, {
   label: string
   tiers: Rate['tier'][]
-  sample: number
   info: string
 }> = {
   gacha: {
     label: '轉蛋',
     tiers: ['all'],
-    sample: 179,
     info: '不分賞等 —— 轉蛋抽到的就是那件商品本身，實物價值約等於單抽價，所以整類共用一個比例。回收後庫存會加回原商品（remaining +1），同一抽可以再賣一次全價，是回收成本最可控的類型。',
   },
   blindbox: {
     label: '盒玩',
     tiers: ['all'],
-    sample: 355,
     info: '不分賞等 —— 同轉蛋：抽到的就是那件商品，價值約等於單抽價。回收後庫存會加回原商品，可再賣一次全價。',
   },
   ichiban: {
     label: '一番賞',
     tiers: ['major', 'normal'],
-    sample: 309,
     info: '序列商品，回收後庫存不會加回（加回去會破壞封存驗證與籤號順序），實體留在廠商倉庫等重組。大賞由系統自動判定：品項初始總數 ≤ 3 就算大賞，不需要人工指定。',
   },
   card: {
     label: '抽卡',
     tiers: ['major', 'normal'],
-    sample: 204,
     info: '序列商品，庫存不加回，實體留在廠商倉庫。要注意抽卡的一般賞數量級很大（D賞全站有兩萬多件），那類品項的實物價值跟單抽價幾乎脫鉤，一般賞比例不宜設高。',
   },
   custom: {
     label: '自製賞',
     tiers: ['major', 'normal'],
-    sample: 199,
     info: '序列商品，庫存不加回，實體留在廠商倉庫。自製賞常由回收品重組而成，設定比例時可一併考慮那批貨的取得成本。',
   },
 }
@@ -86,12 +80,6 @@ const TIER_LABEL: Record<Rate['tier'], string> = {
   normal: '一般賞比例',
 }
 
-const TIER_DESC: Record<Rate['tier'], string> = {
-  all: '玩家回收一件可換回的代幣 ＝ 單抽價 × 這個比例。',
-  major: '品項初始總數 ≤ 3 的賞項，由系統自動判定，不需人工指定。',
-  normal: '總數 > 3 的賞項。這類實物價值與單抽價脫鉤，比例設高會嚴重高估。',
-}
-
 const key = (t: string, tier: string) => `${t}:${tier}`
 
 export default function RecycleRatesPage() {
@@ -99,8 +87,6 @@ export default function RecycleRatesPage() {
   const [rates, setRates] = useState<Rate[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  /** 每個類型各自的試算單價，讓人拿真實商品的價格去試 */
-  const [samplePrice, setSamplePrice] = useState<Record<string, number>>({})
   const { toast } = useToast()
 
   const load = async () => {
@@ -160,15 +146,6 @@ export default function RecycleRatesPage() {
   }
 
   const meta = TYPE_META[section]
-  const price = samplePrice[section] ?? meta.sample
-
-  /** 用試算單價算出玩家實際會拿到多少，以及要收幾件才換得到一抽 */
-  const preview = (tier: Rate['tier']) => {
-    const r = rateMap.get(key(section, tier))
-    if (!r) return null
-    const value = Math.max(r.min_value, Math.floor((price * r.rate_percent) / 100))
-    return { value, perDraw: value > 0 ? Math.ceil(price / value) : 0 }
-  }
 
   return (
     <AdminLayout pageTitle="回收價格設定">
@@ -185,24 +162,8 @@ export default function RecycleRatesPage() {
               <div className="divide-y divide-neutral-100">
                 {meta.tiers.map(tier => {
                   const r = rateMap.get(key(section, tier))
-                  const p = preview(tier)
                   return (
-                    <SettingsRow
-                      key={tier}
-                      title={TIER_LABEL[tier]}
-                      desc={
-                        <>
-                          {TIER_DESC[tier]}
-                          {p && (
-                            <span className="mt-1 block text-neutral-500">
-                              單抽 {price.toLocaleString()} G 時回收
-                              <span className="mx-1 font-medium text-primary">{p.value} G</span>
-                              {p.perDraw > 0 && <>· 約 {p.perDraw} 件換一抽</>}
-                            </span>
-                          )}
-                        </>
-                      }
-                    >
+                    <SettingsRow key={tier} title={TIER_LABEL[tier]}>
                       <div className="flex gap-2">
                         <div className="relative w-28">
                           <Input
@@ -231,26 +192,6 @@ export default function RecycleRatesPage() {
                     </SettingsRow>
                   )
                 })}
-
-                {/* 試算不寫進 DB，純粹拿來抓手感 —— 只看百分比很難判斷玩家的感受 */}
-                <SettingsRow
-                  title="試算單抽價"
-                  desc="只影響上面的預覽金額，不會存檔。填實際商品的單抽價，就看得出玩家回收會拿到多少。"
-                >
-                  <div className="relative w-28">
-                    <Input
-                      type="number"
-                      min={0}
-                      value={String(price)}
-                      onChange={e => setSamplePrice(prev => ({
-                        ...prev,
-                        [section]: e.target.value === '' ? 0 : Number(e.target.value),
-                      }))}
-                      className="pr-7 font-mono"
-                    />
-                    <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm text-neutral-400">G</span>
-                  </div>
-                </SettingsRow>
               </div>
 
               <div className="mt-5 flex justify-end">
