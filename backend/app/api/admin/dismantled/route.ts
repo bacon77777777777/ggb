@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 
 /** 回收池處置狀態。pending 待處理／reused 已再利用／scrapped 已報廢（migration 617） */
 const VALID_STATUS = ['pending', 'reused', 'scrapped'] as const
@@ -42,7 +43,13 @@ export async function GET(request: Request) {
   ])
   const botIds = (botRows ?? []).map((r: any) => r.id)
 
-  let query = supabase
+  /*
+   * 一律撈完，不要留 limit —— PostgREST 預設就在 1,000 筆截斷。
+   * PROD 已經有 1,562 筆回收，畫面上的統計卡是拿撈回來的資料算的，
+   * 截斷等於「總退還代幣」直接少報 5,620 G，跟廠商結算對不起來。
+   */
+  const buildQuery = () => {
+    let query = supabase
     .from('draw_records')
     .select(`
       id,
@@ -56,16 +63,21 @@ export async function GET(request: Request) {
     `)
     .eq('status', 'dismantled')
     .order('created_at', { ascending: false })
-    .limit(1000)
 
-  if (botIds.length > 0) {
-    query = query.not('user_id', 'in', `(${botIds.join(',')})`)
+    if (botIds.length > 0) {
+      query = query.not('user_id', 'in', `(${botIds.join(',')})`)
+    }
+    return query
   }
 
-  const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  let data: any[]
+  try {
+    data = await fetchAllRows<any>(() => buildQuery())
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message ?? '讀取失敗' }, { status: 500 })
+  }
 
-  const items = (data ?? []).map((item: any) => {
+  const items = data.map((item: any) => {
     const recyclePool = Array.isArray(item.admin_recycle_pool)
       ? item.admin_recycle_pool[0]
       : item.admin_recycle_pool

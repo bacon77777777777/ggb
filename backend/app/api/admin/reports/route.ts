@@ -734,16 +734,21 @@ export async function GET(request: NextRequest) {
 
     // ── 回收明細 ────────────────────────────────────────────────────────────
     if (tab === 'dismantled') {
-      let query = supabase
-        .from('admin_recycle_pool')
-        .select('id, recycle_value, created_at, prize_name, prize_level, user_id, product_id, product:products(id, name, supplier_id, supplier:suppliers(id, name)), user:users(id, name)')
-        .order('created_at', { ascending: false })
-
-      if (start) query = query.gte('created_at', start)
-      if (endExclusiveUtc) query = query.lt('created_at', endExclusiveUtc)
-
-      const { data, error } = await query
-      if (error) throw error
+      /*
+       * 用 fetchAllRows 撈完。這裡本來沒有 .limit()，但 **PostgREST 預設就在
+       * 1,000 筆截斷** —— PROD 已有 1,562 筆回收，畫面的「總退還代幣」
+       * 因此少報 5,620 G，跟廠商結算（本來就用 fetchAllRows）對不起來。
+       */
+      const buildQuery = () => {
+        let query = supabase
+          .from('admin_recycle_pool')
+          .select('id, recycle_value, created_at, prize_name, prize_level, user_id, product_id, product:products(id, name, supplier_id, supplier:suppliers(id, name)), user:users(id, name)')
+          .order('created_at', { ascending: false })
+        if (start) query = query.gte('created_at', start)
+        if (endExclusiveUtc) query = query.lt('created_at', endExclusiveUtc)
+        return query
+      }
+      const data = await fetchAllRows<any>(() => buildQuery())
 
       const rows = (data ?? []).map((r: any) => ({
         id: r.id,

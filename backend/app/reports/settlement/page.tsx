@@ -264,12 +264,13 @@ export default function SettlementPage() {
       回收結算方式: settlementMode === 'margin' ? '差額分潤' : '跟廠商收回收價',
       回收筆數: data?.recycleCount ?? 0,
       回收退還玩家代幣: recycleRefundTotal,
-      ...(settlementMode === 'margin'
-        ? {
-            [`被回收抽獎移出分潤基底`]: -recycledRevenueExcluded,
-            [`回收差額(共${recycledMarginTotal})廠商分${data?.marginSupplierShare ?? 0}%`]: marginToSupplier,
-          }
-        : { '回收退代幣(廠商吸收100%)': -dismantleTotal }),
+      // 0 元的欄位不匯出，理由同畫面上那一列
+      ...(settlementMode === 'margin' && recycledRevenueExcluded !== 0
+        ? { 被回收抽獎移出分潤基底: -recycledRevenueExcluded } : {}),
+      ...(settlementMode === 'margin' && marginToSupplier !== 0
+        ? { [`回收差額(共${recycledMarginTotal})廠商分${data?.marginSupplierShare ?? 0}%`]: marginToSupplier } : {}),
+      ...(settlementMode === 'charge' && dismantleTotal !== 0
+        ? { '回收退代幣(廠商吸收100%)': -dismantleTotal } : {}),
       ...(crossPeriodCount > 0
         ? { [`往期回收調整(${crossPeriodCount}筆上期抽獎)`]: crossPeriodAdjustment }
         : {}),
@@ -496,8 +497,10 @@ export default function SettlementPage() {
               {/* ⑤ 廠商分潤 → 再扣回收 */}
               <Row label={<><span className="font-semibold text-neutral-800">廠商分潤</span><span className="text-xs text-neutral-400 ml-1">{supplierShare}%</span></>} value={fmt(supplierGross)} indigo />
               {/*
-                金額為 0 的列不畫（老闆 2026-08-25）。差額分潤設 0% 時
-                「回收差額分潤 +NT$ 0」每期都出現一行，那是噪音不是資訊。
+                差額分潤 0% 時整列不畫（老闆 2026-08-25）。
+                對平台管理員那是「+NT$ 0」的噪音；對**廠商**更糟 ——
+                看到「差額 NT$ 40,380 · 廠商 0%」會讓人以為別家廠商拿得到分潤，
+                而自己被單獨排除。沒有金額就不要提起這件事。
               */}
               {settlementMode === 'margin' && marginToSupplier !== 0 && (
                 <Row
