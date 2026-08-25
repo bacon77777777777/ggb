@@ -433,7 +433,7 @@ export default function SettlementPage() {
 
         {/* 期間標題列 */}
         {period && (
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <h2 className="text-sm font-semibold text-neutral-700">
               {period.label} 結算期
             </h2>
@@ -454,6 +454,13 @@ export default function SettlementPage() {
                 : 'bg-neutral-100 text-neutral-500'
               }`}>
                 {data.lock.status === 'paid' ? '已付款' : data.lock.status === 'confirmed' ? '已確認' : '草稿'}
+              </span>
+            )}
+
+            {/* 沒快照就沒得確認。併進標題列這一行，不另外佔一塊（老闆 2026-08-25） */}
+            {canSettle && !loading && data && !data.lock?.id && !period.isCurrent && (
+              <span className="ml-auto text-xs text-amber-600">
+                本期尚未產生月結快照，無法確認結算（快照由月結排程每月 1 日自動產生）
               </span>
             )}
 
@@ -491,12 +498,6 @@ export default function SettlementPage() {
           </div>
         )}
 
-        {/* 這期還沒有快照 —— 月結 cron 每月 1 日產生，沒跑就沒得確認 */}
-        {canSettle && !loading && data && !data.lock?.id && period && !period.isCurrent && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            本期尚未產生月結快照，無法確認結算。快照由月結排程（每月 1 日）自動產生。
-          </div>
-        )}
 
         {/*
           未付款期別。取代原本 /settlement-snapshots 那一頁的清單功能 ——
