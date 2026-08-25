@@ -48,7 +48,7 @@ export async function PUT(request: Request) {
         return NextResponse.json({ error: '回收比例必須介於 0 ~ 100' }, { status: 400 })
       }
       if (!Number.isFinite(min) || min < 0) {
-        return NextResponse.json({ error: '下限不可為負數' }, { status: 400 })
+        return NextResponse.json({ error: '最低回收代幣不可為負數' }, { status: 400 })
       }
 
       const { error } = await supabase

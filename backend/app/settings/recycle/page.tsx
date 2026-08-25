@@ -184,9 +184,9 @@ export default function RecycleRatesPage() {
                             value={r ? String(r.min_value) : ''}
                             onChange={e => setRate(section, tier, 'min_value', e.target.value)}
                             className="pr-9 font-mono"
-                            title="算出來不足這個數字時，至少給這麼多"
+                            title="最低：單抽價 × 比例 算出來不足這個數字時，至少給這麼多"
                           />
-                          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400">下限</span>
+                          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400">最低</span>
                         </div>
                       </div>
                     </SettingsRow>
