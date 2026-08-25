@@ -4,6 +4,36 @@
 
 ---
 
+## v2026.08.25q｜2026-08-25｜廠商編輯視窗：結算設定去框、回收機制拆成「回收價」＋「差額分潤」
+
+**版面**（`app/suppliers/page.tsx`）：結算設定那個外框拿掉，改成跟上方「物流寄件資訊」
+同一種寫法 —— 分隔線 + 小灰標題（`text-xs font-semibold text-neutral-400 uppercase`），
+「留空＝跟隨全站預設」接在標題後面。欄位標題從 `text-xs text-neutral-500` 提到跟
+「寄件地址」一樣的 `text-sm font-medium text-neutral-700`。
+
+**回收機制拆成兩個獨立設定**（老闆 2026-08-25：「跟廠商收回收價也可以再分潤給廠商」）：
+舊版把「回收結算方式」做成 charge／margin 二選一，選了 charge，「差額分給廠商」就 disabled。
+但這兩件事本來就獨立 —— 回收價收不收是「退給玩家的代幣誰吸收」，差額分潤是「剩下的差額
+分多少給廠商」，收了回收價一樣可以再分廠商一份。改成：
+
+| 回收價 | 廠商拿到 |
+|--------|----------|
+| 收（charge） | 抽獎照一般分潤 − 回收價 **＋ 差額 × 差額分潤%**（新增的那一項） |
+| 不收（margin） | 那筆抽獎移出一般分潤基底，只給 差額 × 差額分潤% |
+
+DB 欄位沒動（`recycle_settlement_mode` 仍是 charge／margin，只是語意變成「收／不收」），
+差額分潤預設 0，所以**既有廠商的金額完全不變**。算式四處同步改：結算頁 API
+（`api/admin/reports`）、月結快照 cron（`api/cron/monthly-settlement`）、結算頁顯示與 CSV
+（`app/reports/settlement`）、全站預設頁（`app/suppliers/settings`）——
+兩邊算式不同就會出現「頁面說 A、對帳單說 B」。往期回收調整（跨期那段）也用同一條算式。
+
+**全站預設改成「收」**：PROD／STG 的 `platform_settings.recycle_settlement_mode`
+原本是 margin（平台吸收回收價），依老闆指定改成 charge。兩家廠商都跟隨預設，
+所以從現在起玩家回收退的代幣會從廠商結算扣；要退回舊行為在
+「廠商管理 → 廠商結算設定 → 回收機制」按一下「不收」即可。
+
+---
+
 ## v2026.08.25p｜2026-08-25｜交易所購買補寫代幣帳本
 
 `purchase_marketplace_listing_item` 只改 `users.tokens`，沒有寫 `token_adjustments`，

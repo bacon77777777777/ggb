@@ -15,8 +15,9 @@ import { SETTLEMENT_KEYS, getSettlementDefaults } from '@/lib/settlementRates'
  */
 
 const VALUE_LABEL: Record<string, string> = {
-  charge: '跟廠商收回收價',
-  margin: '差額分潤',
+  // 回收價收不收（DB 值沿用舊的 charge／margin）
+  charge: '跟廠商收',
+  margin: '平台吸收',
   A: '廠商吸收 50%',
   B: '平台全吸收',
 }
@@ -26,8 +27,8 @@ const FIELD_LABEL: Record<string, string> = {
   settlement_withholding_rate: '代扣稅率',
   settlement_points_mode: '積分扣除模式',
   settlement_ecpay_rate: '綠界手續費估算',
-  recycle_settlement_mode: '回收結算方式',
-  recycle_margin_supplier_share: '差額分給廠商',
+  recycle_settlement_mode: '回收價',
+  recycle_margin_supplier_share: '差額分潤',
 }
 
 function describe(key: string, value: string | null): string {
@@ -67,13 +68,13 @@ export async function PUT(request: Request) {
       settlement_ecpay_rate: pct(d.ecpayRate, '綠界手續費估算'),
       settlement_points_mode: ['A', 'B'].includes(String(d.pointsMode)) ? String(d.pointsMode) : '',
       recycle_settlement_mode: ['charge', 'margin'].includes(String(d.recycleMode)) ? String(d.recycleMode) : '',
-      recycle_margin_supplier_share: pct(d.recycleMarginShare, '差額分給廠商'),
+      recycle_margin_supplier_share: pct(d.recycleMarginShare, '差額分潤'),
     }
   } catch (err: any) {
     return NextResponse.json({ error: err?.message ?? '參數不正確' }, { status: 400 })
   }
   if (!next.settlement_points_mode) return NextResponse.json({ error: '積分扣除模式不正確' }, { status: 400 })
-  if (!next.recycle_settlement_mode) return NextResponse.json({ error: '回收結算方式不正確' }, { status: 400 })
+  if (!next.recycle_settlement_mode) return NextResponse.json({ error: '回收價設定不正確' }, { status: 400 })
 
   const supabase = getSupabaseAdmin()
 

@@ -116,7 +116,8 @@ export const DEFAULT_FALLBACK: SettlementDefaults = {
   withholdingRate: 0,
   pointsMode: 'B',
   ecpayRate: 2.75,
-  recycleMode: 'margin',
+  // 回收價預設「收」（老闆 2026-08-25）
+  recycleMode: 'charge',
   recycleMarginShare: 0,
 }
 
@@ -131,7 +132,8 @@ export async function getSettlementDefaults(
     withholdingRate: numOr(m.settlement_withholding_rate, DEFAULT_FALLBACK.withholdingRate),
     pointsMode: m.settlement_points_mode === 'A' ? 'A' : 'B',
     ecpayRate: numOr(m.settlement_ecpay_rate, DEFAULT_FALLBACK.ecpayRate),
-    recycleMode: m.recycle_settlement_mode === 'charge' ? 'charge' : 'margin',
+    // 沒設過就用 DEFAULT_FALLBACK（收）；只有明確寫 margin 才是不收
+    recycleMode: m.recycle_settlement_mode === 'margin' ? 'margin' : DEFAULT_FALLBACK.recycleMode,
     recycleMarginShare: numOr(m.recycle_margin_supplier_share, DEFAULT_FALLBACK.recycleMarginShare),
   }
 }

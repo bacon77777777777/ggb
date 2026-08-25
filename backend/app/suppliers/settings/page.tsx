@@ -31,7 +31,7 @@ type SectionKey = 'rates' | 'recycle'
 
 const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: 'rates', label: '結算費率' },
-  { key: 'recycle', label: '回收結算' },
+  { key: 'recycle', label: '回收機制' },
 ]
 
 interface Defaults {
@@ -48,7 +48,8 @@ const EMPTY: Defaults = {
   withholdingRate: 0,
   pointsMode: 'B',
   ecpayRate: 2.75,
-  recycleMode: 'margin',
+  // 回收價預設「收」（老闆 2026-08-25）
+  recycleMode: 'charge',
   recycleMarginShare: 0,
 }
 
@@ -171,26 +172,26 @@ export default function SupplierSettlementSettingsPage() {
             {section === 'recycle' && (
               <>
                 <SectionHead
-                  title="回收結算"
-                  info="一筆抽獎被玩家回收之後，那筆營收怎麼跟廠商拆。差額分潤＝被回收的抽獎不走一般分潤，改成差額（單抽價 − 回收價）依比例拆，回收價由平台吸收；跟廠商收回收價＝抽獎照一般分潤，回收價再從當期結算扣除。兩者互斥，同時套用會重複計算。這裡是全站預設，個別廠商可在「廠商管理」覆蓋。"
+                  title="回收機制"
+                  info="一筆抽獎被玩家回收之後，那筆營收怎麼跟廠商拆。兩個設定各自獨立（老闆 2026-08-25）：回收價＝退給玩家的代幣要不要跟廠商收，「收」就是抽獎照一般分潤、回收價再從當期結算扣除，「不收」則由平台吸收、那筆抽獎的營收改走差額分潤；差額分潤＝差額（單抽價 − 回收價）分多少 % 給廠商，收回收價的廠商一樣可以再分他差額。這裡是全站預設，個別廠商可在「廠商管理」覆蓋。"
                 />
                 <div className="divide-y divide-neutral-100">
-                  <SettingsRow title="結算方式" state={d.recycleMode === 'margin' ? 'on' : 'maintenance'}>
+                  <SettingsRow title="回收價" state={d.recycleMode === 'charge' ? 'on' : 'maintenance'}>
                     <Segmented
                       value={d.recycleMode}
                       disabled={saving}
                       onChange={v => set('recycleMode', v as 'charge' | 'margin')}
                       options={[
-                        { v: 'margin', label: '差額分潤', tone: 'on' },
-                        { v: 'charge', label: '跟廠商收回收價', tone: 'warn' },
+                        { v: 'charge', label: '收', tone: 'on' },
+                        { v: 'margin', label: '不收', tone: 'warn' },
                       ]}
                     />
                   </SettingsRow>
-                  <SettingsRow title="差額分給廠商" dimmed={d.recycleMode === 'charge'}>
+                  {/* 差額分潤不再被「收回收價」鎖住 —— 兩者可以同時成立 */}
+                  <SettingsRow title="差額分潤">
                     <PctInput
                       value={d.recycleMarginShare}
                       onChange={v => set('recycleMarginShare', v)}
-                      disabled={d.recycleMode === 'charge'}
                     />
                   </SettingsRow>
                 </div>

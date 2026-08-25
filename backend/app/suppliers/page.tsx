@@ -69,7 +69,8 @@ interface Defaults {
 
 const MODE_TEXT: Record<string, string> = {
   A: '廠商吸收 50%', B: '平台全吸收',
-  charge: '跟廠商收回收價', margin: '差額分潤',
+  // 回收價收不收（老闆 2026-08-25 拆成獨立設定，DB 值沿用舊的 charge／margin）
+  charge: '收', margin: '不收',
 }
 
 export default function SuppliersPage() {
@@ -461,15 +462,16 @@ export default function SuppliersPage() {
             結算設定：留空＝跟隨全站預設（「廠商管理 → 廠商結算設定」），
             佔位提示直接把目前的預設值寫出來，才看得出空白會套到什麼。
             綠界手續費不在這裡 —— 那是平台與綠界之間的費率，不分廠商。
+            版面跟上面的「物流寄件資訊」一致：分隔線 + 小灰標題，不另外框一個盒子。
           */}
-          <div className="rounded-lg border border-neutral-200 p-3">
-            <div className="mb-3 flex items-center gap-2">
-              <span className="text-sm font-medium text-neutral-700">結算設定</span>
-              <span className="text-xs text-neutral-400">留空＝跟隨全站預設</span>
-            </div>
+          <div className="border-t border-neutral-100 pt-4">
+            <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-3">
+              結算設定
+              <span className="ml-2 normal-case tracking-normal font-medium">留空＝跟隨全站預設</span>
+            </p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-neutral-500">廠商分潤比 (%)</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">廠商分潤比 (%)</label>
                 <Input
                   type="number" min={0} max={100} className="font-mono"
                   placeholder={defaults ? `預設 ${defaults.supplierShare}` : '預設'}
@@ -478,7 +480,7 @@ export default function SuppliersPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-neutral-500">代扣稅率 (%)</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">代扣稅率 (%)</label>
                 <Input
                   type="number" min={0} max={100} className="font-mono"
                   placeholder={defaults ? `預設 ${defaults.withholdingRate}` : '預設'}
@@ -487,7 +489,7 @@ export default function SuppliersPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-neutral-500">積分扣除模式</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">積分扣除模式</label>
                 <SelectField
                   value={form.points_deduction_mode}
                   onChange={(e) => setForm((f) => ({ ...f, points_deduction_mode: e.target.value }))}
@@ -497,25 +499,37 @@ export default function SuppliersPage() {
                   <option value="B">平台全吸收</option>
                 </SelectField>
               </div>
+            </div>
+          </div>
+
+          {/*
+            回收機制（老闆 2026-08-25）：兩件事**互相獨立**，不是二選一 ——
+            回收價收不收是「退給玩家的代幣誰吸收」，差額分潤是「剩下的差額分多少給廠商」。
+            舊版把差額分潤鎖在「不收回收價」底下，等於收了回收價就不能再分潤，
+            但收回收價的廠商一樣可以再分他差額，所以拆成兩個欄位。
+            DB 仍沿用 `recycle_settlement_mode`：charge＝收回收價、margin＝不收（平台吸收）。
+          */}
+          <div className="border-t border-neutral-100 pt-4">
+            <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-3">回收機制</p>
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-neutral-500">回收結算方式</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">回收價</label>
                 <SelectField
                   value={form.recycle_settlement_mode}
                   onChange={(e) => setForm((f) => ({ ...f, recycle_settlement_mode: e.target.value }))}
                 >
                   <option value="">{defaults ? `預設（${MODE_TEXT[defaults.recycleMode]}）` : '照全站預設'}</option>
-                  <option value="margin">差額分潤</option>
-                  <option value="charge">跟廠商收回收價</option>
+                  <option value="charge">收</option>
+                  <option value="margin">不收</option>
                 </SelectField>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-neutral-500">差額分給廠商 (%)</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">差額分潤 (%)</label>
                 <Input
                   type="number" min={0} max={100} className="font-mono"
                   placeholder={defaults ? `預設 ${defaults.recycleMarginShare}` : '預設'}
                   value={form.recycle_margin_supplier_share}
                   onChange={(e) => setForm((f) => ({ ...f, recycle_margin_supplier_share: e.target.value }))}
-                  disabled={(form.recycle_settlement_mode || defaults?.recycleMode) === 'charge'}
                 />
               </div>
             </div>

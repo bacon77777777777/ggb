@@ -7,13 +7,14 @@ const RATE_LABEL: Record<string, string> = {
   profit_share_percent: '廠商分潤比',
   withholding_rate_percent: '代扣稅率',
   points_deduction_mode: '積分扣除模式',
-  recycle_settlement_mode: '回收結算方式',
-  recycle_margin_supplier_share: '差額分給廠商',
+  recycle_settlement_mode: '回收價',
+  recycle_margin_supplier_share: '差額分潤',
 }
 
 const RATE_VALUE_LABEL: Record<string, string> = {
   A: '廠商吸收 50%', B: '平台全吸收',
-  charge: '跟廠商收回收價', margin: '差額分潤',
+  // 回收價收不收（DB 值沿用舊的 charge／margin）
+  charge: '跟廠商收', margin: '平台吸收',
 }
 
 function rateText(field: string, v: any): string {

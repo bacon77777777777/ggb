@@ -25,7 +25,7 @@ interface PeriodData {
   hasActualFee: boolean
   allocatedActualFee: number | null  // 分攤後的實際手續費
   platformTotalFee?: number | null   // 平台手續費總額（僅平台管理員）
-  dismantleTotal: number         // 回收退代幣（charge 模式才從廠商扣，margin 模式為 0）
+  dismantleTotal: number         // 回收退代幣（回收價「收」才從廠商扣，「不收」為 0）
   /** 這張單子實際套用的費率，由後端解析（廠商客製 ?? 全站預設）後帶下來 */
   rates?: {
     supplierShare: number
@@ -35,7 +35,7 @@ interface PeriodData {
     customized: string[]
   }
   settlementMode?: 'charge' | 'margin'
-  marginSupplierShare?: number   // margin 模式下差額分給廠商的 %
+  marginSupplierShare?: number   // 差額分給廠商的 %（兩種回收價設定都適用）
   recycleRefundTotal?: number    // 期內退給玩家的回收代幣總額
   recycledRevenueExcluded?: number // margin 模式移出一般分潤基底的抽獎營收
   recycledMarginTotal?: number   // 差額總額＝Σ(單抽價 − 回收價)
@@ -305,13 +305,13 @@ export default function SettlementPage() {
       可分潤基礎: distributableBase,
       [`廠商分潤(${supplierShare}%)`]: supplierGross,
       [`平台留存(${100 - supplierShare}%)`]: platformShare,
-      回收結算方式: settlementMode === 'margin' ? '差額分潤' : '跟廠商收回收價',
+      回收價: settlementMode === 'charge' ? '跟廠商收' : '平台吸收',
       回收筆數: data?.recycleCount ?? 0,
       回收退還玩家代幣: recycleRefundTotal,
       // 0 元的欄位不匯出，理由同畫面上那一列
       ...(settlementMode === 'margin' && recycledRevenueExcluded !== 0
         ? { 被回收抽獎移出分潤基底: -recycledRevenueExcluded } : {}),
-      ...(settlementMode === 'margin' && marginToSupplier !== 0
+      ...(marginToSupplier !== 0
         ? { [`回收差額(共${recycledMarginTotal})廠商分${data?.marginSupplierShare ?? 0}%`]: marginToSupplier } : {}),
       ...(settlementMode === 'charge' && dismantleTotal !== 0
         ? { '回收退代幣(廠商吸收100%)': -dismantleTotal } : {}),
@@ -648,7 +648,7 @@ export default function SettlementPage() {
                 看到「差額 NT$ 40,380 · 廠商 0%」會讓人以為別家廠商拿得到分潤，
                 而自己被單獨排除。沒有金額就不要提起這件事。
               */}
-              {settlementMode === 'margin' && marginToSupplier !== 0 && (
+              {marginToSupplier !== 0 && (
                 <Row
                   label={<><span className="text-neutral-600">回收差額分潤</span><span className="text-xs text-neutral-400 ml-1.5">差額 {fmt(recycledMarginTotal)} · 廠商 {data?.marginSupplierShare ?? 0}%</span></>}
                   value={`+${fmt(marginToSupplier)}`} indent
@@ -688,7 +688,7 @@ export default function SettlementPage() {
                     <span className="text-base font-bold text-neutral-800">實際應付廠商</span>
                     <InfoTooltip text={settlementMode === 'margin'
                       ? `① 消費 G − 綠界手續費 = 淨收入\n② 淨收入 − 折價券（50%）− 運費（50%）${pointsMode === 'A' ? ' + 積分補償（50%）' : ''} − 被回收抽獎營收 = 可分潤基礎\n③ 可分潤基礎 × ${supplierShare}% = 廠商分潤\n④ 廠商分潤 + 回收差額 × ${data?.marginSupplierShare ?? 0}% ± 往期回收調整 = 實際應付廠商\n（回收退給玩家的代幣由平台吸收，不跟廠商收）\n往期回收調整＝上期抽、本期被回收的那幾筆，本期應給與上期已付的差，可正可負`
-                      : `① 消費 G − 綠界手續費 = 淨收入\n② 淨收入 − 折價券（50%）− 運費（50%）${pointsMode === 'A' ? ' + 積分補償（50%）' : ''} = 可分潤基礎\n③ 可分潤基礎 × ${supplierShare}% = 廠商分潤\n④ 廠商分潤 − 回收退代幣 = 實際應付廠商`} />
+                      : `① 消費 G − 綠界手續費 = 淨收入\n② 淨收入 − 折價券（50%）− 運費（50%）${pointsMode === 'A' ? ' + 積分補償（50%）' : ''} = 可分潤基礎\n③ 可分潤基礎 × ${supplierShare}% = 廠商分潤\n④ 廠商分潤 − 回收退代幣${(data?.marginSupplierShare ?? 0) > 0 ? ` + 回收差額 × ${data?.marginSupplierShare}%` : ''} ± 往期回收調整 = 實際應付廠商\n（回收價跟廠商收，差額分潤仍可另外給）`} />
                   </div>
                   <span className={`text-xl font-bold tabular-nums ${supplierNet < 0 ? 'text-red-600' : 'text-green-600'}`}>{fmt(supplierNet)}</span>
                 </div>

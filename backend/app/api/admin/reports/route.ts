@@ -545,10 +545,12 @@ export async function GET(request: NextRequest) {
         const { rate, estimated } = paidRateAt(drawnAt(r))
         if (estimated) crossPeriodEstimated = true
         const alreadyPaid = (r.unit_price || 0) * rate
+        // 差額分潤兩種模式都給（老闆 2026-08-25：收了回收價一樣可以再分廠商差額）
+        const marginShare = ((r.margin || 0) * marginSupplierShare) / 100
         const shouldGet = settlementMode === 'margin'
-          ? ((r.margin || 0) * marginSupplierShare) / 100
-          // charge 模式：上期分潤照給，本期只要扣回收價
-          : alreadyPaid - (r.recycle_value || 0)
+          ? marginShare
+          // charge 模式：上期分潤照給，本期扣回收價，再加差額分潤
+          : alreadyPaid - (r.recycle_value || 0) + marginShare
         crossPeriodAdjustment += shouldGet - alreadyPaid
       }
       crossPeriodAdjustment = Math.round(crossPeriodAdjustment)
@@ -559,9 +561,12 @@ export async function GET(request: NextRequest) {
         : 0
       // margin 模式要把被回收的抽獎整筆移出一般分潤基底，改走差額分潤
       const recycledRevenueExcluded = settlementMode === 'margin' ? recycledUnitPriceTotal : 0
-      const marginToSupplier = settlementMode === 'margin'
-        ? Math.round((recycledMarginTotal * marginSupplierShare) / 100)
-        : 0
+      /*
+       * 差額分潤與「回收價收不收」是兩件獨立的事（老闆 2026-08-25）：
+       * 收回收價的廠商，差額一樣可以再分他一份。分潤率預設 0，
+       * 沒設過的廠商金額是 0，等同改版前的行為。
+       */
+      const marginToSupplier = Math.round((recycledMarginTotal * marginSupplierShare) / 100)
 
       // 折價券 & 運費（雙方各吸收一半）
       const supplierOrders: any[] = orderRows

@@ -116,9 +116,8 @@ async function calcSupplierSettlement(
   const dismantleTotal = rates.recycleMode === 'charge' ? sumBy(currentRecycles, 'recycle_value') : 0
   const recycledRevenueExcluded = rates.recycleMode === 'margin' ? sumBy(currentRecycles, 'unit_price') : 0
   const recycledMarginTotal = sumBy(currentRecycles, 'margin')
-  const marginToSupplier = rates.recycleMode === 'margin'
-    ? Math.round((recycledMarginTotal * rates.recycleMarginShare) / 100)
-    : 0
+  // 差額分潤與「回收價收不收」互相獨立（老闆 2026-08-25），兩種模式都算
+  const marginToSupplier = Math.round((recycledMarginTotal * rates.recycleMarginShare) / 100)
 
   const supplierOrders  = orderRows
   const couponTotal     = supplierOrders.reduce((s: number, r: any) => s + (r.coupon_discount || 0), 0)
@@ -150,9 +149,11 @@ async function calcSupplierSettlement(
   for (const r of priorRecycles) {
     const rate = paidRateAt(drawnAt(r))
     const alreadyPaid = (r.unit_price || 0) * rate
+    // 差額分潤兩種模式都給，算式必須與結算頁一致
+    const marginShare = ((r.margin || 0) * rates.recycleMarginShare) / 100
     const shouldGet = rates.recycleMode === 'margin'
-      ? ((r.margin || 0) * rates.recycleMarginShare) / 100
-      : alreadyPaid - (r.recycle_value || 0)
+      ? marginShare
+      : alreadyPaid - (r.recycle_value || 0) + marginShare
     crossPeriodAdjustment += shouldGet - alreadyPaid
   }
   crossPeriodAdjustment = Math.round(crossPeriodAdjustment)
