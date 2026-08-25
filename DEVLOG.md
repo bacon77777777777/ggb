@@ -4,6 +4,34 @@
 
 ---
 
+## v2026.08.25p｜2026-08-25｜交易所購買補寫代幣帳本
+
+`purchase_marketplace_listing_item` 只改 `users.tokens`，沒有寫 `token_adjustments`，
+所以交易所的買賣完全不會出現在 `token_ledger`：玩家在代幣明細看不到自己在交易所
+花了什麼收了什麼，財務對帳公式（recharge + manual − draw − refund）也漏掉這一整塊，
+帳本淨額會與 `users.tokens` 對不起來 —— 跟剛修掉的積分折抵是同一類問題。
+
+同性質的商城 `buy_listing` 早就有寫，兩支不一致。migration 627 補齊，
+`reason`／`created_by` 沿用商城的寫法（`交易所購買`／`交易所售出`＋`marketplace`），
+`classify_token_adjustment()` 會歸到 `marketplace` 分類。
+
+**手續費不另記一筆**：那是平台留下的差額，不是任何一方的代幣異動，
+買方支出與賣方收入相減就是它，多記一筆反而讓帳本自己對不起來。
+
+全站 `marketplace_transactions` 是 0 筆，沒有歷史要回填 —— 趁交易所還沒開放先補，
+開放後才不會一邊累積一邊漏。實測 INSERT 寫得進去、也讀得到
+（`手動調整：交易所購買（marketplace）`）；`token_ledger` 只有後台在讀，
+前台不碰，所以那串內部代號不會被玩家看到。
+
+**順帶給 `increment_user_tokens` 留警語**：它是最後一支「只改 tokens、不寫帳本」的函數，
+但兩個呼叫端（後台待複核儲值補發、AI 客服自動補發）都會先把 `recharge_records`
+改成 success，帳本讀得到，不是缺口。危險在它很通用 —— 之後有人在別處呼叫又沒有
+對應紀錄，帳本就會靜默對不上。已加 `COMMENT ON FUNCTION` 寫明限制。
+
+修完 PROD 對帳：**差額 0、對不上人數 0**。
+
+---
+
 ## v2026.08.25o｜2026-08-25｜代幣帳本把「積分折抵的抽獎」記成代幣支出 —— PROD 帳本現在完全對上
 
 老闆問「後台報表現在數據準確嗎」，逐項驗證時查到的。
