@@ -42,42 +42,36 @@ const TYPE_META: Record<TypeKey, {
   tiers: Rate['tier'][]
   sample: number
   info: string
-  note: string
 }> = {
   gacha: {
     label: '轉蛋',
     tiers: ['all'],
     sample: 179,
-    info: '轉蛋抽到的就是那件商品本身，實物價值約等於單抽價，所以整類共用一個比例。回收後庫存會加回原商品（remaining +1），同一抽可以再賣一次全價 —— 這是回收成本最可控的類型。',
-    note: '不分賞等。回收後庫存加回原商品，可再賣一次全價。',
+    info: '不分賞等 —— 轉蛋抽到的就是那件商品本身，實物價值約等於單抽價，所以整類共用一個比例。回收後庫存會加回原商品（remaining +1），同一抽可以再賣一次全價，是回收成本最可控的類型。',
   },
   blindbox: {
     label: '盒玩',
     tiers: ['all'],
     sample: 355,
-    info: '同轉蛋：抽到的就是那件商品，價值約等於單抽價，回收後庫存也會加回原商品。',
-    note: '不分賞等。回收後庫存加回原商品，可再賣一次全價。',
+    info: '不分賞等 —— 同轉蛋：抽到的就是那件商品，價值約等於單抽價。回收後庫存會加回原商品，可再賣一次全價。',
   },
   ichiban: {
     label: '一番賞',
     tiers: ['major', 'normal'],
     sample: 309,
     info: '序列商品，回收後庫存不會加回（加回去會破壞封存驗證與籤號順序），實體留在廠商倉庫等重組。大賞由系統自動判定：品項初始總數 ≤ 3 就算大賞，不需要人工指定。',
-    note: '序列商品，庫存不加回，實體留在廠商倉庫。',
   },
   card: {
     label: '抽卡',
     tiers: ['major', 'normal'],
     sample: 204,
-    info: '同一番賞。要注意抽卡的一般賞數量級很大（D賞全站有兩萬多件），那類品項的實物價值跟單抽價幾乎脫鉤，一般賞比例不宜設高。',
-    note: '序列商品，庫存不加回。一般賞數量級大，比例不宜設高。',
+    info: '序列商品，庫存不加回，實體留在廠商倉庫。要注意抽卡的一般賞數量級很大（D賞全站有兩萬多件），那類品項的實物價值跟單抽價幾乎脫鉤，一般賞比例不宜設高。',
   },
   custom: {
     label: '自製賞',
     tiers: ['major', 'normal'],
     sample: 199,
-    info: '同一番賞。自製賞常由回收品重組而成，設定比例時可一併考慮那批貨的取得成本。',
-    note: '序列商品，庫存不加回，實體留在廠商倉庫。',
+    info: '序列商品，庫存不加回，實體留在廠商倉庫。自製賞常由回收品重組而成，設定比例時可一併考慮那批貨的取得成本。',
   },
 }
 
@@ -180,16 +174,6 @@ export default function RecycleRatesPage() {
     <AdminLayout pageTitle="回收價格設定">
       <div className="space-y-3">
         <PageCard>
-          <div className="text-sm leading-relaxed text-neutral-500">
-            回收價的基準是<span className="font-medium text-neutral-700">商品單抽價</span>，
-            品項編輯頁不再有回收價欄位。
-            回收在廠商結算怎麼拆帳（結算方式、差額分潤、廠商個別設定）在
-            <a href="/suppliers/settings" className="mx-1 text-primary hover:underline">廠商管理 → 廠商設定</a>
-            。
-          </div>
-        </PageCard>
-
-        <PageCard>
           {loading ? (
             <CardSkeleton rows={6} />
           ) : (
@@ -197,7 +181,6 @@ export default function RecycleRatesPage() {
               nav={<SettingsNav sections={SECTIONS} value={section} onChange={setSection} />}
             >
               <SectionHead title={meta.label} info={meta.info} />
-              <p className="mb-1 text-sm text-neutral-400">{meta.note}</p>
 
               <div className="divide-y divide-neutral-100">
                 {meta.tiers.map(tier => {

@@ -150,6 +150,15 @@ function humanDetail(action: string, detail: unknown): string {
     return '改了：' + d.keys.map((k: string) => SETTING_KEY[k] ?? k).join('、')
   }
   if (action === '登入失敗') return `帳號「${d.username ?? '—'}」密碼錯誤`
+  if (action === '更新廠商設定' && Array.isArray(d.changes)) {
+    // 每一項已經是「對象 · 欄位：舊值 → 新值」的完整句子，直接串起來
+    return d.changes.length <= 2
+      ? d.changes.join('｜')
+      : `${d.changes[0]}｜等 ${d.changes.length} 項`
+  }
+  if (action === '更新回收費率' && Array.isArray(d.rates)) {
+    return `調整了 ${d.rates.length} 個類別的回收比例`
+  }
 
   // ── 通用 ──
   const parts: string[] = []

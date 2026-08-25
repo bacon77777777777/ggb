@@ -7,15 +7,23 @@ import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
  * 廠商設定（結算方式 + 差額分潤）
  *
  * 老闆 2026-08-25：「正常初始設定完，後續比較少會去編輯」——
- * 正因為少動，動的那一次才要查得到。每一格的變更都寫一筆 supplier_setting_logs
- * （誰、何時、從多少改成多少），頁面上直接列出變更史，不用去翻 action_logs 的 JSON。
+ * 正因為少動，動的那一次才要查得到。變更明細寫進 action_logs，
+ * 在「系統設定 → 操作記錄」看得到「誰、何時、把哪一格從多少改成多少」，
+ * 不另外開一張表也不另外做一個頁籤（老闆指定）。
  *
- * 只記「真的變了」的欄位：沒改動的格子不該產生噪音，否則變更史一長就沒人看。
+ * 只記「真的變了」的欄位：沒改動的格子不該產生噪音，否則紀錄一長就沒人看。
  */
 
 const MODE_LABEL: Record<string, string> = {
   charge: '跟廠商收回收價',
   margin: '差額分潤',
+}
+
+const FIELD_LABEL: Record<string, string> = {
+  recycle_settlement_mode: '結算方式',
+  recycle_margin_supplier_share: '差額分給廠商',
+  global_recycle_settlement_mode: '結算方式',
+  global_recycle_margin_supplier_share: '差額分給廠商',
 }
 
 /** 供變更史顯示用：把存進 DB 的原始值翻成人看得懂的字 */
@@ -32,21 +40,16 @@ export async function GET() {
 
   const supabase = getSupabaseAdmin()
 
-  const [{ data: suppliers, error }, { data: settings }, { data: logs }] = await Promise.all([
+  const [{ data: suppliers, error }, { data: settings }] = await Promise.all([
     supabase.from('suppliers')
       .select('id, name, recycle_settlement_mode, recycle_margin_supplier_share')
       .order('name'),
     supabase.from('platform_settings').select('key, value')
       .in('key', ['recycle_settlement_mode', 'recycle_margin_supplier_share']),
-    supabase.from('supplier_setting_logs')
-      .select('id, supplier_id, field, old_value, new_value, changed_by, created_at')
-      .order('created_at', { ascending: false })
-      .limit(200),
   ])
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   const map = Object.fromEntries((settings ?? []).map((s: any) => [s.key, s.value]))
-  const nameById = new Map((suppliers ?? []).map((s: any) => [s.id, s.name]))
 
   return NextResponse.json({
     suppliers: suppliers ?? [],
@@ -54,15 +57,6 @@ export async function GET() {
       mode: map.recycle_settlement_mode ?? 'margin',
       supplierShare: Number(map.recycle_margin_supplier_share ?? 0),
     },
-    logs: (logs ?? []).map((l: any) => ({
-      id: l.id,
-      supplierName: l.supplier_id ? (nameById.get(l.supplier_id) ?? `#${l.supplier_id}`) : '全站預設',
-      field: l.field,
-      oldLabel: describe(l.field, l.old_value),
-      newLabel: describe(l.field, l.new_value),
-      changedBy: l.changed_by,
-      createdAt: l.created_at,
-    })),
   })
 }
 
@@ -74,24 +68,13 @@ export async function PUT(request: Request) {
   const supabase = getSupabaseAdmin()
   const ip = getClientIp(request)
 
-  const { data: adminRow } = await supabase
-    .from('admins').select('username').eq('id', Number(admin.adminId)).single()
-  const changedBy = adminRow?.username ?? String(admin.adminId)
-
-  const logRows: any[] = []
-  const push = (supplierId: number | null, field: string, oldV: any, newV: any) => {
+  /** 收集「真的變了」的欄位，組成操作記錄看得懂的句子 */
+  const changes: string[] = []
+  const push = (target: string, field: string, oldV: any, newV: any) => {
     const o = oldV === null || oldV === undefined ? null : String(oldV)
     const n = newV === null || newV === undefined ? null : String(newV)
-    if (o === n) return // 沒變就不記，變更史才不會被無意義的列淹掉
-    logRows.push({
-      supplier_id: supplierId,
-      field,
-      old_value: o,
-      new_value: n,
-      admin_id: Number(admin.adminId),
-      changed_by: changedBy,
-      ip,
-    })
+    if (o === n) return // 沒變就不記，紀錄才不會被無意義的列淹掉
+    changes.push(`${target} · ${FIELD_LABEL[field] ?? field}：${describe(field, o)} → ${describe(field, n)}`)
   }
 
   // ── 全站預設 ──────────────────────────────────────────
@@ -109,8 +92,8 @@ export async function PUT(request: Request) {
       .in('key', ['recycle_settlement_mode', 'recycle_margin_supplier_share'])
     const prev = Object.fromEntries((before ?? []).map((s: any) => [s.key, s.value]))
 
-    push(null, 'global_recycle_settlement_mode', prev.recycle_settlement_mode ?? null, mode)
-    push(null, 'global_recycle_margin_supplier_share', prev.recycle_margin_supplier_share ?? null, String(share))
+    push('全站預設', 'global_recycle_settlement_mode', prev.recycle_settlement_mode ?? null, mode)
+    push('全站預設', 'global_recycle_margin_supplier_share', prev.recycle_margin_supplier_share ?? null, String(share))
 
     const { error } = await supabase.from('platform_settings').upsert(
       [
@@ -126,7 +109,7 @@ export async function PUT(request: Request) {
   if (Array.isArray(body?.suppliers)) {
     const ids = body.suppliers.map((s: any) => Number(s.id)).filter((n: number) => Number.isFinite(n))
     const { data: before } = await supabase.from('suppliers')
-      .select('id, recycle_settlement_mode, recycle_margin_supplier_share')
+      .select('id, name, recycle_settlement_mode, recycle_margin_supplier_share')
       .in('id', ids)
     const prevById = new Map((before ?? []).map((s: any) => [s.id, s]))
 
@@ -142,8 +125,9 @@ export async function PUT(request: Request) {
       }
 
       const prev = prevById.get(id)
-      push(id, 'recycle_settlement_mode', prev?.recycle_settlement_mode ?? null, mode)
-      push(id, 'recycle_margin_supplier_share',
+      const label = prev?.name ?? `廠商 #${id}`
+      push(label, 'recycle_settlement_mode', prev?.recycle_settlement_mode ?? null, mode)
+      push(label, 'recycle_margin_supplier_share',
         prev?.recycle_margin_supplier_share === null || prev?.recycle_margin_supplier_share === undefined
           ? null : String(Number(prev.recycle_margin_supplier_share)),
         share === null ? null : String(share))
@@ -155,19 +139,16 @@ export async function PUT(request: Request) {
     }
   }
 
-  if (logRows.length > 0) {
-    // 變更史寫失敗不該讓設定回不去 —— 設定已經存了，這裡只記錄
-    const { error: logErr } = await supabase.from('supplier_setting_logs').insert(logRows)
-    if (logErr) console.error('[supplier-settings] 變更史寫入失敗：', logErr.message)
+  // 沒有任何變更就不寫紀錄 —— 每按一次儲存都留一筆，操作記錄會被灌爆
+  if (changes.length > 0) {
+    await logAdminAction({
+      adminId: admin.adminId,
+      action: '更新廠商設定',
+      targetType: 'suppliers',
+      detail: { changes },
+      ip,
+    })
   }
 
-  await logAdminAction({
-    adminId: admin.adminId,
-    action: 'supplier_settings_update',
-    targetType: 'suppliers',
-    detail: { changes: logRows.length, fields: logRows.map(r => r.field) },
-    ip,
-  })
-
-  return NextResponse.json({ ok: true, changed: logRows.length })
+  return NextResponse.json({ ok: true, changed: changes.length })
 }

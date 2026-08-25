@@ -74,7 +74,7 @@ export async function PUT(request: Request) {
 
   await logAdminAction({
     adminId: admin.adminId,
-    action: 'recycle_rates_update',
+    action: '更新回收費率',
     targetType: 'recycle_rates',
     detail: { rates: body?.rates ?? null },
     ip,
