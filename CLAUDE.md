@@ -456,6 +456,7 @@ curl -X POST https://admin.ggb.com.tw/api/admin/storage/clear-products \
 | 標籤 | `ui/Badge`（`color`） | 自製小圓角標籤 |
 | 開關 | `ui/Switch`（`checked`/`onCheckedChange`） | 自製 toggle |
 | 空狀態 | `ui/EmptyState` | 自己寫「尚無資料」 |
+| 一句話提示 | `ui/Note`（`tone` info／warn／danger） | 手刻漸層框＋大圖示＋「注意」標題 |
 | 骨架屏 | `ui/Skeleton`、`ui/TableSkeleton` | 自製灰塊 |
 | 檔期設定 | `ScheduleFields`（時區換算正確，另有 `unlimitedToggle`） | 自刻 `datetime-local` |
 | 日期 | `DatePicker` / `DateRangePicker` / `DateTimePicker` / `YearMonthPicker` | 生 input |

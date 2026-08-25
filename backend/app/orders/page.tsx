@@ -13,6 +13,7 @@ import { useState, useMemo, useEffect, useRef, Fragment } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { useShipment, Shipment, ShipmentItem } from '@/contexts/ShipmentContext'
 import { useToast } from '@/contexts/ToastContext'
+import Note from '@/components/ui/Note'
 
 export default function OrdersPage() {
   // 廠商帳號唯讀（老闆指定廠商可看自己的配送申請）：
@@ -615,21 +616,7 @@ export default function OrdersPage() {
             </div>
           )}
           
-          <div className="bg-gradient-to-r from-primary to-indigo-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-base font-semibold text-neutral-900 mb-1">注意</h3>
-                <p className="text-sm text-neutral-600">
-                  生成配送單後，系統將自動發送出貨通知郵件至用戶信箱
-                </p>
-              </div>
-            </div>
-          </div>
+          <Note>生成配送單後，系統會自動寄出貨通知信到玩家信箱。</Note>
         </div>
       ),
       confirmText: '生成配送單',
@@ -861,21 +848,7 @@ export default function OrdersPage() {
           <p className="text-neutral-700">
             確定要取消 <span className="font-medium text-red-500">{cancellableOrders.length}</span> 筆訂單嗎？
           </p>
-          <div className="bg-gradient-to-r from-primary to-indigo-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-base font-semibold text-neutral-900 mb-1">注意</h3>
-                <p className="text-sm text-neutral-600">
-                  取消後將無法恢復，請確認操作。
-                </p>
-              </div>
-            </div>
-          </div>
+          <Note tone="danger">取消後無法復原。</Note>
         </div>
       ),
       onConfirm: async () => {
@@ -1590,21 +1563,7 @@ export default function OrdersPage() {
                                         <p className="text-sm text-neutral-600">
                                           確定要取消 <span className="font-medium text-neutral-900">{shipment.orderId}</span> 嗎？
                                         </p>
-                                        <div className="bg-gradient-to-r from-primary to-indigo-50 border border-blue-200 rounded-lg p-4">
-                                          <div className="flex items-start gap-3">
-                                            <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                              <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                              </svg>
-                                            </div>
-                                            <div className="flex-1">
-                                              <h3 className="text-base font-semibold text-neutral-900 mb-1">注意</h3>
-                                              <p className="text-sm text-neutral-600">
-                                                取消後將無法恢復，請確認操作。
-                                              </p>
-                                            </div>
-                                          </div>
-                                        </div>
+                                        <Note tone="danger">取消後無法復原。</Note>
                                       </div>
                                     ),
                                     confirmText: '確定取消',

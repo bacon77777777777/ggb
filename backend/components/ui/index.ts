@@ -8,6 +8,7 @@ export { default as Label } from './Label'
 export { default as Badge } from './Badge'
 export { default as Card } from './Card'
 export { default as Switch } from './Switch'
+export { default as Note } from './Note'
 
 // Types
 export type { ButtonProps } from './Button'
@@ -19,3 +20,4 @@ export type { LabelProps } from './Label'
 export type { BadgeProps } from './Badge'
 export type { CardProps } from './Card'
 export type { SwitchProps } from './Switch'
+export type { NoteTone } from './Note'
