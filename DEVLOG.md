@@ -4,6 +4,33 @@
 
 ---
 
+## v2026.08.25k｜2026-08-25｜新頁面的權限補發，並擋住廠商編輯視窗裡的結算欄位
+
+老闆問「管理員權限有跟進嗎」—— **沒有**。`npm run check:permissions` 只驗四張表
+彼此一致，**不會**檢查有沒有任何角色真的拿到那個權限，所以四個新權限
+（`small_items` / `recycle_pool` / `settings_recycle` / `suppliers_settings`）
+一個角色都沒有，除了 super_admin 誰都進不去。
+
+更要緊的是我把兩個既有頁面的權限換掉了，等於默默拿走了本來有的存取：
+
+| 頁面 | 原本 | 改成 | 實際影響（PROD 4 個管理員） |
+|------|------|------|------|
+| `/small-items` | `products` | `small_items` | matchplanet（廠商）失去 —— **刻意不補**，那是平台的機台品項庫 |
+| `/dismantled` | `reports_dismantled` | `recycle_pool` | elina（會計）失去 → 補回來 |
+
+**migration 624** 把權限發給角色：會計 +`recycle_pool`；一般管理員
++`small_items`/`recycle_pool`/`settings_recycle`；營運 +`small_items`。
+`suppliers_settings`（廠商分潤條件）**不發給任何角色**，只有 super_admin 涵蓋得到 ——
+那是跟廠商談的錢，比廠商基本資料敏感一個等級，需要時逐個勾。
+`ROLE_PRESETS` 一併補上，否則之後用預設建角色又會漏。
+
+**順手堵掉一個自己開的洞**：我把結算欄位（分潤比、代扣稅率、差額分潤）放進了
+廠商管理的編輯視窗，但那頁只要 `suppliers` 權限就進得來 —— 等於讓一個較低權限的
+頁面改得動最敏感的設定。現在那一區與列表摘要欄都要 `suppliers_settings` 才顯示，
+`/api/admin/suppliers` 的 POST/PATCH 也擋一次（沒權限就整組欄位不寫入）。
+
+---
+
 ## v2026.08.25j｜2026-08-25｜跨期回收調整：本期／往期兩桶、有正負號的調整行、鎖帳
 
 老闆問的：「月初結算完上月，本月中用戶又回收了上月抽的東西，對帳不就亂了？」

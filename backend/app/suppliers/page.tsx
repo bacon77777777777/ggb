@@ -10,6 +10,7 @@ import Textarea from '@/components/ui/Textarea'
 import { useState, useEffect } from 'react'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
+import { useAdmin } from '@/contexts/AdminContext'
 import { ListTableCard, RowAction, type ListColumn } from '@/components'
 
 interface Supplier {
@@ -73,6 +74,15 @@ const MODE_TEXT: Record<string, string> = {
 
 export default function SuppliersPage() {
   const { toast } = useToast()
+  /*
+   * 結算設定（分潤比、代扣稅率、差額分潤）比廠商基本資料敏感得多，
+   * 但這頁只要 suppliers 權限就進得來 —— 所以那一區另外看 suppliers_settings。
+   * 伺服器端在 /api/admin/suppliers 也擋一次，前端只是不要畫出改不了的欄位。
+   */
+  const { user } = useAdmin()
+  const canEditSettlement =
+    user?.role === 'super_admin' || user?.role === 'superadmin'
+    || (user?.permissions ?? []).includes('suppliers_settings')
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -262,6 +272,7 @@ export default function SuppliersPage() {
       key: 'settlement', label: '結算設定',
       className: 'text-xs whitespace-nowrap',
       render: s => {
+        if (!canEditSettlement) return <span className="text-neutral-300">—</span>
         const custom = s.profit_share_percent !== null
           || s.withholding_rate_percent !== null
           || s.points_deduction_mode !== null
@@ -444,6 +455,8 @@ export default function SuppliersPage() {
             </div>
           </div>
 
+          {canEditSettlement && (
+          <>
           {/*
             結算設定：留空＝跟隨全站預設（「廠商管理 → 廠商結算設定」），
             佔位提示直接把目前的預設值寫出來，才看得出空白會套到什麼。
@@ -507,6 +520,8 @@ export default function SuppliersPage() {
               </div>
             </div>
           </div>
+          </>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">備註</label>

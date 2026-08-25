@@ -8,6 +8,11 @@ import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
  * 空字串一律正規化成 null —— 表單清空時送的是 ''，直接寫進去會變成
  * 「有值但等於空」，之後 resolveRates 就分不出「沒設」與「設成空」。
  */
+function canEditRates(session: any): boolean {
+  if (session?.role === 'super_admin' || session?.role === 'superadmin') return true
+  return (session?.permissions ?? []).includes('suppliers_settings')
+}
+
 function normalizeRates(body: any) {
   const num = (v: any) => (v === null || v === undefined || v === '' ? null : Number(v))
   const enumv = (v: any, allowed: string[]) =>
@@ -52,7 +57,7 @@ export async function POST(request: NextRequest) {
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase
     .from('suppliers')
-    .insert({ name: name.trim(), contact_name, contact_phone, contact_email, address, notes, is_active: is_active ?? true, tax_id: tax_id || null, sender_name: sender_name || null, sender_zip_code: sender_zip_code || null, sender_address: sender_address || null, ...normalizeRates(body) })
+    .insert({ name: name.trim(), contact_name, contact_phone, contact_email, address, notes, is_active: is_active ?? true, tax_id: tax_id || null, sender_name: sender_name || null, sender_zip_code: sender_zip_code || null, sender_address: sender_address || null, ...(canEditRates(session) ? normalizeRates(body) : {}) })
     .select()
     .single()
 

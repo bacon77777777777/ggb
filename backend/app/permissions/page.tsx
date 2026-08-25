@@ -136,11 +136,11 @@ const ROLE_PRESETS: { label: string; permissions: string[] }[] = [
   },
   {
     label: '財務人員',
-    permissions: ['dashboard', 'recharges', 'reports_logistics', 'reports_products', 'reports_dismantled', 'reports_adjustments', 'reports_settlement', 'logs'],
+    permissions: ['dashboard', 'recharges', 'reports_logistics', 'reports_products', 'reports_dismantled', 'recycle_pool', 'reports_adjustments', 'reports_settlement', 'logs'],
   },
   {
     label: '商品管理員',
-    permissions: ['dashboard', 'products', 'suppliers', 'categories', 'draws', 'orders', 'settings', 'settings_modules'],
+    permissions: ['dashboard', 'products', 'small_items', 'suppliers', 'categories', 'draws', 'orders', 'settings', 'settings_modules', 'settings_recycle', 'recycle_pool'],
   },
   {
     label: '行銷人員',
@@ -148,7 +148,7 @@ const ROLE_PRESETS: { label: string; permissions: string[] }[] = [
   },
   {
     label: '一般管理員',
-    permissions: ['dashboard', 'analytics_overview', 'recharges', 'reports_logistics', 'reports_products', 'products', 'suppliers', 'categories', 'draws', 'orders', 'users', 'banners', 'news', 'coupons', 'logs'],
+    permissions: ['dashboard', 'analytics_overview', 'recharges', 'reports_logistics', 'reports_products', 'products', 'small_items', 'suppliers', 'categories', 'draws', 'orders', 'users', 'banners', 'news', 'coupons', 'recycle_pool', 'settings_recycle', 'logs'],
   },
 ]
 

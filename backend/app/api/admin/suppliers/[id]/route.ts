@@ -42,6 +42,11 @@ function rateChangeDetail(prev: any, next: any) {
  * 空字串一律正規化成 null —— 表單清空時送的是 ''，直接寫進去會變成
  * 「有值但等於空」，之後 resolveRates 就分不出「沒設」與「設成空」。
  */
+function canEditRates(session: any): boolean {
+  if (session?.role === 'super_admin' || session?.role === 'superadmin') return true
+  return (session?.permissions ?? []).includes('suppliers_settings')
+}
+
 function normalizeRates(body: any) {
   const num = (v: any) => (v === null || v === undefined || v === '' ? null : Number(v))
   const enumv = (v: any, allowed: string[]) =>
@@ -88,7 +93,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const { data, error } = await supabase
     .from('suppliers')
-    .update({ name: name?.trim(), contact_name, contact_phone, contact_email, address, notes, is_active, tax_id: tax_id !== undefined ? (tax_id || null) : undefined, sender_name: sender_name !== undefined ? (sender_name || null) : undefined, sender_zip_code: sender_zip_code !== undefined ? (sender_zip_code || null) : undefined, sender_address: sender_address !== undefined ? (sender_address || null) : undefined, ...normalizeRates(body), updated_at: new Date().toISOString() })
+    .update({ name: name?.trim(), contact_name, contact_phone, contact_email, address, notes, is_active, tax_id: tax_id !== undefined ? (tax_id || null) : undefined, sender_name: sender_name !== undefined ? (sender_name || null) : undefined, sender_zip_code: sender_zip_code !== undefined ? (sender_zip_code || null) : undefined, sender_address: sender_address !== undefined ? (sender_address || null) : undefined, ...(canEditRates(session) ? normalizeRates(body) : {}), updated_at: new Date().toISOString() })
     .eq('id', id)
     .select()
     .single()
