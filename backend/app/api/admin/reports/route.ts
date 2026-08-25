@@ -343,7 +343,7 @@ export async function GET(request: NextRequest) {
         )),
         fetchAllRows<any>(() => applyDateFilter(
           supabase.from('admin_recycle_pool')
-            .select('recycle_value, unit_price, margin, trigger, product:products(supplier_id)')
+            .select('recycle_value, unit_price, margin, trigger, created_at, draw:draw_records(created_at), product:products(supplier_id)')
         )),
         /*
          * orders 這支容錯：STG 與 PROD 的 orders schema 不一樣 ——
@@ -447,21 +447,110 @@ export async function GET(request: NextRequest) {
       const supplierRecycles = recycleRows.filter(
         (r: any) => String(r.product?.supplier_id) === supplierId,
       )
-      const recycleRefundTotal = supplierRecycles.reduce(
-        (s: number, r: any) => s + (r.recycle_value || 0), 0,
-      )
-      const recycledUnitPriceTotal = supplierRecycles.reduce(
-        (s: number, r: any) => s + (r.unit_price || 0), 0,
-      )
-      const recycledMarginTotal = supplierRecycles.reduce(
-        (s: number, r: any) => s + (r.margin || 0), 0,
-      )
+
+      /*
+       * 本期回收要拆兩桶，依「當初那一筆抽獎屬於哪一期」分。
+       *
+       * 倉庫有 30 天保管期，7/25 抽的最晚 8/24 才自動回收 ——
+       * 「上月抽、本月回收」是常態不是例外。改版前把兩者混在一起，
+       * 本期分潤基底會被扣掉一筆根本不在本期營收裡的單抽價，
+       * 科目錯位、本期營收小的時候還會扣成莫名其妙的負數。
+       *
+       *   本期抽、本期回收 → 照常：從本期基底移出，走差額分潤
+       *   往期抽、本期回收 → 本期基底不動（那筆營收不在本期），
+       *                     改列一筆獨立的「往期回收調整」
+       */
+      const drawnAt = (r: any) => r.draw?.created_at ?? r.created_at
+      const isCurrentPeriodDraw = (r: any) => {
+        const t = drawnAt(r)
+        if (!t) return true // 對不回抽獎時間就當本期，至少不會誤扣到別期
+        if (startUtc && t < startUtc) return false
+        if (endExclusiveUtc && t >= endExclusiveUtc) return false
+        return true
+      }
+
+      const currentRecycles = supplierRecycles.filter(isCurrentPeriodDraw)
+      const priorRecycles = supplierRecycles.filter((r: any) => !isCurrentPeriodDraw(r))
+
+      const sumBy = (rows: any[], f: string) => rows.reduce((s: number, r: any) => s + (r[f] || 0), 0)
+
+      const recycleRefundTotal = sumBy(supplierRecycles, 'recycle_value')
+      const recycledUnitPriceTotal = sumBy(currentRecycles, 'unit_price')
+      const recycledMarginTotal = sumBy(currentRecycles, 'margin')
 
       const settlementMode = rates.recycleMode
       const marginSupplierShare = rates.recycleMarginShare
 
+      /*
+       * 往期回收調整（有正負號）
+       *
+       * 那一筆抽獎的營收上一期已經按「一般分潤」付給廠商了，但它現在被回收，
+       * 按 margin 規則本來只該給「差額 × 差額分潤率」。兩者的差就是要調整的金額。
+       *
+       *   調整 = 本期應給 − 上期已付
+       *
+       * **可能是正的**：差額永遠比單抽價小（少了退給玩家那塊），所以要讓廠商
+       * 拿到跟原本一樣多，差額分潤率必須高於一般分潤率；高過臨界點時調整就轉正。
+       * 臨界點 ≈ 一般分潤率 ÷ (1 − 回收率)。所以這一行不能寫死成「追回」。
+       *
+       * 「上期已付」用**當初那一期快照裡存的實得率**回推（supplierGross ÷ total_g），
+       * 不是用現在的費率 —— 費率隨時會被後台調動，用現在的值算歷史一定錯。
+       * 撈不到快照時退回當期分潤率，並回報 estimated 讓畫面標示出來。
+       */
+      const { data: snapshotRows } = await supabase
+        .from('settlement_snapshots')
+        .select('period_start, period_end, total_g, status, supplier_net, confirmed_at, paid_at, raw_data')
+        .eq('supplier_id', Number(supplierId))
+
+      const snapshots = snapshotRows ?? []
+
+      /** 某個抽獎時間落在哪一期，那一期廠商每 1 G 營收實得多少 */
+      const paidRateAt = (iso: string | null): { rate: number; estimated: boolean } => {
+        const day = iso ? iso.slice(0, 10) : ''
+        const snap = snapshots.find((sn: any) => day >= sn.period_start && day <= sn.period_end)
+        const gross = Number(snap?.raw_data?.supplierGross)
+        const totalG = Number(snap?.total_g)
+        if (snap && Number.isFinite(gross) && Number.isFinite(totalG) && totalG > 0) {
+          return { rate: gross / totalG, estimated: false }
+        }
+        return { rate: rates.supplierShare / 100, estimated: true }
+      }
+
+      /*
+       * 鎖帳：這一期若已有 confirmed／paid 的月結快照，畫面上要以快照金額為準。
+       * 結算頁本來是每次開都即時重算的，所以本月中發生一筆上月的回收，
+       * 回頭看上月結算單數字就跟當初付款時不一樣 —— 這正是要靠鎖帳擋住的。
+       */
+      const lockedSnap = snapshots.find((sn: any) =>
+        sn.period_start === start && sn.period_end === end
+        && (sn.status === 'confirmed' || sn.status === 'paid'))
+      const periodLock = lockedSnap
+        ? {
+            locked: true,
+            status: lockedSnap.status as 'confirmed' | 'paid',
+            net: Number(lockedSnap.supplier_net) || 0,
+            at: lockedSnap.paid_at ?? lockedSnap.confirmed_at ?? null,
+          }
+        : { locked: false as const }
+
+      let crossPeriodAdjustment = 0
+      let crossPeriodEstimated = false
+      for (const r of priorRecycles) {
+        const { rate, estimated } = paidRateAt(drawnAt(r))
+        if (estimated) crossPeriodEstimated = true
+        const alreadyPaid = (r.unit_price || 0) * rate
+        const shouldGet = settlementMode === 'margin'
+          ? ((r.margin || 0) * marginSupplierShare) / 100
+          // charge 模式：上期分潤照給，本期只要扣回收價
+          : alreadyPaid - (r.recycle_value || 0)
+        crossPeriodAdjustment += shouldGet - alreadyPaid
+      }
+      crossPeriodAdjustment = Math.round(crossPeriodAdjustment)
+
       // charge 模式才從結算扣回收價；margin 模式回收價由平台吸收
-      const dismantleTotal = settlementMode === 'charge' ? recycleRefundTotal : 0
+      const dismantleTotal = settlementMode === 'charge'
+        ? sumBy(currentRecycles, 'recycle_value')
+        : 0
       // margin 模式要把被回收的抽獎整筆移出一般分潤基底，改走差額分潤
       const recycledRevenueExcluded = settlementMode === 'margin' ? recycledUnitPriceTotal : 0
       const marginToSupplier = settlementMode === 'margin'
@@ -521,6 +610,10 @@ export async function GET(request: NextRequest) {
         recycledMarginTotal,
         marginToSupplier,
         recycleCount: supplierRecycles.length,
+        crossPeriodAdjustment,
+        crossPeriodCount: priorRecycles.length,
+        crossPeriodEstimated,
+        lock: periodLock,
       }
       if (scope.isSupplier) return NextResponse.json(body)
 

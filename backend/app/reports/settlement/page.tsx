@@ -40,6 +40,13 @@ interface PeriodData {
   recycledMarginTotal?: number   // 差額總額＝Σ(單抽價 − 回收價)
   marginToSupplier?: number      // 差額分給廠商的金額
   recycleCount?: number
+  /** 往期抽、本期回收造成的調整，有正負號（差額分潤率夠高時會是正的） */
+  crossPeriodAdjustment?: number
+  crossPeriodCount?: number
+  /** 找不到當期快照、用現在的分潤率估的 */
+  crossPeriodEstimated?: boolean
+  /** 這一期是否已鎖帳（月結快照 confirmed／paid） */
+  lock?: { locked: boolean; status?: 'confirmed' | 'paid'; net?: number; at?: string | null }
   couponTotal: number            // 折價券折抵總額（雙方各吸收一半）
   shippingTotal: number          // 運費總額（雙方各吸收一半）
   pointsTotal: number            // 積分支付 G 等值（模式 A 時廠商吸收一半）
@@ -198,6 +205,9 @@ export default function SettlementPage() {
   const marginToSupplier = Math.round(data?.marginToSupplier ?? 0)
   const marginToPlatform = recycledMarginTotal - marginToSupplier
   const recycleRefundTotal = Math.round(data?.recycleRefundTotal ?? 0)
+  const crossPeriodAdjustment = Math.round(data?.crossPeriodAdjustment ?? 0)
+  const crossPeriodCount = data?.crossPeriodCount ?? 0
+  const lock = data?.lock
 
   // 先從淨收入扣除共同成本（折價券/運費/積分廠商吸收部分），再按比例分潤
   // margin 模式：被回收的抽獎營收不參與一般分潤，先扣掉
@@ -213,7 +223,12 @@ export default function SettlementPage() {
    * 也不會結轉到下一期 —— 等於平台自動放棄債權。負數就讓它是負數，
    * 由下面的「本期為負」提示告訴會計要結轉。
    */
-  const supplierNet = supplierGross + marginToSupplier - dismantleTotal
+  /*
+   * 應付廠商 = 一般分潤 + 本期回收差額分潤 − 本期回收扣款 + 往期回收調整
+   *
+   * 往期回收調整有正負號，不是「追回」—— 差額分潤率高過臨界點時它會是正的。
+   */
+  const supplierNet = supplierGross + marginToSupplier - dismantleTotal + crossPeriodAdjustment
 
   /*
    * 匯出對帳單（CSV）
@@ -255,6 +270,10 @@ export default function SettlementPage() {
             [`回收差額(共${recycledMarginTotal})廠商分${data?.marginSupplierShare ?? 0}%`]: marginToSupplier,
           }
         : { '回收退代幣(廠商吸收100%)': -dismantleTotal }),
+      ...(crossPeriodCount > 0
+        ? { [`往期回收調整(${crossPeriodCount}筆上期抽獎)`]: crossPeriodAdjustment }
+        : {}),
+      ...(lock?.locked ? { 鎖帳狀態: lock.status === 'paid' ? '已付款' : '已確認', 快照金額: lock.net ?? 0 } : {}),
       實際應付廠商: supplierNet,
       // 平台級數字只給平台管理員，廠商那份完全不帶（API 也不會回）
       ...(isSupplier ? {} : {
@@ -487,6 +506,26 @@ export default function SettlementPage() {
                   value={`−${fmt(dismantleTotal)}`} red indent
                 />
               )}
+              {crossPeriodCount > 0 && (
+                /*
+                  往期抽、本期回收。那筆營收上一期已按一般分潤付過了，
+                  這裡補算差額 —— 有正負號，不是單方向的追回。
+                */
+                <Row
+                  label={
+                    <>
+                      <span className="text-neutral-600">往期回收調整</span>
+                      <span className="ml-1.5 text-xs text-neutral-400">
+                        {crossPeriodCount} 筆上期抽獎
+                        {data?.crossPeriodEstimated && '・估算'}
+                      </span>
+                    </>
+                  }
+                  value={`${crossPeriodAdjustment >= 0 ? '+' : '−'}${fmt(Math.abs(crossPeriodAdjustment))}`}
+                  red={crossPeriodAdjustment < 0}
+                  indent
+                />
+              )}
 
               {/* 最終結果 */}
               <div className="border-t-2 border-neutral-300 mt-2 pt-3">
@@ -494,11 +533,33 @@ export default function SettlementPage() {
                   <div className="flex items-center gap-1.5">
                     <span className="text-base font-bold text-neutral-800">實際應付廠商</span>
                     <InfoTooltip text={settlementMode === 'margin'
-                      ? `① 消費 G − 綠界手續費 = 淨收入\n② 淨收入 − 折價券（50%）− 運費（50%）${pointsMode === 'A' ? ' + 積分補償（50%）' : ''} − 被回收抽獎營收 = 可分潤基礎\n③ 可分潤基礎 × ${supplierShare}% = 廠商分潤\n④ 廠商分潤 + 回收差額 × ${data?.marginSupplierShare ?? 0}% = 實際應付廠商\n（回收退給玩家的代幣由平台吸收，不跟廠商收）`
+                      ? `① 消費 G − 綠界手續費 = 淨收入\n② 淨收入 − 折價券（50%）− 運費（50%）${pointsMode === 'A' ? ' + 積分補償（50%）' : ''} − 被回收抽獎營收 = 可分潤基礎\n③ 可分潤基礎 × ${supplierShare}% = 廠商分潤\n④ 廠商分潤 + 回收差額 × ${data?.marginSupplierShare ?? 0}% ± 往期回收調整 = 實際應付廠商\n（回收退給玩家的代幣由平台吸收，不跟廠商收）\n往期回收調整＝上期抽、本期被回收的那幾筆，本期應給與上期已付的差，可正可負`
                       : `① 消費 G − 綠界手續費 = 淨收入\n② 淨收入 − 折價券（50%）− 運費（50%）${pointsMode === 'A' ? ' + 積分補償（50%）' : ''} = 可分潤基礎\n③ 可分潤基礎 × ${supplierShare}% = 廠商分潤\n④ 廠商分潤 − 回收退代幣 = 實際應付廠商`} />
                   </div>
                   <span className={`text-xl font-bold tabular-nums ${supplierNet < 0 ? 'text-red-600' : 'text-green-600'}`}>{fmt(supplierNet)}</span>
                 </div>
+                {lock?.locked && (
+                  /*
+                    這一期已經有 confirmed／paid 的月結快照。結算頁本身是每次開都
+                    即時重算的，所以本月中發生一筆上月的回收，回頭看上月的數字
+                    就會跟當初付款時不一樣 —— 以快照為準，差額走下一期的往期回收調整。
+                  */
+                  <div className="mt-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs leading-relaxed text-neutral-600">
+                    <span className="font-medium text-neutral-900">
+                      本期已{lock.status === 'paid' ? '付款' : '確認'}鎖帳
+                    </span>
+                    ，結算金額以月結快照為準：
+                    <span className="mx-1 font-mono font-medium text-neutral-900">{fmt(lock.net ?? 0)}</span>
+                    {Math.round(lock.net ?? 0) !== supplierNet && (
+                      <>
+                        <br />
+                        上方為即時重算值，差額
+                        <span className="mx-1 font-mono">{fmt(Math.abs(supplierNet - (lock.net ?? 0)))}</span>
+                        來自鎖帳後才發生的回收，會在下一期以「往期回收調整」沖銷。
+                      </>
+                    )}
+                  </div>
+                )}
                 {supplierNet < 0 && (
                   /*
                    * 負數以前會被 Math.max(0, …) 夾成 0，那筆欠款就地消失、也不結轉下一期，

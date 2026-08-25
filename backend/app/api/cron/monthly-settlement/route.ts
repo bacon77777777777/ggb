@@ -58,7 +58,7 @@ async function calcSupplierSettlement(
       .select('amount, status, payment_fee, created_at')
       .gte('created_at', start).lt('created_at', endStr)),
     fetchAllRows<any>(() => supabase.from('admin_recycle_pool')
-      .select('recycle_value, product:products(supplier_id)')
+      .select('recycle_value, unit_price, margin, created_at, draw:draw_records(created_at), product:products(supplier_id)')
       .gte('created_at', start).lt('created_at', endStr)),
     fetchAllRows<any>(() => supabase.from('orders')
       .select('coupon_discount, total_amount')
@@ -94,18 +94,74 @@ async function calcSupplierSettlement(
   const allocatedActualFee = effectiveFeeRate != null ? Math.round(totalG * effectiveFeeRate) : null
   const ecpayFee           = allocatedActualFee ?? Math.round(totalG * (ECPAY_RATE / 100))
 
-  const dismantleTotal  = recycleRows
+  /*
+   * 回收拆兩桶，算法必須與結算頁（/api/admin/reports?tab=settlement）完全一致 ——
+   * 快照是鎖帳後的權威數字，兩邊用不同算式就會出現「頁面說 A、對帳單說 B」。
+   *
+   *   本期抽、本期回收 → margin：從基底移出走差額分潤｜charge：扣回收價
+   *   往期抽、本期回收 → 基底不動，改列有正負號的「往期回收調整」
+   */
+  const supplierRecycles = recycleRows
     .filter((r: any) => String(r.product?.supplier_id) === String(supplierId))
-    .reduce((s: number, r: any) => s + (r.recycle_value || 0), 0)
+  const drawnAt = (r: any) => r.draw?.created_at ?? r.created_at
+  const isCurrentDraw = (r: any) => {
+    const t = drawnAt(r)
+    if (!t) return true
+    return t >= start && t < endStr
+  }
+  const currentRecycles = supplierRecycles.filter(isCurrentDraw)
+  const priorRecycles   = supplierRecycles.filter((r: any) => !isCurrentDraw(r))
+  const sumBy = (rows: any[], f: string) => rows.reduce((s: number, r: any) => s + (r[f] || 0), 0)
+
+  const dismantleTotal = rates.recycleMode === 'charge' ? sumBy(currentRecycles, 'recycle_value') : 0
+  const recycledRevenueExcluded = rates.recycleMode === 'margin' ? sumBy(currentRecycles, 'unit_price') : 0
+  const recycledMarginTotal = sumBy(currentRecycles, 'margin')
+  const marginToSupplier = rates.recycleMode === 'margin'
+    ? Math.round((recycledMarginTotal * rates.recycleMarginShare) / 100)
+    : 0
 
   const supplierOrders  = orderRows
   const couponTotal     = supplierOrders.reduce((s: number, r: any) => s + (r.coupon_discount || 0), 0)
   const shippingTotal   = supplierOrders.reduce((s: number, r: any) => s + (r.total_amount || 0), 0)
 
   const netRevenue      = totalG - ecpayFee
-  const distributable   = netRevenue - Math.round(couponTotal * 0.5) - Math.round(shippingTotal * 0.5)
+  const distributable   = netRevenue
+    - Math.round(couponTotal * 0.5)
+    - Math.round(shippingTotal * 0.5)
+    - recycledRevenueExcluded
   const supplierGross   = Math.round(distributable * (SUPPLIER_SHARE / 100))
-  const supplierNet     = Math.max(0, supplierGross - dismantleTotal)
+
+  // 往期已付的實得率一律取「當初那一期快照」存的值，不用現在的費率
+  const { data: priorSnaps } = await supabase
+    .from('settlement_snapshots')
+    .select('period_start, period_end, total_g, raw_data')
+    .eq('supplier_id', supplierId)
+  const paidRateAt = (iso: string | null) => {
+    const day = iso ? String(iso).slice(0, 10) : ''
+    const sn = (priorSnaps ?? []).find((x: any) => day >= x.period_start && day <= x.period_end)
+    const gross = Number(sn?.raw_data?.supplierGross)
+    const tg = Number(sn?.total_g)
+    return sn && Number.isFinite(gross) && Number.isFinite(tg) && tg > 0
+      ? gross / tg
+      : SUPPLIER_SHARE / 100
+  }
+
+  let crossPeriodAdjustment = 0
+  for (const r of priorRecycles) {
+    const rate = paidRateAt(drawnAt(r))
+    const alreadyPaid = (r.unit_price || 0) * rate
+    const shouldGet = rates.recycleMode === 'margin'
+      ? ((r.margin || 0) * rates.recycleMarginShare) / 100
+      : alreadyPaid - (r.recycle_value || 0)
+    crossPeriodAdjustment += shouldGet - alreadyPaid
+  }
+  crossPeriodAdjustment = Math.round(crossPeriodAdjustment)
+
+  /*
+   * ⚠️ 不再用 Math.max(0, …) 夾住。扣成負數會被截成 0，那筆欠款就地消失、
+   * 也不會結轉下一期 —— 等於平台自動放棄債權。負數就讓它是負數。
+   */
+  const supplierNet = supplierGross + marginToSupplier - dismantleTotal + crossPeriodAdjustment
 
   return {
     supplier_id:      supplierId,
@@ -121,6 +177,8 @@ async function calcSupplierSettlement(
       rechargeTotal, rechargeCount,
       hasActualFee, allocatedActualFee, platformTotalFee: hasActualFee ? platformTotalFee : null,
       supplierGross, distributable, netRevenue,
+      recycledRevenueExcluded, recycledMarginTotal, marginToSupplier,
+      crossPeriodAdjustment, crossPeriodCount: priorRecycles.length,
       /*
        * 當期實際採用的費率一併存進快照。
        * 沒存的話，之後要算「上期就這筆付了多少」（跨期回收調整）就沒有基準 ——
