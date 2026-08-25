@@ -20,7 +20,7 @@ import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import SelectField from '@/components/ui/SelectField'
 import Badge from '@/components/ui/Badge'
-import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useToast } from '@/contexts/ToastContext'
 
 interface Rate {
@@ -165,7 +165,7 @@ export default function RecycleRatesPage() {
           </div>
 
           {loading ? (
-            <TableSkeleton rows={5} cols={4} />
+            <CardSkeleton rows={6} />
           ) : (
             <div className="space-y-3">
               {Object.entries(TYPE_META).map(([type, meta]) => (
