@@ -495,18 +495,23 @@ export default function SettlementPage() {
 
               {/* ⑤ 廠商分潤 → 再扣回收 */}
               <Row label={<><span className="font-semibold text-neutral-800">廠商分潤</span><span className="text-xs text-neutral-400 ml-1">{supplierShare}%</span></>} value={fmt(supplierGross)} indigo />
-              {settlementMode === 'margin' ? (
+              {/*
+                金額為 0 的列不畫（老闆 2026-08-25）。差額分潤設 0% 時
+                「回收差額分潤 +NT$ 0」每期都出現一行，那是噪音不是資訊。
+              */}
+              {settlementMode === 'margin' && marginToSupplier !== 0 && (
                 <Row
                   label={<><span className="text-neutral-600">回收差額分潤</span><span className="text-xs text-neutral-400 ml-1.5">差額 {fmt(recycledMarginTotal)} · 廠商 {data?.marginSupplierShare ?? 0}%</span></>}
                   value={`+${fmt(marginToSupplier)}`} indent
                 />
-              ) : (
+              )}
+              {settlementMode === 'charge' && dismantleTotal !== 0 && (
                 <Row
                   label={<><span className="text-neutral-600">回收退代幣</span><span className="text-xs text-neutral-400 ml-1.5">廠商吸收 100%</span></>}
                   value={`−${fmt(dismantleTotal)}`} red indent
                 />
               )}
-              {crossPeriodCount > 0 && (
+              {crossPeriodCount > 0 && crossPeriodAdjustment !== 0 && (
                 /*
                   往期抽、本期回收。那筆營收上一期已按一般分潤付過了，
                   這裡補算差額 —— 有正負號，不是單方向的追回。
