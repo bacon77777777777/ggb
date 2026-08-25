@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 
 export async function GET(req: NextRequest) {
   const session = await requireAdminSession()
@@ -43,18 +44,23 @@ export async function GET(req: NextRequest) {
 
   if (!user) return NextResponse.json({ error: '用戶不存在' }, { status: 404 })
 
-  // 計算累計餘額（從最舊到最新，再倒序輸出）
-  // 先取所有記錄算 running balance（最多取 2000 筆）
-  const { data: allRows } = await supabase
+  /*
+   * 累計餘額（從最舊到最新算 running balance，再倒序輸出）
+   *
+   * ⚠️ 這裡本來寫 .limit(2000)，但 PostgREST 上限就是 1,000 筆 ——
+   * 超過 1,000 筆的帳號，第 1,001 筆之後的「餘額」全部是錯的。
+   * PROD 上 bacon731 就有 3,167 筆。running balance 少加了七成的異動，
+   * 算出來的餘額看起來仍是個合理數字，但跟實際餘額對不起來。
+   */
+  const allRows = await fetchAllRows<any>(() => supabase
     .from('token_ledger')
     .select('ref_id, delta, created_at')
     .eq('user_id', userId)
-    .order('created_at', { ascending: true })
-    .limit(2000)
+    .order('created_at', { ascending: true }))
 
   const balanceMap: Record<string, number> = {}
   let running = 0
-  for (const r of allRows ?? []) {
+  for (const r of allRows) {
     running += Number(r.delta)
     balanceMap[`${r.ref_id}_${r.created_at}`] = running
   }

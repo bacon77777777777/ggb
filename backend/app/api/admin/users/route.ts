@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 
 export async function GET() {
   try {
@@ -45,12 +46,12 @@ export async function GET() {
     // 從 user_event_logs 撈最近一次登入 IP
     const lastLoginIpById = new Map<string, string>()
     {
-      const { data: loginLogs } = await supabaseAdmin
+      // .limit(5000) 無效（PostgREST 上限 1,000）—— 撈不完就是舊帳號的登入 IP 憑空消失
+      const loginLogs = await fetchAllRows<any>(() => supabaseAdmin
         .from('user_event_logs')
         .select('user_id, ip, created_at')
         .eq('event_type', 'login')
-        .order('created_at', { ascending: false })
-        .limit(5000)
+        .order('created_at', { ascending: false }))
       for (const row of loginLogs ?? []) {
         const userId = String((row as any).user_id || '')
         const ip = String((row as any).ip || '')

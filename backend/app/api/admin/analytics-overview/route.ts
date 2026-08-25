@@ -132,9 +132,9 @@ export async function GET(req: NextRequest) {
     })
 
     // Visit breakdown for sparkline
-    const { data: visitRows } = await inR(db.from('visit_logs').select('created_at'), curStart, curEnd)
+    const visitRows = await fetchAllRows<any>(() => inR(db.from('visit_logs').select('created_at'), curStart, curEnd))
     const visitByKey: Record<string, number> = {}
-    ;(visitRows ?? []).forEach((v: any) => {
+    ;visitRows.forEach((v: any) => {
       const key = dtKey(v.created_at)
       visitByKey[key] = (visitByKey[key] ?? 0) + 1
     })

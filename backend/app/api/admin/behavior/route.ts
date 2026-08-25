@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 
 function parseDateRange(searchParams: URLSearchParams): { since: string; until: string } {
   const start = searchParams.get('start')
@@ -69,15 +70,16 @@ export async function GET(request: Request) {
     const supabase = getSupabaseAdmin()
 
     // Fetch all events in range
-    let query = supabase
+    /*
+     * ⚠️ 本來寫 .limit(100000)（意圖是「全部撈」），但 PostgREST 上限是 1,000 筆，
+     * 多寫的會被靜默忽略。PROD user_events 已有 21,371 筆 ——
+     * 整個行為分析頁的數字都只根據其中 1,000 筆算出來。
+     */
+    const events = await fetchAllRows<any>(() => supabase
       .from('user_events')
       .select('event_type, product_id, path, meta, created_at')
       .gte('created_at', since)
-      .lte('created_at', until)
-      .limit(100000)
-
-    const { data: events, error } = await query
-    if (error) throw error
+      .lte('created_at', until))
 
     // Collect all product IDs referenced
     const productIds = new Set<number>()

@@ -4,6 +4,39 @@
 
 ---
 
+## v2026.08.25m｜2026-08-25｜全站掃 PostgREST 靜默截斷：11 處數字少報，含代幣餘額與廠商結算
+
+延續回收三頁對帳，把全部後台 API 掃了一遍。**`.limit(超過 1000)` 是無效的寫法** ——
+實測 PostgREST 上限就是 1,000 筆，`limit=50000` 照樣只回 1,000，不報錯也不提示。
+所以「沒寫 limit」跟「寫了很大的 limit」結果一樣，而後者更騙人：寫的人明明想撈完。
+
+只掃 PROD 已超過 800 筆的表（`news_likes` 23,122／`user_events` 21,371／
+`news_comments` 10,469／`visit_logs` 6,240／`draw_records` 2,842／`ai_usage_logs` 2,609／
+`product_prizes` 1,778／`admin_recycle_pool` 1,562 …），逐處人工確認後修掉 11 處：
+
+| 檔案 | 症狀 |
+|------|------|
+| `admin/token-ledger` | **累計餘額算錯** —— `limit(2000)` 實得 1,000，bacon731 有 3,167 筆，第 1,001 筆之後的餘額全錯 |
+| `admin/reports`（積分合計） | **直接進廠商結算**的 `pointsTotal` 少算 |
+| `admin/reports`（消費明細／儲值明細／商品消費統計） | 報表列與統計少報 |
+| `admin/reports`（DAU） | 同一支檔案第 644 行早就用 `fetchAllRows`，DAU 那段漏了 |
+| `admin/behavior` | `limit(100000)` 實得 1,000 —— 行為分析整頁只根據 21,371 筆裡的 1,000 筆算 |
+| `stats/visit` | `limit(50000)` 實得 1,000，**而且排序是 ascending** → 只拿最舊的 1,000 筆，圖表越靠近今天越空 |
+| `admin/ai-usage` | `limit(100_000)` 實得 1,000 —— AI 用量與成本只算了三分之一 |
+| `admin/analytics-overview` | 訪問量 sparkline 少報 |
+| `admin/draw-records` | 消費紀錄列表只顯示 1,000／2,842（前端沒有分頁，一次撈完自己篩） |
+| `admin/user-events` | 事件列表 `limit(2000)` 實得 1,000 |
+| `admin/users` | 登入 IP `limit(5000)` 實得 1,000 —— 舊帳號的 IP 會憑空消失 |
+
+全部改用 `lib/fetchAllRows`（用 Range header 分頁，實測有效）。
+掃描腳本只是起點，最後一輪是人工看每一處：靜態分析抓不到
+「builder 拆成獨立函數再傳進 `fetchAllRows`」那種寫法，會有大量誤判。
+
+`lib/fetchAllRows.ts` 的註解裡已經記了三個前例（廠商結算曾少報 71%、
+分析頁 2,896 被截成 1,000、廠商分析 1,315 被截成 1,000），這批是剩下的漏網。
+
+---
+
 ## v2026.08.25l｜2026-08-25｜回收三頁對帳：兩個頁面被靜默截斷在 1,000 筆；0% 的分潤列不再顯示
 
 老闆要求核對「回收明細／回收紀錄／廠商結算」金額有沒有對上。**DB 層三邊一致

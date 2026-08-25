@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 
 export async function GET() {
   try {
@@ -9,13 +10,11 @@ export async function GET() {
 
     const supabaseAdmin = getSupabaseAdmin()
 
-    const { data, error } = await supabaseAdmin
+    // .limit(2000) 是無效的寫法：PostgREST 上限就是 1,000 筆，多寫的會被靜默忽略
+    const data = await fetchAllRows<any>(() => supabaseAdmin
       .from('user_event_logs')
       .select('id, user_id, event_type, detail, ip, created_at')
-      .order('created_at', { ascending: false })
-      .limit(2000)
-
-    if (error) throw error
+      .order('created_at', { ascending: false }))
 
     // 撈 user 名稱
     const userIds = [...new Set((data ?? []).map((r: any) => r.user_id).filter(Boolean))]

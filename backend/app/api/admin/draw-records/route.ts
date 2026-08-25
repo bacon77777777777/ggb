@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 
 export async function GET() {
   try {
@@ -27,7 +28,9 @@ export async function GET() {
 
     if (botIds.length > 0) query = query.not('user_id', 'in', `(${botIds.join(',')})`)
 
-    const { data, error } = await query
+    // 前端是一次撈完自己篩，沒有分頁 —— 不撈完就是「列表少一截」而且不會報錯
+    const data = await fetchAllRows<any>(() => query)
+    const error = null as any
 
     if (error) throw error
     return NextResponse.json(data ?? [])

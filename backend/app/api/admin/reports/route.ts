@@ -59,20 +59,18 @@ export async function GET(request: NextRequest) {
   try {
     // ── 儲值明細 ────────────────────────────────────────────────────────────
     if (tab === 'recharge') {
-      const { data, error } = await applyDateFilter(
+      const data = await fetchAllRows<any>(() => applyDateFilter(
         excBot(supabase.from('recharge_records').select('*, user:users(id, name, email)').order('created_at', { ascending: false }))
-      )
-      if (error) throw error
-      return NextResponse.json({ data: data ?? [] })
+      ))
+      return NextResponse.json({ data })
     }
 
     // ── 消費明細 ────────────────────────────────────────────────────────────
     if (tab === 'consumption') {
-      const { data, error } = await applyDateFilter(
+      const data = await fetchAllRows<any>(() => applyDateFilter(
         excBot(supabase.from('draw_records').select('*, user:users(id, name, email), product:products(id, name, price)').order('created_at', { ascending: false }))
-      )
-      if (error) throw error
-      return NextResponse.json({ data: data ?? [] })
+      ))
+      return NextResponse.json({ data })
     }
 
     // ── 營運總覽 ────────────────────────────────────────────────────────────
@@ -226,11 +224,9 @@ export async function GET(request: NextRequest) {
       let draws: any[] = []
       let hasPointsData = false
       try {
-        const { data, error } = await applyDateFilter(
+        draws = await fetchAllRows<any>(() => applyDateFilter(
           excBot(supabase.from('draw_records').select('product_id, points_used, product:products(id, name, price, type, category, total_count, remaining, supplier_id)'))
-        )
-        if (error) throw error
-        draws = data ?? []
+        ))
         hasPointsData = true
       } catch {
         const { data, error } = await applyDateFilter(
@@ -565,11 +561,10 @@ export async function GET(request: NextRequest) {
       // 積分支付（需 migration 238：draw_records.points_used 欄位）
       let pointsTotal = 0
       try {
-        const pointsQ = applyDateFilter(
+        const pointsRows = await fetchAllRows<any>(() => applyDateFilter(
           excBot(supabase.from('draw_records').select('points_used, product:products(supplier_id)'))
-        )
-        const { data: pointsRows } = await pointsQ
-        pointsTotal = (pointsRows ?? [])
+        ))
+        pointsTotal = pointsRows
           .filter((d: any) => String(d.product?.supplier_id) === supplierId)
           .reduce((s: number, d: any) => s + (d.points_used || 0), 0)
       } catch (_) {
@@ -713,14 +708,14 @@ export async function GET(request: NextRequest) {
       const trialUsers = new Set((trialEvents ?? []).filter((e: any) => e.user_id).map((e: any) => e.user_id)).size
 
       // 每日活躍用戶數（DAU）
-      const { data: dauEvents } = await applyBehaviorDate(
+      const dauEvents = await fetchAllRows<any>(() => applyBehaviorDate(
         supabase
           .from('user_events')
           .select('user_id, created_at')
           .not('user_id', 'is', null)
-      )
+      ))
       const dauMap = new Map<string, Set<string>>()
-      for (const e of dauEvents ?? []) {
+      for (const e of dauEvents) {
         const day = (e.created_at as string).slice(0, 10)
         if (!dauMap.has(day)) dauMap.set(day, new Set())
         dauMap.get(day)!.add(e.user_id)

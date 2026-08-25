@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { estimateCostUsd } from '@/lib/aiUsage'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 
 /**
  * AI 用量報表
@@ -25,10 +26,17 @@ export async function GET(req: NextRequest) {
   if (end) q = q.lte('created_at', `${end}T23:59:59+08:00`)
   if (agent) q = q.eq('agent', agent)
 
-  const { data, error } = await q.limit(100_000)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  const rows = data ?? []
+  /*
+   * ⚠️ 這裡本來寫 .limit(100_000) —— 但 PostgREST 上限就是 1,000 筆，
+   * 超過的 limit 會被靜默忽略。PROD ai_usage_logs 已有 2,609 筆，
+   * 等於用量與成本統計只算了三分之一。
+   */
+  let rows: any[]
+  try {
+    rows = await fetchAllRows<any>(() => q)
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message ?? '讀取失敗' }, { status: 500 })
+  }
 
   type Acc = { calls: number; input: number; output: number; cost: number; models: Set<string> }
   const byAgent = new Map<string, Acc>()

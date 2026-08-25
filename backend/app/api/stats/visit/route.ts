@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 
 /*
  * 造訪紀錄。
@@ -64,13 +65,23 @@ export async function GET(request: Request) {
       return 'day'
     })()
 
-    const { data, error } = await supabase
-      .from('visit_logs')
-      .select('created_at')
-      .gte('created_at', startDate.toISOString())
-      .lt('created_at', endDateExclusive.toISOString())
-      .order('created_at', { ascending: true })
-      .limit(50000)
+    /*
+     * ⚠️ 這裡本來寫 .limit(50000) —— 但 PostgREST 上限是 1,000 筆，多寫的會被
+     * 靜默忽略。更糟的是排序是 ascending，所以只拿得到**最舊的 1,000 筆**，
+     * 圖表越靠近今天越空。PROD visit_logs 已有 6,240 筆。
+     */
+    let data: any[] | null = null
+    let error: any = null
+    try {
+      data = await fetchAllRows<any>(() => supabase
+        .from('visit_logs')
+        .select('created_at')
+        .gte('created_at', startDate.toISOString())
+        .lt('created_at', endDateExclusive.toISOString())
+        .order('created_at', { ascending: true }))
+    } catch (e) {
+      error = e
+    }
     
     if (error) {
       if ((error as any).code === 'PGRST205') {
