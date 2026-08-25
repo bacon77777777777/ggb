@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 
 /**
  * GET /api/admin/products/[id]/seal
@@ -56,10 +57,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       .sort((a, b) => a.localeCompare(b, 'zh-Hant'))
       .map(level => ({ level, inTable: inTable.get(level) ?? 0, announced: announced.get(level) ?? 0 }))
 
-    const { data: draws } = await db
+    /*
+     * 逐籤比對表要撈完 —— 這是玩家在公平性驗證頁看的資料，少一截等於
+     * 「表上找不到我的籤號」。PostgREST 預設在 1,000 筆截斷，
+     * 目前最大的商品是 460 抽還沒踩到，但一檔熱門商品很容易超過。
+     */
+    const draws = await fetchAllRows<any>(() => db
       .from('draw_records')
       .select('ticket_number, prize_level, user_id')
-      .eq('product_id', productId)
+      .eq('product_id', productId))
 
     // 名稱另外撈：draw_records 沒有到 users 的 FK，join 不了。
     // 欄位是 users.name，不是 nickname —— 選錯欄位 Supabase 會回錯誤，

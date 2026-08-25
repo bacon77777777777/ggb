@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { createLinePusher } from '@/lib/linePush'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 const pushLine = createLinePusher('line_push_risk')
 
 export const dynamic = 'force-dynamic'
@@ -37,11 +38,15 @@ export async function POST(req: NextRequest) {
 
     // ── 1. 代幣消耗異常：最近 1 小時單帳號消耗超過閾值 ──────────────────
     const oneHourAgo = new Date(now - 3_600_000).toISOString()
-    const { data: recentDraws } = await supabase
+    /*
+     * 撈完再算 —— 這是風控，撈不完就是漏掉高消耗帳號（burnByUser 少算）。
+     * 目前單小時最高 311 抽還沒踩到 1,000 筆的截斷，但尖峰很容易超過。
+     */
+    const recentDraws = await fetchAllRows<any>(() => supabase
       .from('draw_records')
       .select('user_id, products(price)')
       .gte('created_at', oneHourAgo)
-      .not('user_id', 'is', null)
+      .not('user_id', 'is', null))
 
     const burnByUser: Record<string, number> = {}
     for (const d of recentDraws ?? []) {
