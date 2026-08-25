@@ -25,7 +25,14 @@ interface PeriodData {
   hasActualFee: boolean
   allocatedActualFee: number | null  // 分攤後的實際手續費
   platformTotalFee?: number | null   // 平台手續費總額（僅平台管理員）
-  dismantleTotal: number         // 回收退代幣（廠商吸收）
+  dismantleTotal: number         // 回收退代幣（charge 模式才從廠商扣，margin 模式為 0）
+  settlementMode?: 'charge' | 'margin'
+  marginSupplierShare?: number   // margin 模式下差額分給廠商的 %
+  recycleRefundTotal?: number    // 期內退給玩家的回收代幣總額
+  recycledRevenueExcluded?: number // margin 模式移出一般分潤基底的抽獎營收
+  recycledMarginTotal?: number   // 差額總額＝Σ(單抽價 − 回收價)
+  marginToSupplier?: number      // 差額分給廠商的金額
+  recycleCount?: number
   couponTotal: number            // 折價券折抵總額（雙方各吸收一半）
   shippingTotal: number          // 運費總額（雙方各吸收一半）
   pointsTotal: number            // 積分支付 G 等值（模式 A 時廠商吸收一半）
@@ -193,13 +200,37 @@ export default function SettlementPage() {
   const withholding = Math.round(netRevenue * (withholdingRate / 100))
   const netAfterTax = netRevenue - withholding
 
+  /*
+   * 回收怎麼進結算（老闆 2026-08-25 定案，設定在「商品管理 → 回收價格設定」）
+   *
+   *   charge ── 抽獎照一般分潤率分，回收價再從廠商扣（改版前的做法）
+   *   margin ── 被回收的抽獎整筆移出一般分潤基底，改成
+   *             差額 =（單抽價 − 回收價）依比例拆，回收價由平台吸收
+   *
+   * 兩者互斥，API 已經算好哪一邊是 0，這裡直接用。
+   */
+  const settlementMode = data?.settlementMode ?? 'margin'
+  const recycledRevenueExcluded = Math.round(data?.recycledRevenueExcluded ?? 0)
+  const recycledMarginTotal = Math.round(data?.recycledMarginTotal ?? 0)
+  const marginToSupplier = Math.round(data?.marginToSupplier ?? 0)
+  const marginToPlatform = recycledMarginTotal - marginToSupplier
+  const recycleRefundTotal = Math.round(data?.recycleRefundTotal ?? 0)
+
   // 先從淨收入扣除共同成本（折價券/運費/積分廠商吸收部分），再按比例分潤
-  const distributableBase = netAfterTax - couponSupplierShare - shippingSupplierShare - pointsSupplierShare
+  // margin 模式：被回收的抽獎營收不參與一般分潤，先扣掉
+  const distributableBase =
+    netAfterTax - couponSupplierShare - shippingSupplierShare - pointsSupplierShare - recycledRevenueExcluded
   const supplierGross = Math.round(distributableBase * (supplierShare / 100))
   const platformShare = distributableBase - supplierGross
 
-  // 最後扣除回收退代幣（廠商全吸收）
-  const supplierNet = Math.max(0, supplierGross - dismantleTotal)
+  /*
+   * 應付廠商 = 一般分潤 + 差額分潤 − 回收扣款
+   *
+   * ⚠️ 不再用 Math.max(0, …) 夾住。原本扣成負數會被截成 0，那筆欠款就地消失、
+   * 也不會結轉到下一期 —— 等於平台自動放棄債權。負數就讓它是負數，
+   * 由下面的「本期為負」提示告訴會計要結轉。
+   */
+  const supplierNet = supplierGross + marginToSupplier - dismantleTotal
 
   /*
    * 匯出對帳單（CSV）
@@ -232,7 +263,15 @@ export default function SettlementPage() {
       可分潤基礎: distributableBase,
       [`廠商分潤(${supplierShare}%)`]: supplierGross,
       [`平台留存(${100 - supplierShare}%)`]: platformShare,
-      '回收退代幣(廠商吸收100%)': -dismantleTotal,
+      回收結算方式: settlementMode === 'margin' ? '差額分潤' : '跟廠商收回收價',
+      回收筆數: data?.recycleCount ?? 0,
+      回收退還玩家代幣: recycleRefundTotal,
+      ...(settlementMode === 'margin'
+        ? {
+            [`被回收抽獎移出分潤基底`]: -recycledRevenueExcluded,
+            [`回收差額(共${recycledMarginTotal})廠商分${data?.marginSupplierShare ?? 0}%`]: marginToSupplier,
+          }
+        : { '回收退代幣(廠商吸收100%)': -dismantleTotal }),
       實際應付廠商: supplierNet,
       // 平台級數字只給平台管理員，廠商那份完全不帶（API 也不會回）
       ...(isSupplier ? {} : {
@@ -530,23 +569,50 @@ export default function SettlementPage() {
 
               {/* ④ 可分潤基礎 → 先扣平台再得廠商分潤 */}
               <div className="border-t border-neutral-200 my-0.5" />
+              {settlementMode === 'margin' && recycledRevenueExcluded > 0 && (
+                <Row
+                  label={<><span className="text-neutral-600">被回收抽獎</span><span className="text-xs text-neutral-400 ml-1.5">移出一般分潤，改走差額</span></>}
+                  value={`−${fmt(recycledRevenueExcluded)}`} red indent
+                />
+              )}
               <Row label={<span className="font-semibold text-neutral-800">可分潤基礎</span>} value={fmt(distributableBase)} bold />
               <Row label={<><span className="text-neutral-400">平台留存</span><span className="text-xs text-neutral-400 ml-1">{100 - supplierShare}%</span></>} value={`−${fmt(platformShare)}`} red indent />
               <div className="border-t border-neutral-200 my-0.5" />
 
               {/* ⑤ 廠商分潤 → 再扣回收 */}
               <Row label={<><span className="font-semibold text-neutral-800">廠商分潤</span><span className="text-xs text-neutral-400 ml-1">{supplierShare}%</span></>} value={fmt(supplierGross)} indigo />
-              <Row label={<><span className="text-neutral-600">回收退代幣</span><span className="text-xs text-neutral-400 ml-1.5">廠商吸收 100%</span></>} value={`−${fmt(dismantleTotal)}`} red indent />
+              {settlementMode === 'margin' ? (
+                <Row
+                  label={<><span className="text-neutral-600">回收差額分潤</span><span className="text-xs text-neutral-400 ml-1.5">差額 {fmt(recycledMarginTotal)} · 廠商 {data?.marginSupplierShare ?? 0}%</span></>}
+                  value={`+${fmt(marginToSupplier)}`} indent
+                />
+              ) : (
+                <Row
+                  label={<><span className="text-neutral-600">回收退代幣</span><span className="text-xs text-neutral-400 ml-1.5">廠商吸收 100%</span></>}
+                  value={`−${fmt(dismantleTotal)}`} red indent
+                />
+              )}
 
               {/* 最終結果 */}
               <div className="border-t-2 border-neutral-300 mt-2 pt-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <span className="text-base font-bold text-neutral-800">實際應付廠商</span>
-                    <InfoTooltip text={`① 消費 G − 綠界手續費 = 淨收入\n② 淨收入 − 折價券（50%）− 運費（50%）${pointsMode === 'A' ? ' + 積分補償（50%）' : ''} = 可分潤基礎\n③ 可分潤基礎 × ${supplierShare}% = 廠商分潤\n④ 廠商分潤 − 回收退代幣 = 實際應付廠商`} />
+                    <InfoTooltip text={settlementMode === 'margin'
+                      ? `① 消費 G − 綠界手續費 = 淨收入\n② 淨收入 − 折價券（50%）− 運費（50%）${pointsMode === 'A' ? ' + 積分補償（50%）' : ''} − 被回收抽獎營收 = 可分潤基礎\n③ 可分潤基礎 × ${supplierShare}% = 廠商分潤\n④ 廠商分潤 + 回收差額 × ${data?.marginSupplierShare ?? 0}% = 實際應付廠商\n（回收退給玩家的代幣由平台吸收，不跟廠商收）`
+                      : `① 消費 G − 綠界手續費 = 淨收入\n② 淨收入 − 折價券（50%）− 運費（50%）${pointsMode === 'A' ? ' + 積分補償（50%）' : ''} = 可分潤基礎\n③ 可分潤基礎 × ${supplierShare}% = 廠商分潤\n④ 廠商分潤 − 回收退代幣 = 實際應付廠商`} />
                   </div>
-                  <span className="text-xl font-bold text-green-600 tabular-nums">{fmt(supplierNet)}</span>
+                  <span className={`text-xl font-bold tabular-nums ${supplierNet < 0 ? 'text-red-600' : 'text-green-600'}`}>{fmt(supplierNet)}</span>
                 </div>
+                {supplierNet < 0 && (
+                  /*
+                   * 負數以前會被 Math.max(0, …) 夾成 0，那筆欠款就地消失、也不結轉下一期，
+                   * 等於平台自動放棄債權。現在照實顯示，由會計決定怎麼沖銷。
+                   */
+                  <p className="text-xs text-red-500 mt-1">
+                    * 本期為負數：廠商當期分潤不足以抵銷回收扣款，差額需結轉下一期沖銷，不可視為 0
+                  </p>
+                )}
                 {!period?.isClosed && (
                   <p className="text-xs text-amber-500 mt-1">* 本期尚未結算，以上為預估金額</p>
                 )}

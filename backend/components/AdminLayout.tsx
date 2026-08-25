@@ -613,6 +613,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/settings/promotions': 'settings_promotions',
     '/products/import': 'products',
     '/settings/shipping': 'settings_shipping',
+    '/settings/recycle': 'settings_recycle',
     '/settings/rates': 'settings',
     // 「其他設定」把原黑科技那一組併進來，權限沿用系統設定
     '/settings/other': 'settings',
@@ -699,6 +700,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '退款申請', path: '/refund-requests', icon: IconRefund },
           { name: '折價券管理', path: '/coupons', icon: IconCoupons },
           { name: '運費設定', path: '/settings/shipping', icon: IconShipping },
+          { name: '回收價格設定', path: '/settings/recycle', icon: IconRefund },
         ],
       },
       {
@@ -803,6 +805,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/reports/coupons': '折價券使用統計，包含各券別兌換張數與總折抵金額。',
     '/reports/products': '玩家抽獎消費統計，以商品／系列維度分析銷售數字與代幣消耗量。',
     '/reports/dismantled': '玩家倉庫回收紀錄，統計退還代幣總量，用於核對代幣帳本平衡。',
+    '/settings/recycle': '設定五類商品的回收比例（基準為單抽價），以及回收在廠商結算時怎麼拆帳。',
     '/reports/adjustments': '所有非儲值、非抽獎的代幣增減（GB哥補幣、帳務更正、出貨運費扣款、商城／交易所／機台）依會計分類列出，淨額即對帳公式的 manual_total，可匯出 CSV。',
     '/reports/settlement': '依廠商統計銷售金額，計算應付款項與平台毛利，作為廠商請款依據。',
     '/settlement-snapshots': '廠商月結快照管理，可鎖定當期數據並匯出正式對帳報表給廠商。',

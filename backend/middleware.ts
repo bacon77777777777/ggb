@@ -155,6 +155,7 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string | string[] }>
   { prefix: '/products/import',     permission: 'products' },
   { prefix: '/settings/promotions', permission: 'settings_promotions' },
   { prefix: '/settings/shipping',   permission: 'settings_shipping' },
+  { prefix: '/settings/recycle',    permission: 'settings_recycle' },
   { prefix: '/settings',            permission: 'settings' },
   { prefix: '/analytics',           permission: 'admins' },
   { prefix: '/permissions',         permission: 'permissions' },

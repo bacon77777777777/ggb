@@ -22,6 +22,7 @@ export const MENU_PATH_ORDER: Array<{ path: string; permission: string }> = [
   { path: '/orders',             permission: 'orders' },
   { path: '/coupons',            permission: 'coupons' },
   { path: '/settings/shipping',  permission: 'settings_shipping' },
+  { path: '/settings/recycle',   permission: 'settings_recycle' },
   { path: '/users',              permission: 'users' },
   { path: '/recharge-review',    permission: 'recharge_review' },
   { path: '/suppliers',          permission: 'suppliers' },

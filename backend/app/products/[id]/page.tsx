@@ -1476,20 +1476,26 @@ export default function EditProductPage() {
                             }
                           </div>
                         </div>}
-                        <div>
-                          <label className="block text-xs font-medium text-neutral-500 mb-1">品項價值 (G)</label>
-                          <Input
-                            type="number"
-                            value={prize.recycleValue === 0 ? '' : prize.recycleValue}
-                            onChange={(e) => {
-                              const updated = [...prizes]
-                              updated[index].recycleValue = e.target.value === '' ? 0 : parseInt(e.target.value) || 0
-                              setPrizes(updated)
-                            }} className="font-mono text-center"
-                            min="0"
-                            placeholder="0"
-                          />
-                        </div>
+                        {/*
+                          品項價值只留給機台（獎池出獎與直衝定價要用）。
+                          抽獎五類的回收價已改為統一設定，見「商品管理 → 回收價格設定」（migration 619）。
+                        */}
+                        {isSlot && (
+                          <div>
+                            <label className="block text-xs font-medium text-neutral-500 mb-1">品項價值 (G)</label>
+                            <Input
+                              type="number"
+                              value={prize.recycleValue === 0 ? '' : prize.recycleValue}
+                              onChange={(e) => {
+                                const updated = [...prizes]
+                                updated[index].recycleValue = e.target.value === '' ? 0 : parseInt(e.target.value) || 0
+                                setPrizes(updated)
+                              }} className="font-mono text-center"
+                              min="0"
+                              placeholder="0"
+                            />
+                          </div>
+                        )}
                         {/* 抽籤販售才有：中籤後申請寄出要付的金額 */}
                         {isLottery && (
                           <div>
@@ -1528,76 +1534,12 @@ export default function EditProductPage() {
                         </button>
                       )}
 
-                      {/* 回收設定 */}
-                      <div className="pt-2.5 border-t border-neutral-100">
-                        <label className="block text-xs font-medium text-neutral-500 mb-1.5">回收設定</label>
-                        {formData.type !== 'gacha' && formData.type !== 'blindbox' ? (
-                          <div className="flex gap-2 items-start">
-                            <div className="w-28 flex-shrink-0">
-                              <SelectField
-                                compact
-                                value={prize.decompose_type}
-                                onChange={(e) => {
-                                  const updated = [...prizes]
-                                  updated[index].decompose_type = e.target.value as 'auto' | 'percent' | 'fixed'
-                                  updated[index].decompose_value = null
-                                  setPrizes(updated)
-                                }}
-                              >
-                                <option value="auto">智能回收</option>
-                                <option value="percent">百分比 (%)</option>
-                                <option value="fixed">固定代幣</option>
-                              </SelectField>
-                            </div>
-                            {prize.decompose_type === 'auto' ? (
-                              <div className="flex-1 px-2 py-1 bg-neutral-100 border border-neutral-200 rounded-lg text-xs text-neutral-500 leading-relaxed">
-                                庫存 ≤ 3 → 抽價 20%；庫存 ≥ 4 → 10 代幣
-                              </div>
-                            ) : (
-                              <div className="flex-1">
-                                <div className="relative">
-                                  <Input
-                                    type="number"
-                                    min={1}
-                                    value={prize.decompose_value ?? ''}
-                                    onChange={(e) => {
-                                      const updated = [...prizes]
-                                      updated[index].decompose_value = e.target.value === '' ? null : parseInt(e.target.value) || null
-                                      setPrizes(updated)
-                                    }} className="text-xs"
-                                    placeholder={prize.decompose_type === 'percent' ? '例如 20' : '例如 50'}
-                                  />
-                                  {prize.decompose_type === 'percent' && (
-                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 text-xs pointer-events-none">%</span>
-                                  )}
-                                </div>
-                                {prize.decompose_type === 'percent' && prize.decompose_value && (
-                                  <p className="text-xs text-neutral-400 mt-0.5">
-                                    預估：{Math.max(1, Math.floor(parseInt(formData.price || '0') * prize.decompose_value / 100))} 代幣
-                                  </p>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex gap-2 items-center">
-                            <div className="w-28 flex-shrink-0">
-                              <SelectField compact value="fixed" disabled>
-                                <option value="fixed">固定代幣</option>
-                              </SelectField>
-                            </div>
-                            <div className="flex-1 relative">
-                              <Input
-                                type="number"
-                                value={10}
-                                disabled
-                                readOnly className="text-xs bg-neutral-50 text-neutral-400 cursor-not-allowed font-mono"
-                              />
-                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 text-xs pointer-events-none">幣</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                      {/*
+                        回收價欄位已移除（migration 619）—— 回收費率統一由
+                        「商品管理 → 回收價格設定」控制，基準是商品單抽價。
+                        品項層級的 decompose_type / decompose_value 已停用：全站 1,778 個品項
+                        本來就全是 auto，一個都沒設過，留著只會讓兩套規則打架。
+                      */}
 
                     </div>
                   </div>

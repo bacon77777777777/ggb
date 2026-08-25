@@ -60,6 +60,7 @@ const PERMISSION_GROUPS = [
       { id: 'orders',            label: '配送管理' },
       { id: 'coupons',           label: '折價券管理' },
       { id: 'settings_shipping', label: '運費設定' },
+      { id: 'settings_recycle',  label: '回收價格設定' },
     ],
   },
   {

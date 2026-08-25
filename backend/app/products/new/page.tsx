@@ -1098,8 +1098,8 @@ export default function NewProductPage() {
                             )}
                           </div>
 
-                          {/* 數量 + 剩餘 + 機率 + 價值 */}
-                          <div className={`grid gap-1.5 ${isSlot ? 'grid-cols-3' : 'grid-cols-4'}`}>
+                          {/* 非機台：數量 + 剩餘 + 機率｜機台：數量 + 剩餘 + 價值 */}
+                          <div className="grid gap-1.5 grid-cols-3">
                             <input
                               type="number"
                               value={prize.total === 0 ? '' : prize.total}
@@ -1129,19 +1129,26 @@ export default function NewProductPage() {
                                 }
                               </div>
                             )}
-                            <input
-                              type="number"
-                              value={prize.recycleValue === 0 ? '' : prize.recycleValue}
-                              onChange={(e) => {
-                                const updated = [...prizes]
-                                updated[index].recycleValue = e.target.value === '' ? 0 : parseInt(e.target.value) || 0
-                                setPrizes(updated)
-                              }}
-                              className="w-full px-2 py-1.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary font-mono"
-                              min="0"
-                              placeholder="價值(G)"
-                              title="品項價值（回收/機台定價用）"
-                            />
+                            {/*
+                              價值只留給機台（獎池出獎與直衝定價要用）。
+                              轉蛋／盒玩／一番賞／抽卡／自製賞的回收價已改為統一設定，
+                              見「商品管理 → 回收價格設定」（migration 619）。
+                            */}
+                            {isSlot && (
+                              <input
+                                type="number"
+                                value={prize.recycleValue === 0 ? '' : prize.recycleValue}
+                                onChange={(e) => {
+                                  const updated = [...prizes]
+                                  updated[index].recycleValue = e.target.value === '' ? 0 : parseInt(e.target.value) || 0
+                                  setPrizes(updated)
+                                }}
+                                className="w-full px-2 py-1.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+                                min="0"
+                                placeholder="價值(G)"
+                                title="機台品項價值（獎池出獎與直衝定價用）"
+                              />
+                            )}
                             {isLottery && (
                               <input
                                 type="number"

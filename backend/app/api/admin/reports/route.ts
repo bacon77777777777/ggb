@@ -330,7 +330,9 @@ export async function GET(request: NextRequest) {
        * 等於分潤基底被砍掉七成。
        */
       const [supplierRes, drawRows, rechargeRows, recycleRows, orderRows] = await Promise.all([
-        supabase.from('suppliers').select('id, name').eq('id', supplierId).single(),
+        supabase.from('suppliers')
+          .select('id, name, recycle_settlement_mode, recycle_margin_supplier_share')
+          .eq('id', supplierId).single(),
         fetchAllRows<any>(() => applyDateFilter(
           excBot(supabase.from('draw_records')
             .select('product_id, created_at, product:products(id, name, price, supplier_id, type)'))
@@ -340,7 +342,7 @@ export async function GET(request: NextRequest) {
         )),
         fetchAllRows<any>(() => applyDateFilter(
           supabase.from('admin_recycle_pool')
-            .select('recycle_value, product:products(supplier_id)')
+            .select('recycle_value, unit_price, margin, trigger, product:products(supplier_id)')
         )),
         /*
          * orders 這支容錯：STG 與 PROD 的 orders schema 不一樣 ——
@@ -361,6 +363,15 @@ export async function GET(request: NextRequest) {
           return [] as any[]
         }),
       ])
+
+      // 回收結算的全站預設，廠商沒個別設定時用這個
+      const { data: recycleSettingRows } = await supabase
+        .from('platform_settings')
+        .select('key, value')
+        .in('key', ['recycle_settlement_mode', 'recycle_margin_supplier_share'])
+      const platformDefaults: Record<string, string> = Object.fromEntries(
+        (recycleSettingRows ?? []).map((r: any) => [r.key, r.value]),
+      )
 
       // 消費明細：只算該廠商商品
       const draws: any[] = drawRows.filter((d: any) => d.product?.type !== 'slot')
@@ -420,10 +431,49 @@ export async function GET(request: NextRequest) {
         ? Math.round(totalG * effectiveFeeRate)
         : null
 
-      // 回收退代幣（廠商須吸收，從結算中扣除）
-      const dismantleTotal = recycleRows
-        .filter((r: any) => String(r.product?.supplier_id) === supplierId)
-        .reduce((s: number, r: any) => s + (r.recycle_value || 0), 0)
+      /*
+       * 回收怎麼結算（老闆 2026-08-25 定案）
+       *
+       *   charge ── 改版前的做法。抽獎照一般分潤率分給廠商，回收價再從廠商結算扣除。
+       *   margin ── 差額分潤。被回收的那筆抽獎「不走一般分潤」，改成
+       *             差額 =（單抽價 − 回收價），依 supplierShare 拆給廠商，其餘平台全拿；
+       *             回收價由平台從那筆營收裡出，不另外跟廠商收。
+       *
+       * 兩者互斥 —— 同時套用會重複計算（廠商既被扣回收價、又只分到差額的一部分）。
+       *
+       * 單價與差額讀的是 admin_recycle_pool 記帳當下寫死的值，不是現在的費率。
+       * 費率隨時可能被後台調動，事後回推歷史一定算錯。
+       */
+      const supplierRecycles = recycleRows.filter(
+        (r: any) => String(r.product?.supplier_id) === supplierId,
+      )
+      const recycleRefundTotal = supplierRecycles.reduce(
+        (s: number, r: any) => s + (r.recycle_value || 0), 0,
+      )
+      const recycledUnitPriceTotal = supplierRecycles.reduce(
+        (s: number, r: any) => s + (r.unit_price || 0), 0,
+      )
+      const recycledMarginTotal = supplierRecycles.reduce(
+        (s: number, r: any) => s + (r.margin || 0), 0,
+      )
+
+      const settlementMode: 'charge' | 'margin' =
+        (supplierRes.data as any)?.recycle_settlement_mode
+        ?? (platformDefaults.recycle_settlement_mode as 'charge' | 'margin')
+        ?? 'margin'
+      const marginSupplierShare = Number(
+        (supplierRes.data as any)?.recycle_margin_supplier_share
+        ?? platformDefaults.recycle_margin_supplier_share
+        ?? 0,
+      )
+
+      // charge 模式才從結算扣回收價；margin 模式回收價由平台吸收
+      const dismantleTotal = settlementMode === 'charge' ? recycleRefundTotal : 0
+      // margin 模式要把被回收的抽獎整筆移出一般分潤基底，改走差額分潤
+      const recycledRevenueExcluded = settlementMode === 'margin' ? recycledUnitPriceTotal : 0
+      const marginToSupplier = settlementMode === 'margin'
+        ? Math.round((recycledMarginTotal * marginSupplierShare) / 100)
+        : 0
 
       // 折價券 & 運費（雙方各吸收一半）
       const supplierOrders: any[] = orderRows
@@ -464,6 +514,13 @@ export async function GET(request: NextRequest) {
         couponTotal,
         shippingTotal,
         pointsTotal,
+        settlementMode,
+        marginSupplierShare,
+        recycleRefundTotal,
+        recycledRevenueExcluded,
+        recycledMarginTotal,
+        marginToSupplier,
+        recycleCount: supplierRecycles.length,
       }
       if (scope.isSupplier) return NextResponse.json(body)
 
