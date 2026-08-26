@@ -23,6 +23,19 @@ interface ProgressStep {
  * 訂單狀態的先後順序。進度條就是照這個陣列畫的，
  * 判斷「走到哪」只要比索引，不用一個個 if 疊。
  */
+/**
+ * 前後台文案對照（老闆 2026-08-26 問「前台有同步嗎」）
+ *
+ * status 值全站同一組，只有說法不同：後台給廠商與管理員看，講精準；
+ * 前台給玩家看，講白話（`frontend/lib/orderStatus.ts`）。改任一邊都要對過另一邊。
+ *
+ *   submitted  後台 已提交     ／ 前台 已申請
+ *   processing 後台 處理中     ／ 前台 揀貨中
+ *   picked_up  後台 物流已收取 ／ 前台 已出貨
+ *   shipping   後台 配送中     ／ 前台 配送中
+ *   delivered  後台 已送達     ／ 前台 已送達
+ *   cancelled  後台 已取消     ／ 前台 已取消
+ */
 const FLOW = [
   { key: 'submitted',  label: '已提交',     location: '訂單已建立' },
   { key: 'processing', label: '處理中',     location: '倉庫處理中' },

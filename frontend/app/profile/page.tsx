@@ -10,6 +10,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import { TopFadeBlur } from '@/components/ui/TopFadeBlur';
 import PrizeShareCard from '@/components/warehouse/PrizeShareCard';
 import DeliverySteps from '@/components/warehouse/DeliverySteps';
+import { orderStatusConfig, matchesDeliveryTab, DELIVERY_TABS, type DeliveryTabId } from '@/lib/orderStatus';
 import { openStoreMap, newStoreMapRequestId } from '@/lib/logistics/openStoreMap';
 import { closeInAppBrowser } from '@/lib/native/browser';
 import { fetchPrizeShareData, type PrizeShareData } from '@/lib/prizeShare';
@@ -413,24 +414,9 @@ const getArrivalText = (arrivalDate?: string) => {
   return null;
 };
 
-const getStatusConfig = (status: string) => {
-  switch (status) {
-    case 'submitted':
-    case 'processing':
-      return { label: '已提交', color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100' };
-    case 'picked_up':
-      return { label: '已出貨', color: 'text-orange-500', bg: 'bg-orange-50', border: 'border-orange-100' };
-    case 'shipping':
-      return { label: '配送中', color: 'text-indigo-500', bg: 'bg-indigo-50', border: 'border-indigo-100' };
-    case 'delivered':
-    case 'completed':
-      return { label: '已送達', color: 'text-accent-emerald', bg: 'bg-accent-emerald/10', border: 'border-accent-emerald/20' };
-    case 'cancelled':
-      return { label: '已取消', color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-100' };
-    default:
-      return { label: '未知狀態', color: 'text-neutral-500', bg: 'bg-neutral-50', border: 'border-neutral-100' };
-  }
-};
+// 徽章與步驟條共用 lib/orderStatus —— 原本這裡把 submitted 與 processing 併成
+// 「已提交」，展開的步驟條卻已經走到「揀貨中」，同一張訂單兩個說法
+const getStatusConfig = (status: string) => orderStatusConfig(status);
 
 const getTopupStatusConfig = (status: string) => {
   const s = status.toLowerCase();
@@ -588,7 +574,7 @@ function ProfileContent() {
   const [topupHistory, setTopupHistory] = useState<TopupHistoryItem[]>([]);
   const [followedProducts, setFollowedProducts] = useState<FollowedProduct[]>([]);
   const [activeFollowsTab, setActiveFollowsTab] = useState<'all' | 'selling' | 'soldout'>('all');
-  const [activeDeliveryTab, setActiveDeliveryTab] = useState<'all' | 'submitted' | 'shipping' | 'completed' | 'cancelled'>('all');
+  const [activeDeliveryTab, setActiveDeliveryTab] = useState<DeliveryTabId>('all');
   const swipeDeliveryTabs = useSwipeTabs(
     ['all', 'submitted', 'shipping', 'completed', 'cancelled'] as const,
     activeDeliveryTab,
@@ -1165,21 +1151,7 @@ function ProfileContent() {
   const filteredDeliveryHistory = React.useMemo(() => {
     if (activeDeliveryTab === 'all') return deliveryHistory;
     
-    return deliveryHistory.filter(order => {
-      if (activeDeliveryTab === 'submitted') {
-        return ['submitted', 'processing', 'picked_up'].includes(order.status);
-      }
-      if (activeDeliveryTab === 'shipping') {
-        return order.status === 'shipping';
-      }
-      if (activeDeliveryTab === 'completed') {
-        return order.status === 'delivered';
-      }
-      if (activeDeliveryTab === 'cancelled') {
-        return order.status === 'cancelled';
-      }
-      return true;
-    });
+    return deliveryHistory.filter(order => matchesDeliveryTab(activeDeliveryTab, order.status));
   }, [deliveryHistory, activeDeliveryTab]);
 
   useEffect(() => {
@@ -4838,17 +4810,11 @@ function ProfileContent() {
                       key={activeDeliveryTab} // Force re-render
                       defaultValue={activeDeliveryTab}
                       value={activeDeliveryTab} 
-                      onValueChange={(val) => setActiveDeliveryTab(val as 'all' | 'submitted' | 'shipping' | 'completed' | 'cancelled')}
+                      onValueChange={(val) => setActiveDeliveryTab(val as DeliveryTabId)}
                       className="w-full"
                     >
                       <TabsList className="bg-transparent dark:bg-transparent px-0 justify-start mb-0 border-b-0 pb-0 overflow-x-auto no-scrollbar">
-                        {[
-                          { id: 'all', label: '全部' },
-                          { id: 'submitted', label: '已提交' },
-                          { id: 'shipping', label: '配送中' },
-                          { id: 'completed', label: '已完成' },
-                          { id: 'cancelled', label: '已取消' }
-                        ].map((tab) => (
+                        {DELIVERY_TABS.map((tab) => (
                           <TabsTrigger key={tab.id} value={tab.id} className="whitespace-nowrap">
                             {tab.label}
                           </TabsTrigger>
@@ -4964,7 +4930,7 @@ function ProfileContent() {
                                   {/* 配送進度（照商城訂單彈層那套步驟條，老闆 2026-08-24） */}
                                   <div className="bg-white dark:bg-neutral-900 px-3 pb-2 pt-1 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
                                     {order.status === 'cancelled'
-                                      ? <div className="py-2 text-center text-[12px] font-bold text-neutral-400">訂單已結束</div>
+                                      ? <div className="py-2 text-center text-[12px] font-bold text-neutral-400">這張訂單已取消</div>
                                       : <DeliverySteps status={order.status} />}
                                   </div>
                                   {/* Shipping Info */}

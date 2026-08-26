@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { ORDER_STEPS, orderStepIndex, isOrderFinal } from '@/lib/orderStatus';
 
 /**
  * 配送進度步驟條（老闆 2026-08-24：配送訂單頁的 UI 照商城那套）
@@ -10,31 +11,23 @@ import { cn } from '@/lib/utils';
  * 這裡用 Tailwind 重寫而不是 import market.css —— 那份樣式全部掛在 `.mk` 底下，
  * 要沿用就得把整個彈窗包一層 `.mk`，會連帶吃進幾百行不相關的規則。
  *
- * 步驟對應 `orders.status`（抽獎這邊的配送）：
- *   submitted 已申請 → processing 揀貨中 → picked_up 已出貨 → shipping 配送中 → delivered 已送達
- * cancelled 不走步驟條（呼叫端自己顯示「訂單已結束」）。
+ * 步驟與文案來自 `lib/orderStatus` —— 徽章吃的是同一份，不然同一張訂單會
+ * 徽章一個說法、步驟條另一個說法（老闆 2026-08-26 問的就是這個）。
+ * cancelled 不走步驟條（呼叫端自己顯示已取消）。
  */
-export const DELIVERY_STEPS = ['已申請', '揀貨中', '已出貨', '配送中', '已送達'] as const;
-
-const STATUS_INDEX: Record<string, number> = {
-  submitted: 0,
-  processing: 1,
-  picked_up: 2,
-  shipping: 3,
-  delivered: 4,
-};
-
-export function deliveryStepIndex(status: string | undefined | null): number {
-  return STATUS_INDEX[String(status ?? '')] ?? 0;
-}
+export { ORDER_STEPS as DELIVERY_STEPS };
 
 export function DeliverySteps({ status, className }: { status: string | undefined | null; className?: string }) {
-  const cur = deliveryStepIndex(status);
+  const cur = orderStepIndex(status);
+  // 走到終點時最後一格是「完成」不是「進行中」—— 否則已送達的訂單
+  // 會一直閃著代表還在進行的紅色光暈
+  const atEnd = isOrderFinal(status);
+
   return (
     <div className={cn('flex pb-0.5 pt-1', className)}>
-      {DELIVERY_STEPS.map((label, i) => {
-        const done = i < cur;
-        const now = i === cur;
+      {ORDER_STEPS.map((label, i) => {
+        const done = i < cur || (i === cur && atEnd);
+        const now = i === cur && !atEnd;
         return (
           <div
             key={label}
@@ -49,7 +42,7 @@ export function DeliverySteps({ status, className }: { status: string | undefine
                 aria-hidden
                 className={cn(
                   'absolute left-[-50%] top-2 h-0.5 w-full',
-                  done || now ? 'bg-accent-red/80' : 'bg-neutral-200 dark:bg-neutral-700',
+                  i <= cur ? 'bg-accent-red/80' : 'bg-neutral-200 dark:bg-neutral-700',
                 )}
               />
             )}
