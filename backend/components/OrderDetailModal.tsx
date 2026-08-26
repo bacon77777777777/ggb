@@ -48,14 +48,20 @@ export interface OrderDetailData {
   items: { product: string; productType: string; level: string; prizeName: string; imageUrl: string }[]
 }
 
-/** label 在上、值在下 —— 密度的關鍵，不要用 justify-between */
+/**
+ * label 在上、值在下 —— 密度的關鍵，不要用 justify-between
+ * （那會把兩者推到容器兩端、中間空一大條）。
+ *
+ * ⚠️ 密集指的是**少留白**，不是把字縮小。老闆 2026-08-26 回報第一版
+ * 「閱讀的很痛苦吃力，文字也太小」—— 空間夠就用看得清楚的字級。
+ */
 function Field({ label, children, className = '' }: {
   label: string; children: React.ReactNode; className?: string
 }) {
   return (
     <div className={className}>
-      <div className="text-[11px] leading-tight text-neutral-400">{label}</div>
-      <div className="mt-0.5 text-sm leading-snug text-neutral-900">{children}</div>
+      <div className="text-xs leading-tight text-neutral-400">{label}</div>
+      <div className="mt-1 text-[15px] leading-snug text-neutral-900">{children}</div>
     </div>
   )
 }
@@ -64,9 +70,9 @@ function Section({ title, right, children }: {
   title: string; right?: React.ReactNode; children: React.ReactNode
 }) {
   return (
-    <section className="border-t border-neutral-100 px-5 py-3 first:border-t-0">
-      <div className="mb-2 flex items-baseline justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{title}</h3>
+    <section className="border-t border-neutral-100 px-6 py-4 first:border-t-0">
+      <div className="mb-3 flex items-baseline justify-between">
+        <h3 className="text-sm font-semibold text-neutral-500">{title}</h3>
         {right}
       </div>
       {children}
@@ -87,24 +93,18 @@ const STATUS_TEXT: Record<string, string> =
   Object.fromEntries(STATUS_OPTIONS.map(o => [o.value, o.label]))
 
 export default function OrderDetailModal({
-  order, isOpen, onClose, onStatusChange, onPrintLabel, onPrintSlip, onGenerateLabel, readOnly = false,
+  order, isOpen, onClose, onStatusChange, readOnly = false,
 }: {
   order: OrderDetailData | null
   isOpen: boolean
   onClose: () => void
   onStatusChange?: (status: string) => void
-  onPrintLabel?: () => void
-  onPrintSlip?: () => void
-  onGenerateLabel?: () => void
   /** 廠商帳號只看得到，不能操作 */
   readOnly?: boolean
 }) {
   if (!order) return null
 
   const { channel, detail, isCvs } = logisticsSummary(order)
-  const canLabel = order.status === 'submitted' ||
-    (!order.trackingNumber && (order.status === 'processing' || order.status === 'picked_up'))
-  const printable = order.status !== 'submitted' && order.status !== 'cancelled'
 
   return (
     <Modal
@@ -121,46 +121,32 @@ export default function OrderDetailModal({
         </span>
       }
       footer={readOnly ? null : (
-        <div className="flex items-center justify-between gap-3">
-          <div className="w-44">
-            {/* 切換狀態原本孤零零掛在頁面右上角，跟其他操作分家。收進 footer 一起 */}
-            <SelectField
-              compact
-              aria-label="切換配送狀態"
-              value={order.status}
-              onChange={e => onStatusChange?.(e.target.value)}
-            >
-              {STATUS_OPTIONS.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </SelectField>
+        <div className="flex items-center justify-between gap-4">
+          {/*
+            列印留在列表的操作欄，彈窗不再重複放一次（老闆 2026-08-26：「這邊不要有列印兩個按鈕」）。
+            這裡只做一件事：改狀態。下拉用一般尺寸 —— `compact` 是給表格內嵌用的，
+            放在這裡會小到看不清楚。
+          */}
+          <div className="flex items-center gap-3">
+            <span className="whitespace-nowrap text-sm text-neutral-500">切換狀態</span>
+            <div className="w-48">
+              <SelectField
+                aria-label="切換配送狀態"
+                value={order.status}
+                onChange={e => onStatusChange?.(e.target.value)}
+              >
+                {STATUS_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </SelectField>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {order.status !== 'cancelled' && (
-              <button
-                onClick={onPrintSlip}
-                className="rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-700 transition-colors hover:bg-neutral-200"
-              >
-                列印明細
-              </button>
-            )}
-            {printable && (
-              <button
-                onClick={onPrintLabel}
-                className="rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-700 transition-colors hover:bg-neutral-200"
-              >
-                列印物流單
-              </button>
-            )}
-            {canLabel && (
-              <button
-                onClick={onGenerateLabel}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark"
-              >
-                開配送單
-              </button>
-            )}
-          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg bg-neutral-100 px-4 py-2 text-sm text-neutral-700 transition-colors hover:bg-neutral-200"
+          >
+            關閉
+          </button>
         </div>
       )}
     >
@@ -183,7 +169,7 @@ export default function OrderDetailModal({
               <span className="font-mono tabular-nums">{order.recipientPhone || '—'}</span>
             </Field>
             <Field label="配送方式">
-              <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${
+              <span className={`inline-block rounded px-2 py-0.5 text-sm font-medium ${
                 isCvs ? 'bg-sky-50 text-sky-700' : 'bg-amber-50 text-amber-700'
               }`}>{channel}</span>
             </Field>
@@ -193,7 +179,7 @@ export default function OrderDetailModal({
             <Field label={isCvs ? '取貨門市' : '收件地址'} className="col-span-2 sm:col-span-3">
               {detail || '—'}
               {isCvs && order.storeId && (
-                <span className="ml-1 font-mono text-xs text-neutral-400">（{order.storeId}）</span>
+                <span className="ml-1.5 font-mono text-sm text-neutral-400">（{order.storeId}）</span>
               )}
             </Field>
             <Field label="物流單號">
@@ -202,7 +188,7 @@ export default function OrderDetailModal({
             <Field label="提交日期">
               <span className="font-mono tabular-nums" title={order.submittedAt}>{order.date || '—'}</span>
               {order.status !== 'delivered' && order.status !== 'cancelled' && (
-                <span className={`ml-1.5 text-xs tabular-nums ${order.days > 3 ? 'font-semibold text-red-500' : 'text-neutral-400'}`}>
+                <span className={`ml-2 text-sm tabular-nums ${order.days > 3 ? 'font-semibold text-red-500' : 'text-neutral-400'}`}>
                   等 {order.days} 天
                 </span>
               )}
@@ -215,22 +201,22 @@ export default function OrderDetailModal({
 
         <Section
           title="品項"
-          right={<span className="text-xs tabular-nums text-neutral-400">共 {order.items.length} 件</span>}
+          right={<span className="text-sm tabular-nums text-neutral-400">共 {order.items.length} 件</span>}
         >
           <div className="max-h-64 space-y-1 overflow-y-auto">
             {order.items.length === 0 ? (
               <p className="py-3 text-center text-sm text-neutral-400">這張訂單沒有品項</p>
             ) : order.items.map((it, i) => (
               <div key={i} className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-neutral-50">
-                <span className="w-6 shrink-0 text-right font-mono text-xs tabular-nums text-neutral-300">{i + 1}</span>
-                <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded bg-neutral-100">
-                  <Image src={it.imageUrl} alt={it.prizeName} fill sizes="36px" className="object-cover" unoptimized />
+                <span className="w-6 shrink-0 text-right font-mono text-sm tabular-nums text-neutral-300">{i + 1}</span>
+                <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded bg-neutral-100">
+                  <Image src={it.imageUrl} alt={it.prizeName} fill sizes="44px" className="object-cover" unoptimized />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm leading-tight text-neutral-900">{it.prizeName}</p>
-                  <p className="truncate text-xs leading-tight text-neutral-400">{it.product}</p>
+                  <p className="truncate text-[15px] leading-snug text-neutral-900">{it.prizeName}</p>
+                  <p className="truncate text-[13px] leading-snug text-neutral-400">{it.product}</p>
                 </div>
-                <span className="shrink-0 rounded bg-violet-50 px-1.5 py-0.5 text-[11px] font-medium text-violet-700">
+                <span className="shrink-0 rounded bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
                   {it.level}
                 </span>
               </div>
@@ -240,7 +226,7 @@ export default function OrderDetailModal({
 
         <Section title="玩家">
           {/* 三個欄位一行講完，原本是右側整張獨立卡片 */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[15px]">
             <span className="text-neutral-900">{order.userName || '—'}</span>
             <MemberNo no={order.memberNo} uuid={order.userId} />
             <span className="text-neutral-500">{order.user}</span>

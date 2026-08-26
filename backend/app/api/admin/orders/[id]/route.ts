@@ -111,12 +111,17 @@ export async function PUT(
 
     // Sync draw_records status based on order status change
     if (body.status === 'cancelled') {
-      // Return items to warehouse
-      await supabaseAdmin
-        .from('draw_records')
-        .update({ status: 'in_warehouse', order_id: null })
-        .eq('order_id', orderId)
-        .eq('status', 'pending_delivery')
+      /*
+       * 取消一律走 cancel_delivery_order（migration 631）——
+       * 原本這裡只把品項退回倉庫，**運費與抽籤價金一毛沒退**，玩家白付 60–65，
+       * 對帳公式也少掉這一筆。退款與通知都在那支 function 裡，
+       * 後台、批量、綠界退貨三個入口共用同一份邏輯。
+       */
+      await supabaseAdmin.rpc('cancel_delivery_order', {
+        p_order_id: orderId,
+        p_kind: 'admin',
+        p_operator: `admin:${session.adminId}`,
+      })
     } else if (body.status === 'shipping' || body.status === 'delivered') {
       // Mark items as shipped
       await supabaseAdmin

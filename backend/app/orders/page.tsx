@@ -277,9 +277,15 @@ export default function OrdersPage() {
   // 計算從提交時間到現在的天數（以台灣時間為準）
   const calculateDaysSinceSubmission = (submittedAt: string): number => {
     try {
-      // 解析提交時間（格式：YYYY-MM-DD HH:MM:SS）
-      const [datePart, timePart] = submittedAt.split(' ')
-      const [year, month, day] = datePart.split('-').map(Number)
+      /*
+       * 兩種格式都要吃：`2026-08-24 16:53:07`（formatDateTime 的輸出）
+       * 與 `2026-08-24T16:53:07.123Z`（DB 的原始 ISO）。
+       * 原本只 split(' ')，餵 ISO 進來會變成 Number('24T16:53:07.123Z') = NaN，
+       * 列表因此整欄顯示「等 NaN 天」。
+       */
+      const m = String(submittedAt ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
+      if (!m) return 0
+      const [, year, month, day] = m.map(Number)
       
       // 創建台灣時間的提交日期（只考慮日期部分，時間設為 00:00:00）
       const submittedDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0))
@@ -1655,11 +1661,11 @@ export default function OrdersPage() {
                             const printLabel = () => openTab(`/api/logistics/print?orderId=${shipment.id}`, '託運單')
                             const printSlip  = () => openTab(`/api/orders/packing-slip?orderId=${shipment.id}`, '明細單')
 
-                            const primary = isSupplier ? null
-                              : canLabel  ? { label: '開配送單', onClick: () => handleGenerateShippingLabel([shipment.id]) }
-                              : printable ? { label: '印單＋明細', onClick: () => { printLabel(); printSlip() } }
-                              : null
-
+                            /*
+                             * 保持原本表格的文字按鈕設計（老闆 2026-08-26：「不要弄成按鈕」）。
+                             * 列印拆成「列印單號」「列印明細」兩個獨立動作，不合併 ——
+                             * 備貨時常常只需要其中一張。
+                             */
                             const markDelivered = async () => {
                               const res = await fetch(`/api/admin/orders/${shipment.id}`, {
                                 method: 'PUT',
@@ -1714,22 +1720,23 @@ export default function OrdersPage() {
                               onCancel: () => setConfirmModal(prev => ({ ...prev, isOpen: false })),
                             })
 
+                            const linkCls = 'text-primary hover:text-primary-dark text-sm font-medium whitespace-nowrap flex-shrink-0 transition-colors'
+
                             return (
-                              <div className="flex items-center justify-end gap-1.5 flex-nowrap">
-                                {primary && (
-                                  <button
-                                    onClick={primary.onClick}
-                                    className="whitespace-nowrap rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-dark"
-                                  >
-                                    {primary.label}
+                              <div className="flex items-center justify-end gap-3 flex-nowrap">
+                                {!isSupplier && canLabel && (
+                                  <button onClick={() => handleGenerateShippingLabel([shipment.id])} className={linkCls}>
+                                    開配送單
                                   </button>
+                                )}
+                                {!isSupplier && printable && (
+                                  <button onClick={printLabel} className={linkCls}>列印單號</button>
+                                )}
+                                {!isSupplier && shipment.status !== 'cancelled' && (
+                                  <button onClick={printSlip} className={linkCls}>列印明細</button>
                                 )}
                                 <ActionMenu items={[
                                   { label: '查看詳情', onClick: () => setDetailOrderId(shipment.id) },
-                                  { label: '列印物流單', onClick: printLabel,
-                                    hidden: isSupplier || !printable },
-                                  { label: '列印出貨明細', onClick: printSlip,
-                                    hidden: isSupplier || shipment.status === 'cancelled' },
                                   { label: '手動出貨', onClick: () => setShipModal({
                                       isOpen: true, orderId: shipment.id,
                                       orderNumber: shipment.orderId,
@@ -1832,14 +1839,6 @@ export default function OrdersPage() {
           const o = localShipments.find(s => s.id === detailOrderId)
           return o ? (o as unknown as OrderDetailData) : null
         })()}
-        onPrintSlip={() => detailOrderId && window.open(`/api/orders/packing-slip?orderId=${detailOrderId}`, '_blank')}
-        onPrintLabel={() => detailOrderId && window.open(`/api/logistics/print?orderId=${detailOrderId}`, '_blank')}
-        onGenerateLabel={() => {
-          if (!detailOrderId) return
-          const id = detailOrderId
-          setDetailOrderId(null)   // 讓出彈窗，生成流程本身也會開一個確認窗
-          handleGenerateShippingLabel([id])
-        }}
         onStatusChange={async (status) => {
           if (!detailOrderId) return
           const res = await fetch(`/api/admin/orders/${detailOrderId}`, {

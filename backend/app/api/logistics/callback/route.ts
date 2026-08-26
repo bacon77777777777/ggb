@@ -93,6 +93,38 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    /*
+     * 退貨／逾期未取（3006/3018 超商、3020/3022 宅配）要退貨退款，不是只改個狀態。
+     *
+     * 改版前這裡的條件是 `statusPriority[status] >= statusPriority.picked_up`，
+     * 而 cancelled 的優先級是 6、picked_up 是 3 —— 6 >= 3 成立，
+     * 於是退貨回來時訂單標成已取消，**玩家的品項卻被標成「已出貨」**：
+     * 不在倉庫、也沒收到，這批貨就消失了，運費也沒退，玩家連通知都收不到。
+     *
+     * 現在交給 cancel_delivery_order（migration 631）：品項退回倉庫、
+     * 退抽籤價金、發通知。運費不退 —— 那筆錢已經付給物流，逾期不取是玩家造成的。
+     * 那支 function 本身是冪等的，綠界重送 callback 不會退兩次。
+     */
+    if (updateData.status === 'cancelled') {
+      const { error: cancelErr } = await supabase.rpc('cancel_delivery_order', {
+        p_order_id: existingOrder.id,
+        p_kind: 'returned',
+        p_operator: 'system:ecpay_logistics',
+      })
+      if (cancelErr) {
+        console.error('cancel_delivery_order failed:', cancelErr)
+        return new NextResponse('0|Cancel Error', { status: 200 })
+      }
+      // tracking_number 之類的其他欄位照樣寫回去，狀態由 function 負責
+      const rest = { ...updateData }
+      delete rest.status
+      if (Object.keys(rest).length > 0) {
+        await supabase.from('orders').update(rest).eq('id', existingOrder.id)
+      }
+      await logWebhookEvent({ source: 'ecpay_logistics', idempotencyKey, orderNumber, rawPayload: params, result: 'processed' })
+      return new NextResponse('1|OK', { status: 200 })
+    }
+
     if (Object.keys(updateData).length > 0) {
       const { error: updateError } = await supabase
         .from('orders')
@@ -104,7 +136,9 @@ export async function POST(req: NextRequest) {
         return new NextResponse('0|DB Update Error', { status: 200 })
       }
 
-      if (updateData.status && statusPriority[updateData.status] >= statusPriority.picked_up) {
+      // 明確列舉，不要用優先級比大小 —— cancelled 的優先級最高，
+      // 拿 `>= picked_up` 判斷會把「退貨」也算成「已出貨」
+      if (updateData.status && ['picked_up', 'shipping', 'delivered'].includes(updateData.status)) {
         await supabase
           .from('draw_records')
           .update({ status: 'shipped' })

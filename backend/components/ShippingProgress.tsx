@@ -7,7 +7,10 @@ interface ShippingProgressProps {
   submittedAt: string
   shippedAt?: string | null
   showTitle?: boolean
-  /** 彈窗用的細版：圓點縮小、拿掉卡片外框，高度大約剩三分之一 */
+  /**
+   * 嵌在別的容器裡（例如彈窗）時拿掉卡片外框與內距。
+   * ⚠️ 只影響外框，**不縮字也不縮圓點** —— 空間夠的時候把字縮小只會變得難讀。
+   */
   compact?: boolean
 }
 
@@ -97,11 +100,7 @@ export default function ShippingProgress({ status, submittedAt, shippedAt, showT
   
   return (
     <div className={compact ? '' : 'bg-white rounded-lg shadow-sm p-6'}>
-      {showTitle && (
-        <h2 className={compact ? 'mb-3 text-sm font-semibold text-neutral-900' : 'mb-6 text-lg font-bold text-neutral-900'}>
-          配送進度
-        </h2>
-      )}
+      {showTitle && <h2 className="mb-6 text-lg font-bold text-neutral-900">配送進度</h2>}
       
       {/* 已取消狀態使用緊湊居中佈局 */}
       {isCancelled ? (
@@ -146,7 +145,7 @@ export default function ShippingProgress({ status, submittedAt, shippedAt, showT
         // 正常狀態使用完整進度條佈局
         <div className="relative">
           {/* 背景連接線 */}
-          <div className={`absolute ${compact ? "top-2.5" : "top-5"} left-[10%] right-[10%] h-0.5 rounded-full bg-neutral-200`}></div>
+          <div className="absolute top-5 left-[10%] right-[10%] h-0.5 rounded-full bg-neutral-200"></div>
           {/* 已完成的進度線 */}
           {(() => {
             // 線要拉到「目前這一步」——只算 completed 的話，線會停在進行中的前一格
@@ -157,7 +156,7 @@ export default function ShippingProgress({ status, submittedAt, shippedAt, showT
             const progressWidth = at > 0 ? (at / (totalSteps - 1)) * 80 : 0
             return (
               <div 
-                className={`absolute ${compact ? 'top-2.5' : 'top-5'} left-[10%] h-0.5 rounded-full bg-green-500 transition-all duration-500`}
+                className="absolute top-5 left-[10%] h-0.5 rounded-full bg-green-500 transition-all duration-500"
                 style={{ width: `${progressWidth}%` }}
               ></div>
             )
@@ -167,30 +166,30 @@ export default function ShippingProgress({ status, submittedAt, shippedAt, showT
             {progressSteps.map((progress, idx) => (
               <div key={idx} className="flex flex-col items-center relative z-10" style={{ width: `${100 / progressSteps.length}%` }}>
                 {/* 進度點 */}
-                <div className={`${compact ? 'h-5 w-5' : 'h-10 w-10'} rounded-full flex items-center justify-center transition-all duration-300 ${
+                <div className={`h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                   progress.completed
                     ? 'bg-green-500'
                     : progress.current
                       // 進行中：實心底色＋外圈光暈，一眼看得出「現在停在這」
-                      ? `bg-primary ${compact ? 'ring-[3px]' : 'ring-4'} ring-primary/20`
+                      ? 'bg-primary ring-4 ring-primary/20'
                       : 'bg-neutral-300'
                 }`}>
                   {progress.completed ? (
-                    <svg className={`${compact ? 'h-3 w-3' : 'h-5 w-5'} text-white`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                     </svg>
                   ) : progress.current ? (
-                    <span className={`relative flex ${compact ? 'h-1.5 w-1.5' : 'h-3 w-3'}`}>
+                    <span className="relative flex h-3 w-3">
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                      <span className={`relative inline-flex ${compact ? 'h-1.5 w-1.5' : 'h-3 w-3'} rounded-full bg-white`} />
+                      <span className="relative inline-flex h-3 w-3 rounded-full bg-white" />
                     </span>
                   ) : (
-                    <div className={`${compact ? 'h-1.5 w-1.5' : 'h-3 w-3'} rounded-full bg-white`} />
+                    <div className="h-3 w-3 rounded-full bg-white" />
                   )}
                 </div>
                 {/* 文字內容 */}
-                <div className={`w-full text-center ${compact ? 'mt-1.5' : 'mt-3'}`}>
-                  <p className={`${compact ? 'text-[11px]' : 'text-sm'} ${
+                <div className="w-full text-center mt-3">
+                  <p className={`text-sm ${
                     progress.current
                       ? 'font-semibold text-primary'
                       : progress.completed
@@ -200,9 +199,7 @@ export default function ShippingProgress({ status, submittedAt, shippedAt, showT
                     {progress.status}
                   </p>
                   {progress.time && (
-                    <p className={`${compact ? 'text-[10px]' : 'text-xs'} mt-0.5 text-neutral-400`}>
-                      {formatDateTime(progress.time)}
-                    </p>
+                    <p className="mt-0.5 text-xs text-neutral-400">{formatDateTime(progress.time)}</p>
                   )}
                   {/* 地點在彈窗裡跟「配送方式」欄重複，細版就不再講一次 */}
                   {!compact && (

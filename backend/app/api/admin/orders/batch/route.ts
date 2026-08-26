@@ -19,6 +19,28 @@ export async function POST(request: Request) {
     if (ids.length === 0 || !patch) return NextResponse.json({ error: '缺少參數' }, { status: 400 })
 
     const supabaseAdmin = getSupabaseAdmin()
+    /*
+     * 取消要退代幣、退品項、發通知，不是單純改 status ——
+     * 走 cancel_delivery_order（migration 631），跟單筆取消同一套。
+     */
+    if (patch.status === 'cancelled') {
+      const results = []
+      for (const id of ids) {
+        const { data, error: rpcErr } = await supabaseAdmin.rpc('cancel_delivery_order', {
+          p_order_id: id,
+          p_kind: 'admin',
+          p_operator: `admin:${session.adminId}`,
+        })
+        if (rpcErr) return NextResponse.json({ error: rpcErr.message }, { status: 500 })
+        results.push(data)
+      }
+      await logAdminAction({
+        adminId: session.adminId, action: '批次取消訂單', targetType: 'orders',
+        detail: { ids, results }, ip: getClientIp(request),
+      })
+      return NextResponse.json({ success: true, results })
+    }
+
     const { error } = await supabaseAdmin.from('orders').update(patch).in('id', ids)
     if (error) throw error
 
