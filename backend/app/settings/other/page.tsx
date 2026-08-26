@@ -13,6 +13,7 @@ import { ToolsPanel } from '@/app/tools/Panel'
 import { RatesPanel } from '@/app/settings/rates/Panel'
 import { DesignSystemPanel } from '@/app/design-system/Panel'
 import { FrontendDesignSystemPanel } from '@/app/frontend-design-system/Panel'
+import { FeedReportPanel } from '@/app/reports/feed/Panel'
 
 /**
  * 其他設定
@@ -28,7 +29,7 @@ import { FrontendDesignSystemPanel } from '@/app/frontend-design-system/Panel'
  */
 type SectionKey =
   | 'import' | 'events' | 'competitor' | 'drafts' | 'usage'
-  | 'tools' | 'rates' | 'ds' | 'frontendDs'
+  | 'tools' | 'rates' | 'feed' | 'ds' | 'frontendDs'
 
 const SECTIONS: { key: SectionKey; label: string; render: () => React.ReactNode }[] = [
   { key: 'import',     label: '商品補齊',       render: () => <ImportJobsPanel /> },
@@ -38,6 +39,10 @@ const SECTIONS: { key: SectionKey; label: string; render: () => React.ReactNode 
   { key: 'usage',      label: 'AI 用量',        render: () => <AiUsagePanel /> },
   { key: 'tools',      label: '競品爬取工具',   render: () => <ToolsPanel /> },
   { key: 'rates',      label: '殺率調整',       render: () => <RatesPanel /> },
+  /* 推薦 feed 報表搬進來（老闆 2026-08-26）：它唯一的操作是調 A/B 比例，
+     那是要驗證演算法時才做一次的事，不是營運日常。放在側欄第三位太搶。
+     資料照收，路由 /reports/feed 也留著。 */
+  { key: 'feed',       label: '推薦 feed 報表', render: () => <FeedReportPanel /> },
   { key: 'ds',         label: 'Design System',  render: () => <DesignSystemPanel /> },
   { key: 'frontendDs', label: '前台 DS 稽核',   render: () => <FrontendDesignSystemPanel /> },
 ]

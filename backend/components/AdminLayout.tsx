@@ -686,10 +686,13 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
            *   廠商分析 → 廠商儀表板（只改名，內容不動；廠商帳號也看這頁）
            * `/reports/overview` 與 `/reports/behavior` 兩支路由留著（同一個
            * `/reports/[type]` 還在服務對帳報表的消費明細），只是不再掛選單。
+           *
+           * 「推薦 feed 報表」2026-08-26 移進「其他設定」的分頁 —— 它唯一的操作是
+           * 調 A/B 比例，那是要驗證演算法時才做一次的事，不是營運日常。
+           * 路由 `/reports/feed` 與四張權限表都保留，只是不再佔側欄第三位。
            */
           { name: '營運儀表板', path: '/dashboard', icon: IconDashboard },
           { name: '數據分析', path: '/analytics-overview', icon: IconLineChart },
-          { name: '推薦 feed 報表', path: '/reports/feed', icon: IconLineChart },
           { name: '廠商儀表板', path: '/analytics-supplier', icon: IconLineChart },
         ],
       },
