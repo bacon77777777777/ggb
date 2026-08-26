@@ -10,6 +10,7 @@ import Button from '@/components/ui/Button'
 import { Badge } from '@/components/ui'
 import { DataTable, type Column } from '@/components'
 import { useToast } from '@/contexts/ToastContext'
+import { productTypeLabel } from '@/lib/productTypes'
 
 /**
  * 首頁推薦 feed 報表（老闆 2026-08-22 階段二）。
@@ -93,7 +94,7 @@ export default function FeedReportPage() {
   const topColumns: Column<TopRow>[] = [
     { key: 'name', label: '商品', render: r => <span className="font-medium">{r.name}</span> },
     { key: 'series', label: '系列', render: r => r.series || '—' },
-    { key: 'type', label: '類型', render: r => r.type },
+    { key: 'type', label: '類別', render: r => productTypeLabel(r.type) },
     { key: 'feed_boost', label: '加權', render: r => (r.feed_boost > 0 ? <Badge color="orange">×{[1, 1.5, 2, 3][r.feed_boost]}</Badge> : '—') },
     { key: 'impressions', label: '曝光', render: r => Number(r.impressions).toLocaleString() },
     { key: 'clicks', label: '點擊', render: r => Number(r.clicks).toLocaleString() },

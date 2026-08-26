@@ -813,6 +813,26 @@ export default function OrdersPage() {
     handleGenerateShippingLabel(submittedOrders)
   }
 
+  /**
+   * 批次列印出貨明細單。
+   *
+   * 跟託運單不同 —— 明細單是我們自己產的 HTML，一份就能印完所有訂單（中間分頁），
+   * 不必逐筆開分頁，也不會被彈出視窗封鎖擋。已取消的單不印。
+   */
+  const handleBatchPackingSlip = () => {
+    const selected = Array.from(selectedOrders).filter(id => {
+      const s = localShipments.find(x => x.id === id)
+      return s && s.status !== 'cancelled'
+    })
+    if (selected.length === 0) {
+      toast('請先選擇要列印明細的訂單', 'warning')
+      return
+    }
+    window.open(`/api/orders/packing-slip?orderId=${selected.join(',')}`, '_blank')
+    addLog('批量列印出貨明細', '配送管理', `列印 ${selected.length} 筆訂單的出貨明細單`, 'success')
+    setSelectedOrders(new Set())
+  }
+
   const handleBatchPrint = () => {
     const selectedOrdersList = Array.from(selectedOrders)
     if (selectedOrdersList.length === 0) {
@@ -1230,6 +1250,12 @@ export default function OrdersPage() {
                 variant: 'secondary' as const,
                 count: getSelectedOrdersStats().printable
               }] : []),
+              ...(selectedStatus !== 'cancelled' && selectedOrders.size > 0 ? [{
+                label: '批量列印明細',
+                onClick: handleBatchPackingSlip,
+                variant: 'secondary' as const,
+                count: selectedOrders.size
+              }] : []),
               ...(selectedStatus !== 'delivered' && selectedStatus !== 'cancelled' && getSelectedOrdersStats().cancellable > 0 ? [{
                 label: '批量取消',
                 onClick: handleBatchCancel,
@@ -1579,6 +1605,22 @@ export default function OrdersPage() {
                                 className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap flex-shrink-0"
                               >
                                 列印物流單
+                              </button>
+                            )}
+
+                            {/*
+                              出貨明細單：放進包裹裡給玩家對貨的那張 A4，跟託運單是兩回事。
+                              已取消的單不必印；其餘狀態都給，備貨時就會想先印出來核對。
+                            */}
+                            {shipment.status !== 'cancelled' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  window.open(`/api/orders/packing-slip?orderId=${shipment.id}`, '_blank')
+                                }}
+                                className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap flex-shrink-0"
+                              >
+                                列印明細
                               </button>
                             )}
                             

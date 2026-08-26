@@ -22,6 +22,7 @@ import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { formatDateTime } from '@/utils/dateFormat'
 import { logExport } from '@/lib/logExport'
 import { useToast } from '@/contexts/ToastContext'
+import { productTypeLabel, productTypeVariant, PRODUCT_TYPES } from '@/lib/productTypes'
 
 const PRODUCT_TYPE_LABELS: Record<string, { label: string; variant: BadgeVariant }> = {
   gacha:    { label: '轉蛋',   variant: 'info' },
@@ -119,12 +120,11 @@ export default function RecycleInventoryPage() {
       ),
     },
     {
-      key: 'type', label: '類型', className: 'whitespace-nowrap',
+      key: 'type', label: '類別', className: 'whitespace-nowrap',
       render: r => {
-        const t = PRODUCT_TYPE_LABELS[r.product_type]
         return (
           <div className="flex items-center gap-1.5">
-            {t ? <Badge variant={t.variant}>{t.label}</Badge> : <span className="text-xs text-neutral-400">—</span>}
+            <Badge variant={productTypeVariant(r.product_type)}>{productTypeLabel(r.product_type)}</Badge>
             {r.restocked && <span className="text-[11px] text-neutral-400">已回原商品</span>}
           </div>
         )
@@ -142,10 +142,10 @@ export default function RecycleInventoryPage() {
   ]
 
   const exportCsv = () => {
-    const header = ['廠商', '商品', '賞等', '品項', '類型', '抽獎單價', '在庫件數', '已再利用', '已報廢', '退幣成本(G)', '最早回收', '最近回收']
+    const header = ['廠商', '商品', '賞等', '品項', '類別', '抽獎單價', '在庫件數', '已再利用', '已報廢', '退幣成本(G)', '最早回收', '最近回收']
     const lines = filtered.map(r => [
       r.supplier_name, r.product_name, r.prize_level, r.prize_name,
-      PRODUCT_TYPE_LABELS[r.product_type]?.label ?? r.product_type,
+      productTypeLabel(r.product_type),
       r.unit_price, r.qty_pending, r.qty_reused, r.qty_scrapped, r.refund_cost,
       r.first_recycled_at ? formatDateTime(r.first_recycled_at) : '',
       r.last_recycled_at ? formatDateTime(r.last_recycled_at) : '',

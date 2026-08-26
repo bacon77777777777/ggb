@@ -12,6 +12,7 @@ import { DataTable, type Column } from '@/components'
 import { logExport } from '@/lib/logExport'
 import { TableEmpty } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { productTypeLabel, productTypeVariant, PRODUCT_TYPES } from '@/lib/productTypes'
 
 const PRODUCT_TYPE_LABELS: Record<string, { label: string; variant: BadgeVariant }> = {
   gacha:     { label: '轉蛋',   variant: 'info' },
@@ -65,7 +66,7 @@ interface Supplier {
 const COLUMNS = [
   { key: 'date',          label: '日期' },
   { key: 'prize',         label: '品項' },
-  { key: 'product_type',  label: '類型' },
+  { key: 'product_type',  label: '類別' },
   { key: 'supplier',      label: '廠商' },
   { key: 'recycle_value', label: '退幣(G)' },
   { key: 'status',        label: '處置' },
@@ -213,8 +214,8 @@ export default function DismantledPage() {
   ]
 
   const typeFilterOptions = [
-    { value: 'all', label: '全部類型' },
-    ...Object.entries(PRODUCT_TYPE_LABELS).map(([v, { label }]) => ({ value: v, label })),
+    { value: 'all', label: '全部類別' },
+    ...Object.entries(PRODUCT_TYPES).map(([v, { label }]) => ({ value: v, label })),
   ]
 
   const statusFilterOptions = [
@@ -255,7 +256,7 @@ export default function DismantledPage() {
               },
               {
                 key: 'type',
-                label: '商品類型',
+                label: '商品類別',
                 type: 'select',
                 value: typeFilter,
                 onChange: setTypeFilter,
@@ -303,7 +304,7 @@ export default function DismantledPage() {
                   </th>
                   {show('date')          && <SortableTableHeader sortKey="created_at"    currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>日期</SortableTableHeader>}
                   {show('prize')         && <SortableTableHeader sortKey="prize_name"    currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>品項</SortableTableHeader>}
-                  {show('product_type')  && <th className={`${dc} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>類型</th>}
+                  {show('product_type')  && <th className={`${dc} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>類別</th>}
                   {show('supplier')      && <SortableTableHeader sortKey="supplier"      currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>廠商</SortableTableHeader>}
                   {show('recycle_value') && <SortableTableHeader sortKey="recycle_value" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>退幣(G)</SortableTableHeader>}
                   {show('status')        && <SortableTableHeader sortKey="status"        currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>處置</SortableTableHeader>}
@@ -318,7 +319,7 @@ export default function DismantledPage() {
                   <TableEmpty colSpan={COLUMNS.length + 1} />
                 ) : (
                   sorted.map(item => {
-                    const typeInfo = PRODUCT_TYPE_LABELS[item.product_type]
+                    const typeLabel = productTypeLabel(item.product_type)
                     return (
                       <tr key={item.id} className="hover:bg-neutral-50 transition-colors">
                         <td className={`${dc}`}>
@@ -344,10 +345,7 @@ export default function DismantledPage() {
                         )}
                         {show('product_type') && (
                           <td className={`${dc} whitespace-nowrap`}>
-                            {typeInfo
-                              ? <Badge variant={typeInfo.variant}>{typeInfo.label}</Badge>
-                              : <span className="text-xs text-neutral-400">{item.product_type || '—'}</span>
-                            }
+                            <Badge variant={productTypeVariant(item.product_type)}>{typeLabel}</Badge>
                           </td>
                         )}
                         {show('supplier') && (

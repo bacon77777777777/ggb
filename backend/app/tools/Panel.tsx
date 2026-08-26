@@ -44,7 +44,7 @@ type Phase = 'idle' | 'discovering' | 'scraping' | 'ai-filling' | 'done'
 // ─── CSV export ───────────────────────────────────────────────────────────────
 
 const CSV_HEADERS = [
-  '商品名稱', '商品圖片', '價格', '商品類型', '預購商品', '預計出貨時間',
+  '商品名稱', '商品圖片', '價格', '商品類別', '預購商品', '預計出貨時間',
   '顯示分類', '狀態', '開賣時間', '稀有度', '上市時間', '代理商', '產品條碼', '熱賣',
   ...Array.from({ length: 20 }, (_, i) => [
     `獎項${i + 1}名稱`, `獎項${i + 1}等級`, `獎項${i + 1}數量`, `獎項${i + 1}圖片名稱`,
@@ -415,7 +415,7 @@ export function ToolsPanel() {
                   <tr className="border-b border-neutral-100 bg-neutral-50">
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-neutral-500 w-20">商品圖</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-neutral-500 min-w-[200px]">商品名稱</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-neutral-500">類型</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-neutral-500">類別</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-neutral-500">價格</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-neutral-500 min-w-[100px]">代理商</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-neutral-500">稀有度</th>
@@ -481,7 +481,7 @@ export function ToolsPanel() {
                             )}
                           </td>
 
-                          {/* 類型 */}
+                          {/* 類別 */}
                           <td className="px-3 py-2 text-neutral-700 text-xs whitespace-nowrap">
                             {r ? typeToZh(r.typeGuess) : '—'}
                           </td>
