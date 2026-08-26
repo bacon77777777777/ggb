@@ -2663,7 +2663,10 @@ function ProfileContent() {
    * 不是唯一的防線：玩家按下取消的同一刻，出貨人員可能正在按開配送單。
    */
   const canCancelDelivery = (order: DeliveryOrder) =>
-    order.status === 'submitted' && !order.tracking;
+    order.status === 'submitted' && (!order.tracking || order.tracking === '-');
+  // ⚠️ 沒有物流單號時 `tracking` 是字串 '-' 不是空值（見上面的 mapping
+  //    `order.tracking_number || '-'`），只寫 `!order.tracking` 永遠是 false，
+  //    按鈕會一顆都不出現。
 
   const handleCancelDelivery = (order: DeliveryOrder) => {
     showAlert({
