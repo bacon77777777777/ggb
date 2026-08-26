@@ -118,6 +118,8 @@ interface DeliveryOrder {
   status: 'submitted' | 'processing' | 'picked_up' | 'shipping' | 'delivered' | 'cancelled' | string;
   date: string;
   tracking: string;
+  /** 申請時扣的運費，取消時要退回；免運為 0 */
+  shippingFee: number;
   method: string;
   arrivalDate?: string;
   recipientName?: string;
@@ -1797,6 +1799,7 @@ function ProfileContent() {
              status: order.status,
              date: new Date(order.created_at).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Taipei' }).replace(/\//g, '/'),
              tracking: order.tracking_number || '-',
+             shippingFee: Number((order as any).shipping_fee ?? 0),
              method: displayMethod,
              arrivalDate: arrivalDate,
              recipientName: order.recipient_name || undefined,
@@ -2678,7 +2681,13 @@ function ProfileContent() {
       message: (
         <span>
           取消後，這批 <b>{order.itemsCount || order.items?.length || 0}</b> 件商品會放回你的倉庫，
-          運費也會退回。之後可以重新申請配送。
+          {/* 免運的單沒有運費可退，別寫死「運費會退回」；
+              抽籤販售的品項另有價金，所以無運費時也不能斷言「不退錢」——
+              實際退了多少由伺服器算完後在 toast 顯示 */}
+          {order.shippingFee > 0
+            ? <>申請時扣的 <b>{order.shippingFee}</b> 代幣會退回。</>
+            : <>申請時扣的代幣會退回。</>}
+          之後可以重新申請配送。
         </span>
       ),
       onConfirm: async () => {
