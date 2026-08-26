@@ -6,7 +6,7 @@ import Badge from './ui/Badge'
 import ShippingProgress from './ShippingProgress'
 import MemberNo from './MemberNo'
 import SelectField from './ui/SelectField'
-import { logisticsSummary } from '@/lib/logisticsLabels'
+import { logisticsSummary, deliveryMethodLabel } from '@/lib/logisticsLabels'
 
 /**
  * 配送詳情彈窗（老闆 2026-08-26：「畫面留空一堆，改成彈窗，密度密集一點」）
@@ -112,7 +112,7 @@ export default function OrderDetailModal({
 }) {
   if (!order) return null
 
-  const { channel, detail, isCvs } = logisticsSummary(order)
+  const { detail, isCvs } = logisticsSummary(order)
 
   return (
     <Modal
@@ -192,7 +192,7 @@ export default function OrderDetailModal({
             <Cell label="配送方式">
               <span className={`inline-block rounded px-2 py-0.5 text-sm font-medium ${
                 isCvs ? 'bg-sky-50 text-sky-700' : 'bg-amber-50 text-amber-700'
-              }`}>{channel}</span>
+              }`}>{deliveryMethodLabel(order)}</span>
             </Cell>
             <Cell label="運費">
               <span className="font-mono tabular-nums">{order.shippingFee > 0 ? `$${order.shippingFee}` : '免運'}</span>

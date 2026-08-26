@@ -3,7 +3,7 @@
 import { AdminLayout, StatsCard, PageCard, SearchToolbar, FilterTags, Modal, SortableTableHeader, MemberNo, OrderDetailModal } from '@/components'
 import type { OrderDetailData } from '@/components'
 import { ActionMenu, BulkActionBar, BulkButton } from '@/components/ui'
-import { logisticsSummary } from '@/lib/logisticsLabels'
+import { deliveryMethodLabel, recipientAddressLine } from '@/lib/logisticsLabels'
 import { useAdmin } from '@/contexts/AdminContext'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { TableEmpty } from '@/components/ui/EmptyState'
@@ -529,7 +529,7 @@ export default function OrdersPage() {
     const visibleColumnsList = [
       { key: 'status', label: '狀態' },
       { key: 'submittedAt', label: '提交時間' },
-      { key: 'recipientName', label: '收件人' },
+      { key: 'recipientName', label: '收件地址' },
       { key: 'logistics', label: '配送方式' },
       { key: 'quantity', label: '件數' },
       { key: 'orderId', label: '訂單編號' },
@@ -563,11 +563,8 @@ export default function OrdersPage() {
           case 'quantity': return shipment.hasLarge
             ? `${shipment.items.length}（含大件）`
             : shipment.items.length.toString()
-          case 'recipientName': return `${shipment.recipientName} | ${shipment.recipientPhone}`
-          case 'logistics': {
-            const { channel, detail } = logisticsSummary(shipment)
-            return detail ? `${channel} | ${detail}` : channel
-          }
+          case 'recipientName': return `${shipment.recipientName} | ${shipment.recipientPhone} | ${recipientAddressLine(shipment)}`
+          case 'logistics': return deliveryMethodLabel(shipment)
           case 'trackingNumber': return shipment.trackingNumber || ''
           case 'shippingFee': return String(shipment.shippingFee ?? 0)
           case 'shippedAt': return formatDateTime(shipment.shippedAt)
@@ -1302,7 +1299,7 @@ export default function OrdersPage() {
             columns={[
               { key: 'status', label: '狀態', visible: visibleColumns.status },
               { key: 'submittedAt', label: '提交時間', visible: visibleColumns.submittedAt },
-              { key: 'recipientName', label: '收件人', visible: visibleColumns.recipientName },
+              { key: 'recipientName', label: '收件地址', visible: visibleColumns.recipientName },
               { key: 'logistics', label: '配送方式', visible: visibleColumns.logistics },
               { key: 'quantity', label: '件數', visible: visibleColumns.quantity },
               { key: 'orderId', label: '訂單編號', visible: visibleColumns.orderId },
@@ -1412,7 +1409,7 @@ export default function OrdersPage() {
                         onSort={handleSort}
                         className={getDensityClasses()}
                       >
-                        收件人
+                        收件地址
                       </SortableTableHeader>
                     )}
                     {visibleColumns.logistics && (
@@ -1567,31 +1564,27 @@ export default function OrdersPage() {
                           </td>
                         )}
                         {visibleColumns.recipientName && (
-                          <td className={`${getDensityClasses()} whitespace-nowrap`}>
+                          <td className={`${getDensityClasses()}`}>
+                            {/* 姓名／電話／地址三行一組（老闆 2026-08-26）——
+                                出貨人員抄地址時三樣東西本來就要一起看 */}
                             <div className="leading-tight">
-                              <p className="text-sm text-neutral-700">{shipment.recipientName || '-'}</p>
-                              <p className="font-mono text-xs text-neutral-400">{shipment.recipientPhone}</p>
+                              <p className="text-sm text-neutral-700 whitespace-nowrap">{shipment.recipientName || '-'}</p>
+                              <p className="font-mono text-xs text-neutral-400 whitespace-nowrap">{shipment.recipientPhone}</p>
+                              <p className="mt-0.5 max-w-[280px] truncate text-xs text-neutral-500"
+                                 title={recipientAddressLine(shipment)}>
+                                {recipientAddressLine(shipment)}
+                              </p>
                             </div>
                           </td>
                         )}
                         {visibleColumns.logistics && (
                           <td className={`${getDensityClasses()} whitespace-nowrap`}>
-                            {/* 超商跟宅配原本混在收件資訊裡看不出差別，拆出來 */}
-                            {(() => {
-                              const { channel, detail, isCvs } = logisticsSummary(shipment)
-                              return (
-                                <div className="leading-tight">
-                                  <span className={`inline-block rounded px-1.5 py-0.5 text-[11px] font-medium ${
-                                    isCvs ? 'bg-sky-50 text-sky-700' : 'bg-amber-50 text-amber-700'
-                                  }`}>
-                                    {channel}
-                                  </span>
-                                  {detail && (
-                                    <p className="mt-0.5 max-w-[220px] truncate text-xs text-neutral-400" title={detail}>{detail}</p>
-                                  )}
-                                </div>
-                              )
-                            })()}
+                            {/* 講完整：看得出是「去門市拿」還是「送到家」，不是只印品牌名 */}
+                            <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
+                              shipment.logisticsType === 'CVS' ? 'bg-sky-50 text-sky-700' : 'bg-amber-50 text-amber-700'
+                            }`}>
+                              {deliveryMethodLabel(shipment)}
+                            </span>
                           </td>
                         )}
                         {visibleColumns.quantity && (

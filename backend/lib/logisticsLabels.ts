@@ -33,3 +33,36 @@ export function logisticsSummary(o: {
     isCvs,
   }
 }
+
+/**
+ * 配送方式的完整講法（老闆 2026-08-26 指定）：
+ *   超商取貨[7-11] ／ 宅配到府
+ * 原本只印品牌名，看不出是「去門市拿」還是「送到家」。
+ */
+export function deliveryMethodLabel(o: {
+  logisticsType?: string | null
+  logisticsSubtype?: string | null
+}): string {
+  if (o.logisticsType !== 'CVS') return '宅配到府'
+  const brand = logisticsLabel(o.logisticsSubtype)
+  return brand ? `超商取貨[${brand}]` : '超商取貨'
+}
+
+/**
+ * 收件地址那一行。
+ *
+ * 超商單的 `orders.address` 存的**就是門市地址**（建單時 p_address 帶的是 storeAddress），
+ * 所以這裡把門市名括在前面：`[經貿]台北市南港區三重路19號1樓`。
+ * 不硬加「門市」二字 —— 有些門市名本身就含（例如「建盛門市」），加了會變成「建盛門市門市」。
+ */
+export function recipientAddressLine(o: {
+  logisticsType?: string | null
+  storeName?: string | null
+  address?: string | null
+}): string {
+  const addr = o.address || ''
+  if (o.logisticsType === 'CVS' && o.storeName) {
+    return addr ? `[${o.storeName}]${addr}` : `[${o.storeName}]`
+  }
+  return addr || '—'
+}
