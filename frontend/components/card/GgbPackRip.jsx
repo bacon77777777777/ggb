@@ -154,6 +154,8 @@ function useSfx(enabled, master = 1) {
   api.current.hype = () => play("hype");
   api.current.stopHype = () => stop("hype");
   api.current.win = (tier) => play(WIN_BY_TIER[tier] || "winRare");
+  // SKIP 直接結束整場時一次收乾淨（醞釀音是 28 秒的 loop，沒收會拖到彈窗上）
+  api.current.stopAll = stopAll;
   /*
    * 預熱：把所有 <audio> 都先建起來讓瀏覽器抓檔。
    * 一開始挑在「撕開完成」才預熱，但撕開完成音是同一個 tick 播的 ——
@@ -182,12 +184,13 @@ export default function GGBPackRip({
   /**
    * 快速模式（商品頁左上角的閃電，玩家設定會記住）。開啟時：
    *   1. 略過撕包步驟，直接進發牌
-   *   2. SKIP 的落點**不變**，還是逐包停在壓軸（10/30 → 20/30 → 30/30）——
-   *      差別只在中間那幾張不演飛牌，瞬間到位、也不出聲（老闆 2026-08-23）
+   *   2. 「快進本包」（點空白處）的落點**不變**，還是逐包停在壓軸
+   *      （10/30 → 20/30 → 30/30）—— 差別只在中間那幾張不演飛牌，
+   *      瞬間到位、也不出聲（老闆 2026-08-23）
    * **每包壓軸照樣浮起等點擊** —— 那是抽獎的爽點，加速鍵只吃過場動畫，不吃它。
    *
    * 為什麼閃電不改落點：改成直衝整筆最後一張的話，前面每一包的壓軸全被吃掉，
-   * 玩家等於花錢買了十包卻只看到一包的演出。
+   * 玩家等於花錢買了十包卻只看到一包的演出。想直接結束的人按 SKIP。
    */
   fast = false,
   /** 演出畫面裡也有一顆同樣的閃電，切了要回寫商品頁的偏好 */
@@ -282,6 +285,8 @@ export default function GGBPackRip({
   const canvasRef = useRef(null);
   const particles = useRef([]);
   const peel = useRef({ on: false, lastX: 0, sinceSpark: 0 });
+  /* 發牌階段「點卡片以外的空白處」＝快進本包，見 onStageDown／onStageUp */
+  const stageTap = useRef({ on: false, sx: 0, sy: 0 });
   const phaseRef = useRef(phase); phaseRef.current = phase;
   const progRef = useRef(progress); progRef.current = progress;
   const timers = useRef([]);
@@ -362,8 +367,23 @@ export default function GGBPackRip({
 
   /* ---------- 撕開：整個畫面 左滑/右滑 都可以 ---------- */
   const onStageDown = (e) => {
-    if (phaseRef.current !== "idle" && phaseRef.current !== "tearing") return;
     if (e.target.closest?.("[data-ui]")) return;
+    /*
+     * 卡牌階段：輕點空白處＝快進本包（老闆 2026-08-27）。
+     *
+     * SKIP 改成「直接結束整場」之後，原本那套四段式快進要有地方去，
+     * 就放在「卡片以外的地方」。**不能連卡片一起吃**：卡片被收掉之後
+     * 下一張要 500ms 才自動翻（見 dismissCard），加上 380ms 的飛出動畫，
+     * 中間有將近 0.9 秒的空窗；玩家在那裡點下去會被判成「還沒到壓軸」，
+     * 直接飛過本包剩下的牌，整包被吃掉。卡片的點擊維持原樣（翻牌／收牌）。
+     *
+     * 這裡收得到事件就代表點的是空白處 —— 卡片的 onCardDown 會 stopPropagation。
+     */
+    if (phaseRef.current === "cards") {
+      stageTap.current = { on: true, sx: e.clientX, sy: e.clientY };
+      return;
+    }
+    if (phaseRef.current !== "idle" && phaseRef.current !== "tearing") return;
     peel.current = { on: true, lastX: e.clientX, sinceSpark: 0 };
     sfx.current.tear(); // 一段連續的撕包音，撕完在 finishRip 收掉
     if (phaseRef.current === "idle") setPhase("tearing");
@@ -397,7 +417,23 @@ export default function GGBPackRip({
     setProgress(np);
     if (np >= 1) finishRip();
   };
-  const onStageUp = () => { peel.current.on = false; };
+  const onStageUp = (e) => {
+    peel.current.on = false;
+    const t = stageTap.current;
+    if (!t.on) return;
+    stageTap.current = { on: false, sx: 0, sy: 0 };
+    if (phaseRef.current !== "cards") return;
+    if (flying || skipping) return;            // 飛牌途中的點擊不算
+    /*
+     * 發牌動畫還在跑時不吃點擊。剛撕完包的手指常常還在畫面上補一下，
+     * 那一下要是被判成快進，整包就在玩家看清楚之前飛光了。
+     * （卡片本身的點擊照舊 —— 那是玩家真的瞄準了才點得到。）
+     */
+    if (dealing) return;
+    // 拖了一段距離就不是「輕點」——玩家可能只是想滑卡片卻沒壓在卡上
+    if (Math.hypot(e.clientX - t.sx, e.clientY - t.sy) > 10) return;
+    advanceStep();
+  };
 
   const ripped = useRef(false); // 撕開只認第一次（見 onStageMove 的說明）
   const finishRip = () => {
@@ -519,7 +555,8 @@ export default function GGBPackRip({
   };
 
   /**
-   * SKIP 四段式（老闆 2026-08-23 改為逐包），按鈕一直在：
+   * 快進一步（四段式，老闆 2026-08-23 改為逐包）。**觸發方式是輕點空白處**，
+   * 不是 SKIP —— 2026-08-27 把 SKIP 還給它原本的意思（見 endShow）：
    *   還沒到本包壓軸   → 中間幾張飛掉，停在本包最後一張的卡背（浮起、不翻）
    *   已在壓軸但沒翻   → 翻開它（光環／火花／中獎音照跑）
    *   壓軸翻了、還有下一包 → 收掉這張，接著飛到下一包的壓軸
@@ -527,12 +564,12 @@ export default function GGBPackRip({
    *
    * 落點為什麼是「本包壓軸」而不是舊版的「最後一包開頭」：
    * 舊版 `cards.length - cardsPerPack` 會把前面每一包的壓軸整個吃掉 ——
-   * 買 3 包在 1/30 按 SKIP 直接飛到 21/30，玩家看到的是莫名其妙翻開一張普通牌。
+   * 買 3 包在 1/30 快進直接飛到 21/30，玩家看到的是莫名其妙翻開一張普通牌。
    *
-   * 閃電（快速模式）開著時落點改成整筆最後一張，那是給趕時間的人的逃生口；
+   * 閃電（快速模式）不改落點，只決定中間那幾張要不要演飛牌；
    * 每包壓軸仍然浮起等點擊，加速鍵不吃掉抽獎的爽點。
    */
-  const skipToLast = () => {
+  const advanceStep = () => {
     if (phaseRef.current !== "cards") return;
     if (skipping) return;           // 飛牌途中不重複觸發，不然會卡在 skipping 狀態
     const lastIdx = cards.length - 1;
@@ -571,6 +608,24 @@ export default function GGBPackRip({
      * 翻牌互動也接不上（老闆 2026-08-23）。SKIP 一次只做一件事。
      */
     dismissCard(1);
+  };
+
+  /**
+   * SKIP＝直接結束整場（老闆 2026-08-27）。
+   *
+   * 舊的 SKIP 是「快進一步」，名實不符 —— 全世界的 SKIP 都是「別演了，直接給結果」，
+   * 玩家按下去期待結束卻只前進一步。快進那套沒有消失，改成輕點空白處觸發。
+   *
+   * 不做二次確認：抽到什麼本來就全在商品頁的「恭喜獲得」彈窗裡，
+   * 這裡不會吃掉任何玩家看不到的東西，攔一層只是多一次點擊。
+   */
+  const endShow = () => {
+    if (phaseRef.current === "done") return;
+    timers.current.forEach(clearTimeout); timers.current = [];
+    setSkipping(false); setFlying(null); setAuraOn(false);
+    // 醞釀音是 28 秒的 loop，不收會一路拖到彈窗上（卸載的 cleanup 慢一拍）
+    sfx.current.stopAll();
+    if (onFinish) onFinish(); else setPhase("done");
   };
 
   /*
@@ -882,14 +937,6 @@ export default function GGBPackRip({
       <style>{CSS_KEYFRAMES}</style>
 
 
-      {STARS.map((s, i) => (
-        <div key={i} style={{
-          position: "absolute", left: s.x, top: s.y, fontSize: s.s, color: "#ffe14a",
-          textShadow: "0 0 10px #ffd54a", animation: `ggbTwinkle ${s.d}s ease-in-out ${s.dl}s infinite`,
-          pointerEvents: "none", zIndex: 1,
-        }}>✦</div>
-      ))}
-
       <canvas ref={canvasRef} width={typeof window !== "undefined" ? window.innerWidth : 400}
         height={typeof window !== "undefined" ? window.innerHeight : 800} style={S.canvas} />
       {flash && <div style={{ ...S.flash, background: phase === "cards" ? T.glow : "#ffedb0" }} />}
@@ -904,14 +951,14 @@ export default function GGBPackRip({
         {/* 閃電（快速模式）：左上角，與右上角的靜音鈕左右對稱。
             造型直接沿用 SoundToggle 匯出的 RAISED_STYLE／RAISED_STYLE_GOLD ——
             關閉時跟靜音鈕一模一樣，開啟時整顆轉金，與商品頁那顆同一份樣式。
-            每包只有一張時 SKIP 本來就直達最後，這顆沒有意義，不顯示。 */}
+            每包只有一張時快進本來就直達最後，這顆沒有意義，不顯示。 */}
         {phase === "cards" && packCeremony && (
           <button
             type="button"
             onClick={toggleFast}
             aria-pressed={fastOn}
             aria-label={fastOn ? "關閉快速模式" : "開啟快速模式"}
-            title={fastOn ? "快速模式：開（SKIP 一次跳到最後一張）" : "快速模式：關（SKIP 逐包停在壓軸）"}
+            title={fastOn ? "快速模式：開（略過撕包，快進不演飛牌）" : "快速模式：關（撕包照演，快進逐張飛出）"}
             className="pointer-events-auto absolute top-3 left-3 z-[60] w-[38px] h-[38px] rounded-full flex items-center justify-center transition-all active:scale-95 active:translate-y-[1px]"
             style={{
               ...(fastOn ? RAISED_STYLE_GOLD : RAISED_STYLE),
@@ -1160,7 +1207,7 @@ export default function GGBPackRip({
 
       {/* SKIP：右下角，樣式與一番賞過場影片那顆一致 */}
       {phase === "cards" && (
-        <button data-ui onClick={skipToLast} style={S.skipBtn}>SKIP</button>
+        <button data-ui onClick={endShow} style={S.skipBtn}>SKIP</button>
       )}
 
       {/* ---------- 完成 ---------- */}
@@ -1170,19 +1217,12 @@ export default function GGBPackRip({
   );
 }
 
-const STARS = [
-  { x: "10%", y: "18%", s: 26, d: 2.4, dl: 0 },
-  { x: "84%", y: "14%", s: 34, d: 3.1, dl: .5 },
-  { x: "88%", y: "42%", s: 24, d: 2.7, dl: 1.1 },
-  { x: "6%", y: "55%", s: 30, d: 3.4, dl: .8 },
-  { x: "78%", y: "74%", s: 18, d: 2.2, dl: .3 },
-  { x: "16%", y: "80%", s: 20, d: 2.9, dl: 1.4 },
-];
-
 const S = {
   stage: {
     position: "fixed", inset: 0, overflow: "hidden", userSelect: "none", touchAction: "none",
-    background: "radial-gradient(130% 100% at 50% 18%, #5a3fc9 0%, #43289e 40%, #2a1668 72%, #190b42 100%)",
+    /* 黑暗紫（老闆 2026-08-27）：原本是亮紫 #5a3fc9，卡片與光效在上面浮不出來。
+       壓深之後金／紫的光環、閃電、火花才是畫面上最亮的東西。 */
+    background: "radial-gradient(130% 100% at 50% 18%, #2b1a5c 0%, #1d1140 40%, #110828 72%, #070311 100%)",
     fontFamily: "'PingFang TC','Noto Sans TC',sans-serif", color: "#f0edfc",
     display: "flex", alignItems: "center", justifyContent: "center",
   },
@@ -1302,6 +1342,5 @@ const CSS_KEYFRAMES = `
 @keyframes ggbTilt3d { 0%,100%{transform:rotateX(7deg) rotateY(-9deg)} 50%{transform:rotateX(-6deg) rotateY(9deg)} }
 @keyframes ggbBoltFloat { 0%,100%{transform:translateY(0) rotate(-6deg) rotateX(6deg) rotateY(-7deg)} 50%{transform:translateY(-8px) rotate(-6deg) rotateX(-5deg) rotateY(7deg)} }
 @keyframes ggbRimPulse { 0%,100%{filter:brightness(1)} 50%{filter:brightness(1.3)} }
-@keyframes ggbTwinkle { 0%,100%{opacity:.25;transform:scale(.8) rotate(0)} 50%{opacity:1;transform:scale(1.15) rotate(15deg)} }
 @media (prefers-reduced-motion: reduce){ *{animation:none !important} }
 `;

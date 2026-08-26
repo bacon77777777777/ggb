@@ -2065,8 +2065,8 @@ export default function ProductDetailPage() {
                 prizeTier={packTiers[0] ?? 'blue'}
                 prizeTiers={packTiers}
                 soundDefault={!isVideoMuted}
-                /* 快速模式：略過撕包＋SKIP 一次跳到最後。演出裡也有同一顆閃電，
-                   在那邊切了要寫回這裡的偏好，兩處才是同一個狀態 */
+                /* 快速模式：略過撕包＋快進時不演飛牌（SKIP 是直接結束整場，不歸它管）。
+                   演出裡也有同一顆閃電，在那邊切了要寫回這裡的偏好，兩處才是同一個狀態 */
                 fast={skipPackIntro}
                 onFastChange={setSkipPackIntroPref}
                 cardsPerPack={cardsPerPack}
