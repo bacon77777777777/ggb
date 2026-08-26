@@ -599,6 +599,29 @@ async function downloadSmartToR2(
 }
 
 
+/**
+ * 標題分類 —— 比 Claude 的答案優先
+ *
+ * 「《直到你死去的那一天》一番賞登場！」被標成轉蛋（news id 26078565）：
+ * 那篇從電擊ホビー（DIRECT_FEEDS，來源提示 figure）進來，Claude 回 gacha，
+ * 而原本的規則是「只要 Claude 回的不是 toy 就照收」，所以沒人攔。
+ *
+ * 標題直接寫了品類的，那就是最強的訊號，不需要模型判斷 ——
+ * 一篇標題有「一番賞」的文章不會是轉蛋新聞。順序照專一性排：
+ * 一番賞 > 卡牌 > 轉蛋 > 盒玩（一番賞新聞常同時提到轉蛋與景品，先攔的贏）。
+ *
+ * 只吃標題、不吃內文：內文順帶提一句「同系列也有一番くじ」很常見，
+ * 拿全文比對反而會把轉蛋新聞誤判成一番賞。
+ */
+function classifyByTitle(title: string): string | null {
+  if (!title) return null
+  if (/一番賞|一番くじ|ichiban ?kuji/i.test(title)) return 'ichiban'
+  if (/ポケモンカード|ポケカ|遊戯王|遊戲王|デュエマ|デュエル・?マスターズ|ヴァイスシュヴァルツ|カードゲーム|トレカ|卡牌|卡包|新弾|新彈|TCG/i.test(title)) return 'tcg'
+  if (/ガシャポン|ガチャポン|カプセルトイ|扭蛋|轉蛋/.test(title)) return 'gacha'
+  if (/ブラインドボックス|盲盒|盒玩|ポップマート|POP ?MART|食玩/i.test(title)) return 'toy'
+  return null
+}
+
 // Claude 回 general 時的關鍵字兜底分類
 function classifyByKeywords(text: string): string | null {
   if (/一番賞|一番くじ/.test(text)) return 'ichiban'
@@ -607,6 +630,23 @@ function classifyByKeywords(text: string): string | null {
   if (/景品|プライズ|フィギュア|公仔|手辦|模型|Figuarts|ROBOT魂|ねんどろいど|黏土人/i.test(text)) return 'figure'
   if (/ブラインドボックス|盲盒|盒玩|ポップマート|POP ?MART|食玩|ソフビ|軟膠|周邊|グッズ/i.test(text)) return 'toy'
   return null
+}
+
+/**
+ * 三條取材路徑共用的最終分類。優先序：
+ *   標題明講 > Claude 的判斷（非 toy）> 全文關鍵字 > 來源提示
+ */
+function pickCategory(
+  draft: { category?: string; title?: string; tags?: string[] },
+  titles: (string | undefined)[],
+  fallback: string,
+): string {
+  for (const t of titles) {
+    const byTitle = classifyByTitle(t ?? '')
+    if (byTitle) return byTitle
+  }
+  if (draft.category && draft.category !== 'toy') return draft.category
+  return classifyByKeywords(`${draft.title ?? ''} ${titles.join(' ')} ${(draft.tags ?? []).join(',')}`) ?? fallback
 }
 
 const BLOCKED_IMG_DOMAINS = [
@@ -791,7 +831,7 @@ ${combined}
   "summary": "一句話摘要，說明什麼商品、何時發售或上市（40字以內）",
   "content": "<h2>小標</h2><p>段落...</p><h2>小標</h2><p>段落...</p>（繁體中文，550-750字，4~5段並用 2~3 個 <h2> 分段，從玩家視角介紹：商品特色與造型細節、系列背景或角色亮點、發售與預購資訊、值得入手的理由；資訊不足處以既有內容延伸描述，不可捏造價格或日期）",
   "tags": ["品牌","系列名","類型"],
-  "category": "ichiban|gacha|tcg|figure|toy（figure＝公仔/景品/模型/プライズ；toy＝盒玩/盲盒/食玩/周邊商品/軟膠/展會；分不出來就用 toy）"
+  "category": "ichiban|gacha|tcg|figure|toy（figure＝公仔/景品/模型/プライズ；toy＝盒玩/盲盒/食玩/周邊商品/軟膠/展會；分不出來就用 toy。標題或內文寫明「一番賞／一番くじ」一律 ichiban，寫明卡牌／新彈／TCG 一律 tcg —— 這兩類不可退回 figure 或 gacha）"
 }
 
 若不符合篩選條件，直接回傳：null`,
@@ -930,7 +970,7 @@ export async function POST(req: NextRequest) {
   // 已寫入的 source_url 集合（防重複 URL）
   const { data: existingRows } = await supabase
     .from('news')
-    .select('source_url, title, created_at, image_url')
+    .select('source_url, title, created_at, image_url, category')
     .not('source_url', 'is', null)
     .gte('created_at', new Date(Date.now() - 30 * 86400_000).toISOString())
   const existing      = new Set((existingRows ?? []).map((r: any) => r.source_url as string))
@@ -971,281 +1011,368 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const limitOverride: number | undefined = typeof body?.limit === 'number' ? body.limit : undefined
 
-  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0 } }
+  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0, catQuota: 0 } }
   const DEADLINE     = Date.now() + 240_000  // 最多跑 4 分鐘
   const MAX_TOTAL    = limitOverride ?? 3    // 每次全局上限（手動觸發可傳 limit:1）
   const MAX_PER_QUERY = limitOverride === 1 ? 1 : 2
 
-  // ── 直接 RSS 來源（PR TIMES / 電撃ホビー / Animate Times 等）────────────────
-  // ── HTML 來源（無 RSS，解析列表頁）──────────────────────────
-  for (const src of HTML_SOURCES) {
-    if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
+  /**
+   * 分類配額 —— 一番賞與卡牌長期掛零的原因
+   *
+   * 來源是照「HTML → DIRECT_FEEDS → Google News」的順序跑，寫滿 MAX_TOTAL 就 break。
+   * 而 DIRECT_FEEDS 四個（PR TIMES／電擊／Animate／巴哈）**來源分類全是 figure**，
+   * 一番賞與卡牌只存在於最後那組 Google News 查詢裡 —— 前面兩組先把 3 篇的額度用完，
+   * 那組查詢等於從來沒跑到。近 14 天實際比例：figure 95、toy 28、gacha 28、
+   * ichiban 2、tcg 2。不是抓不到，是根本沒輪到。
+   *
+   * 兩件事一起做：
+   *   1. 同一分類一次最多 1 篇（3 篇＝三個不同分類），figure 吃不完整場
+   *   2. Google News 查詢照「近 7 天誰最少」排序 —— 不寫死輪值表，DB 就是進度表
+   */
+  const CATEGORIES = ['ichiban', 'tcg', 'gacha', 'figure', 'toy']
+  const countSince = (ms: number) => {
+    const out: Record<string, number> = {}
+    for (const r of (existingRows ?? []) as any[]) {
+      if (new Date(r.created_at ?? 0).getTime() < Date.now() - ms) continue
+      const c = String(r.category ?? 'toy')
+      out[c] = (out[c] ?? 0) + 1
+    }
+    return out
+  }
+  const last24h = countSince(86400_000)
+  const last7d  = countSince(7 * 86400_000)
 
-    const listHtml = await fetchText(src.url, 10_000)
-    if (!listHtml) { results.errors++; continue }
+  // 排序看近 24 小時（當天輪替），同分再看近 7 天（長期落後的先補）
+  const categoryRank = new Map(
+    [...CATEGORIES]
+      .sort((a, b) =>
+        ((last24h[a] ?? 0) - (last24h[b] ?? 0)) || ((last7d[a] ?? 0) - (last7d[b] ?? 0))
+      )
+      .map((c, i) => [c, i] as const)
+  )
 
-    for (const realUrl of extractToyPeopleLinks(listHtml).slice(0, 8)) {
+  /**
+   * 兩層額度：
+   *   單次   —— 一次 3 篇，同分類最多 1 篇 → 一次跑出三個不同分類
+   *   單日   —— 一天 4 次共 12 篇要分給 5 類（12 ÷ 5 ≈ 2.4），任一類近 24 小時
+   *              滿 3 篇就讓位，把剩下的次數讓給還沒補到的分類
+   *
+   * 走一天看得出效果：前三次各拿 toy／figure／一個稀缺分類，第四次 toy 與 figure
+   * 都滿 3 篇被擋下，整場讓給 Google News 那組查詢（一番賞／卡牌／轉蛋都在那裡），
+   * 一天收斂成 3/3/2/2/2。手動觸發（帶 limit）不套單日上限，否則測試時可能一篇都寫不出來。
+   */
+  const DAILY_PER_CATEGORY = 3
+  const MAX_PER_CATEGORY = Math.max(1, Math.ceil(MAX_TOTAL / 3))
+  const catWritten: Record<string, number> = {}
+  const quotaFull = (c: string) =>
+    (catWritten[c] ?? 0) >= MAX_PER_CATEGORY ||
+    (limitOverride === undefined && (last24h[c] ?? 0) + (catWritten[c] ?? 0) >= DAILY_PER_CATEGORY)
+
+  const runHtmlSources = async () => {
+    for (const src of HTML_SOURCES) {
       if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
-      if (existing.has(realUrl)) { results.skipped++; results.skipReasons.duplicate++; continue }
 
-      const articleHtml = await fetchText(realUrl, 10_000)
-      if (!articleHtml) { results.skipped++; results.skipReasons.noHtml++; continue }
+      const listHtml = await fetchText(src.url, 10_000)
+      if (!listHtml) { results.errors++; continue }
 
-      const ogImage = resolveImageUrl(extractOgImage(articleHtml), realUrl)
-                   || resolveImageUrl(extractBodyImage(articleHtml), realUrl)
-      if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
-      // 站方拿自家 logo 當 og:image → 這篇不發，換下一篇（老闆指定）
-      if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
+      for (const realUrl of extractToyPeopleLinks(listHtml).slice(0, 8)) {
+        if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
+        if (existing.has(realUrl)) { results.skipped++; results.skipReasons.duplicate++; continue }
 
-      const title = extractMeta(articleHtml, 'og:title') || ''
-      const desc  = extractMeta(articleHtml, 'og:description') || ''
-      const bodyText = articleHtml
-        .replace(/<script[\s\S]*?<\/script>/gi, '')
-        .replace(/<style[\s\S]*?<\/style>/gi, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ').trim()
-        .slice(0, 1500)
+        const articleHtml = await fetchText(realUrl, 10_000)
+        if (!articleHtml) { results.skipped++; results.skipReasons.noHtml++; continue }
 
-      if (isDuplicateSource(title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+        const ogImage = resolveImageUrl(extractOgImage(articleHtml), realUrl)
+                     || resolveImageUrl(extractBodyImage(articleHtml), realUrl)
+        if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
+        // 站方拿自家 logo 當 og:image → 這篇不發，換下一篇（老闆指定）
+        if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
 
-      const draft = await rewriteArticle(claude, title, desc, bodyText, realUrl, src.category)
-      if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
-      if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+        const title = extractMeta(articleHtml, 'og:title') || ''
+        const desc  = extractMeta(articleHtml, 'og:description') || ''
+        const bodyText = articleHtml
+          .replace(/<script[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[\s\S]*?<\/style>/gi, '')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ').trim()
+          .slice(0, 1500)
 
-      // 每張圖都驗浮水印，轉存不成功就整篇不發（老闆規則：百分之百不要
-      // 看到別人的 logo）。原本會退回 ogImage hotlink —— 那等於把沒驗過的
-      // 原圖直接端到玩家面前，是這條路最後一個漏洞
-      const seenImages = new Set<string>()
-      const hostedCover = await downloadSmartToR2(ogImage, false, realUrl, seenImages)
-      if (!hostedCover) { results.skipped++; results.skipReasons.wmUnsafe++; continue }
-      const imageUrl = hostedCover
-      // 玩具人是直接解析列表頁抓連結，沒有 RSS 可退，articleHtml 抓不到就沒有內文圖
-      const contentWithImages = await injectBodyImages(draft.content, articleHtml, ogImage, realUrl, false, seenImages)
-      const finalCategory = (draft.category && draft.category !== 'toy')
-        ? draft.category
-        : (classifyByKeywords(`${draft.title} ${title} ${(draft.tags ?? []).join(',')}`) ?? src.category)
+        if (isDuplicateSource(title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+        if (quotaFull(classifyByTitle(title) ?? src.category)) { results.skipped++; results.skipReasons.catQuota++; continue }
 
-      const id = Math.floor(10000000 + Math.random() * 90000000).toString()
-      const { error } = await supabase.from('news').insert({
-        id, title: draft.title, summary: draft.summary, content: contentWithImages,
-        image_url: imageUrl, source_url: realUrl,
-        category: finalCategory, tags: draft.tags ?? [], is_active: !!imageUrl,
+        const draft = await rewriteArticle(claude, title, desc, bodyText, realUrl, src.category)
+        if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
+        if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+
+        // 每張圖都驗浮水印，轉存不成功就整篇不發（老闆規則：百分之百不要
+        // 看到別人的 logo）。原本會退回 ogImage hotlink —— 那等於把沒驗過的
+        // 原圖直接端到玩家面前，是這條路最後一個漏洞
+        const seenImages = new Set<string>()
+        const hostedCover = await downloadSmartToR2(ogImage, false, realUrl, seenImages)
+        if (!hostedCover) { results.skipped++; results.skipReasons.wmUnsafe++; continue }
+        const imageUrl = hostedCover
+        // 玩具人是直接解析列表頁抓連結，沒有 RSS 可退，articleHtml 抓不到就沒有內文圖
+        const contentWithImages = await injectBodyImages(draft.content, articleHtml, ogImage, realUrl, false, seenImages)
+        const finalCategory = pickCategory(draft, [draft.title, title], src.category)
+
+        const id = Math.floor(10000000 + Math.random() * 90000000).toString()
+        const { error } = await supabase.from('news').insert({
+          id, title: draft.title, summary: draft.summary, content: contentWithImages,
+          image_url: imageUrl, source_url: realUrl,
+          category: finalCategory, tags: draft.tags ?? [], is_active: !!imageUrl,
+        })
+        if (!error) {
+          results.written++
+          catWritten[finalCategory] = (catWritten[finalCategory] ?? 0) + 1
+          results.articles.push(`[${src.label}] ${draft.title}`)
+          existing.add(realUrl)
+          sessionTitles.push(tokenize(draft.title))
+          await generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, finalCategory)
+          void supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).then(null, () => {})
+          await new Promise(r => setTimeout(r, 300))
+        } else {
+          results.errors++; results.skipReasons.insertErr++
+          console.error('[news-agent] insert error:', error.message)
+        }
+      }
+    }
+  }
+
+  const runDirectFeeds = async () => {
+    for (const feed of DIRECT_FEEDS) {
+      if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
+
+      const xml = await fetchText(feed.url)
+      if (!xml) { results.errors++; continue }
+
+      const rawItems = parseRss(xml).filter(it => isRecent(it.pubDate, 3)) // 只抓 3 天內
+      const items = rawItems.sort((a, b) => {
+        const da = (() => { try { return new URL(a.link).hostname } catch { return '' } })()
+        const db = (() => { try { return new URL(b.link).hostname } catch { return '' } })()
+        return (trustedDomains.has(db) ? 1 : 0) - (trustedDomains.has(da) ? 1 : 0)
       })
-      if (!error) {
-        results.written++
-        results.articles.push(`[${src.label}] ${draft.title}`)
-        existing.add(realUrl)
-        sessionTitles.push(tokenize(draft.title))
-        await generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, finalCategory)
-        void supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).then(null, () => {})
+      for (const item of items) {
+        if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
+
+        const realUrl = item.link
+        if (!realUrl || existing.has(realUrl)) { results.skipped++; results.skipReasons.duplicate++; continue }
+        // 配額檢查放在抓文章之前 —— RSS 標題就足夠判斷，額度滿了不必付一趟 fetch
+        if (quotaFull(classifyByTitle(item.title) ?? feed.category)) { results.skipped++; results.skipReasons.catQuota++; continue }
+
+        const articleHtml = await fetchText(realUrl, 15_000)
+        let ogImage = articleHtml
+          ? (resolveImageUrl(extractOgImage(articleHtml), realUrl) || resolveImageUrl(extractBodyImage(articleHtml), realUrl))
+          : resolveImageUrl(item.rssImage, realUrl)
+        let jinaText = ''
+        if (!ogImage) {
+          jinaText = await fetchViaJina(realUrl)
+          if (jinaText) ogImage = extractImageFromJina(jinaText, realUrl)
+        }
+        // 沒有真實圖片 → 直接跳過，不呼叫 Claude，省 token
+        if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
+        // 站方拿自家 logo 當 og:image → 這篇不發，換下一篇（老闆指定）
+        if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
+
+        const bodyText = articleHtml
+          ? articleHtml
+              .replace(/<script[\s\S]*?<\/script>/gi, '')
+              .replace(/<style[\s\S]*?<\/style>/gi, '')
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/\s+/g, ' ').trim()
+              .slice(0, 1500)
+          : (jinaText || item.description).slice(0, 1500)
+
+        if (isDuplicateSource(item.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+
+        const draft = await rewriteArticle(claude, item.title, item.description, bodyText, realUrl, feed.category)
+        if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
+        if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+
+        const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
+        // 封面與內文圖共用同一條路徑：每張都用 Claude 視覺驗浮水印，
+        // 有就蓋 GGB logo 再驗一次確認蓋乾淨了
+        // 同一篇文章共用一份已處理清單，封面先進去，內文圖就不會重複處理同一張
+        const seenImages = new Set<string>()
+        const hostedCover = await downloadSmartToR2(ogImage, isWatermarked, realUrl, seenImages)
+        // 轉存不成功 = 沒驗過或沒蓋乾淨 → 整篇不發，不退回原圖 hotlink
+        if (!hostedCover) { results.skipped++; results.skipReasons.wmUnsafe++; continue }
+        const imageUrl = hostedCover
+        const finalCategory = pickCategory(draft, [draft.title, item.title], feed.category)
+        const id = Math.floor(10000000 + Math.random() * 90000000).toString()
+        // 內文配圖。這條路徑（DIRECT_FEEDS：電擊ホビー / PR TIMES / Animate Times）
+        // 原本完全沒有這一步 —— 另外兩條有，只有這條漏了。
+        // 而 485 篇文章裡有 359 篇是走這條進來的，所以「內文都沒有圖」看起來像
+        // 功能沒做，其實是主力來源那條路徑根本沒接上。
+        // articleHtml 抓不到就退回 RSS 的 content:encoded，跟 Google News 那條一致。
+        const contentWithImages = await injectBodyImages(
+          draft.content, articleHtml || item.rssHtml, ogImage, realUrl, isWatermarked, seenImages
+        )
+
+        const { error } = await supabase.from('news').insert({
+          id, title: draft.title, summary: draft.summary, content: contentWithImages,
+          image_url: imageUrl, source_url: realUrl,
+          category: finalCategory, tags: draft.tags ?? [], is_active: !!imageUrl,
+        })
+        if (!error) {
+          results.written++
+          catWritten[finalCategory] = (catWritten[finalCategory] ?? 0) + 1
+          results.articles.push(`[${feed.label}] ${draft.title}`)
+          existing.add(realUrl); sessionTitles.push(tokenize(draft.title))
+          await generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, draft.category ?? feed.category)
+          void supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).then(null, () => {})
+        } else if (error.code === '23505') {
+          results.skipped++; results.skipReasons.duplicate++
+        } else {
+          results.errors++
+        }
         await new Promise(r => setTimeout(r, 300))
-      } else {
-        results.errors++; results.skipReasons.insertErr++
-        console.error('[news-agent] insert error:', error.message)
       }
     }
   }
 
-  for (const feed of DIRECT_FEEDS) {
-    if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
-
-    const xml = await fetchText(feed.url)
-    if (!xml) { results.errors++; continue }
-
-    const rawItems = parseRss(xml).filter(it => isRecent(it.pubDate, 3)) // 只抓 3 天內
-    const items = rawItems.sort((a, b) => {
-      const da = (() => { try { return new URL(a.link).hostname } catch { return '' } })()
-      const db = (() => { try { return new URL(b.link).hostname } catch { return '' } })()
-      return (trustedDomains.has(db) ? 1 : 0) - (trustedDomains.has(da) ? 1 : 0)
-    })
-    for (const item of items) {
+  // ── Google News RSS ──────────────────────────────────────────────────────
+  // 查詢也照缺稿程度排：一番賞／卡牌落後時，它們的查詢先跑
+  const orderedQueries = [...RSS_QUERIES].sort(
+    (a, b) => (categoryRank.get(a.category) ?? 99) - (categoryRank.get(b.category) ?? 99)
+  )
+  const runGoogleNews = async () => {
+    for (const { q, category, locale } of orderedQueries) {
       if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
 
-      const realUrl = item.link
-      if (!realUrl || existing.has(realUrl)) { results.skipped++; results.skipReasons.duplicate++; continue }
+      const xml = await fetchText(rssUrl(q, locale))
+      if (!xml) { results.errors++; continue }
 
-      const articleHtml = await fetchText(realUrl, 15_000)
-      let ogImage = articleHtml
-        ? (resolveImageUrl(extractOgImage(articleHtml), realUrl) || resolveImageUrl(extractBodyImage(articleHtml), realUrl))
-        : resolveImageUrl(item.rssImage, realUrl)
-      let jinaText = ''
-      if (!ogImage) {
-        jinaText = await fetchViaJina(realUrl)
-        if (jinaText) ogImage = extractImageFromJina(jinaText, realUrl)
-      }
-      // 沒有真實圖片 → 直接跳過，不呼叫 Claude，省 token
-      if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
-      // 站方拿自家 logo 當 og:image → 這篇不發，換下一篇（老闆指定）
-      if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
-
-      const bodyText = articleHtml
-        ? articleHtml
-            .replace(/<script[\s\S]*?<\/script>/gi, '')
-            .replace(/<style[\s\S]*?<\/style>/gi, '')
-            .replace(/<[^>]+>/g, ' ')
-            .replace(/\s+/g, ' ').trim()
-            .slice(0, 1500)
-        : (jinaText || item.description).slice(0, 1500)
-
-      if (isDuplicateSource(item.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
-
-      const draft = await rewriteArticle(claude, item.title, item.description, bodyText, realUrl, feed.category)
-      if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
-      if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
-
-      const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
-      // 封面與內文圖共用同一條路徑：每張都用 Claude 視覺驗浮水印，
-      // 有就蓋 GGB logo 再驗一次確認蓋乾淨了
-      // 同一篇文章共用一份已處理清單，封面先進去，內文圖就不會重複處理同一張
-      const seenImages = new Set<string>()
-      const hostedCover = await downloadSmartToR2(ogImage, isWatermarked, realUrl, seenImages)
-      // 轉存不成功 = 沒驗過或沒蓋乾淨 → 整篇不發，不退回原圖 hotlink
-      if (!hostedCover) { results.skipped++; results.skipReasons.wmUnsafe++; continue }
-      const imageUrl = hostedCover
-      const finalCategory = (draft.category && draft.category !== 'toy')
-        ? draft.category
-        : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'toy')
-      const id = Math.floor(10000000 + Math.random() * 90000000).toString()
-      // 內文配圖。這條路徑（DIRECT_FEEDS：電擊ホビー / PR TIMES / Animate Times）
-      // 原本完全沒有這一步 —— 另外兩條有，只有這條漏了。
-      // 而 485 篇文章裡有 359 篇是走這條進來的，所以「內文都沒有圖」看起來像
-      // 功能沒做，其實是主力來源那條路徑根本沒接上。
-      // articleHtml 抓不到就退回 RSS 的 content:encoded，跟 Google News 那條一致。
-      const contentWithImages = await injectBodyImages(
-        draft.content, articleHtml || item.rssHtml, ogImage, realUrl, isWatermarked, seenImages
-      )
-
-      const { error } = await supabase.from('news').insert({
-        id, title: draft.title, summary: draft.summary, content: contentWithImages,
-        image_url: imageUrl, source_url: realUrl,
-        category: finalCategory, tags: draft.tags ?? [], is_active: !!imageUrl,
+      const rawItems = parseRss(xml).filter(it => isRecent(it.pubDate))
+      // trusted domain 排前面
+      const items = rawItems.sort((a, b) => {
+        const da = (() => { try { return new URL(a.link).hostname } catch { return '' } })()
+        const db = (() => { try { return new URL(b.link).hostname } catch { return '' } })()
+        return (trustedDomains.has(db) ? 1 : 0) - (trustedDomains.has(da) ? 1 : 0)
       })
-      if (!error) {
-        results.written++; results.articles.push(`[${feed.label}] ${draft.title}`)
-        existing.add(realUrl); sessionTitles.push(tokenize(draft.title))
-        await generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, draft.category ?? feed.category)
-        void supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).then(null, () => {})
-      } else if (error.code === '23505') {
-        results.skipped++; results.skipReasons.duplicate++
-      } else {
-        results.errors++
+      let perQuery = 0
+
+      for (const item of items) {
+        if (Date.now() > DEADLINE || perQuery >= MAX_PER_QUERY || results.written >= MAX_TOTAL) break
+
+        // 配額檢查在 resolve redirect 之前 —— 額度滿了不必付這趟 fetch
+        if (quotaFull(classifyByTitle(item.title) ?? category)) { results.skipped++; results.skipReasons.catQuota++; continue }
+
+        // Google News 的 link 是 redirect，先 resolve 到真實 URL
+        const realUrl = await resolveGoogleLink(item.link)
+        if (existing.has(realUrl) || existing.has(item.link)) { results.skipped++; results.skipReasons.duplicate++; continue }
+
+        // 抓實際文章頁：取 og:image + body text（若 block 仍繼續用 RSS 資料）
+        const articleHtml = await fetchText(realUrl, 15_000)
+        let ogImage = articleHtml
+          ? (resolveImageUrl(extractOgImage(articleHtml), realUrl) || resolveImageUrl(extractBodyImage(articleHtml), realUrl))
+          : resolveImageUrl(item.rssImage, realUrl)
+        let jinaText = ''
+        if (!ogImage) {
+          jinaText = await fetchViaJina(realUrl)
+          if (jinaText) ogImage = extractImageFromJina(jinaText, realUrl)
+        }
+        // 沒有真實圖片 → 直接跳過，不呼叫 Claude，省 token
+        if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
+        // 站方拿自家 logo 當 og:image → 這篇不發，換下一篇（老闆指定）
+        if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
+
+        const bodyText = articleHtml
+          ? articleHtml
+              .replace(/<script[\s\S]*?<\/script>/gi, '')
+              .replace(/<style[\s\S]*?<\/style>/gi, '')
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/\s+/g, ' ').trim()
+              .slice(0, 1500)
+          : (jinaText || item.description).slice(0, 1500)
+
+        if (isDuplicateSource(item.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+
+        // Claude 改寫
+        const draft = await rewriteArticle(
+          claude, item.title, item.description, bodyText, realUrl, category
+        )
+        if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
+
+        // 標題相似度去重（同主題 Jaccard >= 0.55 視為重複）
+        if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+
+        const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
+        // 封面與內文圖共用同一條路徑：每張都用 Claude 視覺驗浮水印，
+        // 有就蓋 GGB logo 再驗一次確認蓋乾淨了
+        // 同一篇文章共用一份已處理清單，封面先進去，內文圖就不會重複處理同一張
+        const seenImages = new Set<string>()
+        const hostedCover = await downloadSmartToR2(ogImage, isWatermarked, realUrl, seenImages)
+        // 轉存不成功 = 沒驗過或沒蓋乾淨 → 整篇不發，不退回原圖 hotlink
+        if (!hostedCover) { results.skipped++; results.skipReasons.wmUnsafe++; continue }
+        const imageUrl = hostedCover
+        const finalCategory = pickCategory(draft, [draft.title, item.title], category)
+
+        // 內文配圖：從已抓過的文章 HTML 取 2 張（非封面），轉存 R2 後插在段落之間。
+        // 不做圖片生成、不額外請求文章頁，成本只有 R2 儲存。
+        // 文章頁抓不到就退回 RSS 的 content:encoded。
+        // 電擊的文章頁常在 8 秒內回不來（160KB、三種 UA 都試過），
+        // 封面因為有 item.rssImage 兜底所以看不出來，內文圖卻是直接整段放棄 ——
+        // 489 篇裡只有 1 篇有內文圖就是這樣來的。
+        const contentWithImages = await injectBodyImages(
+          draft.content, articleHtml || item.rssHtml, ogImage, realUrl, isWatermarked, seenImages
+        )
+
+        const id = Math.floor(10000000 + Math.random() * 90000000).toString()
+        const { error } = await supabase.from('news').insert({
+          id,
+          title:      draft.title,
+          summary:    draft.summary,
+          content:    contentWithImages,
+          image_url:  imageUrl,
+          source_url: realUrl,
+          category:   finalCategory,
+          tags:       draft.tags ?? [],
+          is_active:  !!imageUrl,
+        })
+
+        if (!error) {
+          results.written++
+          catWritten[finalCategory] = (catWritten[finalCategory] ?? 0) + 1
+          results.articles.push(draft.title)
+          existing.add(realUrl)
+          sessionTitles.push(tokenize(draft.title))  // 加入本次 session 比對池
+          await generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, draft.category ?? category)
+          void supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).then(null, () => {})
+          perQuery++
+        } else if (error.code === '23505') {
+          results.skipped++; results.skipReasons.duplicate++
+        } else {
+          console.error('[news-agent] insert error:', error.message)
+          results.errors++
+        }
+
+        await new Promise(r => setTimeout(r, 300))
       }
-      await new Promise(r => setTimeout(r, 300))
     }
   }
 
-  // ── Google News RSS ────────────────────────────────────────────────────────
-  for (const { q, category, locale } of RSS_QUERIES) {
-    if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
-
-    const xml = await fetchText(rssUrl(q, locale))
-    if (!xml) { results.errors++; continue }
-
-    const rawItems = parseRss(xml).filter(it => isRecent(it.pubDate))
-    // trusted domain 排前面
-    const items = rawItems.sort((a, b) => {
-      const da = (() => { try { return new URL(a.link).hostname } catch { return '' } })()
-      const db = (() => { try { return new URL(b.link).hostname } catch { return '' } })()
-      return (trustedDomains.has(db) ? 1 : 0) - (trustedDomains.has(da) ? 1 : 0)
-    })
-    let perQuery = 0
-
-    for (const item of items) {
-      if (Date.now() > DEADLINE || perQuery >= MAX_PER_QUERY || results.written >= MAX_TOTAL) break
-
-      // Google News 的 link 是 redirect，先 resolve 到真實 URL
-      const realUrl = await resolveGoogleLink(item.link)
-      if (existing.has(realUrl) || existing.has(item.link)) { results.skipped++; results.skipReasons.duplicate++; continue }
-
-      // 抓實際文章頁：取 og:image + body text（若 block 仍繼續用 RSS 資料）
-      const articleHtml = await fetchText(realUrl, 15_000)
-      let ogImage = articleHtml
-        ? (resolveImageUrl(extractOgImage(articleHtml), realUrl) || resolveImageUrl(extractBodyImage(articleHtml), realUrl))
-        : resolveImageUrl(item.rssImage, realUrl)
-      let jinaText = ''
-      if (!ogImage) {
-        jinaText = await fetchViaJina(realUrl)
-        if (jinaText) ogImage = extractImageFromJina(jinaText, realUrl)
-      }
-      // 沒有真實圖片 → 直接跳過，不呼叫 Claude，省 token
-      if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
-      // 站方拿自家 logo 當 og:image → 這篇不發，換下一篇（老闆指定）
-      if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
-
-      const bodyText = articleHtml
-        ? articleHtml
-            .replace(/<script[\s\S]*?<\/script>/gi, '')
-            .replace(/<style[\s\S]*?<\/style>/gi, '')
-            .replace(/<[^>]+>/g, ' ')
-            .replace(/\s+/g, ' ').trim()
-            .slice(0, 1500)
-        : (jinaText || item.description).slice(0, 1500)
-
-      if (isDuplicateSource(item.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
-
-      // Claude 改寫
-      const draft = await rewriteArticle(
-        claude, item.title, item.description, bodyText, realUrl, category
-      )
-      if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
-
-      // 標題相似度去重（同主題 Jaccard >= 0.55 視為重複）
-      if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
-
-      const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
-      // 封面與內文圖共用同一條路徑：每張都用 Claude 視覺驗浮水印，
-      // 有就蓋 GGB logo 再驗一次確認蓋乾淨了
-      // 同一篇文章共用一份已處理清單，封面先進去，內文圖就不會重複處理同一張
-      const seenImages = new Set<string>()
-      const hostedCover = await downloadSmartToR2(ogImage, isWatermarked, realUrl, seenImages)
-      // 轉存不成功 = 沒驗過或沒蓋乾淨 → 整篇不發，不退回原圖 hotlink
-      if (!hostedCover) { results.skipped++; results.skipReasons.wmUnsafe++; continue }
-      const imageUrl = hostedCover
-      const finalCategory = (draft.category && draft.category !== 'toy')
-        ? draft.category
-        : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'toy')
-
-      // 內文配圖：從已抓過的文章 HTML 取 2 張（非封面），轉存 R2 後插在段落之間。
-      // 不做圖片生成、不額外請求文章頁，成本只有 R2 儲存。
-      // 文章頁抓不到就退回 RSS 的 content:encoded。
-      // 電擊的文章頁常在 8 秒內回不來（160KB、三種 UA 都試過），
-      // 封面因為有 item.rssImage 兜底所以看不出來，內文圖卻是直接整段放棄 ——
-      // 489 篇裡只有 1 篇有內文圖就是這樣來的。
-      const contentWithImages = await injectBodyImages(
-        draft.content, articleHtml || item.rssHtml, ogImage, realUrl, isWatermarked, seenImages
-      )
-
-      const id = Math.floor(10000000 + Math.random() * 90000000).toString()
-      const { error } = await supabase.from('news').insert({
-        id,
-        title:      draft.title,
-        summary:    draft.summary,
-        content:    contentWithImages,
-        image_url:  imageUrl,
-        source_url: realUrl,
-        category:   finalCategory,
-        tags:       draft.tags ?? [],
-        is_active:  !!imageUrl,
-      })
-
-      if (!error) {
-        results.written++
-        results.articles.push(draft.title)
-        existing.add(realUrl)
-        sessionTitles.push(tokenize(draft.title))  // 加入本次 session 比對池
-        await generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, draft.category ?? category)
-        void supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).then(null, () => {})
-        perQuery++
-      } else if (error.code === '23505') {
-        results.skipped++; results.skipReasons.duplicate++
-      } else {
-        console.error('[news-agent] insert error:', error.message)
-        results.errors++
-      }
-
-      await new Promise(r => setTimeout(r, 300))
-    }
+  /**
+   * 來源組的執行順序照「現在最缺哪一類」決定，不是寫死的。
+   *
+   * 原本永遠是 HTML → DIRECT_FEEDS → Google News，而前兩組只產得出 toy 與 figure，
+   * 每次都先把 3 篇額度吃掉兩篇，一番賞／卡牌只能撿最後一格。
+   * 現在每跑完一組就重排一次：哪一組供得出「目前最落後的分類」，哪一組先上。
+   * cats 要照實列 —— Google News 沒有 figure 的查詢，寫進去它會永遠排第一。
+   */
+  const groups = [
+    { cats: ['toy', 'figure'],                     run: runHtmlSources },
+    { cats: ['figure'],                            run: runDirectFeeds },
+    { cats: ['ichiban', 'tcg', 'gacha', 'toy'],    run: runGoogleNews  },
+  ]
+  const groupRank = (g: { cats: string[] }) => {
+    const open = g.cats.filter(c => !quotaFull(c)).map(c => categoryRank.get(c) ?? 99)
+    return open.length ? Math.min(...open) : 99   // 全滿的組排最後
+  }
+  while (groups.length > 0 && results.written < MAX_TOTAL && Date.now() < DEADLINE) {
+    groups.sort((a, b) => groupRank(a) - groupRank(b))
+    await groups.shift()!.run()
   }
 
-  return NextResponse.json({ ok: true, ...results })
+
+  return NextResponse.json({ ok: true, ...results, byCategory: catWritten, last24h })
 }
