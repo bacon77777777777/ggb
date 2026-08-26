@@ -38,7 +38,7 @@ import { fetchJson } from '@/lib/swr';
 type ProductRow = Database['public']['Tables']['products']['Row'];
 type BannerRow = Database['public']['Tables']['banners']['Row'];
 
-type SortMode = 'latest' | 'price-asc' | 'price-desc' | 'sold-out';
+type SortMode = 'latest' | 'hot' | 'price-asc' | 'price-desc' | 'sold-out';
 
 /**
  * 輪播圖「首頁頁籤」可以指定的內建頁籤 id（網址 `/?tab=<id>`）。
@@ -731,6 +731,25 @@ export default function Home() {
         result.sort((a, b) => a.price - b.price);
       } else if (sortMode === 'price-desc') {
         result.sort((a, b) => b.price - a.price);
+      } else if (sortMode === 'hot') {
+        /*
+         * 熱門（老闆 2026-08-26）：照 get_popular_products 的熱度分數由高到低。
+         *
+         * 那個分數是近期抽數的加權和 —— 7 天內每抽算 1 分、30 天內 0.5、更早 0.2，
+         * 且已排除機器人。用它而不是 `is_hot`：後者是後台手動掛的精選標籤，
+         * 跟「真的多少人在抽」是兩回事。
+         *
+         * 沒有人抽過的商品分數是 0，會落在後段；同分時照上架時間新到舊，
+         * 免得每次刷新順序都在跳。
+         */
+        result.sort((a, b) => {
+          const heatA = productHeat.get(Number(a.id)) || 0;
+          const heatB = productHeat.get(Number(b.id)) || 0;
+          if (heatA !== heatB) return heatB - heatA;
+          const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return tb - ta;
+        });
       } else if (activeSecondaryTab === 'featured' && feedVariant === 'v2') {
         /*
          * 新 feed（老闆 2026-08-22）：分桶配額＋加權抽籤＋Thompson 學習權重＋看過懲罰，
@@ -857,6 +876,34 @@ export default function Home() {
     () => applySortAndFilter(allProducts),
     [allProducts, applySortAndFilter]
   );
+
+  /*
+   * 排序選單的選項（老闆 2026-08-26）。
+   *
+   * 手機版與桌面版各有一份一模一樣的清單，改一次要記得改兩處 —— 收成這裡。
+   *
+   * 第一項在「綜合 → 推薦」底下叫**推薦**、其他分頁叫**最新**：
+   * 同樣是 `latest`，在推薦分頁跑的是 feed（分桶配額＋加權抽籤，每次刷新順序都不同），
+   * 在別的分頁才是照上架時間。名字跟著實際行為走，不然玩家在推薦頁選「最新」
+   * 卻得到一個每次都不一樣的順序，會以為壞了。
+   */
+  const sortOptions = useMemo<{ id: SortMode; label: string }[]>(() => {
+    const first = { id: 'latest' as SortMode, label: activeSecondaryTab === 'featured' ? '推薦' : '最新' };
+    if (activePrimaryTab === 'sell') {
+      return [
+        { id: 'latest' as SortMode, label: '最新' },
+        { id: 'price-asc' as SortMode, label: '價格：低到高' },
+        { id: 'price-desc' as SortMode, label: '價格：高到低' },
+      ];
+    }
+    return [
+      first,
+      { id: 'hot' as SortMode, label: '熱門' },
+      { id: 'price-asc' as SortMode, label: '價格：低到高' },
+      { id: 'price-desc' as SortMode, label: '價格：高到低' },
+      { id: 'sold-out' as SortMode, label: '已完抽' },
+    ];
+  }, [activePrimaryTab, activeSecondaryTab]);
 
   /*
    * 這一輪首屏記進「看過記憶」，供下一輪降權。寫在 effect 而不是排序當下 ——
@@ -1781,19 +1828,7 @@ export default function Home() {
                           onClick={() => setIsFilterOpen(false)}
                         />
                         <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-neutral-900 rounded-lg shadow-modal border border-neutral-100 dark:border-neutral-800 py-2 z-40">
-                          {(activePrimaryTab === 'sell'
-                            ? [
-                                { id: 'latest' as SortMode, label: '最新上架' },
-                                { id: 'price-asc' as SortMode, label: '價格：低到高' },
-                                { id: 'price-desc' as SortMode, label: '價格：高到低' },
-                              ]
-                            : [
-                                { id: 'latest' as SortMode, label: '最新上架' },
-                                { id: 'price-asc' as SortMode, label: '價格：低到高' },
-                                { id: 'price-desc' as SortMode, label: '價格：高到低' },
-                                { id: 'sold-out' as SortMode, label: '已完抽' },
-                              ]
-                          ).map((opt) => (
+                          {sortOptions.map((opt) => (
                             <button
                               key={opt.id}
                               type="button"
@@ -1981,19 +2016,7 @@ export default function Home() {
                             </button>
                             {isFilterOpen && (
                               <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-neutral-900 rounded-lg shadow-modal border border-neutral-100 dark:border-neutral-800 py-2 z-40">
-                                {(activePrimaryTab === 'sell'
-                                  ? [
-                                      { id: 'latest' as SortMode, label: '最新上架' },
-                                      { id: 'price-asc' as SortMode, label: '價格：低到高' },
-                                      { id: 'price-desc' as SortMode, label: '價格：高到低' },
-                                    ]
-                                  : [
-                                      { id: 'latest' as SortMode, label: '最新上架' },
-                                      { id: 'price-asc' as SortMode, label: '價格：低到高' },
-                                      { id: 'price-desc' as SortMode, label: '價格：高到低' },
-                                      { id: 'sold-out' as SortMode, label: '已完抽' },
-                                    ]
-                                ).map((opt) => (
+                                {sortOptions.map((opt) => (
                                   <button
                                     key={opt.id}
                                     type="button"
