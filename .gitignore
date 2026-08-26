@@ -70,3 +70,9 @@ backend/.tmp/
 # Next.js 的 TS 增量編譯快取，會隨每次 build 變動，不該進版控
 frontend/tsconfig.tsbuildinfo
 backend/tsconfig.tsbuildinfo
+
+# 素材工作檔（老闆 2026-08-26）
+# 這些是放在 public/ 底下的原始檔／封存，只在本機用；
+# repo 從來沒有追蹤過任何 .zip。2026-08-26 有一次 `git add -A frontend`
+# 把它們連同 6.6M 的圖一起推上去，擋在這裡免得再犯。
+*.zip
