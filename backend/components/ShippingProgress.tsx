@@ -1,5 +1,7 @@
 'use client'
 
+import { formatDateTime } from '@/utils/dateFormat'
+
 interface ShippingProgressProps {
   status: 'submitted' | 'processing' | 'picked_up' | 'shipping' | 'delivered' | 'cancelled'
   submittedAt: string
@@ -12,118 +14,66 @@ interface ProgressStep {
   location: string
   time: string
   completed: boolean
+  /** 目前停在這一步。原本沒有這個狀態，導致「配送中」跟「已送達」長得一模一樣 */
+  current: boolean
   cancelled: boolean
 }
 
-// 根據狀態生成配送進度
-const getShippingProgress = (status: string, submittedAt: string, shippedAt: string | null = null): ProgressStep[] => {
-  const progress: ProgressStep[] = []
-  
-  // 如果是已取消狀態，只顯示到已取消為止
+/**
+ * 訂單狀態的先後順序。進度條就是照這個陣列畫的，
+ * 判斷「走到哪」只要比索引，不用一個個 if 疊。
+ */
+const FLOW = [
+  { key: 'submitted',  label: '已提交',     location: '訂單已建立' },
+  { key: 'processing', label: '處理中',     location: '倉庫處理中' },
+  { key: 'picked_up',  label: '物流已收取', location: '物流中心' },
+  { key: 'shipping',   label: '配送中',     location: '配送站' },
+  { key: 'delivered',  label: '已送達',     location: '已簽收' },
+] as const
+
+/**
+ * 產生配送進度。
+ *
+ * 改版前每一步各寫一段 if，而「配送中」那段寫的是 `completed: status === 'delivered'`
+ * —— 訂單明明就在配送中，那一格卻是灰的（未完成），底下又印了時間，
+ * 變成「灰圈配時間戳」的怪樣子（老闆 2026-08-26 回報）。
+ *
+ * 時間只放**我們真的有記錄的**兩個：submitted_at 與 shipped_at。
+ * 處理中／物流已收取沒有獨立時戳，原本拿 submittedAt 頂替 ——
+ * 那會讓人以為那幾步都發生在下單的同一秒。寧可留白。
+ */
+const getShippingProgress = (
+  status: string,
+  submittedAt: string,
+  shippedAt: string | null = null,
+): ProgressStep[] => {
   if (status === 'cancelled') {
-    progress.push({
-      status: '已提交',
-      location: '訂單已建立',
-      time: submittedAt,
-      completed: true,
-      cancelled: false
-    })
-    progress.push({
-      status: '已取消',
-      location: '訂單回收中',
-      time: submittedAt,
-      completed: true,
-      cancelled: true
-    })
-    return progress
+    return [
+      { status: '已提交', location: '訂單已建立', time: submittedAt, completed: true,  current: false, cancelled: false },
+      { status: '已取消', location: '訂單回收中', time: '',          completed: true,  current: false, cancelled: true  },
+    ]
   }
-  
-  // 已提交
-  progress.push({
-    status: '已提交',
-    location: '訂單已建立',
-    time: submittedAt,
-    completed: true,
-    cancelled: false
+
+  const idx = FLOW.findIndex(f => f.key === status)
+  // 認不得的狀態就當作剛提交，至少不會整條變灰
+  const at = idx < 0 ? 0 : idx
+  const isFinal = status === 'delivered'
+
+  return FLOW.map((f, i) => {
+    const done = i < at || (i === at && isFinal)
+    const timeOf =
+      f.key === 'submitted' ? submittedAt
+      : (f.key === 'shipping' || f.key === 'delivered') ? (shippedAt ?? '')
+      : ''   // 處理中／物流已收取：沒有獨立時戳，不假裝有
+    return {
+      status: f.label,
+      location: f.location,
+      time: i <= at ? timeOf : '',
+      completed: done,
+      current: i === at && !isFinal,
+      cancelled: false,
+    }
   })
-  
-  // 處理中
-  if (status !== 'submitted') {
-    progress.push({
-      status: '處理中',
-      location: '倉庫處理中',
-      time: submittedAt,
-      completed: true,
-      cancelled: false
-    })
-  } else {
-    progress.push({
-      status: '處理中',
-      location: '倉庫處理中',
-      time: '',
-      completed: false,
-      cancelled: false
-    })
-  }
-  
-  // 物流已收取
-  if (status === 'picked_up' || status === 'shipping' || status === 'delivered') {
-    progress.push({
-      status: '物流已收取',
-      location: '物流中心',
-      time: shippedAt || submittedAt,
-      completed: true,
-      cancelled: false
-    })
-  } else {
-    progress.push({
-      status: '物流已收取',
-      location: '物流中心',
-      time: '',
-      completed: false,
-      cancelled: false
-    })
-  }
-  
-  // 配送中
-  if (status === 'shipping' || status === 'delivered') {
-    progress.push({
-      status: '配送中',
-      location: '配送站',
-      time: shippedAt || submittedAt,
-      completed: status === 'delivered',
-      cancelled: false
-    })
-  } else {
-    progress.push({
-      status: '配送中',
-      location: '配送站',
-      time: '',
-      completed: false,
-      cancelled: false
-    })
-  }
-  
-  // 已送達
-  if (status === 'delivered') {
-    progress.push({
-      status: '已送達',
-      location: '已簽收',
-      time: shippedAt || submittedAt,
-      completed: true,
-      cancelled: false
-    })
-  } else {
-    progress.push({
-      status: '已送達',
-      location: '已簽收',
-      time: '',
-      completed: false,
-      cancelled: false
-    })
-  }
-  
-  return progress
 }
 
 export default function ShippingProgress({ status, submittedAt, shippedAt, showTitle = true }: ShippingProgressProps) {
@@ -167,7 +117,7 @@ export default function ShippingProgress({ status, submittedAt, shippedAt, showT
               </div>
               <div className="text-center mt-3">
                 <p className="font-medium text-sm text-neutral-900">已取消</p>
-                <p className="text-xs text-neutral-400 mt-0.5">{progressSteps[1]?.time}</p>
+                <p className="text-xs text-neutral-400 mt-0.5">{formatDateTime(progressSteps[0]?.time ?? '')}</p>
                 <p className="text-xs text-neutral-400 mt-0.5">訂單回收中</p>
               </div>
             </div>
@@ -180,9 +130,12 @@ export default function ShippingProgress({ status, submittedAt, shippedAt, showT
           <div className="absolute top-5 left-[10%] right-[10%] h-0.5 bg-neutral-200 rounded-full"></div>
           {/* 已完成的進度線 */}
           {(() => {
-            const completedCount = progressSteps.filter(p => p.completed).length
+            // 線要拉到「目前這一步」——只算 completed 的話，線會停在進行中的前一格
+            const reached = progressSteps.findIndex(p => p.current)
+            const lastDone = progressSteps.map(p => p.completed).lastIndexOf(true)
+            const at = reached >= 0 ? reached : Math.max(lastDone, 0)
             const totalSteps = progressSteps.length
-            const progressWidth = completedCount > 1 ? ((completedCount - 1) / (totalSteps - 1)) * 80 : 0
+            const progressWidth = at > 0 ? (at / (totalSteps - 1)) * 80 : 0
             return (
               <div 
                 className="absolute top-5 left-[10%] h-0.5 bg-green-500 rounded-full transition-all duration-500"
@@ -196,29 +149,39 @@ export default function ShippingProgress({ status, submittedAt, shippedAt, showT
               <div key={idx} className="flex flex-col items-center relative z-10" style={{ width: `${100 / progressSteps.length}%` }}>
                 {/* 進度點 */}
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                  progress.completed 
-                    ? 'bg-green-500' 
-                    : 'bg-neutral-300'
+                  progress.completed
+                    ? 'bg-green-500'
+                    : progress.current
+                      // 進行中：實心底色＋外圈光暈，一眼看得出「現在停在這」
+                      ? 'bg-primary ring-4 ring-primary/20'
+                      : 'bg-neutral-300'
                 }`}>
                   {progress.completed ? (
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                     </svg>
+                  ) : progress.current ? (
+                    <span className="relative flex h-3 w-3">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                      <span className="relative inline-flex h-3 w-3 rounded-full bg-white" />
+                    </span>
                   ) : (
                     <div className="w-3 h-3 rounded-full bg-white"></div>
                   )}
                 </div>
                 {/* 文字內容 */}
                 <div className="w-full text-center mt-3">
-                  <p className={`font-medium text-sm ${
-                    progress.completed 
-                      ? 'text-neutral-900' 
-                      : 'text-neutral-400'
+                  <p className={`text-sm ${
+                    progress.current
+                      ? 'font-semibold text-primary'
+                      : progress.completed
+                        ? 'font-medium text-neutral-900'
+                        : 'font-medium text-neutral-400'
                   }`}>
                     {progress.status}
                   </p>
                   {progress.time && (
-                    <p className="text-xs text-neutral-400 mt-0.5">{progress.time}</p>
+                    <p className="text-xs text-neutral-400 mt-0.5">{formatDateTime(progress.time)}</p>
                   )}
                   <p className="text-xs text-neutral-400 mt-0.5">
                     {progress.location}
