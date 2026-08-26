@@ -46,7 +46,8 @@ export default function OrdersPage() {
     isOpen: boolean
     title: string
     content: React.ReactNode
-    onConfirm: () => void
+    /** 可以是 async —— 確認鈕會 await 它，期間鎖住按鈕並顯示處理中 */
+    onConfirm: () => void | Promise<void>
     onCancel?: () => void
     confirmText?: string
     cancelText?: string
@@ -60,6 +61,17 @@ export default function OrdersPage() {
     confirmText: '確定',
     cancelText: '取消'
   })
+
+  /*
+   * 確認彈窗的忙碌狀態。
+   *
+   * 原本確認鈕是 `onClick={confirmModal.onConfirm}` —— 直接呼叫一個 async 函數，
+   * 不 await、不鎖鈕、不顯示任何進行中的樣子。生成配送單要逐筆打綠界物流 API，
+   * 慢的時候使用者看到的就是「按了沒反應」，而且可以連按好幾次、重複建物流單。
+   */
+  const [confirmBusy, setConfirmBusy] = useState(false)
+  /** 單筆出貨同理：連按兩次會重複送出貨通知信給玩家 */
+  const [shipBusy, setShipBusy] = useState(false)
 
   // 表格工具列狀態
   const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('orders', 'compact', {
@@ -140,7 +152,8 @@ export default function OrdersPage() {
   }
 
   const handleShipOrder = async () => {
-    if (!shipModal.orderId) return
+    if (!shipModal.orderId || shipBusy) return
+    setShipBusy(true)
 
     try {
       const shippedAt = new Date().toISOString()
@@ -177,9 +190,12 @@ export default function OrdersPage() {
 
       addLog('訂單出貨', '配送管理', `訂單 ${shipModal.orderNumber} 已出貨，物流單號：${shipModal.trackingNumber}`, 'success')
       setShipModal({ isOpen: false, orderId: null, orderNumber: '', trackingNumber: '' })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error shipping order:', error)
-      toast('出貨失敗', 'error')
+      // 把後端的訊息帶出來 —— 只寫「出貨失敗」等於要人自己去猜是缺地址還是綠界擋掉
+      toast(error?.message ? `出貨失敗：${error.message}` : '出貨失敗', 'error')
+    } finally {
+      setShipBusy(false)
     }
   }
 
@@ -934,23 +950,30 @@ export default function OrdersPage() {
       {/* 出貨彈窗 */}
       <Modal
         isOpen={shipModal.isOpen}
-        onClose={() => setShipModal({ isOpen: false, orderId: null, orderNumber: '', trackingNumber: '' })}
+        onClose={() => { if (!shipBusy) setShipModal({ isOpen: false, orderId: null, orderNumber: '', trackingNumber: '' }) }}
         title={`訂單出貨 - ${shipModal.orderNumber}`}
         size="md"
         footer={
           <>
             <button
-              onClick={() => setShipModal({ isOpen: false, orderId: null, orderNumber: '', trackingNumber: '' })}
-              className="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors"
+              onClick={() => { if (!shipBusy) setShipModal({ isOpen: false, orderId: null, orderNumber: '', trackingNumber: '' }) }}
+              disabled={shipBusy}
+              className="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               取消
             </button>
             <button
               onClick={handleShipOrder}
-              disabled={!shipModal.trackingNumber}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!shipModal.trackingNumber || shipBusy}
+              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
             >
-              確認出貨
+              {shipBusy && (
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+              )}
+              {shipBusy ? '出貨中…' : '確認出貨'}
             </button>
           </>
         }
@@ -998,6 +1021,8 @@ export default function OrdersPage() {
       <Modal
         isOpen={confirmModal.isOpen}
         onClose={() => {
+          // 正在送出時不給關 —— 關掉了工作還在跑，使用者會以為取消了
+          if (confirmBusy) return
           if (confirmModal.onCancel) {
             confirmModal.onCancel()
           } else {
@@ -1011,22 +1036,39 @@ export default function OrdersPage() {
             {confirmModal.cancelText && (
               <button
                 onClick={() => {
+                  if (confirmBusy) return
                   if (confirmModal.onCancel) {
                     confirmModal.onCancel()
                   } else {
                     setConfirmModal({ ...confirmModal, isOpen: false })
                   }
                 }}
-                className="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors"
+                disabled={confirmBusy}
+                className="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {confirmModal.cancelText}
               </button>
             )}
             <button
-              onClick={confirmModal.onConfirm}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors"
+              onClick={async () => {
+                if (confirmBusy) return
+                setConfirmBusy(true)
+                try {
+                  await confirmModal.onConfirm()
+                } finally {
+                  setConfirmBusy(false)
+                }
+              }}
+              disabled={confirmBusy}
+              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
             >
-              {confirmModal.confirmText}
+              {confirmBusy && (
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+              )}
+              {confirmBusy ? '處理中…' : confirmModal.confirmText}
             </button>
           </>
         }

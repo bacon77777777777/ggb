@@ -42,7 +42,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      <div className="fixed top-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none max-w-sm w-full">
+      {/*
+        z-index 要高於 Modal（z-[9999]／內容 z-[10000]）。
+        原本是 z-[200]，彈窗一開，所有 toast 就被遮在後面 ——
+        使用者按下確認、後端失敗、錯誤 toast 照常發出，但畫面上什麼都沒有，
+        看起來就是「按了沒反應」。toast 是最後一道回饋，永遠不該被蓋住。
+      */}
+      <div className="fixed top-4 right-4 z-[10100] flex flex-col gap-2 pointer-events-none max-w-sm w-full">
         {toasts.map(t => (
           <div
             key={t.id}

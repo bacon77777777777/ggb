@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 interface ConfirmDialogProps {
   isOpen: boolean
   onClose: () => void
-  onConfirm: () => void
+  onConfirm: () => void | Promise<void>
   title: string
   message: string
   confirmText?: string
@@ -84,9 +84,23 @@ export default function ConfirmDialog({
     </svg>
   )
 
-  const handleConfirm = () => {
-    onConfirm()
-    onClose()
+  /*
+   * onConfirm 常常是 async（打 API 刪東西、改狀態）。
+   * 原本這裡不 await 就直接 onClose()，於是彈窗立刻消失、工作還在背景跑 ——
+   * 使用者看不出有沒有成功，失敗的 toast 也可能在彈窗關掉後才冒出來。
+   * 現在 await 完才關，期間鎖住兩顆按鈕並顯示處理中。
+   */
+  const [busy, setBusy] = useState(false)
+
+  const handleConfirm = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      await onConfirm()
+      onClose()
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -122,16 +136,24 @@ export default function ConfirmDialog({
         {/* 底部按鈕 */}
         <div className="px-6 py-4 bg-neutral-50 rounded-b-xl flex items-center justify-end gap-3">
           <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-200 rounded-lg hover:bg-neutral-50 hover:border-neutral-300 transition-colors"
+            onClick={() => { if (!busy) onClose() }}
+            disabled={busy}
+            className="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-200 rounded-lg hover:bg-neutral-50 hover:border-neutral-300 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {cancelText}
           </button>
           <button
             onClick={handleConfirm}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${styles.confirmBg} ${styles.confirmText}`}
+            disabled={busy}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2 ${styles.confirmBg} ${styles.confirmText}`}
           >
-            {confirmText}
+            {busy && (
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+            )}
+            {busy ? '處理中…' : confirmText}
           </button>
         </div>
       </div>
