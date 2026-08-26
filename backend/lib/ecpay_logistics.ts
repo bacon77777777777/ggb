@@ -258,3 +258,114 @@ export function generatePrintTarget(
   params.CheckMacValue = generateLogisticsCheckMacValue(params, hashKey, hashIV)
   return { url, params }
 }
+
+/* ─────────────────────────────────────────────────────────────
+ * 作廢託運單（超商 C2C）
+ *
+ * 取消訂單時，綠界那張託運單如果不作廢會一直掛在對方後台。
+ * 實務損失不大（C2C 是交寄時才計費，沒寄出不會扣錢），但單子堆著遲早對不上帳。
+ *
+ * ⚠️ 這支跟本檔其他 API 是**兩套不同的協定**：
+ *   舊的（建單、地圖、列印）—— form-urlencoded ＋ MD5 CheckMacValue
+ *   這支（v2 取消）      —— JSON ＋ AES-128-CBC 加密的 Data 欄位，沒有 CheckMacValue
+ * 別把兩邊的簽章方式搞混。
+ *
+ * 加密規格（綠界「參數加密方式說明」）：
+ *   加密：JSON → URLEncode → AES-128-CBC/PKCS7（key=HashKey, iv=HashIV）→ Base64
+ *   解密：Base64 → AES 解密 → URLDecode → JSON
+ *
+ * 只支援**超商 C2C**。B2C 與宅配綠界沒有開放取消 API，要走客服。
+ * ───────────────────────────────────────────────────────────── */
+
+/** 綠界 v2 的 Data 欄位加密 */
+export function encryptEcpayV2(payload: unknown, hashKey: string, hashIV: string): string {
+  const plain = encodeURIComponent(JSON.stringify(payload))
+  const cipher = crypto.createCipheriv('aes-128-cbc', Buffer.from(hashKey), Buffer.from(hashIV))
+  cipher.setAutoPadding(true)  // PKCS7
+  return Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]).toString('base64')
+}
+
+/** 綠界 v2 的 Data 欄位解密 */
+export function decryptEcpayV2<T = any>(data: string, hashKey: string, hashIV: string): T {
+  const decipher = crypto.createDecipheriv('aes-128-cbc', Buffer.from(hashKey), Buffer.from(hashIV))
+  decipher.setAutoPadding(true)
+  const plain = Buffer.concat([decipher.update(Buffer.from(data, 'base64')), decipher.final()]).toString('utf8')
+  return JSON.parse(decodeURIComponent(plain))
+}
+
+/** 這張單能不能用 API 作廢 —— 只有超商 C2C 可以，而且三個編號都要在 */
+export function canVoidLogistics(order: {
+  logistics_type?: string | null
+  logistics_subtype?: string | null
+  ecpay_logistics_id?: string | null
+  cvs_payment_no?: string | null
+  cvs_validation_no?: string | null
+}): boolean {
+  if (order.logistics_type !== 'CVS') return false
+  // C2C 才有寄貨編號與驗證碼；B2C 這兩欄是空的
+  return !!(order.ecpay_logistics_id && order.cvs_payment_no && order.cvs_validation_no)
+}
+
+export interface VoidResult {
+  ok: boolean
+  /** 沒打（不支援或缺欄位）時為 true —— 不算失敗 */
+  skipped?: boolean
+  code?: string
+  message: string
+}
+
+export async function voidC2COrder(
+  order: {
+    logistics_type?: string | null
+    logistics_subtype?: string | null
+    ecpay_logistics_id?: string | null
+    cvs_payment_no?: string | null
+    cvs_validation_no?: string | null
+  },
+  merchantID: string,
+  hashKey: string,
+  hashIV: string,
+  apiUrl: string,
+): Promise<VoidResult> {
+  if (!canVoidLogistics(order)) {
+    return { ok: false, skipped: true, message: '非超商 C2C 或缺少寄貨編號，綠界沒有對應的作廢 API' }
+  }
+
+  // 從既有的 API 網址推出 origin，測試／正式環境跟著走
+  const origin = new URL(apiUrl).origin
+  const endpoint = `${origin}/Express/v2/CancelC2COrder`
+
+  const body = {
+    MerchantID: merchantID,
+    RqHeader: { Timestamp: Math.floor(Date.now() / 1000) },
+    Data: encryptEcpayV2({
+      MerchantID:      merchantID,
+      LogisticsID:     order.ecpay_logistics_id,
+      CVSPaymentNo:    order.cvs_payment_no,
+      CVSValidationNo: order.cvs_validation_no,
+    }, hashKey, hashIV),
+  }
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      // 綠界慢的時候不要把整個取消流程拖住
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!res.ok) return { ok: false, message: `綠界回應 HTTP ${res.status}` }
+
+    const json = await res.json() as { TransCode?: number; TransMsg?: string; Data?: string }
+    if (json.TransCode !== 1) {
+      return { ok: false, code: String(json.TransCode), message: json.TransMsg || '傳輸失敗' }
+    }
+
+    const inner = decryptEcpayV2<{ RtnCode?: number; RtnMsg?: string }>(json.Data ?? '', hashKey, hashIV)
+    return inner.RtnCode === 1
+      ? { ok: true, code: '1', message: inner.RtnMsg || '已作廢' }
+      : { ok: false, code: String(inner.RtnCode), message: inner.RtnMsg || '作廢失敗' }
+  } catch (err: any) {
+    return { ok: false, message: err?.message || '呼叫綠界失敗' }
+  }
+}

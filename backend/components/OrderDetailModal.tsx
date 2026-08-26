@@ -43,33 +43,35 @@ export interface OrderDetailData {
   date: string
   submittedAt: string
   shippedAt: string | null
+  deliveredAt?: string | null
   days: number
   hasLarge: boolean
   items: { product: string; productType: string; level: string; prizeName: string; imageUrl: string }[]
 }
 
 /**
- * 一行一組：label 固定窄欄靠左，值緊接著。
+ * 一格一組 `label：value`，外層用網格排成三欄（老闆 2026-08-26 指定的參考排法）。
  *
- * 第一版用 4 欄網格＋col-span，結果取貨門市右邊空一格、物流單號孤零零掛在第四欄、
- * 最後一行右半整片空白 —— 欄位對不齊，眼睛得跳著找（老闆 2026-08-26：
- * 「收件與配送下的欄位排列很難閱讀」）。
+ * 走過兩版彎路：
+ *   第一版 4 欄網格＋col-span → 取貨門市右邊空一格、物流單號孤零零掛在第四欄，
+ *   欄位對不齊、眼睛要跳著找。
+ *   第二版把值全串成一行 → 一行太長，運費／單號／時間全擠在一起更難讀。
  *
- * 改成所有 label 靠左對齊，掃描路徑變成一條直線，也不會再有空洞。
- * 同一組的東西用「·」串在同一行，不各佔一格。
+ * 現在 label 緊貼自己的值成一格，格子再對齊成欄 —— 掃描時每一格都是完整的一組，
+ * 不用左右找對應。
  */
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Cell({ label, children, span }: {
+  label: string
+  children: React.ReactNode
+  /** 值太長時佔滿整列（例如宅配地址） */
+  span?: boolean
+}) {
   return (
-    <div className="flex gap-4 py-1.5">
-      <div className="w-16 shrink-0 text-sm leading-relaxed text-neutral-400">{label}</div>
-      <div className="min-w-0 flex-1 text-[15px] leading-relaxed text-neutral-900">{children}</div>
+    <div className={`flex gap-1.5 text-[15px] leading-relaxed ${span ? 'col-span-full' : ''}`}>
+      <span className="shrink-0 whitespace-nowrap text-neutral-400">{label}：</span>
+      <span className="min-w-0 text-neutral-900">{children}</span>
     </div>
   )
-}
-
-/** 同一行裡的分隔點 */
-function Dot() {
-  return <span className="mx-2 text-neutral-300">·</span>
 }
 
 function Section({ title, right, children }: {
@@ -170,72 +172,107 @@ export default function OrderDetailModal({
 
         {/* 用戶擺在收件資訊之前（老闆 2026-08-26）—— 先知道是誰的單，再看寄去哪 */}
         <Section title="用戶">
-          <Row label="會員">
-            <span>{order.userName || '—'}</span>
-            <Dot />
-            <MemberNo no={order.memberNo} uuid={order.userId} />
-            <Dot />
-            <span className="text-neutral-500">{order.user}</span>
-          </Row>
+          <div className="grid grid-cols-1 gap-x-8 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            <Cell label="會員">{order.userName || '—'}</Cell>
+            <Cell label="會員編號"><MemberNo no={order.memberNo} uuid={order.userId} plain /></Cell>
+            <Cell label="電子郵件">
+              <span className="break-all">{order.user || '—'}</span>
+            </Cell>
+          </div>
         </Section>
 
         <Section title="收件與配送">
-          <Row label="收件人">
-            {order.recipientName || '—'}
-            <Dot />
-            <span className="font-mono tabular-nums">{order.recipientPhone || '—'}</span>
-          </Row>
-          <Row label="配送">
-            <span className={`mr-2 inline-block rounded px-2 py-0.5 text-sm font-medium ${
-              isCvs ? 'bg-sky-50 text-sky-700' : 'bg-amber-50 text-amber-700'
-            }`}>{channel}</span>
-            {detail || '—'}
-            {isCvs && order.storeId && (
-              <span className="ml-1.5 font-mono text-sm text-neutral-400">（{order.storeId}）</span>
-            )}
-          </Row>
-          <Row label="單據">
-            <span className="font-mono tabular-nums">{order.shippingFee > 0 ? `運費 $${order.shippingFee}` : '免運'}</span>
-            <Dot />
-            <span className="text-neutral-500">單號</span>{' '}
-            <span className="font-mono tabular-nums">{order.trackingNumber || '—'}</span>
-          </Row>
-          <Row label="時間">
-            <span className="text-neutral-500">提交</span>{' '}
-            <span className="font-mono tabular-nums" title={order.submittedAt}>{order.date || '—'}</span>
-            {order.status !== 'delivered' && order.status !== 'cancelled' && (
-              <span className={`ml-2 text-sm tabular-nums ${order.days > 3 ? 'font-semibold text-red-500' : 'text-neutral-400'}`}>
-                （等 {order.days} 天）
-              </span>
-            )}
-            <Dot />
-            <span className="text-neutral-500">出貨</span>{' '}
-            <span className="font-mono tabular-nums">{order.shippedAt || '—'}</span>
-          </Row>
+          {/*
+            三排固定順序（老闆 2026-08-26 指定）：
+              ① 配送方式・運費・物流單號   —— 這單怎麼寄、收多少、單號多少
+              ② 收件人・收件電話・收件地址 —— 寄給誰、寄去哪
+              ③ 提交・出貨・送達           —— 三個時間點並排，一眼看出卡在哪一段
+          */}
+          <div className="grid grid-cols-1 gap-x-8 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            <Cell label="配送方式">
+              <span className={`inline-block rounded px-2 py-0.5 text-sm font-medium ${
+                isCvs ? 'bg-sky-50 text-sky-700' : 'bg-amber-50 text-amber-700'
+              }`}>{channel}</span>
+            </Cell>
+            <Cell label="運費">
+              <span className="font-mono tabular-nums">{order.shippingFee > 0 ? `$${order.shippingFee}` : '免運'}</span>
+            </Cell>
+            <Cell label="物流單號">
+              <span className="font-mono tabular-nums">{order.trackingNumber || '—'}</span>
+            </Cell>
+
+            <Cell label="收件人">{order.recipientName || '—'}</Cell>
+            <Cell label="收件電話">
+              <span className="font-mono tabular-nums">{order.recipientPhone || '—'}</span>
+            </Cell>
+            <Cell label={isCvs ? '取貨門市' : '收件地址'}>
+              {detail || '—'}
+              {isCvs && order.storeId && (
+                <span className="ml-1.5 font-mono text-sm text-neutral-400">（{order.storeId}）</span>
+              )}
+            </Cell>
+
+            <Cell label="提交日期">
+              <span className="font-mono tabular-nums">{order.submittedAt || '—'}</span>
+              {order.status !== 'delivered' && order.status !== 'cancelled' && (
+                <span className={`ml-2 text-sm tabular-nums ${order.days > 3 ? 'font-semibold text-red-500' : 'text-neutral-400'}`}>
+                  等 {order.days} 天
+                </span>
+              )}
+            </Cell>
+            <Cell label="出貨日期">
+              {order.shippedAt
+                ? <span className="font-mono tabular-nums">{order.shippedAt}</span>
+                : <span className="text-neutral-400">未出貨</span>}
+            </Cell>
+            <Cell label="送達日期">
+              {order.deliveredAt
+                ? <span className="font-mono tabular-nums">{order.deliveredAt}</span>
+                : <span className="text-neutral-400">未送達</span>}
+            </Cell>
+          </div>
         </Section>
 
         <Section
           title="品項"
           right={<span className="text-sm tabular-nums text-neutral-400">共 {order.items.length} 件</span>}
         >
-          <div className="max-h-64 space-y-1 overflow-y-auto">
-            {order.items.length === 0 ? (
-              <p className="py-3 text-center text-sm text-neutral-400">這張訂單沒有品項</p>
-            ) : order.items.map((it, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-neutral-50">
-                <span className="w-6 shrink-0 text-right font-mono text-sm tabular-nums text-neutral-300">{i + 1}</span>
-                <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded bg-neutral-100">
-                  <Image src={it.imageUrl} alt={it.prizeName} fill sizes="44px" className="object-cover" unoptimized />
+          {/*
+            賞等標籤移到品名左邊、右邊改放數量（老闆 2026-08-26）。
+            數量要成立就得先合併同品項 —— items 是一筆一件的抽獎紀錄，
+            十連抽同一款會印出十行一模一樣的字。
+          */}
+          <div className="max-h-72 space-y-1 overflow-y-auto">
+            {(() => {
+              const merged: { level: string; prizeName: string; product: string; imageUrl: string; qty: number }[] = []
+              for (const it of order.items) {
+                const key = `${it.product}|${it.level}|${it.prizeName}`
+                const hit = merged.find(m => `${m.product}|${m.level}|${m.prizeName}` === key)
+                if (hit) hit.qty += 1
+                else merged.push({ level: it.level, prizeName: it.prizeName, product: it.product, imageUrl: it.imageUrl, qty: 1 })
+              }
+              if (merged.length === 0) {
+                return <p className="py-3 text-center text-[15px] text-neutral-400">這張訂單沒有品項</p>
+              }
+              return merged.map((it, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-neutral-50">
+                  <span className="w-6 shrink-0 text-right font-mono text-sm tabular-nums text-neutral-300">{i + 1}</span>
+                  <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded bg-neutral-100">
+                    <Image src={it.imageUrl} alt={it.prizeName} fill sizes="44px" className="object-cover" unoptimized />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="shrink-0 rounded bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
+                        {it.level}
+                      </span>
+                      <span className="truncate text-[15px] leading-snug text-neutral-900">{it.prizeName}</span>
+                    </div>
+                    <p className="truncate text-[13px] leading-snug text-neutral-400">{it.product}</p>
+                  </div>
+                  <span className="shrink-0 font-mono text-sm tabular-nums text-neutral-500">×{it.qty}</span>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] leading-snug text-neutral-900">{it.prizeName}</p>
-                  <p className="truncate text-[13px] leading-snug text-neutral-400">{it.product}</p>
-                </div>
-                <span className="shrink-0 rounded bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
-                  {it.level}
-                </span>
-              </div>
-            ))}
+              ))
+            })()}
           </div>
         </Section>
 

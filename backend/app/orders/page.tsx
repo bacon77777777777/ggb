@@ -143,6 +143,7 @@ export default function OrdersPage() {
           date: order.submitted_at?.split('T')[0] || '',
           submittedAt: order.submitted_at ? formatDateTime(order.submitted_at) : '',
           shippedAt: order.shipped_at ? formatDateTime(order.shipped_at) : null,
+          deliveredAt: order.delivered_at ? formatDateTime(order.delivered_at) : null,
           days: order.submitted_at ? calculateDaysSinceSubmission(order.submitted_at) : 0,
           status: order.status,
           items: (order.items || []).map((item: any) => {
@@ -649,7 +650,7 @@ export default function OrdersPage() {
                 </div>
               ))}
             </div>
-            <p className="text-xs text-neutral-500 mt-2">共 {orderIds.length} 筆訂單</p>
+            <p className="text-sm text-neutral-500 mt-2">共 {orderIds.length} 筆訂單</p>
           </div>
           
           {sameDeliveryOrders.length > 0 && (
@@ -660,12 +661,17 @@ export default function OrdersPage() {
                 </svg>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-neutral-900 mb-1">發現相同配送資料的訂單</p>
-                  <p className="text-xs text-neutral-600 mb-2">以下訂單的配送資料與選中訂單相同，可合併配送：</p>
-                  <div className="bg-primary rounded-lg p-2 space-y-1">
+                  <p className="text-sm text-neutral-600 mb-2">以下訂單的配送資料與選中訂單相同，可合併配送：</p>
+                  {/*
+                    這裡原本是 `bg-primary` 配 `text-primary` —— 實心主題藍的底
+                    配同色的字，整塊糊成一片藍什麼都看不到（老闆 2026-08-26 回報）。
+                    底改成淡藍，保留「這是建議合併的」語意；字級跟上面那塊對齊。
+                  */}
+                  <div className="bg-primary/5 border border-primary/15 rounded-lg p-2.5 space-y-1">
                     {sameDeliveryOrders.map((order) => (
-                      <div key={order.id} className="flex items-center justify-between text-xs">
-                        <span className="text-primary font-medium">{order.orderId}</span>
-                        <span className="text-primary">{order.items.length} 個商品</span>
+                      <div key={order.id} className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-primary">{order.orderId}</span>
+                        <span className="text-neutral-500">{order.items.length} 個商品</span>
                       </div>
                     ))}
                   </div>

@@ -355,7 +355,7 @@ export default function DrawDetailPage() {
                 <div>
                   <p className="text-sm text-neutral-500 mb-1">籤號</p>
                   <div className="flex items-center gap-2">
-                    <p className="font-medium text-neutral-900 font-mono bg-primary px-3 py-1 rounded">
+                    <p className="font-medium text-neutral-900 font-mono bg-primary/10 px-3 py-1 rounded">
                       {(draw.ticketNumber || draw.nonce).toString().padStart(3, '0')}
                     </p>
                     <button
@@ -601,7 +601,7 @@ export default function DrawDetailPage() {
                             <span className="font-mono">{formatDateTime(otherDraw.time)}</span>
                             <span className="font-mono">{otherDraw.amount.toLocaleString()} 代幣</span>
                             {(otherDraw.ticketNumber || otherDraw.nonce) && (
-                              <span className="font-mono text-xs bg-primary px-2 py-0.5 rounded">
+                              <span className="font-mono text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
                                 籤號：{((otherDraw.ticketNumber || otherDraw.nonce)).toString().padStart(3, '0')}
                               </span>
                             )}
@@ -655,7 +655,7 @@ export default function DrawDetailPage() {
                             <span className="font-mono">{formatDateTime(otherDraw.time)}</span>
                             <span className="font-mono">{otherDraw.amount.toLocaleString()} 代幣</span>
                             {(otherDraw.ticketNumber || otherDraw.nonce) && (
-                              <span className="font-mono text-xs bg-primary px-2 py-0.5 rounded">
+                              <span className="font-mono text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
                                 籤號：{((otherDraw.ticketNumber || otherDraw.nonce)).toString().padStart(3, '0')}
                               </span>
                             )}

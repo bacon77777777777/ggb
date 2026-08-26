@@ -25,6 +25,8 @@ export interface Shipment {
   date: string
   submittedAt: string
   shippedAt: string | null
+  /** 送達時間（migration 633）。updated_at 會被其他更新蓋掉，不能當送達時間用 */
+  deliveredAt?: string | null
   days: number
   status: 'submitted' | 'processing' | 'picked_up' | 'shipping' | 'delivered' | 'cancelled'
   address: string

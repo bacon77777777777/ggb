@@ -91,6 +91,9 @@ export async function POST(req: NextRequest) {
       ) {
         updateData.shipped_at = new Date().toISOString()
       }
+      if (nextStatus === 'delivered') {
+        updateData.delivered_at = new Date().toISOString()
+      }
     }
 
     /*

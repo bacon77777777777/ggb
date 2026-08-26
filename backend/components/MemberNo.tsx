@@ -12,9 +12,15 @@ import { useState } from 'react'
  * 沒有 member_no 時（API 還沒補上這個欄位）退回截斷的 uuid，
  * 不要整格空白 —— 顯示得出來至少查得到人。
  */
-export default function MemberNo({ no, uuid, className = '' }: {
+export default function MemberNo({ no, uuid, plain = false, className = '' }: {
   no?: number | null
   uuid?: string | null
+  /**
+   * 純文字模式：不加灰底標籤、不給複製鈕。
+   * 詳情彈窗裡值本來就是一行行的純文字，只有這格套個膠囊會突兀（老闆 2026-08-26）。
+   * 表格裡維持標籤樣式 —— 那裡需要一眼認出這是識別碼、也常要複製。
+   */
+  plain?: boolean
   className?: string
 }) {
   const [copied, setCopied] = useState(false)
@@ -30,6 +36,12 @@ export default function MemberNo({ no, uuid, className = '' }: {
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1200)
     } catch { /* 沒有剪貼簿權限就算了，不要炸掉 */ }
+  }
+
+  if (plain) {
+    return (
+      <span className={`font-mono tabular-nums ${className}`} title={uuid ?? undefined}>{text}</span>
+    )
   }
 
   return (

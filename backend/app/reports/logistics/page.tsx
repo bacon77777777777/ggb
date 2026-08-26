@@ -195,8 +195,8 @@ export default function LogisticsReportPage() {
   const statusColor = (s: string) => {
     switch (s) {
       case 'submitted': return 'bg-yellow-50 text-yellow-700'
-      case 'processing': return 'bg-primary text-primary'
-      case 'picked_up': return 'bg-primary text-primary'
+      case 'processing': return 'bg-primary/10 text-primary'
+      case 'picked_up': return 'bg-primary/10 text-primary'
       case 'shipping': return 'bg-indigo-50 text-indigo-700'
       case 'delivered': return 'bg-green-50 text-green-700'
       case 'cancelled': return 'bg-neutral-100 text-neutral-500'

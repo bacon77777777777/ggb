@@ -2,6 +2,31 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminScope } from '@/lib/requireAdmin'
 import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
+import { voidC2COrder, type VoidResult } from '@/lib/ecpay_logistics'
+
+/**
+ * 作廢綠界託運單。只有超商 C2C 有這支 API，其餘一律 skipped（不算失敗）。
+ * 任何錯誤都吞掉、只回結果 —— 呼叫端要的是「記下來」，不是「中斷取消」。
+ */
+async function voidEcpayLogistics(orderId: number): Promise<VoidResult | null> {
+  const merchantID = process.env.ECPAY_LOGISTICS_MERCHANT_ID
+  const hashKey    = process.env.ECPAY_LOGISTICS_HASH_KEY
+  const hashIV     = process.env.ECPAY_LOGISTICS_HASH_IV
+  const apiUrl     = process.env.ECPAY_LOGISTICS_API_URL || 'https://logistics-stage.ecpay.com.tw/Express/Create'
+  if (!merchantID || !hashKey || !hashIV) return null
+
+  try {
+    const { data: o } = await getSupabaseAdmin()
+      .from('orders')
+      .select('logistics_type, logistics_subtype, ecpay_logistics_id, cvs_payment_no, cvs_validation_no')
+      .eq('id', orderId)
+      .maybeSingle()
+    if (!o) return null
+    return await voidC2COrder(o, merchantID, hashKey, hashIV, apiUrl)
+  } catch (e: any) {
+    return { ok: false, message: e?.message || '作廢託運單時發生例外' }
+  }
+}
 
 type ShipmentStatus = 'submitted' | 'processing' | 'picked_up' | 'shipping' | 'delivered' | 'cancelled'
 
@@ -92,10 +117,15 @@ export async function PUT(
     }
 
     const patch: Record<string, any> = {}
+    let voidResult: VoidResult | null = null
     if (body.status) patch.status = body.status
     if (body.tracking_number !== undefined) patch.tracking_number = body.tracking_number
     if (body.shipped_at !== undefined) patch.shipped_at = body.shipped_at
     // 切到 picked_up 時自動記錄出貨時間（若尚未設定）
+    // 送達時間要留下來 —— updated_at 任何一次更新都會動，不能當送達時間用
+    if (body.status === 'delivered' && body.delivered_at === undefined) {
+      patch.delivered_at = new Date().toISOString()
+    }
     if (body.status === 'picked_up' && body.shipped_at === undefined) {
       patch.shipped_at = new Date().toISOString()
     }
@@ -122,6 +152,15 @@ export async function PUT(
         p_kind: 'admin',
         p_operator: `admin:${session.adminId}`,
       })
+
+      /*
+       * 順手把綠界那張託運單作廢，不然會一直掛在對方後台。
+       *
+       * ⚠️ 作廢失敗**不能讓取消訂單失敗** —— 玩家的貨與代幣已經退了，
+       * 這時候回錯誤只會讓管理員以為沒取消成功、又按一次。
+       * 失敗就記進稽核軌跡，人工去綠界後台處理。
+       */
+      voidResult = await voidEcpayLogistics(orderId)
     } else if (body.status === 'shipping' || body.status === 'delivered') {
       // Mark items as shipped
       await supabaseAdmin
@@ -164,6 +203,7 @@ export async function PUT(
         order_number: updated?.order_number,
         status: body.status,
         tracking_number: body.tracking_number,
+        ...(voidResult ? { ecpay_void: voidResult } : {}),
       },
       ip: getClientIp(request),
     })

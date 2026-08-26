@@ -2,6 +2,26 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminScope } from '@/lib/requireAdmin'
 import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
+import { voidC2COrder, type VoidResult } from '@/lib/ecpay_logistics'
+
+/** 作廢綠界託運單；只有超商 C2C 有這支 API，其餘 skipped。任何錯誤都吞掉，只回結果 */
+async function voidEcpayLogistics(supabaseAdmin: any, orderId: number): Promise<VoidResult | null> {
+  const merchantID = process.env.ECPAY_LOGISTICS_MERCHANT_ID
+  const hashKey    = process.env.ECPAY_LOGISTICS_HASH_KEY
+  const hashIV     = process.env.ECPAY_LOGISTICS_HASH_IV
+  const apiUrl     = process.env.ECPAY_LOGISTICS_API_URL || 'https://logistics-stage.ecpay.com.tw/Express/Create'
+  if (!merchantID || !hashKey || !hashIV) return null
+  try {
+    const { data: o } = await supabaseAdmin
+      .from('orders')
+      .select('logistics_type, logistics_subtype, ecpay_logistics_id, cvs_payment_no, cvs_validation_no')
+      .eq('id', orderId).maybeSingle()
+    if (!o) return null
+    return await voidC2COrder(o, merchantID, hashKey, hashIV, apiUrl)
+  } catch (e: any) {
+    return { ok: false, message: e?.message || '作廢託運單時發生例外' }
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -32,7 +52,10 @@ export async function POST(request: Request) {
           p_operator: `admin:${session.adminId}`,
         })
         if (rpcErr) return NextResponse.json({ error: rpcErr.message }, { status: 500 })
-        results.push(data)
+
+        // 作廢綠界託運單。失敗不中斷 —— 貨與代幣已經退了，這裡回錯誤只會讓人再按一次
+        const voided = await voidEcpayLogistics(supabaseAdmin, id)
+        results.push({ ...(data as object), ecpay_void: voided })
       }
       await logAdminAction({
         adminId: session.adminId, action: '批次取消訂單', targetType: 'orders',

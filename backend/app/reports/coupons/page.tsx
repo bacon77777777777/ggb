@@ -75,7 +75,7 @@ export default function CouponsReportPage() {
       label: "折扣類型",
       className: "whitespace-nowrap",
       render: (r) => (<>
-                          <span className="px-2 py-0.5 rounded text-xs bg-primary text-primary">
+                          <span className="px-2 py-0.5 rounded text-xs bg-primary/10 text-primary">
                             {DISCOUNT_TYPE_LABEL[r.discount_type] ?? r.discount_type}
                           </span>
                         </>),

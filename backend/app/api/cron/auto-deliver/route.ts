@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
   const { error: updateErr } = await supabase
     .from('orders')
-    .update({ status: 'delivered' })
+    .update({ status: 'delivered', delivered_at: new Date().toISOString() })
     .in('id', ids)
 
   if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })

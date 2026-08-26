@@ -261,7 +261,7 @@ export default function AdminsPage() {
       render: a => (
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
           ${a.role?.name === 'super_admin' ? 'bg-purple-50 text-purple-700 border-purple-100' :
-            a.role?.name === 'admin' ? 'bg-primary text-primary border-blue-100' :
+            a.role?.name === 'admin' ? 'bg-primary/10 text-primary border-blue-100' :
             'bg-neutral-50 text-neutral-700 border-neutral-100'
           }`}>
           {a.role?.display_name || '未知角色'}

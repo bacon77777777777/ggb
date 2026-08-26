@@ -50,7 +50,7 @@ export default function PointsReportPage() {
       className: "whitespace-nowrap",
       render: (r) => (<>
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                            r.task_type === 'daily' ? 'bg-primary text-primary' :
+                            r.task_type === 'daily' ? 'bg-primary/10 text-primary' :
                             r.task_type === 'weekly' ? 'bg-purple-50 text-purple-700' :
                             r.task_type === 'achievement' ? 'bg-amber-50 text-amber-700' :
                             'bg-neutral-100 text-neutral-600'

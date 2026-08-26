@@ -371,7 +371,7 @@ export default function MarketplaceAdminPage() {
                             item.status === 'active'
                               ? 'bg-green-50 text-green-700'
                               : item.status === 'sold'
-                              ? 'bg-primary text-primary'
+                              ? 'bg-primary/10 text-primary'
                               : 'bg-neutral-100 text-neutral-600'
                           }`}
                         >
