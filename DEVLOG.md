@@ -4,6 +4,25 @@
 
 ---
 
+## v2026.08.26j｜2026-08-26｜前台補上「取消配送申請」
+
+老闆確認開放。手機版與桌面版的訂單展開區各補一顆，只在**已提交且尚未開配送單**時出現。
+
+確認彈窗用現成的 `useAlert`（profile 頁本來就 import 了），不是 `window.confirm` ——
+App 內的原生對話框會露出網域名稱，看起來像釣魚。訊息直接寫清楚會退回幾件、運費會退。
+
+**前端的判斷不是唯一防線**：玩家按下取消的同一刻，出貨人員可能正在按「開配送單」。
+DB 端 `cancel_my_delivery_order` 先 `FOR UPDATE` 鎖單、再檢查狀態才動作。
+三種擋法各自翻成玩家看得懂的話（已在出貨流程中／找不到訂單／其他）。
+
+**STG 實測五項**（全程交易內 rollback）：
+未登入 → `NOT_AUTHENTICATED`；別人的單 → `ORDER_NOT_FOUND`；
+已開配送單 → `ALREADY_PROCESSING`；本人未開單 → 成功退 60、5 件回倉庫、訂單轉 cancelled。
+第五項是權限鏈：以 `authenticated` 角色呼叫 `cancel_my_delivery_order` 可以，
+直接呼叫後台那支 `cancel_delivery_order` 會 `permission denied` ——
+玩家繞不過「已提交且未開單」這道限制。
+
+
 ## v2026.08.26i｜2026-08-26｜玩家可自行取消未開單的申請；取消時作廢綠界託運單
 
 **玩家自行取消（migration 632）** —— 建議開放，界線是「已提交且尚未開配送單」：

@@ -2654,6 +2654,56 @@ function ProfileContent() {
     }
   };
 
+  /**
+   * 取消配送申請（老闆 2026-08-26 確認開放）
+   *
+   * 只有「已提交且還沒開配送單」能自己取消 —— 一旦託運單開出去，
+   * 單子已經在綠界那邊，就得走客服。這個界線在 DB 也擋一次
+   * （`cancel_my_delivery_order` 鎖單後再檢查），前端只是提早給提示，
+   * 不是唯一的防線：玩家按下取消的同一刻，出貨人員可能正在按開配送單。
+   */
+  const canCancelDelivery = (order: DeliveryOrder) =>
+    order.status === 'submitted' && !order.tracking;
+
+  const handleCancelDelivery = (order: DeliveryOrder) => {
+    showAlert({
+      title: '取消配送申請',
+      type: 'confirm',
+      variant: 'danger',
+      confirmText: '確定取消',
+      cancelText: '先不要',
+      message: (
+        <span>
+          取消後，這批 <b>{order.itemsCount || order.items?.length || 0}</b> 件商品會放回你的倉庫，
+          運費也會退回。之後可以重新申請配送。
+        </span>
+      ),
+      onConfirm: async () => {
+        try {
+          const { data, error } = await supabase.rpc('cancel_my_delivery_order', {
+            p_order_id: Number(order.id),
+          });
+          if (error) throw error;
+
+          const refunded = Number((data as any)?.refunded ?? 0);
+          toast.success(refunded > 0 ? `已取消，退回 ${refunded} 代幣` : '已取消，商品已放回倉庫');
+          setExpandedOrderId(null);
+          await fetchUserData();
+        } catch (e: any) {
+          // DB 端的三種擋法要翻成玩家看得懂的話
+          const msg = String(e?.message || '');
+          if (msg.includes('ALREADY_PROCESSING')) {
+            toast.error('這筆訂單已經在出貨流程中，請聯繫客服協助');
+          } else if (msg.includes('ORDER_NOT_FOUND')) {
+            toast.error('找不到這筆訂單');
+          } else {
+            toast.error('取消失敗，請稍後再試');
+          }
+        }
+      },
+    });
+  };
+
   const handleLogout = () => {
     showAlert({
       title: '登出確認',
@@ -5027,6 +5077,16 @@ function ProfileContent() {
                                       </div>
                                     );
                                   })()}
+
+                                  {canCancelDelivery(order) && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); handleCancelDelivery(order); }}
+                                      className="w-full h-10 rounded-xl border border-red-200 dark:border-red-900/40 text-[13px] font-black text-red-500 bg-white dark:bg-neutral-900 active:bg-red-50 dark:active:bg-red-950/30 transition-colors"
+                                    >
+                                      取消配送申請
+                                    </button>
+                                  )}
                                 </div>
                               </motion.div>
                             )}
@@ -5209,6 +5269,18 @@ function ProfileContent() {
                               </div>
                             ))}
                           </div>
+
+                          {canCancelDelivery(order) && (
+                            <div className="pt-1">
+                              <button
+                                type="button"
+                                onClick={() => handleCancelDelivery(order)}
+                                className="h-8 px-3 rounded-lg border border-red-200 dark:border-red-900/40 text-[12px] font-black text-red-500 bg-white dark:bg-neutral-950 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                              >
+                                取消配送申請
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                       empty="尚無配送訂單"
