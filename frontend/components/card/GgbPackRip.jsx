@@ -219,13 +219,23 @@ export default function GGBPackRip({
   const [fastOn, setFastOn] = useState(fast);
   useEffect(() => { setFastOn(fast); }, [fast]);
   const fastRef = useRef(fastOn); fastRef.current = fastOn;
+  /*
+   * ⚠️ 副作用不能寫在 setState 的 updater 裡（老闆 2026-08-27 演出中途開閃電時炸出
+   * 「Cannot update a component (ProductDetailPage) while rendering GGBPackRip」）。
+   *
+   * updater 必須是純函式：React 可能在 render 期間呼叫它，在裡面呼叫商品頁的
+   * setSkipPackIntroPref 就等於「渲染 A 的時候去更新 B」。嚴格模式下 updater 還會
+   * 跑兩次，震動也會連震兩下。
+   *
+   * 改成先從 fastRef 算出結果，setState 與副作用各歸各的。
+   * fastRef 順手同步，快進（advanceStep）當下就吃得到新值，不必等 re-render。
+   */
   const toggleFast = () => {
-    setFastOn(prev => {
-      const next = !prev;
-      hapticLight();
-      if (onFastChange) onFastChange(next);
-      return next;
-    });
+    const next = !fastRef.current;
+    fastRef.current = next;
+    setFastOn(next);
+    hapticLight();
+    if (onFastChange) onFastChange(next);
   };
   /*
    * 撕包要不要略過，只看**掛載當下**的值。演出中途才打開閃電時撕包早就過了，

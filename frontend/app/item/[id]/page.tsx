@@ -541,13 +541,11 @@ export default function ProductDetailPage() {
     setSkipPackIntro(next);
     try { localStorage.setItem('ggb_skip_pack_intro', next ? '1' : '0'); } catch { /* 忽略 */ }
   }, []);
+  /* 副作用不寫在 updater 裡：那是純函式，嚴格模式會呼叫兩次（localStorage 寫兩遍）。
+     直接複用 setSkipPackIntroPref，寫入邏輯也只留一份。 */
   const toggleSkipPackIntro = useCallback(() => {
-    setSkipPackIntro(prev => {
-      const next = !prev;
-      try { localStorage.setItem('ggb_skip_pack_intro', next ? '1' : '0'); } catch { /* 忽略 */ }
-      return next;
-    });
-  }, []);
+    setSkipPackIntroPref(!skipPackIntro);
+  }, [skipPackIntro, setSkipPackIntroPref]);
   const packCarouselRef = useRef<PackSelectionCarouselHandle | null>(null);
   const firstPackStyles = useRef<string[]>(getRandomPackStyles());
   const [packStyles, setPackStyles] = useState<string[]>(firstPackStyles.current);
