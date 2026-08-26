@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Clock, ChevronLeft } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,7 +50,6 @@ function actionLabel(link: string): string {
 
 export default function NotificationDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const { user } = useAuth();
   const [supabase] = useState(() => createClient());
   const [note, setNote] = useState<UserNotification | null>(null);
@@ -78,14 +77,6 @@ export default function NotificationDetailPage() {
       });
     return () => { cancelled = true; };
   }, [id, user, supabase]);
-
-  /* 返回一律回通知列表。用 back() 而不是硬導 —— 列表那邊靠 sessionStorage
-     還原分頁籤與捲動位置，走瀏覽器歷史才接得上。
-     直接開網址進來沒有上一頁，那時才退回列表首頁。 */
-  const goBack = () => {
-    if (typeof window !== 'undefined' && window.history.length > 1) router.back();
-    else router.push('/announcements');
-  };
 
   if (isLoading) {
     return (
@@ -116,15 +107,6 @@ export default function NotificationDetailPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 pb-8">
       <article className="px-4 pt-4 max-w-2xl mx-auto">
-        <button
-          type="button"
-          onClick={goBack}
-          className="-ml-1 mb-3 flex items-center gap-0.5 text-[13px] font-bold text-neutral-500 dark:text-neutral-400 active:scale-95 transition-transform"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          返回通知
-        </button>
-
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">我的</span>
           <div className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-neutral-500">

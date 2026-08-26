@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Clock, ChevronLeft } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { markRead } from '@/lib/announcementRead';
 
@@ -75,15 +75,6 @@ function linkify(text: string): React.ReactNode[] {
 
 export default function AnnouncementDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
-
-  /* 返回一律回通知列表。用 back() 而不是硬導 —— 列表靠 sessionStorage
-     還原分頁籤與捲動位置，走瀏覽器歷史才接得上。
-     直接開網址進來沒有上一頁，那時才退回列表首頁。 */
-  const goBack = () => {
-    if (typeof window !== 'undefined' && window.history.length > 1) router.back();
-    else router.push('/announcements');
-  };
 
   // 直接開網址進來也要標記已讀（不只從列表點進來）
   useEffect(() => { if (id) markRead(String(id)); }, [id]);
@@ -131,15 +122,6 @@ export default function AnnouncementDetailPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 pb-8">
       <article className="px-4 pt-4 max-w-2xl mx-auto">
-        <button
-          type="button"
-          onClick={goBack}
-          className="-ml-1 mb-3 flex items-center gap-0.5 text-[13px] font-bold text-neutral-500 dark:text-neutral-400 active:scale-95 transition-transform"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          返回通知
-        </button>
-
         {/* 分類 + 時間 */}
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           <span className={cn('text-[11px] font-semibold px-1.5 py-0.5 rounded', CATEGORY_COLORS[item.category] || CATEGORY_COLORS['系統'])}>
