@@ -212,7 +212,7 @@ export default function OrderDetailModal({
               )}
             </Cell>
 
-            <Cell label="提交日期">
+            <Cell label="提交時間">
               <span className="font-mono tabular-nums">{order.submittedAt || '—'}</span>
               {order.status !== 'delivered' && order.status !== 'cancelled' && (
                 <span className={`ml-2 text-sm tabular-nums ${order.days > 3 ? 'font-semibold text-red-500' : 'text-neutral-400'}`}>

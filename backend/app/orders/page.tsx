@@ -1301,7 +1301,7 @@ export default function OrdersPage() {
             showColumnToggle={true}
             columns={[
               { key: 'status', label: '狀態', visible: visibleColumns.status },
-              { key: 'submittedAt', label: '提交日期', visible: visibleColumns.submittedAt },
+              { key: 'submittedAt', label: '提交時間', visible: visibleColumns.submittedAt },
               { key: 'recipientName', label: '收件人', visible: visibleColumns.recipientName },
               { key: 'logistics', label: '配送方式', visible: visibleColumns.logistics },
               { key: 'quantity', label: '件數', visible: visibleColumns.quantity },
@@ -1401,7 +1401,7 @@ export default function OrdersPage() {
                         onSort={handleSort}
                         className={getDensityClasses()}
                       >
-                        提交日期
+                        提交時間
                       </SortableTableHeader>
                     )}
                     {visibleColumns.recipientName && (
@@ -1543,7 +1543,7 @@ export default function OrdersPage() {
                         </td>
                         {/*
                           欄位順序照「出貨要用的順序」排，不是資料庫欄位順序（老闆 2026-08-26）：
-                          狀態→提交日期→收件人→配送方式→件數→訂單編號 落在不用捲就看到的範圍，
+                          狀態→提交時間→收件人→配送方式→件數→訂單編號 落在不用捲就看到的範圍，
                           暱稱／會員編號／單號／運費／出貨時間往右捲，需要才看。
                         */}
                         {visibleColumns.status && (
@@ -1553,9 +1553,11 @@ export default function OrdersPage() {
                         )}
                         {visibleColumns.submittedAt && (
                           <td className={`${getDensityClasses()} whitespace-nowrap`}>
-                            {/* 明確日期（老闆要的）＋等待天數。時分秒滑過去才看，出貨用不到 */}
-                            <div className="leading-tight" title={formatDateTime(shipment.submittedAt)}>
-                              <p className="font-mono text-sm text-neutral-700 tabular-nums">{shipment.date || '-'}</p>
+                            {/* 完整時間戳到秒（老闆 2026-08-26 指定）＋下面一行等待天數，超過 3 天轉紅 */}
+                            <div className="leading-tight">
+                              <p className="font-mono text-sm text-neutral-700 tabular-nums whitespace-nowrap">
+                                {shipment.submittedAt || '-'}
+                              </p>
                               {shipment.status !== 'delivered' && shipment.status !== 'cancelled' && (
                                 <p className={`text-xs tabular-nums ${shipment.days > 3 ? 'font-semibold text-red-500' : 'text-neutral-400'}`}>
                                   等 {shipment.days} 天
