@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import Button from '@/components/ui/Button';
@@ -106,19 +106,31 @@ export const PrizeResultModal: React.FC<PrizeResultModalProps> = ({
    * 揭曉的那一刻給觸覺回饋。
    * 掛在 showContent 而不是 isOpen —— 有 2 秒的開獎動畫，
    * 彈窗一開就震等於在玩家還沒看到東西的時候先爆雷。
+   *
+   * ⚠️ 只准震一次，用 ref 記住震過了。
+   * 呼叫端是 `results={drawResults.map(...)}` —— 每次 render 都是新陣列，
+   * 把 prizes/results 放進依賴等於「父層每 re-render 一次就震一次」。
+   * 「抽獎結果一覽」沒有開獎動畫（skipRevealAnimation），一打開就滿足條件，
+   * 商品頁只要有任何更新（倒數、即時訂閱、跑馬燈）手機就一直震。
    */
+  const hapticFiredRef = useRef(false);
   useEffect(() => {
-    if (!isOpen || !showContent) return;
-    const items = prizes ?? results ?? [];
-    const hasBigOne = items.some((p) => {
-      const grade = String((p as { grade?: string }).grade ?? '');
-      return (p as { is_last_one?: boolean }).is_last_one || isHighTier(grade);
-    });
+    if (!isOpen) {
+      hapticFiredRef.current = false;
+      return;
+    }
+    // 還在轉圈時不震：那時 displayPrizes 是空的，會把大獎震成一般回饋
+    if (!showContent || isLoading || hapticFiredRef.current) return;
+    hapticFiredRef.current = true;
+
+    const hasBigOne = displayPrizes.some(
+      (p) => p.is_last_one || isHighTier(String(p.grade ?? '')),
+    );
     if (hasBigOne) hapticHeavy();
     else hapticNotify('SUCCESS');
-    // isHighTier 是純函式，不需要進依賴
+    // displayPrizes 每次 render 都是新陣列，不能進依賴；isHighTier 是純函式
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, showContent, prizes, results]);
+  }, [isOpen, showContent, isLoading]);
 
   return (
     <AnimatePresence>
