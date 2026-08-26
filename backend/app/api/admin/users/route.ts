@@ -113,6 +113,8 @@ export async function GET() {
     const result = (users ?? []).map((u: any) => ({
       id: u.id,
       userId: u.id,
+      // 會員編號：全站表格顯示這個，uuid 只留給會員詳情
+      memberNo: u.member_no ?? null,
       inviteCode: u.invite_code ?? null,
       name: u.name ?? '',
       email: u.email ?? '',

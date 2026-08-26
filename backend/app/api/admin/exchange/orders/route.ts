@@ -22,8 +22,8 @@ export async function GET() {
           created_at,
           updated_at,
           offer:exchange_offers ( id, status ),
-          owner:users!exchange_orders_owner_id_fkey ( id, name, email ),
-          initiator:users!exchange_orders_initiator_id_fkey ( id, name, email )
+          owner:users!exchange_orders_owner_id_fkey ( id, name, email, member_no ),
+          initiator:users!exchange_orders_initiator_id_fkey ( id, name, email, member_no )
         `
       )
       .order('updated_at', { ascending: false })

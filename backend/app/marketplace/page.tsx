@@ -1,6 +1,6 @@
 'use client'
 
-import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
+import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, MemberNo } from '@/components'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { formatDateTime } from '@/utils/dateFormat'
@@ -17,6 +17,7 @@ interface MarketplaceListing {
   seller_id: string
   seller_name: string
   seller_email: string
+  seller_member_no: number | null
   product_name: string
   prize_name: string
   prize_level: string
@@ -54,6 +55,7 @@ export default function MarketplaceAdminPage() {
         seller_id: row.seller?.id || row.seller_id,
         seller_name: row.seller?.name || '未知會員',
         seller_email: row.seller?.email || '',
+        seller_member_no: row.seller?.member_no ?? null,
         product_name: row.draw_records?.products?.name || '未知商品',
         prize_name: row.draw_records?.product_prizes?.name || '未知獎項',
         prize_level: row.draw_records?.product_prizes?.level || '?'
@@ -359,7 +361,7 @@ export default function MarketplaceAdminPage() {
                             {item.seller_name}
                           </span>
                           <span className="text-xs text-neutral-500">
-                            {item.seller_email ? item.seller_email : <CopyableID id={item.seller_id} />}
+                            {item.seller_email ? item.seller_email : <MemberNo no={item.seller_member_no} uuid={item.seller_id} />}
                           </span>
                         </div>
                       </td>

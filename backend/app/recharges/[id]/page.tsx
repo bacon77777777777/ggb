@@ -2,7 +2,7 @@
 
 import AdminLayout from '@/components/AdminLayout'
 import Badge from '@/components/ui/Badge'
-import CopyableID from '@/components/CopyableID'
+import MemberNo from '@/components/MemberNo'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
@@ -13,6 +13,7 @@ interface Recharge {
   id: number
   orderId: string
   userId: string
+  memberNo: number | null
   userName: string
   amount: number
   bonus: number
@@ -61,6 +62,7 @@ export default function RechargeDetailPage() {
           id: rechargeData.id,
           orderId: rechargeData.order_number,
           userId: rechargeData.user?.id || 'Unknown',
+          memberNo: rechargeData.user?.member_no ?? null,
           userName: rechargeData.user?.name || 'Unknown',
           amount: rechargeData.amount,
           bonus: rechargeData.bonus || 0,
@@ -89,6 +91,7 @@ export default function RechargeDetailPage() {
               id: r.id,
               orderId: r.order_number,
               userId: r.user?.user_id || 'Unknown',
+              memberNo: (r.user as any)?.member_no ?? null,
               userName: r.user?.name || 'Unknown',
               amount: r.amount,
               bonus: r.bonus || 0,
@@ -248,9 +251,9 @@ export default function RechargeDetailPage() {
               {user ? (
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <p className="text-sm text-neutral-500 mb-1">使用者ID</p>
+                    <p className="text-sm text-neutral-500 mb-1">會員編號</p>
                     <div className="flex items-center gap-2">
-                      <CopyableID id={user.userId} />
+                      <MemberNo no={user.memberNo} uuid={user.userId} />
                     </div>
                   </div>
                   

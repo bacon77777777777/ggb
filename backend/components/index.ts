@@ -16,6 +16,9 @@ export { default as DateTimePicker } from './DateTimePicker'
 export { default as ShippingProgress } from './ShippingProgress'
 export { default as TagSelector } from './TagSelector'
 export { default as CopyableID } from './CopyableID'
+export { default as MemberNo } from './MemberNo'
+export { default as OrderDetailModal } from './OrderDetailModal'
+export type { OrderDetailData } from './OrderDetailModal'
 
 // UI Kit - 基礎組件
 export * from './ui'

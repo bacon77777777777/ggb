@@ -31,6 +31,14 @@ export interface Shipment {
   trackingNumber: string
   shippingFee: number
   logisticsType: string
+  /** 物流子代號（UNIMART/FAMI/HILIFE/OKMART/TCAT/POST），列表要分辨走哪家通路 */
+  logisticsSubtype?: string
+  storeName?: string
+  storeId?: string
+  /** 會員編號（給人看的短號）。userId 那串 uuid 只在會員詳情頁露出 */
+  memberNo?: number | null
+  /** 含一番賞／自製賞的大件：要拿大箱、只能走宅配，備貨前就得知道 */
+  hasLarge?: boolean
   items: ShipmentItem[]
 }
 

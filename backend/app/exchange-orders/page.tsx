@@ -1,6 +1,7 @@
 'use client'
 
-import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
+import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, MemberNo } from '@/components'
+import CopyableID from '@/components/CopyableID'
 import Badge from '@/components/ui/Badge'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
@@ -19,9 +20,11 @@ type OrderRow = {
   owner_id: string
   owner_name: string
   owner_email: string
+  owner_member_no: number | null
   initiator_id: string
   initiator_name: string
   initiator_email: string
+  initiator_member_no: number | null
   step: number
   done: boolean
   created_at: string
@@ -62,9 +65,11 @@ export default function ExchangeOrdersAdminPage() {
         owner_id: row.owner_id,
         owner_name: row.owner?.name || '未知會員',
         owner_email: row.owner?.email || '',
+        owner_member_no: row.owner?.member_no ?? null,
         initiator_id: row.initiator_id,
         initiator_name: row.initiator?.name || '未知會員',
         initiator_email: row.initiator?.email || '',
+        initiator_member_no: row.initiator?.member_no ?? null,
         step: typeof row.step === 'number' ? row.step : 1,
         done: !!row.done,
         created_at: row.created_at,
@@ -320,14 +325,14 @@ export default function ExchangeOrdersAdminPage() {
                         <div className="font-medium">{order.owner_name || '未知會員'}</div>
                         <div className="text-xs text-neutral-500">{order.owner_email}</div>
                         <div className="mt-1">
-                          <CopyableID id={order.owner_id} />
+                          <MemberNo no={order.owner_member_no} uuid={order.owner_id} />
                         </div>
                       </td>
                       <td className="py-3 px-4 text-sm text-neutral-700">
                         <div className="font-medium">{order.initiator_name || '未知會員'}</div>
                         <div className="text-xs text-neutral-500">{order.initiator_email}</div>
                         <div className="mt-1">
-                          <CopyableID id={order.initiator_id} />
+                          <MemberNo no={order.initiator_member_no} uuid={order.initiator_id} />
                         </div>
                       </td>
                       <td className="py-3 px-4 text-sm text-neutral-700 whitespace-nowrap">

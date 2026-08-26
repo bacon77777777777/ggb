@@ -24,7 +24,8 @@ export async function GET() {
           owner:users!exchange_offers_owner_id_fkey (
             id,
             name,
-            email
+            email,
+            member_no
           ),
           cards:exchange_offer_cards (
             id,

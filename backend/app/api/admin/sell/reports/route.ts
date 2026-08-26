@@ -25,8 +25,8 @@ export async function GET() {
           id, target_type, listing_id, order_id, seller_id,
           reason, detail, images, status, admin_note,
           handled_at, handled_by, created_at,
-          reporter:users!sell_reports_reporter_id_fkey ( id, name, email ),
-          seller:users!sell_reports_seller_id_fkey ( id, name, email ),
+          reporter:users!sell_reports_reporter_id_fkey ( id, name, email, member_no ),
+          seller:users!sell_reports_seller_id_fkey ( id, name, email, member_no ),
           listing:sell_listings ( id, title, status )
         `
       )

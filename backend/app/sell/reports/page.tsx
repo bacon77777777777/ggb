@@ -14,7 +14,7 @@
  * 那些交易錢可能已經付了，強制中斷只會讓買家更難處理。
  */
 
-import { AdminLayout, PageCard, SearchToolbar, StatsCard, FilterTags, CopyableID } from '@/components'
+import { AdminLayout, PageCard, SearchToolbar, StatsCard, FilterTags, MemberNo } from '@/components'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/Modal'
@@ -41,8 +41,8 @@ interface SellReport {
   handled_at: string | null
   created_at: string
   seller_suspended: boolean
-  reporter?: { id: string; name: string; email: string } | null
-  seller?: { id: string; name: string; email: string } | null
+  reporter?: { id: string; name: string; email: string; member_no?: number | null } | null
+  seller?: { id: string; name: string; email: string; member_no?: number | null } | null
   listing?: { id: number; title: string; status: string } | null
 }
 
@@ -323,7 +323,7 @@ export default function SellReportsPage() {
                       <td className={`${densityClasses} whitespace-nowrap align-top`}>
                         <div className="flex flex-col gap-1">
                           <span className="text-sm text-neutral-700">{r.seller?.name || '—'}</span>
-                          {r.seller_id && <CopyableID id={r.seller_id} />}
+                          {r.seller_id && <MemberNo no={r.seller?.member_no ?? null} uuid={r.seller_id} />}
                           {r.seller_suspended && <Badge variant="danger">停權中</Badge>}
                         </div>
                       </td>

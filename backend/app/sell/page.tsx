@@ -1,6 +1,7 @@
 'use client'
 
-import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
+import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, MemberNo } from '@/components'
+import CopyableID from '@/components/CopyableID'
 import Badge from '@/components/ui/Badge'
 import Modal from '@/components/Modal'
 import Button from '@/components/ui/Button'
@@ -28,6 +29,7 @@ interface SellListing {
   seller_id: string
   seller_name: string
   seller_email: string
+  seller_member_no: number | null
   note?: string
   images?: string[]
   items?: Array<{
@@ -145,6 +147,7 @@ export default function SellAdminPage() {
         seller_id: row.seller?.id || row.seller_id,
         seller_name: row.seller?.name || '未知會員',
         seller_email: row.seller?.email || '',
+        seller_member_no: row.seller?.member_no ?? null,
         note: row.note || '',
         images: Array.isArray(row.images) ? row.images : [],
         items: Array.isArray(row.items) ? row.items : [],
@@ -704,9 +707,9 @@ export default function SellAdminPage() {
                                   <div className="font-mono text-xs break-all">{item.seller_email || '-'}</div>
                                 </div>
                                 <div className="text-sm text-neutral-700">
-                                  <div className="text-xs text-neutral-400 mb-1">賣家 UUID</div>
+                                  <div className="text-xs text-neutral-400 mb-1">賣家編號</div>
                                   <div className="text-xs text-neutral-500">
-                                    <CopyableID id={item.seller_id} />
+                                    <MemberNo no={item.seller_member_no} uuid={item.seller_id} />
                                   </div>
                                 </div>
                                 <div className="text-sm text-neutral-700">

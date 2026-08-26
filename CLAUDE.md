@@ -457,6 +457,9 @@ curl -X POST https://admin.ggb.com.tw/api/admin/storage/clear-products \
 | 開關 | `ui/Switch`（`checked`/`onCheckedChange`） | 自製 toggle |
 | 空狀態 | `ui/EmptyState` | 自己寫「尚無資料」 |
 | 一句話提示 | `ui/Note`（`tone` info／warn／danger） | 手刻漸層框＋大圖示＋「注意」標題 |
+| 列尾動作選單 | `ui/ActionMenu`（主按鈕以外的操作，`danger` 自動排最下面） | 一排五顆同樣大小的字 |
+| 勾選後的批次操作 | `ui/BulkActionBar` + `BulkButton` | 把批次藏在工具列下拉裡 |
+| 會員識別 | `MemberNo`（顯示 `#100042`） | 表格印 uuid —— **uuid 只在會員詳情頁露出** |
 | 骨架屏 | `ui/Skeleton`、`ui/TableSkeleton` | 自製灰塊 |
 | 檔期設定 | `ScheduleFields`（時區換算正確，另有 `unlimitedToggle`） | 自刻 `datetime-local` |
 | 日期 | `DatePicker` / `DateRangePicker` / `DateTimePicker` / `YearMonthPicker` | 生 input |

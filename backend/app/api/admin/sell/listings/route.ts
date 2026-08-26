@@ -31,7 +31,8 @@ export async function GET() {
           seller:users!sell_listings_seller_id_fkey (
             id,
             name,
-            email
+            email,
+            member_no
           )
         `
       )

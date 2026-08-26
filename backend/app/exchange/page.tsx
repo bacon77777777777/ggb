@@ -1,6 +1,7 @@
 'use client'
 
-import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
+import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, MemberNo } from '@/components'
+import CopyableID from '@/components/CopyableID'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import Badge from '@/components/ui/Badge'
@@ -32,6 +33,7 @@ type OfferRow = {
   updated_at: string
   owner_name: string
   owner_email: string
+  owner_member_no: number | null
   cards: OfferCard[]
 }
 
@@ -73,6 +75,7 @@ export default function ExchangeOffersAdminPage() {
         updated_at: row.updated_at,
         owner_name: row.owner?.name || '未知會員',
         owner_email: row.owner?.email || '',
+        owner_member_no: row.owner?.member_no ?? null,
         cards: Array.isArray(row.cards)
           ? row.cards.map((c: any) => ({
               id: c.id,
@@ -350,7 +353,7 @@ export default function ExchangeOffersAdminPage() {
                           <div className="font-medium">{offer.owner_name || '未知會員'}</div>
                           <div className="text-xs text-neutral-500">{offer.owner_email}</div>
                           <div className="mt-1">
-                            <CopyableID id={offer.owner_id} />
+                            <MemberNo no={offer.owner_member_no} uuid={offer.owner_id} />
                           </div>
                         </td>
                         <td className="py-3 px-4 text-sm text-neutral-700">

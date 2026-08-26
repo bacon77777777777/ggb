@@ -19,10 +19,10 @@ export async function GET() {
           *,
           items:draw_records(
             *,
-            product_prizes(name, level, image_url),
+            product_prizes(name, level, image_url, total),
             products(name, image_url, type)
           ),
-          user:users(email, name)
+          user:users(email, name, member_no)
         `
       )
       .order('submitted_at', { ascending: false })

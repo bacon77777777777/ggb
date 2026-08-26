@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
-import { AdminLayout, PageCard, Button, Input, CopyableID } from '@/components'
+import { AdminLayout, PageCard, Button, Input, MemberNo } from '@/components'
+import CopyableID from '@/components/CopyableID'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
 import { CardSkeleton } from '@/components/ui/Skeleton'
@@ -347,7 +348,7 @@ export default function SellOrderDetailPage() {
               <div className="text-neutral-900 font-bold">{String(order.buyer?.name || '未知會員')}</div>
               <div className="text-xs text-neutral-500 break-all">{String(order.buyer?.email || '') || '—'}</div>
               <div className="text-xs text-neutral-500">
-                <CopyableID id={String(order.buyer_id)} />
+                <MemberNo no={(order.buyer as any)?.member_no ?? null} uuid={String(order.buyer_id)} />
               </div>
             </div>
           </PageCard>
@@ -357,7 +358,7 @@ export default function SellOrderDetailPage() {
               <div className="text-neutral-900 font-bold">{String(order.seller?.name || '未知會員')}</div>
               <div className="text-xs text-neutral-500 break-all">{String(order.seller?.email || '') || '—'}</div>
               <div className="text-xs text-neutral-500">
-                <CopyableID id={String(order.seller_id)} />
+                <MemberNo no={(order.seller as any)?.member_no ?? null} uuid={String(order.seller_id)} />
               </div>
             </div>
           </PageCard>

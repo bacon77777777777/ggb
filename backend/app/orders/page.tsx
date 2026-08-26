@@ -1,6 +1,9 @@
 'use client'
 
-import { AdminLayout, StatsCard, PageCard, SearchToolbar, FilterTags, Modal, SortableTableHeader, CopyableID } from '@/components'
+import { AdminLayout, StatsCard, PageCard, SearchToolbar, FilterTags, Modal, SortableTableHeader, MemberNo, OrderDetailModal } from '@/components'
+import type { OrderDetailData } from '@/components'
+import { ActionMenu, BulkActionBar, BulkButton } from '@/components/ui'
+import { logisticsSummary } from '@/lib/logisticsLabels'
 import { useAdmin } from '@/contexts/AdminContext'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { TableEmpty } from '@/components/ui/EmptyState'
@@ -76,13 +79,16 @@ export default function OrdersPage() {
   // 表格工具列狀態
   const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('orders', 'compact', {
     orderId: true, submittedAt: true, status: true, userName: true, userId: true,
-    quantity: true, recipientName: true, trackingNumber: true, shippingFee: true, shippedAt: true, operations: true
+    quantity: true, recipientName: true, logistics: true, trackingNumber: true, shippingFee: true, shippedAt: true, operations: true
   })
   const [filterStartDate, setFilterStartDate] = useState('')
   const [filterEndDate, setFilterEndDate] = useState('')
   const [filterShipStartDate, setFilterShipStartDate] = useState('')
   const [filterShipEndDate, setFilterShipEndDate] = useState('')
   const [filterUrgentOnly, setFilterUrgentOnly] = useState(false)
+
+  /** 詳情彈窗：存 id，資料直接吃列表已撈好的那筆，不再打一次 API */
+  const [detailOrderId, setDetailOrderId] = useState<number | null>(null)
 
   const [shipModal, setShipModal] = useState<{
     isOpen: boolean
@@ -112,14 +118,28 @@ export default function OrdersPage() {
           id: order.id,
           orderId: order.order_number,
           userId: order.user_id.toString(),
+          memberNo: order.user?.member_no ?? null,
           user: order.user?.email || 'Unknown',
           userName: order.user?.name || 'Unknown',
           recipientName: order.recipient_name,
           recipientPhone: order.recipient_phone,
           address: order.address,
           trackingNumber: order.tracking_number || '',
-          shippingFee: order.total_amount || 0,
+          // 運費讀 shipping_fee —— 原本讀的 total_amount 是 create_delivery_order
+          // 從來沒寫過的欄位（STG 連這欄都沒有），所以這格永遠顯示 0
+          shippingFee: order.shipping_fee ?? 0,
           logisticsType: order.logistics_type || 'HOME',
+          logisticsSubtype: order.logistics_subtype || '',
+          storeName: order.store_name || '',
+          storeId: order.store_id || '',
+          /*
+           * 大件：一番賞／自製賞裡總數 ≤3 的賞（跟 DB 的 delivery_has_large_item 同一套判準）。
+           * 出貨人員要據此決定拿大箱、走宅配，所以列表就要看得到，不該點進詳情才知道。
+           */
+          hasLarge: (order.items || []).some((it: any) =>
+            ['ichiban', 'custom'].includes(it.products?.type) &&
+            (it.product_prizes?.total ?? 999) <= 3
+          ),
           date: order.submitted_at?.split('T')[0] || '',
           submittedAt: order.submitted_at ? formatDateTime(order.submitted_at) : '',
           shippedAt: order.shipped_at ? formatDateTime(order.shipped_at) : null,
@@ -428,6 +448,22 @@ export default function OrdersPage() {
   }, [localShipments, setShipments])
 
   // 高亮效果處理
+  /*
+   * 舊的 /orders/[id] 整頁已改成彈窗，那頁改成轉來這裡帶 ?detail=<訂單編號>。
+   * 書籤與既有連結因此還開得起來，只是現在開的是彈窗。
+   */
+  useEffect(() => {
+    if (typeof window === 'undefined' || localShipments.length === 0) return
+    const wanted = new URLSearchParams(window.location.search).get('detail')
+    if (!wanted) return
+    const hit = localShipments.find(s => s.orderId === wanted || String(s.id) === wanted)
+    if (hit) {
+      setDetailOrderId(hit.id)
+      // 清掉參數，免得關掉彈窗後重新整理又跳出來
+      window.history.replaceState(null, '', '/orders')
+    }
+  }, [localShipments])
+
   useEffect(() => {
     if (highlightedOrderId) {
       // 設置狀態為 submitted 以便顯示該訂單
@@ -484,13 +520,14 @@ export default function OrdersPage() {
   // 匯出CSV功能
   const handleExportCSV = () => {
     const visibleColumnsList = [
-      { key: 'orderId', label: '訂單編號' },
-      { key: 'submittedAt', label: '提交時間' },
       { key: 'status', label: '狀態' },
+      { key: 'submittedAt', label: '提交時間' },
+      { key: 'recipientName', label: '收件人' },
+      { key: 'logistics', label: '配送方式' },
+      { key: 'quantity', label: '件數' },
+      { key: 'orderId', label: '訂單編號' },
       { key: 'userName', label: '暱稱' },
-      { key: 'userId', label: '使用者ID' },
-      { key: 'quantity', label: '數量' },
-      { key: 'recipientName', label: '收件資訊' },
+      { key: 'userId', label: '會員編號' },
       { key: 'trackingNumber', label: '物流單號' },
       { key: 'shippingFee', label: '運費(TWD)' },
       { key: 'shippedAt', label: '出貨時間' }
@@ -514,10 +551,16 @@ export default function OrdersPage() {
             }
             return statusMap[shipment.status] || shipment.status
           }
-          case 'userId': return shipment.userId
+          case 'userId': return shipment.memberNo ? `#${shipment.memberNo}` : shipment.userId
           case 'userName': return shipment.userName
-          case 'quantity': return shipment.items.length.toString()
-          case 'recipientName': return `${shipment.recipientName} | ${shipment.recipientPhone} | ${shipment.address}`
+          case 'quantity': return shipment.hasLarge
+            ? `${shipment.items.length}（含大件）`
+            : shipment.items.length.toString()
+          case 'recipientName': return `${shipment.recipientName} | ${shipment.recipientPhone}`
+          case 'logistics': {
+            const { channel, detail } = logisticsSummary(shipment)
+            return detail ? `${channel} | ${detail}` : channel
+          }
           case 'trackingNumber': return shipment.trackingNumber || ''
           case 'shippingFee': return String(shipment.shippingFee ?? 0)
           case 'shippedAt': return formatDateTime(shipment.shippedAt)
@@ -557,7 +600,11 @@ export default function OrdersPage() {
     return `SF${String(orderIdNum).slice(-10).padStart(10, '0')}`
   }
 
-  const handleGenerateShippingLabel = (orderIds: number[]) => {
+  /**
+   * 生成配送單。andPrint = 開完單直接把託運單與明細叫出來列印
+   * （老闆 2026-08-26：原本出同一批貨要勾三次 —— 開單、印託運單、印明細）。
+   */
+  const handleGenerateShippingLabel = (orderIds: number[], andPrint = false) => {
     if (orderIds.length === 0) return
     
     const orders = localShipments.filter(s => orderIds.includes(s.id))
@@ -733,6 +780,16 @@ export default function OrdersPage() {
           }
         
           const allOrders = localShipments.filter(s => successOrderIds.includes(s.id))
+
+          if (andPrint && successOrderIds.length > 0) {
+            // 明細單是我們自己產的，一份 HTML 印完所有訂單；
+            // 託運單是綠界的列印頁，一次只吃一筆，只好逐筆開、錯開時間避免被當彈出視窗擋
+            window.open(`/api/orders/packing-slip?orderId=${successOrderIds.join(',')}`, '_blank')
+            successOrderIds.forEach((id, i) => {
+              setTimeout(() => window.open(`/api/logistics/print?orderId=${id}`, '_blank'), (i + 1) * 400)
+            })
+            addLog('開單並列印', '配送管理', `${successOrderIds.length} 筆訂單開單後直接列印`, 'success')
+          }
           
           // Log
           if (shouldMerge) {
@@ -811,6 +868,25 @@ export default function OrdersPage() {
     }
     
     handleGenerateShippingLabel(submittedOrders)
+  }
+
+  /** 勾一批 → 開單 → 託運單與明細自動跳出來，一次做完 */
+  const handleGenerateAndPrint = () => {
+    const eligible = Array.from(selectedOrders).filter(id => {
+      const s = localShipments.find(x => x.id === id)
+      if (!s) return false
+      return s.status === 'submitted' ||
+        (!s.trackingNumber && (s.status === 'processing' || s.status === 'picked_up'))
+    })
+    if (eligible.length === 0) {
+      toast('選中的訂單裡沒有需要開配送單的', 'warning')
+      return
+    }
+    if (eligible.length > 5 &&
+        !window.confirm(`會開啟約 ${eligible.length + 1} 個列印分頁，瀏覽器可能會擋。確定要繼續嗎？`)) {
+      return
+    }
+    handleGenerateShippingLabel(eligible, true)
   }
 
   /**
@@ -1212,56 +1288,22 @@ export default function OrdersPage() {
             ]}
             showColumnToggle={true}
             columns={[
-              { key: 'orderId', label: '訂單編號', visible: visibleColumns.orderId },
-              { key: 'submittedAt', label: '提交時間', visible: visibleColumns.submittedAt },
               { key: 'status', label: '狀態', visible: visibleColumns.status },
+              { key: 'submittedAt', label: '提交日期', visible: visibleColumns.submittedAt },
+              { key: 'recipientName', label: '收件人', visible: visibleColumns.recipientName },
+              { key: 'logistics', label: '配送方式', visible: visibleColumns.logistics },
+              { key: 'quantity', label: '件數', visible: visibleColumns.quantity },
+              { key: 'orderId', label: '訂單編號', visible: visibleColumns.orderId },
               { key: 'userName', label: '暱稱', visible: visibleColumns.userName },
-              { key: 'userId', label: '使用者ID', visible: visibleColumns.userId },
-              { key: 'quantity', label: '數量', visible: visibleColumns.quantity },
-              { key: 'recipientName', label: '收件資訊', visible: visibleColumns.recipientName },
+              { key: 'userId', label: '會員編號', visible: visibleColumns.userId },
               { key: 'trackingNumber', label: '物流單號', visible: visibleColumns.trackingNumber },
               { key: 'shippingFee', label: '運費(TWD)', visible: visibleColumns.shippingFee },
               { key: 'shippedAt', label: '出貨時間', visible: visibleColumns.shippedAt }
             ]}
             onColumnToggle={(key, visible) => setVisibleColumns(prev => ({ ...prev, [key]: visible }))}
             selectedCount={selectedOrders.size}
-            batchActions={isSupplier ? [] : [
-              ...(selectedStatus === 'submitted' && getSelectedOrdersStats().submitted > 0 ? [{
-                label: '批量生成配送單',
-                onClick: handleBatchGenerate,
-                variant: 'primary' as const,
-                count: getSelectedOrdersStats().submitted
-              }] : []),
-              ...((selectedStatus === 'processing' || selectedStatus === 'picked_up' || selectedStatus === 'shipping' || selectedStatus === 'delivered') && getSelectedOrdersStats().printable > 0 ? [{
-                label: '批量列印物流單',
-                onClick: handleBatchPrint,
-                variant: 'secondary' as const,
-                count: getSelectedOrdersStats().printable
-              }] : []),
-              ...(selectedStatus === 'all' && getSelectedOrdersStats().submitted > 0 && getSelectedOrdersStats().printable === 0 ? [{
-                label: '批量生成配送單',
-                onClick: handleBatchGenerate,
-                variant: 'primary' as const,
-                count: getSelectedOrdersStats().submitted
-              }] : []),
-              ...(selectedStatus === 'all' && getSelectedOrdersStats().printable > 0 && getSelectedOrdersStats().submitted === 0 ? [{
-                label: '批量列印物流單',
-                onClick: handleBatchPrint,
-                variant: 'secondary' as const,
-                count: getSelectedOrdersStats().printable
-              }] : []),
-              ...(selectedStatus !== 'cancelled' && selectedOrders.size > 0 ? [{
-                label: '批量列印明細',
-                onClick: handleBatchPackingSlip,
-                variant: 'secondary' as const,
-                count: selectedOrders.size
-              }] : []),
-              ...(selectedStatus !== 'delivered' && selectedStatus !== 'cancelled' && getSelectedOrdersStats().cancellable > 0 ? [{
-                label: '批量取消',
-                onClick: handleBatchCancel,
-                variant: 'danger' as const,
-                count: getSelectedOrdersStats().cancellable
-              }] : [])
+            batchActions={[
+              // 批次操作全部改由勾選後浮出的 BulkActionBar 提供 —— 同一件事不要兩個入口
             ]}
             onClearSelection={() => setSelectedOrders(new Set())}
           />
@@ -1326,15 +1368,17 @@ export default function OrdersPage() {
                         className="w-4 h-4 text-primary focus:ring-primary rounded"
                       />
                     </th>
-                    {visibleColumns.orderId && (
+                    {/* 展開箭頭那一格，永遠在，不排序 */}
+                    <th className={`${getDensityClasses()} w-8`} />
+                    {visibleColumns.status && (
                       <SortableTableHeader
-                        sortKey="orderId"
+                        sortKey="status"
                         currentSortField={sortField}
                         sortDirection={sortDirection}
                         onSort={handleSort}
                         className={getDensityClasses()}
                       >
-                        訂單編號
+                        狀態
                       </SortableTableHeader>
                     )}
                     {visibleColumns.submittedAt && (
@@ -1345,18 +1389,43 @@ export default function OrdersPage() {
                         onSort={handleSort}
                         className={getDensityClasses()}
                       >
-                        提交時間
+                        提交日期
                       </SortableTableHeader>
                     )}
-                    {visibleColumns.status && (
+                    {visibleColumns.recipientName && (
                       <SortableTableHeader
-                        sortKey="status"
+                        sortKey="recipientName"
                         currentSortField={sortField}
                         sortDirection={sortDirection}
                         onSort={handleSort}
                         className={getDensityClasses()}
                       >
-                        狀態
+                        收件人
+                      </SortableTableHeader>
+                    )}
+                    {visibleColumns.logistics && (
+                      <th className={`text-left ${getDensityClasses()} text-xs font-semibold text-neutral-500 whitespace-nowrap`}>配送方式</th>
+                    )}
+                    {visibleColumns.quantity && (
+                      <SortableTableHeader
+                        sortKey="quantity"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        className={getDensityClasses()}
+                      >
+                        件數
+                      </SortableTableHeader>
+                    )}
+                    {visibleColumns.orderId && (
+                      <SortableTableHeader
+                        sortKey="orderId"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        className={getDensityClasses()}
+                      >
+                        訂單編號
                       </SortableTableHeader>
                     )}
                     {visibleColumns.userName && (
@@ -1371,37 +1440,7 @@ export default function OrdersPage() {
                       </SortableTableHeader>
                     )}
                     {visibleColumns.userId && (
-                      <SortableTableHeader
-                        sortKey="userId"
-                        currentSortField={sortField}
-                        sortDirection={sortDirection}
-                        onSort={handleSort}
-                        className={getDensityClasses()}
-                      >
-                        使用者ID
-                      </SortableTableHeader>
-                    )}
-                    {visibleColumns.quantity && (
-                      <SortableTableHeader
-                        sortKey="quantity"
-                        currentSortField={sortField}
-                        sortDirection={sortDirection}
-                        onSort={handleSort}
-                        className={`whitespace-nowrap ${getDensityClasses()}`}
-                      >
-                        數量
-                      </SortableTableHeader>
-                    )}
-                    {visibleColumns.recipientName && (
-                      <SortableTableHeader
-                        sortKey="recipientName"
-                        currentSortField={sortField}
-                        sortDirection={sortDirection}
-                        onSort={handleSort}
-                        className={getDensityClasses()}
-                      >
-                        收件資訊
-                      </SortableTableHeader>
+                      <th className={`text-left ${getDensityClasses()} text-xs font-semibold text-neutral-500 whitespace-nowrap`}>會員編號</th>
                     )}
                     {visibleColumns.trackingNumber && (
                       <SortableTableHeader
@@ -1422,7 +1461,7 @@ export default function OrdersPage() {
                         onSort={handleSort}
                         className={getDensityClasses()}
                       >
-                        運費(TWD)
+                        運費
                       </SortableTableHeader>
                     )}
                     {visibleColumns.shippedAt && (
@@ -1475,29 +1514,86 @@ export default function OrdersPage() {
                             <span className="w-4 h-4 block"></span>
                           )}
                         </td>
-                        {visibleColumns.orderId && (
-                          <td className={`${getDensityClasses()} text-sm text-neutral-700 font-medium whitespace-nowrap`}>
-                            <div className="flex items-center gap-2">
-                              <svg 
-                                className={`w-4 h-4 transition-transform flex-shrink-0 ${expandedOrders.has(shipment.id) ? 'rotate-180 text-primary' : 'text-neutral-400'}`}
-                                fill="none" 
-                                stroke="currentColor" 
-                                viewBox="0 0 24 24"
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                              <span className="font-mono whitespace-nowrap">{shipment.orderId}</span>
-                            </div>
-                          </td>
-                        )}
-                        {visibleColumns.submittedAt && (
-                          <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
-                            <span className="font-mono whitespace-nowrap">{formatDateTime(shipment.submittedAt)}</span>
-                          </td>
-                        )}
+                        {/*
+                          展開箭頭獨立一格、固定在最左邊。
+                          原本它綁在「訂單編號」裡，而訂單編號現在往右移了 ——
+                          展開這個動作跟欄位順序無關，位置不該跟著飄。
+                        */}
+                        <td className={`${getDensityClasses()} w-8`}>
+                          <svg
+                            className={`h-4 w-4 flex-shrink-0 transition-transform ${
+                              expandedOrders.has(shipment.id) ? 'rotate-180 text-primary' : 'text-neutral-400'
+                            }`}
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </td>
+                        {/*
+                          欄位順序照「出貨要用的順序」排，不是資料庫欄位順序（老闆 2026-08-26）：
+                          狀態→提交日期→收件人→配送方式→件數→訂單編號 落在不用捲就看到的範圍，
+                          暱稱／會員編號／單號／運費／出貨時間往右捲，需要才看。
+                        */}
                         {visibleColumns.status && (
                           <td className={`${getDensityClasses()} whitespace-nowrap`}>
                             <Badge status={shipment.status}>{getStatusText(shipment.status)}</Badge>
+                          </td>
+                        )}
+                        {visibleColumns.submittedAt && (
+                          <td className={`${getDensityClasses()} whitespace-nowrap`}>
+                            {/* 明確日期（老闆要的）＋等待天數。時分秒滑過去才看，出貨用不到 */}
+                            <div className="leading-tight" title={formatDateTime(shipment.submittedAt)}>
+                              <p className="font-mono text-sm text-neutral-700 tabular-nums">{shipment.date || '-'}</p>
+                              {shipment.status !== 'delivered' && shipment.status !== 'cancelled' && (
+                                <p className={`text-xs tabular-nums ${shipment.days > 3 ? 'font-semibold text-red-500' : 'text-neutral-400'}`}>
+                                  等 {shipment.days} 天
+                                </p>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                        {visibleColumns.recipientName && (
+                          <td className={`${getDensityClasses()} whitespace-nowrap`}>
+                            <div className="leading-tight">
+                              <p className="text-sm text-neutral-700">{shipment.recipientName || '-'}</p>
+                              <p className="font-mono text-xs text-neutral-400">{shipment.recipientPhone}</p>
+                            </div>
+                          </td>
+                        )}
+                        {visibleColumns.logistics && (
+                          <td className={`${getDensityClasses()} whitespace-nowrap`}>
+                            {/* 超商跟宅配原本混在收件資訊裡看不出差別，拆出來 */}
+                            {(() => {
+                              const { channel, detail, isCvs } = logisticsSummary(shipment)
+                              return (
+                                <div className="leading-tight">
+                                  <span className={`inline-block rounded px-1.5 py-0.5 text-[11px] font-medium ${
+                                    isCvs ? 'bg-sky-50 text-sky-700' : 'bg-amber-50 text-amber-700'
+                                  }`}>
+                                    {channel}
+                                  </span>
+                                  {detail && (
+                                    <p className="mt-0.5 max-w-[220px] truncate text-xs text-neutral-400" title={detail}>{detail}</p>
+                                  )}
+                                </div>
+                              )
+                            })()}
+                          </td>
+                        )}
+                        {visibleColumns.quantity && (
+                          <td className={`${getDensityClasses()} whitespace-nowrap`}>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-sm text-neutral-700 tabular-nums">{shipment.items.length}</span>
+                              {/* 大件要拿大箱、只能走宅配，備貨前就得知道 */}
+                              {shipment.hasLarge && (
+                                <span className="rounded bg-red-50 px-1.5 py-0.5 text-[11px] font-medium text-red-600">大件</span>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                        {visibleColumns.orderId && (
+                          <td className={`${getDensityClasses()} text-sm text-neutral-700 font-medium whitespace-nowrap`}>
+                            <span className="font-mono whitespace-nowrap">{shipment.orderId}</span>
                           </td>
                         )}
                         {visibleColumns.userName && (
@@ -1507,31 +1603,17 @@ export default function OrdersPage() {
                         )}
                         {visibleColumns.userId && (
                           <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
-                            <span className="whitespace-nowrap"><CopyableID id={shipment.userId} /></span>
-                          </td>
-                        )}
-                        {visibleColumns.quantity && (
-                          <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
-                            <span className="font-mono whitespace-nowrap">{shipment.items.length}</span>
-                          </td>
-                        )}
-                        {visibleColumns.recipientName && (
-                          <td className={`${getDensityClasses()} whitespace-nowrap`}>
-                            <div className="space-y-0 leading-tight">
-                              <p className="text-sm text-neutral-500 whitespace-nowrap">{shipment.recipientName}</p>
-                              <p className="text-xs text-neutral-400 whitespace-nowrap font-mono">{shipment.recipientPhone}</p>
-                              <p className="text-xs text-neutral-400 whitespace-nowrap">{shipment.address}</p>
-                            </div>
+                            <MemberNo no={shipment.memberNo} uuid={shipment.userId} />
                           </td>
                         )}
                         {visibleColumns.trackingNumber && (
                           <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
-                            <span className="font-mono whitespace-nowrap">{shipment.trackingNumber || '-'}</span>
+                            <span className="font-mono whitespace-nowrap tabular-nums">{shipment.trackingNumber || '-'}</span>
                           </td>
                         )}
                         {visibleColumns.shippingFee && (
                           <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
-                            <span className="font-mono">{shipment.shippingFee > 0 ? `$${shipment.shippingFee}` : '—'}</span>
+                            <span className="font-mono tabular-nums">{shipment.shippingFee > 0 ? `$${shipment.shippingFee}` : '—'}</span>
                           </td>
                         )}
                         {visibleColumns.shippedAt && (
@@ -1553,153 +1635,115 @@ export default function OrdersPage() {
                           }`}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <div className="flex items-center gap-2 flex-nowrap">
-                            {/* 詳情 - 所有狀態都有 */}
-                            <Link 
-                              href={`/orders/${shipment.orderId}`}
-                              className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap flex-shrink-0"
-                            >
-                              詳情
-                            </Link>
-                            {!isSupplier && (<>
-                            
-                            {/* 手動出貨按鈕 - 顯示在已提交或處理中 */}
-                            {(shipment.status === 'submitted' || shipment.status === 'processing') && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setShipModal({
-                                    isOpen: true,
-                                    orderId: shipment.id,
-                                    orderNumber: shipment.orderId,
-                                    trackingNumber: shipment.trackingNumber || ''
-                                  })
-                                }}
-                                className="text-green-600 hover:text-green-800 text-sm font-medium whitespace-nowrap flex-shrink-0"
-                              >
-                                手動出貨
-                              </button>
-                            )}
+                          {(() => {
+                            /*
+                             * 操作區：一顆實心主按鈕 ＋「⋯」（老闆 2026-08-26）
+                             *
+                             * 原本五顆同樣大小的字並排（詳情／手動出貨／生成配送單／列印明細／取消），
+                             * 出貨人員得讀完才知道按哪顆，而「取消」就貼在「列印明細」旁邊 ——
+                             * 那是不可復原的操作。現在規則只有一句：按那顆實心的。
+                             */
+                            const hasTracking = !!shipment.trackingNumber
+                            const canLabel = shipment.status === 'submitted' ||
+                              (!hasTracking && (shipment.status === 'processing' || shipment.status === 'picked_up'))
+                            const printable = shipment.status !== 'submitted' && shipment.status !== 'cancelled'
 
-                            {/* 已提交 或 處理中/已攬收但無物流單號：生成配送單 */}
-                            {(shipment.status === 'submitted' ||
-                              (!shipment.trackingNumber && (shipment.status === 'processing' || shipment.status === 'picked_up'))) && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleGenerateShippingLabel([shipment.id])
-                                }}
-                                className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap flex-shrink-0"
-                            >
-                              生成配送單
-                            </button>
-                            )}
-                            
-                            {/* 其他狀態（非已提交、非已取消）：列印物流單單 */}
-                            {shipment.status !== 'submitted' && shipment.status !== 'cancelled' && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  window.open(`/api/logistics/print?orderId=${shipment.id}`, '_blank')
-                                }}
-                                className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap flex-shrink-0"
-                              >
-                                列印物流單
-                              </button>
-                            )}
+                            const openTab = (url: string, what: string) => {
+                              const w = window.open(url, '_blank')
+                              if (!w) toast(`瀏覽器擋住了${what}分頁，請允許此網站開啟彈出視窗`, 'warning')
+                            }
+                            const printLabel = () => openTab(`/api/logistics/print?orderId=${shipment.id}`, '託運單')
+                            const printSlip  = () => openTab(`/api/orders/packing-slip?orderId=${shipment.id}`, '明細單')
 
-                            {/*
-                              出貨明細單：放進包裹裡給玩家對貨的那張 A4，跟託運單是兩回事。
-                              已取消的單不必印；其餘狀態都給，備貨時就會想先印出來核對。
-                            */}
-                            {shipment.status !== 'cancelled' && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  window.open(`/api/orders/packing-slip?orderId=${shipment.id}`, '_blank')
-                                }}
-                                className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap flex-shrink-0"
-                              >
-                                列印明細
-                              </button>
-                            )}
-                            
-                            {/* 配送中：確認送達 */}
-                            {shipment.status === 'shipping' && (
-                              <button
-                                onClick={async (e) => {
-                                  e.stopPropagation()
-                                  if (!confirm(`確定將訂單 ${shipment.orderId} 標記為「已送達」？`)) return
+                            const primary = isSupplier ? null
+                              : canLabel  ? { label: '開配送單', onClick: () => handleGenerateShippingLabel([shipment.id]) }
+                              : printable ? { label: '印單＋明細', onClick: () => { printLabel(); printSlip() } }
+                              : null
+
+                            const markDelivered = async () => {
+                              const res = await fetch(`/api/admin/orders/${shipment.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ status: 'delivered', notification_title: '訂單已送達' }),
+                              })
+                              if (res.ok) {
+                                setLocalShipments(prev => prev.map(s =>
+                                  s.id === shipment.id ? { ...s, status: 'delivered' as const } : s
+                                ))
+                                addLog('確認送達', '配送管理', `訂單 ${shipment.orderId} 已標記為送達`, 'success')
+                                toast('已標記為送達')
+                              } else {
+                                toast('標記失敗', 'error')
+                              }
+                            }
+
+                            const askCancel = () => setConfirmModal({
+                              isOpen: true,
+                              title: '取消確認',
+                              content: (
+                                <div className="space-y-3">
+                                  <p className="text-sm text-neutral-600">
+                                    確定要取消 <span className="font-medium text-neutral-900">{shipment.orderId}</span> 嗎？
+                                  </p>
+                                  <Note tone="danger">取消後無法復原，品項會退回玩家倉庫。</Note>
+                                </div>
+                              ),
+                              confirmText: '確定取消',
+                              cancelText: '返回',
+                              onConfirm: async () => {
+                                try {
                                   const res = await fetch(`/api/admin/orders/${shipment.id}`, {
                                     method: 'PUT',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ status: 'delivered', notification_title: '訂單已送達' }),
+                                    body: JSON.stringify({ status: 'cancelled' }),
                                   })
-                                  if (res.ok) {
-                                    setLocalShipments(prev => prev.map(s =>
-                                      s.id === shipment.id ? { ...s, status: 'delivered' as const } : s
-                                    ))
-                                    addLog('確認送達', '配送管理', `訂單 ${shipment.orderId} 已標記為送達`, 'success')
+                                  if (!res.ok) {
+                                    const data = await res.json().catch(() => null)
+                                    throw new Error(data?.error || '取消訂單失敗')
                                   }
-                                }}
-                                className="text-green-600 hover:text-green-800 text-sm font-medium whitespace-nowrap flex-shrink-0"
-                              >
-                                確認送達
-                              </button>
-                            )}
+                                  setLocalShipments(prev => prev.map(s =>
+                                    s.id === shipment.id ? { ...s, status: 'cancelled' as const } : s
+                                  ))
+                                  addLog('取消訂單', '配送管理', `取消訂單 ${shipment.orderId}`, 'success')
+                                  setConfirmModal(prev => ({ ...prev, isOpen: false }))
+                                } catch (error) {
+                                  console.error('Error cancelling order:', error)
+                                  toast('取消訂單失敗', 'error')
+                                }
+                              },
+                              onCancel: () => setConfirmModal(prev => ({ ...prev, isOpen: false })),
+                            })
 
-                            {/* 非已送達、非已取消：取消 */}
-                            {shipment.status !== 'delivered' && shipment.status !== 'cancelled' && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setConfirmModal({
-                                    isOpen: true,
-                                    title: '取消確認',
-                                    content: (
-                                      <div className="space-y-3">
-                                        <p className="text-sm text-neutral-600">
-                                          確定要取消 <span className="font-medium text-neutral-900">{shipment.orderId}</span> 嗎？
-                                        </p>
-                                        <Note tone="danger">取消後無法復原。</Note>
-                                      </div>
-                                    ),
-                                    confirmText: '確定取消',
-                                    cancelText: '取消',
-                                    onConfirm: async () => {
-                                      try {
-                                        const res = await fetch(`/api/admin/orders/${shipment.id}`, {
-                                          method: 'PUT',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({ status: 'cancelled' }),
-                                        })
-                                        if (!res.ok) {
-                                          const data = await res.json().catch(() => null)
-                                          throw new Error(data?.error || '取消訂單失敗')
-                                        }
-
-                                        setLocalShipments(prev => prev.map(s => 
-                                          s.id === shipment.id ? { ...s, status: 'cancelled' as const } : s
-                                        ))
-                                        addLog('取消訂單', '配送管理', `取消訂單 ${shipment.orderId}`, 'success')
-                                        setConfirmModal({ ...confirmModal, isOpen: false })
-                                      } catch (error) {
-                                        console.error('Error cancelling order:', error)
-                                        toast('取消訂單失敗', 'error')
-                                      }
-                                    },
-                                    onCancel: () => {
-                                      setConfirmModal({ ...confirmModal, isOpen: false })
-                                    }
-                                  })
-                                }}
-                                className="text-red-500 hover:text-red-700 text-sm whitespace-nowrap flex-shrink-0"
-                              >
-                                取消
-                              </button>
-                            )}
-                            </>)}
-                          </div>
+                            return (
+                              <div className="flex items-center justify-end gap-1.5 flex-nowrap">
+                                {primary && (
+                                  <button
+                                    onClick={primary.onClick}
+                                    className="whitespace-nowrap rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-dark"
+                                  >
+                                    {primary.label}
+                                  </button>
+                                )}
+                                <ActionMenu items={[
+                                  { label: '查看詳情', onClick: () => setDetailOrderId(shipment.id) },
+                                  { label: '列印物流單', onClick: printLabel,
+                                    hidden: isSupplier || !printable },
+                                  { label: '列印出貨明細', onClick: printSlip,
+                                    hidden: isSupplier || shipment.status === 'cancelled' },
+                                  { label: '手動出貨', onClick: () => setShipModal({
+                                      isOpen: true, orderId: shipment.id,
+                                      orderNumber: shipment.orderId,
+                                      trackingNumber: shipment.trackingNumber || '',
+                                    }),
+                                    hidden: isSupplier || !(shipment.status === 'submitted' || shipment.status === 'processing') },
+                                  { label: '確認送達', onClick: markDelivered,
+                                    hidden: isSupplier || shipment.status !== 'shipping' },
+                                  { label: '取消訂單', onClick: askCancel, danger: true,
+                                    hidden: isSupplier || shipment.status === 'delivered' || shipment.status === 'cancelled' },
+                                ]} />
+                              </div>
+                            )
+                          })()}
                         </td>
                       </tr>
                       {expandedOrders.has(shipment.id) && (
@@ -1778,6 +1822,50 @@ export default function OrdersPage() {
             </div>
         </PageCard>
       </div>
+
+      {/* 配送詳情彈窗 —— 取代原本的 /orders/[id] 整頁 */}
+      <OrderDetailModal
+        isOpen={detailOrderId !== null}
+        onClose={() => setDetailOrderId(null)}
+        readOnly={isSupplier}
+        order={(() => {
+          const o = localShipments.find(s => s.id === detailOrderId)
+          return o ? (o as unknown as OrderDetailData) : null
+        })()}
+        onPrintSlip={() => detailOrderId && window.open(`/api/orders/packing-slip?orderId=${detailOrderId}`, '_blank')}
+        onPrintLabel={() => detailOrderId && window.open(`/api/logistics/print?orderId=${detailOrderId}`, '_blank')}
+        onGenerateLabel={() => {
+          if (!detailOrderId) return
+          const id = detailOrderId
+          setDetailOrderId(null)   // 讓出彈窗，生成流程本身也會開一個確認窗
+          handleGenerateShippingLabel([id])
+        }}
+        onStatusChange={async (status) => {
+          if (!detailOrderId) return
+          const res = await fetch(`/api/admin/orders/${detailOrderId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status }),
+          })
+          if (!res.ok) { toast('狀態更新失敗', 'error'); return }
+          setLocalShipments(prev => prev.map(s =>
+            s.id === detailOrderId ? { ...s, status: status as typeof s.status } : s
+          ))
+          addLog('更新訂單狀態', '配送管理', `訂單 ${localShipments.find(s => s.id === detailOrderId)?.orderId} → ${status}`, 'success')
+          toast('狀態已更新')
+        }}
+      />
+
+      {/* 勾選後浮出的批次列 —— 原本這些功能藏在工具列下拉裡，沒人找得到 */}
+      {!isSupplier && (
+        <BulkActionBar count={selectedOrders.size} onClear={() => setSelectedOrders(new Set())}>
+          <BulkButton primary onClick={handleGenerateAndPrint}>開單並列印</BulkButton>
+          <BulkButton onClick={handleBatchGenerate}>只開配送單</BulkButton>
+          <BulkButton onClick={handleBatchPackingSlip}>印明細</BulkButton>
+          <BulkButton onClick={handleBatchPrint}>印物流單</BulkButton>
+          <BulkButton danger onClick={handleBatchCancel}>取消訂單</BulkButton>
+        </BulkActionBar>
+      )}
     </AdminLayout>
   )
 }

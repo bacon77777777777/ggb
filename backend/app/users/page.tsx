@@ -15,7 +15,7 @@ import {
   FilterTags,
   Modal,
   type Column,
-  CopyableID
+  MemberNo
 } from '@/components'
 import DateRangePicker from '@/components/DateRangePicker'
 import { supabase } from '@/lib/supabaseClient'
@@ -24,6 +24,8 @@ import SelectField from '@/components/ui/SelectField'
 interface User {
   id: string
   userId: string
+  /** 會員編號（給人看的短號）。列表顯示這個，uuid 只在會員詳情露出 */
+  memberNo: number | null
   inviteCode: string | null
   name: string
   email: string
@@ -214,6 +216,8 @@ function UsersPage() {
       const query = searchQuery.toLowerCase()
       result = result.filter(u =>
         u.userId.includes(query) ||
+        // 搜尋支援 100042 或 #100042 兩種打法
+        (u.memberNo != null && String(u.memberNo).includes(query.replace(/^#/, ''))) ||
         (u.inviteCode && u.inviteCode.toLowerCase().includes(query)) ||
         u.name.toLowerCase().includes(query) ||
         u.email.toLowerCase().includes(query) ||
@@ -489,10 +493,10 @@ function UsersPage() {
     },
     {
       key: 'userId',
-      label: '使用者ID',
+      label: '會員編號',
       sortable: true,
       visible: visibleColumns.userId,
-      render: (user) => <CopyableID id={user.userId} />
+      render: (user) => <MemberNo no={user.memberNo} uuid={user.userId} />
     },
     {
       key: 'operations',

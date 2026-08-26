@@ -58,7 +58,7 @@ export async function GET(request: Request) {
       prize_level,
       product_prizes ( name, level ),
       products ( id, name, type, supplier_id, suppliers ( id, name ) ),
-      users ( id, name, email ),
+      users ( id, name, email, member_no ),
       admin_recycle_pool ( id, recycle_value, status, handled_at, handled_by, handled_note )
     `)
     .eq('status', 'dismantled')
@@ -99,6 +99,7 @@ export async function GET(request: Request) {
       supplier_name: item.products?.suppliers?.name ?? '—',
       user_name: item.users?.name ?? item.users?.email ?? '未知用戶',
       user_id: item.users?.id ?? '',
+      member_no: item.users?.member_no ?? null,
     }
   })
 

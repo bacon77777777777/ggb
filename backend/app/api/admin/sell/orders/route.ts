@@ -32,8 +32,8 @@ export async function GET() {
           created_at,
           updated_at,
           listing:sell_listings!sell_orders_listing_id_fkey ( id, title, items ),
-          seller:users!sell_orders_seller_id_fkey ( id, name, email ),
-          buyer:users!sell_orders_buyer_id_fkey ( id, name, email )
+          seller:users!sell_orders_seller_id_fkey ( id, name, email, member_no ),
+          buyer:users!sell_orders_buyer_id_fkey ( id, name, email, member_no )
         `
       )
       .order('created_at', { ascending: false })

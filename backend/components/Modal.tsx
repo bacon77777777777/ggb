@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 interface ModalProps {
   isOpen: boolean
   onClose: () => void
-  title: string
+  /** 允許塞徽章／標籤，不只是一行字 */
+  title: ReactNode
   children: React.ReactNode
   footer?: React.ReactNode
   size?: 'sm' | 'md' | 'lg' | 'xl'

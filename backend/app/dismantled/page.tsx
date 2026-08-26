@@ -1,6 +1,6 @@
 'use client'
 
-import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, CopyableID, Modal } from '@/components'
+import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, MemberNo, Modal } from '@/components'
 import Badge, { type BadgeVariant } from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Textarea from '@/components/ui/Textarea'
@@ -54,6 +54,7 @@ interface DismantledItem {
   supplier_name: string
   user_name: string
   user_id: string
+  member_no: number | null
 }
 
 interface Supplier {
@@ -377,7 +378,7 @@ export default function DismantledPage() {
                         )}
                         {show('uuid') && (
                           <td className={`${dc}`}>
-                            <CopyableID id={item.user_id} />
+                            <MemberNo no={item.member_no} uuid={item.user_id} />
                           </td>
                         )}
                       </tr>

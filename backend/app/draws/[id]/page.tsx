@@ -2,7 +2,7 @@
 
 import AdminLayout from '@/components/AdminLayout'
 import Badge from '@/components/ui/Badge'
-import CopyableID from '@/components/CopyableID'
+import MemberNo from '@/components/MemberNo'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
@@ -444,9 +444,9 @@ export default function DrawDetailPage() {
             {user ? (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-neutral-500 mb-1">使用者ID</p>
+                  <p className="text-sm text-neutral-500 mb-1">會員編號</p>
                   <div className="flex items-center gap-2">
-                    <CopyableID id={user.user_id} />
+                    <MemberNo no={(user as any).member_no ?? null} uuid={user.user_id} />
                   </div>
                 </div>
                 
