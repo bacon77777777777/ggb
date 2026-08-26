@@ -49,21 +49,27 @@ export interface OrderDetailData {
 }
 
 /**
- * label 在上、值在下 —— 密度的關鍵，不要用 justify-between
- * （那會把兩者推到容器兩端、中間空一大條）。
+ * 一行一組：label 固定窄欄靠左，值緊接著。
  *
- * ⚠️ 密集指的是**少留白**，不是把字縮小。老闆 2026-08-26 回報第一版
- * 「閱讀的很痛苦吃力，文字也太小」—— 空間夠就用看得清楚的字級。
+ * 第一版用 4 欄網格＋col-span，結果取貨門市右邊空一格、物流單號孤零零掛在第四欄、
+ * 最後一行右半整片空白 —— 欄位對不齊，眼睛得跳著找（老闆 2026-08-26：
+ * 「收件與配送下的欄位排列很難閱讀」）。
+ *
+ * 改成所有 label 靠左對齊，掃描路徑變成一條直線，也不會再有空洞。
+ * 同一組的東西用「·」串在同一行，不各佔一格。
  */
-function Field({ label, children, className = '' }: {
-  label: string; children: React.ReactNode; className?: string
-}) {
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className={className}>
-      <div className="text-xs leading-tight text-neutral-400">{label}</div>
-      <div className="mt-1 text-[15px] leading-snug text-neutral-900">{children}</div>
+    <div className="flex gap-4 py-1.5">
+      <div className="w-16 shrink-0 text-sm leading-relaxed text-neutral-400">{label}</div>
+      <div className="min-w-0 flex-1 text-[15px] leading-relaxed text-neutral-900">{children}</div>
     </div>
   )
+}
+
+/** 同一行裡的分隔點 */
+function Dot() {
+  return <span className="mx-2 text-neutral-300">·</span>
 }
 
 function Section({ title, right, children }: {
@@ -162,41 +168,50 @@ export default function OrderDetailModal({
           />
         </Section>
 
+        {/* 用戶擺在收件資訊之前（老闆 2026-08-26）—— 先知道是誰的單，再看寄去哪 */}
+        <Section title="用戶">
+          <Row label="會員">
+            <span>{order.userName || '—'}</span>
+            <Dot />
+            <MemberNo no={order.memberNo} uuid={order.userId} />
+            <Dot />
+            <span className="text-neutral-500">{order.user}</span>
+          </Row>
+        </Section>
+
         <Section title="收件與配送">
-          <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
-            <Field label="收件人">{order.recipientName || '—'}</Field>
-            <Field label="聯絡電話">
-              <span className="font-mono tabular-nums">{order.recipientPhone || '—'}</span>
-            </Field>
-            <Field label="配送方式">
-              <span className={`inline-block rounded px-2 py-0.5 text-sm font-medium ${
-                isCvs ? 'bg-sky-50 text-sky-700' : 'bg-amber-50 text-amber-700'
-              }`}>{channel}</span>
-            </Field>
-            <Field label="運費">
-              <span className="font-mono tabular-nums">{order.shippingFee > 0 ? `$${order.shippingFee}` : '免運'}</span>
-            </Field>
-            <Field label={isCvs ? '取貨門市' : '收件地址'} className="col-span-2 sm:col-span-3">
-              {detail || '—'}
-              {isCvs && order.storeId && (
-                <span className="ml-1.5 font-mono text-sm text-neutral-400">（{order.storeId}）</span>
-              )}
-            </Field>
-            <Field label="物流單號">
-              <span className="font-mono tabular-nums">{order.trackingNumber || '—'}</span>
-            </Field>
-            <Field label="提交日期">
-              <span className="font-mono tabular-nums" title={order.submittedAt}>{order.date || '—'}</span>
-              {order.status !== 'delivered' && order.status !== 'cancelled' && (
-                <span className={`ml-2 text-sm tabular-nums ${order.days > 3 ? 'font-semibold text-red-500' : 'text-neutral-400'}`}>
-                  等 {order.days} 天
-                </span>
-              )}
-            </Field>
-            <Field label="出貨時間" className="col-span-2 sm:col-span-3">
-              <span className="font-mono tabular-nums">{order.shippedAt || '—'}</span>
-            </Field>
-          </div>
+          <Row label="收件人">
+            {order.recipientName || '—'}
+            <Dot />
+            <span className="font-mono tabular-nums">{order.recipientPhone || '—'}</span>
+          </Row>
+          <Row label="配送">
+            <span className={`mr-2 inline-block rounded px-2 py-0.5 text-sm font-medium ${
+              isCvs ? 'bg-sky-50 text-sky-700' : 'bg-amber-50 text-amber-700'
+            }`}>{channel}</span>
+            {detail || '—'}
+            {isCvs && order.storeId && (
+              <span className="ml-1.5 font-mono text-sm text-neutral-400">（{order.storeId}）</span>
+            )}
+          </Row>
+          <Row label="單據">
+            <span className="font-mono tabular-nums">{order.shippingFee > 0 ? `運費 $${order.shippingFee}` : '免運'}</span>
+            <Dot />
+            <span className="text-neutral-500">單號</span>{' '}
+            <span className="font-mono tabular-nums">{order.trackingNumber || '—'}</span>
+          </Row>
+          <Row label="時間">
+            <span className="text-neutral-500">提交</span>{' '}
+            <span className="font-mono tabular-nums" title={order.submittedAt}>{order.date || '—'}</span>
+            {order.status !== 'delivered' && order.status !== 'cancelled' && (
+              <span className={`ml-2 text-sm tabular-nums ${order.days > 3 ? 'font-semibold text-red-500' : 'text-neutral-400'}`}>
+                （等 {order.days} 天）
+              </span>
+            )}
+            <Dot />
+            <span className="text-neutral-500">出貨</span>{' '}
+            <span className="font-mono tabular-nums">{order.shippedAt || '—'}</span>
+          </Row>
         </Section>
 
         <Section
@@ -224,14 +239,6 @@ export default function OrderDetailModal({
           </div>
         </Section>
 
-        <Section title="玩家">
-          {/* 三個欄位一行講完，原本是右側整張獨立卡片 */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[15px]">
-            <span className="text-neutral-900">{order.userName || '—'}</span>
-            <MemberNo no={order.memberNo} uuid={order.userId} />
-            <span className="text-neutral-500">{order.user}</span>
-          </div>
-        </Section>
       </div>
     </Modal>
   )
