@@ -9,6 +9,9 @@ const nextConfig = {
   // 會有這個是因為：dev server 跑著的時候在同一個目錄執行 `npm run build`，
   // production 產物會覆蓋 .next，dev server 接著就會 500（找不到 chunk / manifest）。
   // 那不是 Next.js 需要重啟，是被自己人打壞的。
+  // ⚠️ 跑完記得 `git checkout -- tsconfig.json next-env.d.ts`：
+  //    Next.js build 會把這兩個檔改成指向 NEXT_DIST_DIR，驗證完那個目錄就刪了，
+  //    帶著這種改動 commit 上去，Vercel 會找不到型別檔而建置失敗。
   distDir: process.env.NEXT_DIST_DIR || '.next',
   /*
    * 這次部署的識別碼，同時烤進 client bundle 與伺服器端。

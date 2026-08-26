@@ -25,6 +25,18 @@ export default function ConfirmDialog({
   type = 'info',
   icon
 }: ConfirmDialogProps) {
+  /*
+   * ⚠️ 所有 hook 都要在 `if (!isOpen) return null` 之前呼叫。
+   *
+   * 這行原本寫在那個 early return 底下（跟 handleConfirm 放一起）。關著的時候
+   * 只跑到兩個 useEffect 就 return 了，打開那一瞬間多出第三個 hook，
+   * React 直接丟 "Rendered more hooks than during the previous render." ——
+   * 正式站沒有 error boundary 接，整頁變成
+   * 「Application error: a client-side exception has occurred」。
+   * 全後台每一個確認框都中，點「商城 → 關閉」必現。
+   */
+  const [busy, setBusy] = useState(false)
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
@@ -47,7 +59,7 @@ export default function ConfirmDialog({
     return () => document.removeEventListener('keydown', handleEscape)
   }, [isOpen, onClose])
 
-  if (!isOpen) return null
+  if (!isOpen) return null   // ⚠️ 這行以下不准再有 hook（見上方說明）
 
   const typeStyles = {
     danger: {
@@ -90,8 +102,6 @@ export default function ConfirmDialog({
    * 使用者看不出有沒有成功，失敗的 toast 也可能在彈窗關掉後才冒出來。
    * 現在 await 完才關，期間鎖住兩顆按鈕並顯示處理中。
    */
-  const [busy, setBusy] = useState(false)
-
   const handleConfirm = async () => {
     if (busy) return
     setBusy(true)

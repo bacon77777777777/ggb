@@ -4,6 +4,44 @@
 
 ---
 
+## v2026.08.27b｜2026-08-27｜「Application error」的真兇：確認框的 hook 順序；兩個 app 都補上錯誤邊界
+
+後台點「商城 → 關閉」必跳 `Application error: a client-side exception has occurred`。
+
+**真正的錯在 `ConfirmDialog`**：`busy` 那個 `useState` 被寫在
+`if (!isOpen) return null` **底下**。彈窗關著只跑到兩個 `useEffect` 就 return（2 個 hook），
+打開那一瞬間多出第三個，React 直接丟
+`Rendered more hooks than during the previous render.`
+所以**後台每一個確認框都中**，不只商城 —— 關閉任何類別、停用儲值、切維護模式、
+刪除確認全是同一顆。是 v2026.08.26 加「確認鈕 await ＋ 鎖住」時放錯位置的。
+
+**為什麼 lint 沒攔**：後台的 `.eslintrc.json` 寫著 `extends: next/core-web-vitals`
+（本來就含 `react-hooks/rules-of-hooks`），但 ESLint 9 走 flat config，
+實際被讀的 `eslint.config.mjs` **沒掛 react-hooks plugin** —— 那條規則一直沒在跑。
+已補進 flat config，`npm run lint` 現在會擋。用它掃過全庫：**後台只有這一處，前台零違規**。
+
+**兩個 app 都沒有 error boundary** —— 任何 client 端例外都落到 Next 內建那行英文，
+一片白、沒有訊息、沒有退路，Sentry 也只吃得到壓縮堆疊。補上
+`app/error.tsx` ＋ `app/global-error.tsx`（前後台各一組）：
+
+1. **推版造成的 chunk 失效自動重新整理一次**（`lib/staleBuild.ts`）。舊分頁還開著，
+   捲到下面要載一個沒下載過的 chunk 時，上一版的 JS 在 Vercel 上已經沒了 → 404 → 整頁掛掉。
+   這種錯重載就好，不該讓人看到錯誤畫面。同一分頁 60 秒內只自動重載一次，
+   真的壞掉的頁面不會陷入重載迴圈；無痕模式讀不到 sessionStorage 就不自動重載
+2. 送 Sentry，帶路徑、`digest`、build id
+3. 真要顯示時給看得懂的畫面 ＋「重新整理／回首頁」。**後台直接把錯誤訊息印在畫面上**
+   （只有自己人看，回報時截圖就能定位）；前台收在「技術資訊」摺疊裡
+
+順帶：`NEXT_DIST_DIR=.next-verify` 的驗證 build 會把 `tsconfig.json` 與 `next-env.d.ts`
+改成指向那個目錄，驗證完目錄一刪就成了懸空引用 —— 帶著這種改動 commit，Vercel 會建置失敗。
+已在兩支 next.config 的說明裡加上「跑完記得 checkout 回來」。
+
+檔案：`backend/components/ConfirmDialog.tsx`、`backend/eslint.config.mjs`、
+`{backend,frontend}/app/error.tsx`、`{backend,frontend}/app/global-error.tsx`、
+`{backend,frontend}/lib/staleBuild.ts`
+
+---
+
 ## v2026.08.27a｜2026-08-27｜公平性警語列捲動時飄走，捲完才彈回導航列上緣
 
 首頁與一番賞／抽卡／自製賞內頁底部那條「吉吉比使用 HASH 公平可驗證的技術建立」，
