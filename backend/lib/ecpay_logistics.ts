@@ -184,3 +184,77 @@ export function ecpayLogisticsStatusToOrder(rtnCode: string | number): string | 
   if (code === 2067) return 'delivered'   // 消費者取貨
   return null
 }
+
+/* ─────────────────────────────────────────────────────────────
+ * 列印託運單
+ *
+ * 綠界沒有「回傳 PDF」的 API，只有幾支**必須用 POST 打過去、回傳一頁 HTML**
+ * 的列印頁。所以做法是產生一張自動送出的表單，讓瀏覽器自己 POST 過去。
+ *
+ * 端點依物流方式不同（超商 C2C 每家一支，B2C 與宅配共用一支），
+ * 需要的欄位也不同 —— C2C 要寄件編號與驗證碼，B2C／宅配只要交易編號。
+ * ───────────────────────────────────────────────────────────── */
+
+export interface PrintTarget {
+  /** 完整的綠界列印網址 */
+  url: string
+  /** 要 POST 過去的欄位（已含 CheckMacValue） */
+  params: Record<string, string>
+}
+
+/** C2C 各超商品牌對應的列印端點 */
+const C2C_PRINT_PATH: Record<CvsBrand, string> = {
+  UNIMART: 'Express/PrintUnimartC2CBill',
+  FAMI:    'Express/PrintFAMIC2CBill',
+  HILIFE:  'Express/PrintHILIFEC2CBill',
+  OKMART:  'Express/PrintOKMARTC2CBill',
+}
+
+/**
+ * @param logisticsSubType  我們自己存的代號（UNIMART／FAMI／TCAT…），不是綠界代號
+ * @param ids               建立物流單時綠界回的三個編號
+ */
+export function generatePrintTarget(
+  logisticsSubType: string,
+  ids: { logisticsId?: string | null; cvsPaymentNo?: string | null; cvsValidationNo?: string | null },
+  merchantID: string,
+  hashKey: string,
+  hashIV: string,
+  apiUrl: string,
+): PrintTarget {
+  // 從 Create 的網址推出網域，才不會 stage 與正式各寫一份
+  const origin = new URL(apiUrl).origin
+
+  const ecpaySubType = toEcpayCvsSubType(logisticsSubType)
+  const brand = cvsBrandOf(logisticsSubType)
+  const isC2C = brand !== null && ecpaySubType.endsWith('C2C')
+
+  if (!ids.logisticsId) {
+    throw new Error('缺少綠界物流交易編號（AllPayLogisticsID），請重新生成配送單')
+  }
+
+  let url: string
+  const params: Record<string, string> = {
+    MerchantID:        merchantID,
+    AllPayLogisticsID: String(ids.logisticsId),
+  }
+
+  if (isC2C && brand) {
+    if (!ids.cvsPaymentNo) {
+      throw new Error('缺少超商寄件編號（CVSPaymentNo），請重新生成配送單')
+    }
+    url = `${origin}/${C2C_PRINT_PATH[brand]}`
+    params.CVSPaymentNo = String(ids.cvsPaymentNo)
+    // 只有統一超商需要驗證碼，其餘三家送空字串
+    params.CVSValidationNo = brand === 'UNIMART' ? String(ids.cvsValidationNo ?? '') : ''
+    if (brand === 'UNIMART' && !ids.cvsValidationNo) {
+      throw new Error('缺少統一超商驗證碼（CVSValidationNo），請重新生成配送單')
+    }
+  } else {
+    // B2C 與宅配共用這一支，只要交易編號
+    url = `${origin}/helper/printTradeDocument`
+  }
+
+  params.CheckMacValue = generateLogisticsCheckMacValue(params, hashKey, hashIV)
+  return { url, params }
+}

@@ -831,10 +831,24 @@ export default function OrdersPage() {
       return
     }
     
-    const orderIds = printableOrders.map(id => localShipments.find(s => s.id === id)?.orderId).filter(Boolean)
-    console.log('批量列印物流單:', orderIds)
+    /*
+     * 改版前這裡是 window.print() —— 把整個後台頁面（含左側選單）送進印表機，
+     * 從來沒有真的去印綠界的託運單。
+     *
+     * 綠界的列印頁一次只吃一筆，所以多筆時逐一開新分頁；
+     * 一次開太多會被瀏覽器的彈出視窗封鎖擋掉，超過 5 筆先提醒一聲。
+     */
+    if (printableOrders.length > 5 &&
+        !window.confirm(`會開啟 ${printableOrders.length} 個列印分頁，瀏覽器可能會擋。確定要繼續嗎？`)) {
+      return
+    }
+
+    printableOrders.forEach((id, i) => {
+      // 錯開一點點，連續 window.open 容易被當成彈出視窗攻擊
+      setTimeout(() => window.open(`/api/logistics/print?orderId=${id}`, '_blank'), i * 300)
+    })
+
     addLog('批量列印物流單', '配送管理', `批量列印 ${printableOrders.length} 筆訂單的物流單`, 'success')
-    window.print()
     setSelectedOrders(new Set())
   }
 
@@ -1560,7 +1574,7 @@ export default function OrdersPage() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  window.print()
+                                  window.open(`/api/logistics/print?orderId=${shipment.id}`, '_blank')
                                 }}
                                 className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap flex-shrink-0"
                               >

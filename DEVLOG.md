@@ -4,6 +4,45 @@
 
 ---
 
+## v2026.08.26c｜2026-08-26｜「列印物流單」從來沒實作過 —— 補上綠界託運單列印
+
+老闆回報列印出來是整個後台頁面。查下去發現不只是接錯，是**根本沒做**：
+
+```js
+onClick={() => window.print()}     // 單筆
+window.print()                      // 批次
+```
+
+兩顆都只是把當前頁面（含左側選單、統計卡）送進印表機，從來沒有去印綠界的託運單。
+
+**更根本的問題在資料**（migration 628）：`/api/logistics/create` 從綠界拿到
+`AllPayLogisticsID`／`CVSPaymentNo`／`CVSValidationNo` 三個值，卻**只把其中一個
+寫進 `tracking_number`，另外兩個直接丟掉**。而超商 C2C 的列印 API 三個都要 ——
+所以就算按鈕接對了，也印不出來。`orders` 補三個欄位並改成全部保留。
+
+**列印怎麼做**：綠界沒有「回傳 PDF」的 API，只有幾支必須 POST 過去、回傳一頁
+HTML 的列印頁，而且端點依物流方式而異：
+
+| 物流方式 | 端點 | 需要的欄位 |
+|----------|------|------------|
+| 統一超商 C2C | `Express/PrintUnimartC2CBill` | 交易編號＋寄件編號＋**驗證碼** |
+| 全家／萊爾富／OK C2C | `Express/PrintFAMIC2CBill` 等 | 交易編號＋寄件編號 |
+| B2C 與宅配 | `helper/printTradeDocument` | 交易編號 |
+
+新增 `lib/ecpay_logistics.generatePrintTarget()` 依代號挑端點、組欄位、算
+CheckMacValue（物流是 MD5，跟金流的 SHA256 不同），以及
+`/api/logistics/print?orderId=N` 回一張**自動送出的表單**讓瀏覽器 POST 過去。
+網域從 `ECPAY_LOGISTICS_API_URL` 推導，stage 與正式不用各寫一份。
+
+批次列印改成逐筆開新分頁（綠界列印頁一次只吃一筆），每筆錯開 300ms ——
+連續 `window.open` 會被當成彈出視窗攻擊；超過 5 筆先問一聲。
+
+**⚠️ 既有訂單補不回來**：綠界的回應沒有留存。PROD 的 `OD2608249803` 只回填得到
+交易編號，那是超商 C2C 單，缺寄件編號與驗證碼 —— **重新生成一次配送單**才印得出來。
+API 缺欄位時會明講缺哪一個、要重新生成，不會只丟一句「無法列印」。
+
+---
+
 ## v2026.08.26b｜2026-08-26｜「按了沒反應」的兩個根因：toast 被彈窗遮住、確認鈕不 await 也不鎖
 
 老闆回報按下「生成配送單」沒反應、也沒 loading 提示。查出兩個各自獨立的原因，

@@ -117,8 +117,16 @@ export async function POST(req: NextRequest) {
     const cvsValidation  = resultMap.CVSValidationNo   || null
     const trackingNumber = logisticsId || cvsPaymentNo || null
 
+    /*
+     * 三個編號全部留下來（migration 628）。
+     * 改版前只寫 tracking_number，另外兩個丟掉 —— 而超商 C2C 的列印託運單 API
+     * 三個都要，等於單建好了卻永遠印不出來。
+     */
     const update: Record<string, any> = { status: 'processing' }
     if (trackingNumber) update.tracking_number = trackingNumber
+    if (logisticsId)   update.ecpay_logistics_id = logisticsId
+    if (cvsPaymentNo)  update.cvs_payment_no     = cvsPaymentNo
+    if (cvsValidation) update.cvs_validation_no  = cvsValidation
 
     const { error: updateError } = await supabase
       .from('orders')
