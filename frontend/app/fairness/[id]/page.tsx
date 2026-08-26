@@ -55,7 +55,7 @@ export default function FairnessVerifyPage() {
 
   const [prizes, setPrizes] = useState<PrizeRow[]>([]);
   const [seal, setSeal] = useState<SealInfo | null>(null);
-  const [myTickets, setMyTickets] = useState<{ ticket_number: number; prize_level: string }[]>([]);
+  const [myTickets, setMyTickets] = useState<{ ticket_number: number; prize_level: string; is_last_one: boolean }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -90,11 +90,17 @@ export default function FairnessVerifyPage() {
       if (user) {
         const { data: mine } = await supabase
           .from('draw_records')
-          .select('ticket_number, prize_level')
+          .select('ticket_number, prize_level, is_last_one')
           .eq('product_id', productId)
           .eq('user_id', user.id)
           .order('ticket_number');
-        setMyTickets(mine ?? []);
+        // 最後賞在 DB 是 ticket_number = 0（它沒有自己的籤號），照號碼排會跑到第一個。
+        // 它是抽走最後一張時才給的，順序上要排在所有籤的後面
+        setMyTickets(
+          [...(mine ?? [])].sort((a, b) =>
+            Number(a.is_last_one) - Number(b.is_last_one) || a.ticket_number - b.ticket_number,
+          ),
+        );
       }
 
       setIsLoading(false);
@@ -317,12 +323,23 @@ export default function FairnessVerifyPage() {
                         </p>
                         <div className="space-y-1.5">
                           {myTickets.map(t => {
-                            const inTable = assignment.find(a => a.ticket === t.ticket_number)?.level;
+                            // 最後賞不在對照表裡，它是「抽走最後一張的人」拿的獎。
+                            // 對照表最後一張是第 tickets 號，所以它排在 tickets + 1，
+                            // 也就是這一檔的最後一籤
+                            const inTable = t.is_last_one
+                              ? t.prize_level
+                              : assignment.find(a => a.ticket === t.ticket_number)?.level;
                             const ok = inTable === t.prize_level;
+                            const ticketNo = t.is_last_one ? (seal?.tickets ?? assignment.length) + 1 : t.ticket_number;
                             return (
-                              <div key={t.ticket_number} className="flex items-center justify-between text-sm py-1.5">
+                              <div key={t.is_last_one ? 'last-one' : t.ticket_number} className="flex items-center justify-between text-sm py-1.5">
                                 <span className="text-neutral-500 dark:text-neutral-400 tabular-nums">
-                                  {t.ticket_number} 號
+                                  {ticketNo} 號
+                                  {t.is_last_one && (
+                                    <span className="ml-1.5 text-xs text-neutral-400 dark:text-neutral-500">
+                                      最後一籤
+                                    </span>
+                                  )}
                                 </span>
                                 <span className="flex items-center gap-3">
                                   <span className="text-neutral-800 dark:text-neutral-100 font-black">

@@ -499,53 +499,6 @@ export default function SettlementPage() {
         )}
 
 
-        {/*
-          未付款期別。取代原本 /settlement-snapshots 那一頁的清單功能 ——
-          會計要的是「哪幾期哪幾家還沒付」，那不值得一整頁，放這裡剛好。
-          廠商不顯示：他只有自己一家，而且不該看到平台對其他期別的付款節奏。
-        */}
-        {!isSupplier && (data?.unpaid?.length ?? 0) > 0 && (
-          <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-            <div className="flex items-center gap-2 border-b border-neutral-100 px-4 py-3">
-              <h3 className="text-sm font-semibold text-neutral-700">未付款期別</h3>
-              <span className="text-xs text-neutral-400">{data?.unpaid?.length} 筆</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-sm">
-                <thead className="border-b border-neutral-200 bg-neutral-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-neutral-500">期別</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-neutral-500">廠商</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-neutral-500">結算日</th>
-                    <th className="px-4 py-2 text-right text-xs font-semibold text-neutral-500">應付</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-neutral-500">狀態</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-100">
-                  {data?.unpaid?.map(u => (
-                    <tr key={u.id} className="transition-colors hover:bg-neutral-50">
-                      <td className="whitespace-nowrap px-4 py-2 font-mono text-xs text-neutral-500">
-                        {u.period_start.slice(0, 7)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-2 text-neutral-900">{u.supplier_name}</td>
-                      <td className="whitespace-nowrap px-4 py-2 font-mono text-xs text-neutral-500">{u.settlement_date}</td>
-                      <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums font-medium">
-                        {fmt(u.supplier_net)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-2">
-                        <span className={`rounded px-2 py-0.5 text-xs font-medium ${
-                          u.status === 'confirmed' ? 'bg-blue-50 text-blue-700' : 'bg-neutral-100 text-neutral-500'
-                        }`}>
-                          {u.status === 'confirmed' ? '已確認・待付款' : '草稿'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
 
         {loading && <CardSkeleton rows={5} />}
 
@@ -651,7 +604,7 @@ export default function SettlementPage() {
               {marginToSupplier !== 0 && (
                 <Row
                   label={<><span className="text-neutral-600">回收差額分潤</span><span className="text-xs text-neutral-400 ml-1.5">差額 {fmt(recycledMarginTotal)} · 廠商 {data?.marginSupplierShare ?? 0}%</span></>}
-                  value={`+${fmt(marginToSupplier)}`} indent
+                  value={`+${fmt(marginToSupplier)}`} green indent
                 />
               )}
               {settlementMode === 'charge' && dismantleTotal !== 0 && (
@@ -677,6 +630,7 @@ export default function SettlementPage() {
                   }
                   value={`${crossPeriodAdjustment >= 0 ? '+' : '−'}${fmt(Math.abs(crossPeriodAdjustment))}`}
                   red={crossPeriodAdjustment < 0}
+                  green={crossPeriodAdjustment > 0}
                   indent
                 />
               )}
@@ -741,9 +695,51 @@ export default function SettlementPage() {
           </div>
         )}
 
-        {!loading && data && data.products.length === 0 && (
-          <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">
-            本期無此廠商的消費紀錄
+        {/*
+          未付款期別。取代原本 /settlement-snapshots 那一頁的清單功能 ——
+          會計要的是「哪幾期哪幾家還沒付」，那不值得一整頁，放這裡剛好。
+          廠商不顯示：他只有自己一家，而且不該看到平台對其他期別的付款節奏。
+        */}
+        {!isSupplier && (data?.unpaid?.length ?? 0) > 0 && (
+          <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+            <div className="flex items-center gap-2 border-b border-neutral-100 px-4 py-3">
+              <h3 className="text-sm font-semibold text-neutral-700">未付款期別</h3>
+              <span className="text-xs text-neutral-400">{data?.unpaid?.length} 筆</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px] text-sm">
+                <thead className="border-b border-neutral-200 bg-neutral-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-neutral-500">期別</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-neutral-500">廠商</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-neutral-500">結算日</th>
+                    <th className="px-4 py-2 text-right text-xs font-semibold text-neutral-500">應付</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-neutral-500">狀態</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {data?.unpaid?.map(u => (
+                    <tr key={u.id} className="transition-colors hover:bg-neutral-50">
+                      <td className="whitespace-nowrap px-4 py-2 font-mono text-xs text-neutral-500">
+                        {u.period_start.slice(0, 7)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2 text-neutral-900">{u.supplier_name}</td>
+                      <td className="whitespace-nowrap px-4 py-2 font-mono text-xs text-neutral-500">{u.settlement_date}</td>
+                      <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums font-medium">
+                        {fmt(u.supplier_net)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2">
+                        <span className={`rounded px-2 py-0.5 text-xs font-medium ${
+                          u.status === 'confirmed' ? 'bg-blue-50 text-blue-700' : 'bg-neutral-100 text-neutral-500'
+                        }`}>
+                          {u.status === 'confirmed' ? '已確認・待付款' : '草稿'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

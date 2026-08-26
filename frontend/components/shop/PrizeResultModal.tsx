@@ -145,7 +145,7 @@ export const PrizeResultModal: React.FC<PrizeResultModalProps> = ({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 z-10 shrink-0">
+            <div className="flex items-center justify-between px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] md:pt-4 border-b border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 z-10 shrink-0">
               <h3 className="text-lg font-black text-neutral-900 dark:text-white">抽獎結果一覽</h3>
               <button 
                 onClick={onClose}
