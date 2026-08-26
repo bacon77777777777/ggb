@@ -36,6 +36,8 @@ const CTA_HREF = '/events/fairness';
  * 不寫死高度：導航列實際是 61px（h-[60px] + 1px 上框線）而非直覺的 56px，
  * 釘在 56px 時底部 5px 會被導航（z-50）的白底蓋住，看得到的深色區比元素盒矮，
  * 內容就算數學上置中也會顯得偏下。offsetHeight 已含 safe-area 的 padding。
+ *
+ * 量到的高度是拿去當「透明底墊」，不是 bottom 偏移值 —— 見下方 render 的說明。
  */
 function useTabbarOffset() {
   const [offset, setOffset] = useState(0);
@@ -72,6 +74,9 @@ function useTabbarOffset() {
 /**
  * 把自己的實際高度掛到 --promo-notice-h，讓頁面既有的浮動按鈕
  * （首頁的上架、排行榜）跟著上移。用量測而不是寫死高度。
+ *
+ * ref 掛在「深色那條」本身而不是外層固定容器：外層還墊著一塊等同底部欄
+ * 高度的透明 padding，量外層會把導航列的高度也算進去，浮動按鈕就會被推高一截。
  */
 function usePublishHeight(active: boolean) {
   const ref = useRef<HTMLDivElement>(null);
@@ -148,16 +153,27 @@ export default function NoticeBar({ position = 'bottom' }: Props) {
   if (!visible) return null;
 
   return (
+    /*
+     * 貼底部時錨在 bottom: 0，再用等同底部欄高度的透明 padding 把自己頂上去，
+     * 而不是直接寫 bottom: <導航列高度>。
+     *
+     * 為什麼：iOS Safari 捲動時網址列會收合，fixed 元素只有錨在畫面最底
+     * （bottom: 0，底部欄與購買列都是這樣）才會被瀏覽器黏住；錨在某個像素偏移
+     * 的元素是照版面視窗算的，捲動當下會先跟著頁面跑掉，捲完才彈回導航列上緣
+     * —— 就是老闆看到的位移。改成跟底部欄同一種錨法，兩者就一起動、不會分家。
+     *
+     * 外層要 pointer-events-none：那塊透明 padding 蓋在底部欄／購買列上，
+     * 商品頁的購買列同為 z-40 且排在前面，不放行點擊會吃掉「立即開包」。
+     */
     <div
-      ref={ref}
-      className="fixed left-0 right-0 md:hidden z-40"
+      className="fixed left-0 right-0 md:hidden z-40 pointer-events-none"
       style={isTop
         ? { top: navH || 57 }
-        : { bottom: tabbarH || 'calc(61px + env(safe-area-inset-bottom))' }}
+        : { bottom: 0, paddingBottom: tabbarH || 'calc(61px + env(safe-area-inset-bottom))' }}
       data-testid="promo-notice-bar"
     >
       {/* 分隔線畫在朝向內容的那一側：貼底部時在上緣，貼頂部時在下緣 */}
-      <div className={`bg-neutral-800 dark:bg-neutral-900 ${isTop ? 'border-b' : 'border-t'} border-white/5 px-4 py-1.5 flex items-center gap-2.5`}>
+      <div ref={ref} className={`pointer-events-auto bg-neutral-800 dark:bg-neutral-900 ${isTop ? 'border-b' : 'border-t'} border-white/5 px-4 py-1.5 flex items-center gap-2.5`}>
         <Link href={CTA_HREF} className="flex items-center gap-2.5 flex-1 min-w-0">
           <Image
             src={asset("/images/ic.png")} alt="" width={24} height={24}
