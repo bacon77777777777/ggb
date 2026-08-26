@@ -192,7 +192,7 @@ export default function ModulesSettingsPage() {
 
   return (
     <AdminLayout>
-      <PageCard title="抽獎模組設定">
+      <PageCard header={<h2 className="text-base font-semibold text-neutral-900">抽獎模組設定</h2>}>
         {isLoading ? (
           <CardSkeleton rows={3} />
         ) : (

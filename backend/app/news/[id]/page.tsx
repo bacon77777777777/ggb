@@ -140,7 +140,7 @@ export default function NewsEditPage() {
             </div>
           </PageCard>
 
-          <PageCard title="內容（HTML）">
+          <PageCard header={<h2 className="text-base font-semibold text-neutral-900">內容（HTML）</h2>}>
             <Textarea value={form.content ?? ''}
               onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
               className="font-mono"
@@ -182,7 +182,7 @@ export default function NewsEditPage() {
           </PageCard>
 
           {/* 主圖 */}
-          <PageCard title="主圖">
+          <PageCard header={<h2 className="text-base font-semibold text-neutral-900">主圖</h2>}>
             <div className="space-y-2">
               <div className="flex gap-2">
                 <input type="text" value={form.image_url}
@@ -213,7 +213,7 @@ export default function NewsEditPage() {
           </PageCard>
 
           {/* 分類 */}
-          <PageCard title="分類與標籤">
+          <PageCard header={<h2 className="text-base font-semibold text-neutral-900">分類與標籤</h2>}>
             <div className="space-y-3">
               <div>
                 <label className={labelCls}>分類</label>

@@ -9,6 +9,7 @@ export { default as Badge } from './Badge'
 export { default as Card } from './Card'
 export { default as Switch } from './Switch'
 export { default as Note } from './Note'
+export { default as InfoDot } from './InfoDot'
 
 // Types
 export type { ButtonProps } from './Button'
