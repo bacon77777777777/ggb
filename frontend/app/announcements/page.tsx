@@ -79,6 +79,20 @@ export default function AnnouncementsPage() {
   const [supabase] = useState(() => createClient());
   const tabKeys = CATEGORIES.map(c => c.key);
 
+  /*
+   * 記住看到哪裡（老闆 2026-08-26：「點返回會回到通知列表，且記憶瀏覽位置」）
+   *
+   * 存在 sessionStorage 而不是 state —— 進詳情頁是換路由，元件會整個卸載。
+   * 只記分頁籤與捲動位置這兩件事，關掉分頁就失效，剛好符合「這一趟瀏覽」的語意。
+   */
+  const VIEW_KEY = 'ggb:announcements:view';
+
+  const rememberView = useCallback(() => {
+    try {
+      sessionStorage.setItem(VIEW_KEY, JSON.stringify({ tab: activeTab, y: window.scrollY }));
+    } catch { /* 無痕模式寫不進去就算了，不要炸掉 */ }
+  }, [activeTab]);
+
   useEffect(() => {
     fetch('/api/announcements')
       .then(r => r.json())
@@ -89,6 +103,17 @@ export default function AnnouncementsPage() {
     // 刻意不在進頁時全標已讀 —— 那樣逐則紅點就失去意義；
     // 已讀改由「點進內頁」或「全部已讀」觸發
     setReadIds(getReadIds());
+
+    // 從詳情頁返回時把分頁籤接回去（捲動位置要等列表畫出來才還原，見下面）
+    try {
+      const saved = sessionStorage.getItem(VIEW_KEY);
+      if (saved) {
+        const { tab } = JSON.parse(saved) as { tab?: string };
+        // 用模組層級的 CATEGORIES 而不是 tabKeys —— 後者每次 render 都是新陣列，
+        // 放進依賴陣列會讓這個「只跑一次」的 effect 變成每次 render 都跑
+        if (tab && CATEGORIES.some(c => c.key === tab)) setActiveTab(tab);
+      }
+    } catch { /* ignore */ }
   }, []);
 
   /* 個人通知：綁定禮入帳、邀請獎勵可領這類只給本人看的回條。
@@ -108,15 +133,23 @@ export default function AnnouncementsPage() {
     return () => { cancelled = true; };
   }, [user, supabase]);
 
+  /*
+   * 點一則通知 → 進它自己的詳情內頁（老闆 2026-08-26）。
+   *
+   * 原本是 `router.push(n.link)`，直接把玩家丟到訂單／任務／儲值頁 ——
+   * 人只是想看清楚這則在講什麼，結果整頁換掉，也回不到剛才看到哪裡。
+   * 要不要過去改由詳情頁的按鈕決定。
+   */
   const handleNoteClick = async (n: UserNotification) => {
     if (!n.is_read) {
       setNotes(prev => prev.map(x => (x.id === n.id ? { ...x, is_read: true } : x)));
-      await supabase
+      void supabase
         .from('notifications')
         .update({ is_read: true, read_at: new Date().toISOString() })
         .eq('id', n.id);
     }
-    if (n.link) router.push(n.link);
+    rememberView();
+    router.push(`/announcements/n/${n.id}`);
   };
 
   const handleMarkAll = useCallback(() => {
@@ -138,6 +171,24 @@ export default function AnnouncementsPage() {
     window.addEventListener('ggb:markAllAnnouncementsRead', handleMarkAll);
     return () => window.removeEventListener('ggb:markAllAnnouncementsRead', handleMarkAll);
   }, [handleMarkAll]);
+
+  /*
+   * 捲動位置只能在列表真的畫出來之後還原 —— 資料還沒到時頁面高度不夠，
+   * scrollTo 會被瀏覽器夾成 0。等 isLoading 結束再跳，並且只還原一次。
+   */
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (isLoading || restoredRef.current) return;
+    restoredRef.current = true;
+    try {
+      const saved = sessionStorage.getItem(VIEW_KEY);
+      if (!saved) return;
+      const { y } = JSON.parse(saved) as { y?: number };
+      if (typeof y === 'number' && y > 0) {
+        requestAnimationFrame(() => window.scrollTo(0, y));
+      }
+    } catch { /* ignore */ }
+  }, [isLoading, notes.length]);
 
   // 換成全站共用的手勢（含邊緣讓位、水平捲動區讓位、斜滑防誤觸）
   const swipeTabs = useSwipeTabs(tabKeys, activeTab, setActiveTab);
@@ -188,7 +239,7 @@ export default function AnnouncementsPage() {
             <div className="py-16 text-center text-neutral-400 dark:text-neutral-500 text-sm font-bold">
               {activeTab === 'mine'
                 ? (user ? '目前沒有你的通知' : '登入後才看得到你的通知')
-                : '此分類目前沒有公告'}
+                : '這個分類目前沒有通知'}
             </div>
           ) : (
             rows.map(row => row.kind === 'note' ? (
@@ -225,7 +276,7 @@ export default function AnnouncementsPage() {
                   href={`/announcements/${item.id}`}
                   className="absolute inset-0 z-0"
                   aria-label={item.title}
-                  onClick={() => markRead(item.id)}
+                  onClick={() => { markRead(item.id); rememberView(); }}
                 />
                 {isUnread(item, readIds) && (
                   <span className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-2.5 h-2.5 rounded-full bg-accent-red" aria-label="未讀" />

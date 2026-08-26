@@ -120,8 +120,8 @@ function NavbarInner() {
     : null;
   const isNewsDetailPage = /^\/news\/[^/]+$/.test(pathname);
   const isAnnouncementDetailPage = /^\/announcements\/[^/]+$/.test(pathname);
-  /* 公告列表與內頁：右上角不放搜尋（老闆 2026-08-20）。
-     公告是「平台要講的話」，看公告的人不是來找商品的，
+  /* 通知列表與內頁：右上角不放搜尋（老闆 2026-08-20）。
+     通知是「平台要講的話」，看通知的人不是來找商品的，
      擺一顆放大鏡只是把注意力帶走 */
   const isAnnouncementsArea = pathname === '/announcements' || isAnnouncementDetailPage;
   const isFairnessPage = pathname.startsWith('/fairness');
@@ -346,8 +346,8 @@ function NavbarInner() {
     if (pathname === '/privacy') return '隱私權政策';
     if (pathname === '/return-policy') return '退換貨資訊';
     if (pathname === '/news') return '最新情報';
-    if (pathname === '/announcements') return '公告';
-    if (pathname.startsWith('/announcements/')) return '公告詳情';
+    if (pathname === '/announcements') return '通知';
+    if (pathname.startsWith('/announcements/')) return '通知詳情';
     if (isExchangeDetailPage) return exchangeTitle;
     if (isMessagesDetailPage) return messagesTitle;
     
@@ -884,7 +884,7 @@ function NavbarInner() {
             )}
 
             {/*
-              首頁的搜尋圖標。老闆指定與鈴鐺互換位置，所以排在公告（鈴鐺）前面。
+              首頁的搜尋圖標。老闆指定與鈴鐺互換位置，所以排在通知（鈴鐺）前面。
 
               未登入時維持只在手機顯示（`md:hidden`）—— 桌機未登入的搜尋入口
               本來就不在這裡，把它放出來等於多長一顆。
@@ -905,7 +905,7 @@ function NavbarInner() {
               </Link>
             )}
 
-            {/* 公告：手機僅首頁顯示；桌機取代原本的文字連結，固定在搜尋圖標右邊 */}
+            {/* 通知（鈴鐺）：手機僅首頁顯示；桌機取代原本的文字連結，固定在搜尋圖標右邊 */}
             {!isProductDetailPage && !isAnnouncementDetailPage && (
               <Link
                 href="/announcements"
@@ -916,7 +916,7 @@ function NavbarInner() {
                     : "text-neutral-600 dark:text-neutral-400 md:hover:text-primary",
                   !isHomePage && "hidden"
                 )}
-                aria-label="公告"
+                aria-label="通知"
               >
                 <Bell className="w-5 h-5 stroke-[2]" />
                 {/* 尺寸/位置對齊會員頁的設定齒輪紅點，邊框改用導航列底色才看得出來 */}
