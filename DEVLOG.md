@@ -4,6 +4,44 @@
 
 ---
 
+## v2026.08.27d｜2026-08-27｜換新 logo（粉藍扭蛋機 → 橘紅撕卡包）
+
+老闆丟了兩個新品牌檔進 `frontend/public/images/`：`favicon.png`、`logo.svg`。
+
+**但那兩個路徑站上沒有人在用。** 前台實際讀的是 `public/images/20260629/` 底下那一份
+（導覽列 `Navbar.tsx`、維護頁、LINE 登入回調頁、`layout.tsx` 的分頁圖示、
+情報頁 JSON-LD 的 publisher logo 全指向那裡）。根目錄那兩個是舊的重複檔，
+只換那裡的話畫面完全不會變 —— 已同時寫進 `20260629/` 與根目錄，兩邊保持一致。
+
+**PWA 安裝圖示五個一起換**（老闆指定）：`icons/icon-192`、`icon-512`、
+`icon-maskable-192`、`icon-maskable-512`、`apple-touch-icon`。三種切法不一樣：
+
+- `purpose:any`：留透明、圖案吃滿 94%，Android 不會裁它
+- `purpose:maskable`：**縮到 62% 置中、底色補白**。Android 會裁成圓形／圓角方，
+  舊的那組圖案佔到 80%，圓形遮罩下邊緣會被切掉；透明底被裁還會變黑底
+- `apple-touch-icon`：iOS 不吃透明也不自己補白，壓成 180×180 白底、**輸出無 alpha channel**
+  （`removeAlpha()`，光 `flatten()` 仍會留下 alpha 通道）
+
+**favicon 從 601KB 壓到 183KB**（1024×1024 不動 —— 它同時是 apple-touch 來源與
+情報頁 JSON-LD 的 publisher logo）。新圖的卡面有紅色漸層材質，RGBA 直出壓不下來，
+轉 256 色調色盤後並排比對過，360px 下看不出差別，實際顯示只有 16～180px。
+`logo.svg` 原樣搬 —— 試過把路徑座標修到小數兩位只省 8KB（324→316KB），不值得動路徑資料。
+
+**`asset-manifest` 一定要重跑**：`asset()` 靠 `lib/assetManifest.generated.json` 的
+內容雜湊產 `?v=`，帶 `?v=` 的網址是一年 immutable 快取。不重跑的話換了圖，
+老玩家的瀏覽器還是拿舊 logo，最長一年。已跑 `node scripts/gen-asset-manifest.mjs`，
+八個檔的 hash 都變了。
+
+**還沒換、仍是舊粉藍扭蛋機的地方**（老闆這次先不動）：
+- `frontend/public/images/logo-stacked.png` —— 登入頁。直式排版，做不出來，要老闆給圖
+- `frontend/public/images/logo.png`（600×214 橫式）—— 只有後台在用：匯入外站商品主圖蓋
+  浮水印（`backend/lib/productBranding.ts`）、情報圖蓋 logo（`newsBranding.ts`）。
+  換了只影響之後匯入的圖，已蓋過舊 logo 的不會回溯，會新舊混雜
+- `backend/public/images/favicon.png` —— 後台分頁圖示
+- `mobile/assets/icon.png` ＋ iOS AppIcon —— App 圖示，要重新 build 才會變，不是推版就好
+
+---
+
 ## v2026.08.27c｜2026-08-27｜卡包「撕開封口」：SKIP 還原成「直接結束」，快進改點空白處
 
 抽卡的撕開封口模組（`card_peel`），SKIP 原本是**四段式快進**：飛到本包壓軸 →
