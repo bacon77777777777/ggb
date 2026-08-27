@@ -24,14 +24,29 @@ const PLATE_H = 0.1321
 const LOGO_W  = 0.3339
 const LOGO_X  = 0.0268
 const LOGO_Y  = 0.0107
-const LOGO_RATIO = 300 / 107   // logo.png 是 600×214
-
+/*
+ * logo 的長寬比**從檔案讀**，不寫死。
+ *
+ * 這裡原本是 `const LOGO_RATIO = 300 / 107   // logo.png 是 600×214`。
+ * 2026-08-27 換品牌時 logo.png 變成 1554×500（比例 3.11，舊的是 2.80），
+ * 寫死的那個數字沒有任何地方會報錯 —— sharp 照著算出來的 logoH 去 resize，
+ * 蓋出來的 logo 直接變形，而且要等有人盯著商品圖看才會發現。
+ * 換圖是遲早的事，所以改成量檔案。
+ */
 let _logo: Buffer | null = null
 function logoBuffer(): Buffer {
   if (!_logo) {
     _logo = fs.readFileSync(path.join(process.cwd(), '../frontend/public/images/logo.png'))
   }
   return _logo
+}
+
+let _logoRatio: number | null = null
+async function logoRatio(): Promise<number> {
+  if (_logoRatio) return _logoRatio
+  const m = await sharp(logoBuffer()).metadata()
+  _logoRatio = (m.width ?? 600) / (m.height ?? 214)
+  return _logoRatio
 }
 
 /** 左上角壓白墊 + GGB logo，保留原圖其餘部分。輸出 WebP */
@@ -43,7 +58,7 @@ export async function coverSourceLogo(buf: Buffer, quality = 86): Promise<Buffer
   const plateW = Math.round(W * PLATE_W)
   const plateH = Math.round(H * PLATE_H)
   const logoW  = Math.round(W * LOGO_W)
-  const logoH  = Math.round(logoW / LOGO_RATIO)
+  const logoH  = Math.round(logoW / await logoRatio())
 
   const plate = Buffer.from(`<svg width="${plateW}" height="${plateH}"><rect width="${plateW}" height="${plateH}" fill="#ffffff"/></svg>`)
   const logo  = await sharp(logoBuffer()).resize(logoW, logoH).png().toBuffer()

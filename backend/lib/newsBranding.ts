@@ -31,6 +31,21 @@ async function getLogoBuffer(): Promise<Buffer | null> {
   } catch { return null }
 }
 
+/*
+ * logo 的長寬比**從檔案量**，不寫死。
+ *
+ * 原本是 `logoH = logoW * 107 / 300`（對應 600×214 那版 logo.png）。
+ * 2026-08-27 換品牌後 logo.png 變成 1554×500，寫死的比例不會有任何錯誤訊息，
+ * 只是蓋在情報圖上的 logo 悄悄變形。換圖是遲早的事，改成量檔案。
+ */
+let _logoRatio: number | null = null
+async function getLogoRatio(logo: Buffer): Promise<number> {
+  if (_logoRatio) return _logoRatio
+  const m = await sharp(logo).metadata()
+  _logoRatio = (m.width ?? 600) / (m.height ?? 214)
+  return _logoRatio
+}
+
 
 
 // 白墊貼齊指定角落（朝圖內側的那個角圓角）
@@ -88,7 +103,7 @@ export async function brandCoverImage(
     // logo 佔內容寬 15%（原 21%）。白墊至少要裝得下 logo，logo 太大白墊就跟著大 ——
     // 老闆嫌白底佔版面，這是主因之一
     const logoW = Math.round(W * 0.15)
-    const logoH = Math.round((logoW * 107) / 300)
+    const logoH = Math.round(logoW / await getLogoRatio(logo))
     const pad = Math.round(logoW * 0.05)
 
     /*

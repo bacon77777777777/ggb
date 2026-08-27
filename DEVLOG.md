@@ -4,6 +4,48 @@
 
 ---
 
+## v2026.08.27e｜2026-08-27｜新 logo 第二批：favicon 改版、橫式 logo.png、登入頁直式 logo
+
+老闆換上第二版 favicon 與另外兩張品牌圖，一起更新到 dev。
+
+**favicon 改版**：上一版是「白色圓角牌」，這版是**整塊白底方形、100% 不透明、連圓角都沒有**。
+所以 PWA 圖示的切法要跟著改 —— 原本 `purpose:any` 與 apple-touch 會先 `trim()` 去透明邊，
+這版去邊後變成 983×878，貼回方形畫布就成了「浮著的白長方形＋上下透明條」。
+改成**整張等比縮放、不去邊**：方形滿版才對，iOS 自己會加圓角，Android launcher 也會套遮罩。
+`maskable` 維持去邊後縮到 62% 置中補白（那個是唯一真的會被裁掉四角的）。
+
+**⚠️ 換 `logo.png` 差點默默弄壞情報圖與商品圖的浮水印。**
+新的 logo.png 是 **1554×500**（比例 3.11），舊的是 600×214（2.80），而兩支蓋浮水印的程式
+都把舊比例寫死：
+
+| 檔案 | 原本寫死 |
+|------|----------|
+| `backend/lib/productBranding.ts` | `const LOGO_RATIO = 300 / 107   // logo.png 是 600×214` |
+| `backend/lib/newsBranding.ts` | `logoH = Math.round((logoW * 107) / 300)` |
+
+寫死的比例**不會有任何錯誤訊息** —— sharp 照著算出來的高度去 resize，蓋上去的 logo 直接變形，
+要等有人盯著商品圖或情報圖看才會發現。兩支都改成**從檔案量長寬比**（`sharp().metadata()`，
+模組層快取一次），以後再換 logo 不用改程式。改完拿假來源圖實跑過 `coverSourceLogo()`，
+白墊蓋得住、logo 比例正確。
+
+**檔案大小**（都留 `.png`，不轉 WebP —— `logo.png` 的檔名是跟後台的約定，
+`newsBranding` 直接抓 `https://www.ggb.com.tw/images/logo.png`，改副檔名會斷）：
+
+| 檔案 | 原始 | 壓後 |
+|------|------|------|
+| `favicon.png` | 739KB | 218KB |
+| `logo.png` 1554×500 | 667KB | 218KB |
+| `logo-stacked.png` 723×646 | 437KB | 132KB |
+
+一律 256 色調色盤，並排＋邊緣放大比對過，看不出差別。
+
+`gen-asset-manifest` 再跑一次（`asset()` 的 `?v=` 是一年 immutable 快取，不重跑等於換了也看不到）。
+
+**仍是舊粉藍扭蛋機的**：`backend/public/images/favicon.png`（後台分頁圖示）、
+`mobile/assets/icon.png` ＋ iOS AppIcon（App 圖示，要重新 build 才會變）。
+
+---
+
 ## v2026.08.27d｜2026-08-27｜換新 logo（粉藍扭蛋機 → 橘紅撕卡包）
 
 老闆丟了兩個新品牌檔進 `frontend/public/images/`：`favicon.png`、`logo.svg`。
