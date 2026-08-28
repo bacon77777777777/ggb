@@ -103,7 +103,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: asset('/images/20260629/favicon.png') },
+      { url: asset('/images/favicon.png') },
       { url: asset('/icons/icon-192.png'), sizes: '192x192', type: 'image/png' },
       { url: asset('/icons/icon-512.png'), sizes: '512x512', type: 'image/png' },
     ],

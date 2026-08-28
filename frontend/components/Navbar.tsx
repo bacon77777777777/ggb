@@ -695,7 +695,7 @@ function NavbarInner() {
             <Link href="/" className={cn("flex items-center group md:relative", (isProductDetailPage || isAnnouncementDetailPage) ? "hidden" : (!showLogo && "hidden md:flex"))}>
               <div className="flex items-center gap-1.5 transition-transform group-hover:scale-105">
                 <Image
-                  src={asset("/images/20260629/logo.svg")}
+                  src={asset("/images/logo.svg")}
                   alt="GACHA ONLINE"
                   width={112}
                   height={28}

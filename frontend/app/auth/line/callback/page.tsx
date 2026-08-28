@@ -187,7 +187,7 @@ function LineCallbackInner() {
     return (
       <div className="fixed inset-0 z-[9999] flex flex-col items-center overflow-y-auto bg-white px-6 py-10 text-center dark:bg-neutral-950">
         <Image
-          src={asset("/images/20260629/logo.svg")}
+          src={asset("/images/logo.svg")}
           alt="吉吉比"
           width={132}
           height={44}

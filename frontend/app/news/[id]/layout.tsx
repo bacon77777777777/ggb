@@ -101,7 +101,7 @@ export default async function NewsDetailLayout({
         publisher: {
           '@type': 'Organization',
           name: '吉吉比 GGB',
-          logo: { '@type': 'ImageObject', url: `${siteUrl}/images/20260629/favicon.png` },
+          logo: { '@type': 'ImageObject', url: `${siteUrl}/images/favicon.png` },
         },
         url: `${siteUrl}/news/${id}`,
         mainEntityOfPage: { '@type': 'WebPage', '@id': `${siteUrl}/news/${id}` },

@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "brand:sync": "node scripts/brand_sync.mjs"
+  },
   "dependencies": {
     "class-variance-authority": "^0.7.1"
   }

@@ -4,6 +4,55 @@
 
 ---
 
+## v2026.08.28a｜2026-08-28｜品牌素材收斂成單一來源：新增 brand/ 與 `npm run brand:sync`
+
+換一次 logo 要動 17 個檔，散在前台／後台／原生殼三個獨立部署的 app 底下，
+路徑沒辦法共用（後台跟 App 讀不到前台的檔案系統）。8/27 那兩批換 logo 就是照著
+「現況兩邊都有檔案」把新圖各塞一份，等於把舊問題再抄一次。這次把來源收成一個。
+
+**盤出來的重複與死檔（全部清掉）**
+
+| 刪 | 為什麼 |
+|----|--------|
+| `frontend/public/images/20260629/`（logo.svg + favicon.png） | 跟根目錄同 md5。查 blob hash 才看出來歷：`init` 當時根目錄是前身專案 GachaGO 的 logo、`20260629/` 是 6/29 新做的吉吉比版；`be0b9666` 刪掉根目錄舊檔後，**這個「改版暫存資料夾」就被當成正式路徑**；`07ed7d47` 又把檔案複製回根目錄，從此同內容兩份並存 |
+| `frontend/public/images/favicon.png`、`logo.svg`（原本的） | 沒有任何程式引用，兩張加起來 555KB。改成由 brand/ 產出後才有人用 |
+| `frontend/public/images/啟動頁.png` + `.webp` | 沒有任何 code 引用，5.1MB。它是 iOS `Splash.imageset/splash.jpg` 的原始素材，已收進 `brand/manual/app-launch.jpg` |
+| `backend/public/images/logo.png` | 後台只用 favicon，這張沒人讀（而且還是更舊的「神來運轉」橘底版） |
+
+程式端把 5 處 `images/20260629/*` 改指根目錄：`layout.tsx`（分頁圖示）、
+`news/[id]/layout.tsx`（JSON-LD 出版者標誌）、`Navbar`、維護頁、LINE 回跳頁。
+
+**新增 `brand/`：唯一來源**
+
+```
+brand/masters/     horizontal.png 1554×500｜vertical.png 723×646｜horizontal.svg   ← 只要換這三張
+brand/generated/   17 張自動產出，複製到 22 個位置
+brand/manual/      4 張整張插畫（OG 分享圖／邀請 OG／iOS 啟動頁／預設頭像），只複製不重產
+brand/OVERVIEW.png 總覽聯絡表，換完一眼確認有沒有漏
+```
+
+`npm run brand:sync`（`scripts/brand_sync.mjs`）。`--dry` 乾跑、`--no-mobile` 跳過 App 圖示。
+比例全部量自 8/28 的實際檔案：一般圖示內容佔 96%、maskable 與 Android 自適應前景佔 62%
+（安全區，超出的部分系統裁圓角時不保證看得到）、App 開機畫面 21%。
+
+**產出時踩到的兩件事**
+
+1. **PNG 直出沒壓縮**：1024² 的 favicon 是 671KB。加上調色盤量化（`palette: true`）
+   後降到 202KB，比原本手工做的 224KB 還小 —— logo 是大面積純色，量化幾乎無損。
+2. **佔位圖不能用白底**：新 logo 有大片白色紙張，灰階之後那塊就是白的，壓在白底上
+   等於看不見（第一版產出來只剩幾條淡淡輪廓）。改成淺灰底 `#F2F2F2` + 灰階 65% 透明度，
+   白紙與深色描邊都讀得出來，而且一塊灰方塊本身就在說「這裡的圖還沒上」。
+
+**沒動的**：已經烙進 R2 圖片的舊 logo（情報封面約 700 張、匯入商品主圖 72 張）。
+蓋圖程式讀的是 `frontend/public/images/logo.png`，**之後新蓋的都會是新 logo**，
+舊的要另外跑回填。另外 `newsBranding` 是後台程式、部署在別的網域，
+是用 HTTP 抓 `https://www.ggb.com.tw/images/logo.png` —— 那個公開網址不能拿掉也不能改路徑，
+改了情報圖會全部蓋不上 logo 而且不會報錯，README 有寫。
+
+**App 圖示已一併重產但尚未生效**：`mobile/assets/` 五張換了要 `npx cap sync` 重新編譯送審。
+
+---
+
 ## v2026.08.27e｜2026-08-27｜新 logo 第二批：favicon 改版、橫式 logo.png、登入頁直式 logo
 
 老闆換上第二版 favicon 與另外兩張品牌圖，一起更新到 dev。
