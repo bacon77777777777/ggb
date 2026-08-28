@@ -4,6 +4,43 @@
 
 ---
 
+## v2026.08.28b｜2026-08-28｜通知內頁按頂部返回回不到列表；捲動位置常常還原失敗
+
+老闆回報：點開一則通知，按左上角返回應該要回到通知列表、而且停在剛才看到的位置。
+兩件事都不成立，原因是兩個獨立的問題。
+
+**① 返回鍵把人彈回首頁**
+
+通知內頁沒有自己的返回規則，`Navbar` 的 `handleBack` 一路落到最後那段
+`document.referrer` 判斷 —— 從 LINE、推播點進來或直接重新整理時 referrer 是空的，
+被當成「外站來的」，於是 `router.push('/')`。
+
+現在公告內頁（`/announcements/<uuid>`）與個人通知內頁（`/announcements/n/<id>`）
+一律回列表：確認是從列表點進去的就 `router.back()`（歷史不會愈疊愈深，
+App 內連看好幾則不用按很多次返回），直接開網址進來的就 push 回列表。
+
+**② 捲動位置還原不到**
+
+記憶功能 8/26 就寫了，但公告與個人通知是兩支獨立 query，先前「`isLoading` 一結束
+就還原一次」很容易卡在「只有公告、通知還沒進來」那一幀 —— 頁面高度不夠，
+`scrollTo` 被瀏覽器夾成 0，而 `restoredRef` 已經用掉，之後資料進來也不會再試。
+改成一直試到真的跳到定位（差距 2px 內）或 3 秒放棄。
+
+**順帶三件**
+
+- 記憶改成一次性 + 30 分鐘 TTL。不然玩家等一下從鈴鐺重新點進通知，
+  會莫名被丟到上次看到的一半
+- 共用邏輯抽到 `frontend/lib/announcementsView.ts` —— Navbar 與列表要讀同一筆，
+  不能各寫一份 sessionStorage key
+- 個人通知內頁比照公告內頁的頂欄版面。它原本沒被算進 `isAnnouncementDetailPage`
+  （那條 regex 只吃單層路徑），**桌機上連返回鍵都沒有**。分享鍵維持只給公告，
+  個人通知是只有本人開得了的回條
+
+檔案：`frontend/components/Navbar.tsx`、`frontend/app/announcements/page.tsx`、
+`frontend/lib/announcementsView.ts`（新增）
+
+---
+
 ## v2026.08.28a｜2026-08-28｜品牌素材收斂成單一來源：新增 brand/ 與 `npm run brand:sync`
 
 換一次 logo 要動 17 個檔，散在前台／後台／原生殼三個獨立部署的 app 底下，
