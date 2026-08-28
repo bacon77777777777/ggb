@@ -43,7 +43,7 @@ const LINE_PUSH_ITEMS: { key: LinePushKey; label: string; desc: string; info: st
   { key: 'line_push_supply',   label: '供應鏈警示',     desc: '超時未出貨與零庫存的商品。', info: '超過約定時間還沒出貨的訂單，以及上架中但庫存歸零的商品。' },
   { key: 'line_push_health',   label: '健康監測',       desc: '資料庫連線、金流錯誤率、尖峰時段零交易。', info: '資料庫連線、綠界錯誤率、尖峰時段零交易，另外會檢查資料權限（RLS）與限流服務有沒有掛掉。' },
   { key: 'line_push_market',   label: '市場 / 競品情報', desc: '競品爬取與市場探索的分析結果。', info: '競品站台的爬取結果與市場探索分析。只抓公開頁面，不繞過任何存取控制。' },
-  { key: 'line_push_risk',     label: '風控掃描',       desc: '異常帳號與可疑交易。', info: '異常帳號與可疑交易：24 小時抽獎過量、大額儲值、連續付款失敗（測卡）、管理員高頻操作，以及同一網段（IP 前三段相同）多帳號同時在線。' },
+  { key: 'line_push_risk',     label: '風控掃描',       desc: '異常帳號、可疑交易、同一網段多帳號同時在線。', info: '異常帳號與可疑交易：24 小時抽獎過量、大額儲值、連續付款失敗（測卡）、管理員高頻操作，以及同一網段（IP 前三段相同）多帳號同時在線。' },
   { key: 'line_push_monitor',  label: '平台監測',       desc: '平台整體狀態的定時回報。', info: '平台整體狀態的定時回報：資料庫大小、線上人數、當日交易量。' },
   { key: 'line_push_finance',  label: '對帳 / 月結',    desc: '綠界金流對帳與每月結算快照。', info: '綠界金流對帳（每 3 小時）與每月 1 號的月結快照。對不起來的訂單會列出來。' },
   { key: 'line_push_deliver',  label: '自動出貨通知',   desc: '自動出貨跑完的結果。', info: '自動出貨跑完的結果：成功幾筆、失敗幾筆、失敗原因。' },

@@ -110,6 +110,19 @@ export async function POST(req: Request) {
       })
       if (orderError) throw orderError
       orderNumber = String((orderData as any)?.order_number || '')
+
+      /*
+       * 玩家 IP 留一筆（老闆 2026-08-28）。
+       *
+       * 以前這筆是寫在綠界的 callback 裡，但那支是 **server-to-server**：
+       * `x-forwarded-for` 是綠界伺服器的位址，不是玩家的。PROD 22 筆全部是
+       * 同一個 175.99.72.1，風控的同 IP 規則讀它等於永遠在報綠界。
+       * 建單這支才有玩家的 request，所以搬到這裡寫。
+       */
+      void getSupabaseAdmin()
+        .from('user_ip_log')
+        .insert({ user_id: user.id, ip, event_type: 'recharge_create' })
+        .then(undefined, () => {})
       amt = amount
       itemName = `吉吉比代幣 ${amount}點`
       /*

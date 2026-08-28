@@ -143,11 +143,14 @@ export async function POST(req: Request) {
           detail: { order_number: tradeNo, amount: recharge.amount ?? amt, payment_type: paymentType },
           ip,
         })
-        await supabase.from('user_ip_log').insert({
-          user_id: recharge.user_id,
-          ip,
-          event_type: 'recharge',
-        })
+        /*
+         * 這裡**刻意不再寫 user_ip_log**（老闆 2026-08-28）：
+         * 綠界是 server-to-server 打回來的，上面那個 ip 是**綠界伺服器**的位址，
+         * 不是玩家的。以前寫進去，讓風控的同 IP 規則永遠在報綠界（PROD 22 筆
+         * 全是同一個 175.99.72.1）。玩家 IP 改在建單那支寫（app/api/payment/ecpay/route.ts）。
+         * user_event_logs 那筆留著 —— 它記的是「這張單被綠界確認了」，
+         * ip 只是附帶資訊，不會被風控當成玩家位置。
+         */
 
         // 任務追蹤：儲值相關任務（recharge / recharge_amount）
         const rechargeAmt = Number(recharge.amount ?? amt)
