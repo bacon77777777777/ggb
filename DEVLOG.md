@@ -4,6 +4,70 @@
 
 ---
 
+## v2026.08.28f｜2026-08-28｜稽核 GB哥推播：同網段偵測、四個壞掉的東西、推播格式可編輯
+
+老闆問「風控掃描有沒有包含同 IP 多組帳號登入」。查下去發現有，但從來沒真的運作過，
+順著往下稽核整批推播又挖出三個。
+
+### 一、同網段多帳號同時在線（重寫）
+
+判準依老闆指定改成「**IP 前三段相同就算同一個人**」——
+行動網路與多數家用寬頻的最後一段會跳，盯完整 IP 會把同一個人切成好幾個。
+視窗從 24 小時改成「同時在線 30 分鐘」（多開是整批同時上線），門檻 10 個帳號，
+兩個值都在 `risk_alert_settings` 可調（migration 636）。早晚的風控掃描也加了這項。
+
+**原本的規則讀錯資料表**：它讀 `user_ip_log`，而全站只有綠界的 server-to-server
+callback 在寫那張表 —— 記到的是**綠界伺服器的 IP**，不是玩家。
+PROD 22 筆全部是同一個 `175.99.72.1`。等於永遠在報「綠界有 3 個帳號」，
+真正多開的玩家一個都抓不到。改讀 `visit_logs` / `user_event_logs`
+（新增 `lib/riskMultiIp.ts`）。
+
+### 二、稽核抓到的四個
+
+| 問題 | 影響 |
+|------|------|
+| `admin_action_logs` **這張表不存在**（兩環境都只有 `action_logs`） | 風控掃描的「管理員高頻操作」永遠是空的；更嚴重的是 `lib/gbBro.ts` 有 14 處拿它寫稽核軌跡，**GB哥 補幣／改價／改庫存／核准退款一筆紀錄都沒留下**，全被 try/catch 吞掉 |
+| `action_logs.admin_id` 是 bigint，卻塞 LINE user id 字串 | 就算表名對了也會失敗。收斂成 `logGbAction()`：admin_id 留空、身分寫 username/role、LINE id 收進 detail。AI 客服同樣問題一併修 |
+| `generate-content` 匯入了 `pushLine` 卻自己 fetch LINE API | 後台把「AI 文案生成」關掉照樣會推，開關等於騙人 |
+| `line_push_weekly`／`line_push_warehouse_dismantle` 沒有 `feature_flags` 資料列 | `isFlagEnabled` 查不到會 fail open → 這兩條一直「開著、而且後台看不到也關不掉」。補齊成 16 條 |
+
+另外兩件不是推播但一起記著：`leaderboard_bots` 表在 PROD 不存在（後台有 API 在讀它）、
+四處即時警報（敏感操作、風控處置、綠界異常、LINE 匯入回覆）刻意繞過開關，
+「全部關閉」不會關掉它們。
+
+### 三、設定頁：說明藍點 + 編輯格式
+
+- 每列標題右邊加藍色驚嘆號：這條推什麼、**以及推播時間**。
+  時間不寫死在前端 —— 後端現查 `cron.job` 再換算台灣時間。
+  **STG 沒裝 pg_cron**（`cron.job` 不存在），所以那邊查不到，退回 PROD 的排程表並標註來源。
+- 開關左邊加「編輯格式」：彈窗可改推播外框，`{{content}}` 換成 agent 產生的內容
+  （migration 637 的 `line_push_templates`），20 幾支 cron route 一行都不用改。
+  彈窗同時列出**這條推播長什麼樣** —— 沒推過顯示真實骨架的範例（標明數字為示意），
+  推過就顯示最近一次的實際全文（`linePush` 每次都記，含被開關擋掉沒送出的）。
+
+### 四、順手補 STG 的 `execute_readonly_sql`（migration 638）
+
+那個函數只有 PROD 有。STG 缺它 → CFO／CMO／供應鏈／健康監測／風控掃描／GB哥
+在 STG 全部拿到 null，「跑起來像正常、報告永遠是空的」。定義取自 PROD，兩邊一致。
+
+---
+
+## v2026.08.28g｜2026-08-28｜換 iOS 啟動圖與 App 圖示；會員中心動態島加白霧；邀請頁提示改兩行
+
+- **App 圖示換不掉的真正原因**：`brand:sync` 只更新 `mobile/assets/icon.png`，
+  Xcode 的 `AppIcon.appiconset` 要靠 `npx @capacitor/assets generate --ios` 重產
+  —— `cap sync` 只同步設定與外掛，不碰圖示目錄。CLAUDE.md、`brand/README.md`
+  與腳本結尾的提示三處都寫錯，一併更正。
+  ⚠️ `assets generate` 會順手改寫 `Splash.imageset/Contents.json`、塞進它自己產的
+  `Default@*.png` 把 `splash.jpg` 蓋掉，跑完要還原（這次已還原，模擬器實測過）。
+- 會員中心的 `TopFadeBlur` 由 `tint="none"` 改 `"light"`：原本只糊不帶色，
+  動態島後面就是一整塊實心主題色，時間與電量壓在上面很硬。
+- 邀請頁「累積滿 5 位好友才能領取」改成兩行「再邀請 N 位／即可領取 100 積分」。
+  位數實算、積分吃 API 的 `pointsPerStep`，不寫死。新主視覺沒有紅旗緞帶了，
+  邀請碼改印在白框下方的深色陰影上（掃出 y 1219~1296）。
+
+---
+
 ## v2026.08.28e｜2026-08-28｜公平性警語列在 iPhone Safari 還是會飛（第三版：直接掛進底部欄）
 
 老闆：首頁與一番賞／抽卡／自製賞商品頁，捲動時那條警語會飛，**PWA 不會、只有 iPhone Safari 會**。
