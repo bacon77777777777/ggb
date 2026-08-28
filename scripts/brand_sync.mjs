@@ -318,7 +318,14 @@ async function main() {
 
   console.log(`\n${DRY ? '[乾跑] ' : ''}產出 ${made} 張、複製 ${copied} 個位置${skipped ? `、跳過 ${skipped} 個 App 素材` : ''}`)
   if (NO_MOBILE) console.log('（--no-mobile：mobile/ 底下沒動）')
-  else console.log('⚠️  App 圖示要 `cd mobile && npx cap sync` 重新編譯並送審才會生效')
+  else {
+    // cap sync **不會**重產 Xcode 的圖示目錄（它只同步設定與外掛）——
+    // 2026-08-28 換 logo 後模擬器仍是舊圖示就是這個原因
+    console.log('⚠️  App 圖示還要 `cd mobile && npx @capacitor/assets generate --ios` 才會進 Xcode 圖示目錄')
+    console.log('    ⚠️ 那支會順手改寫 Splash.imageset/Contents.json、塞進它自己產的 Default@*.png，')
+    console.log('       把我們的 splash.jpg 蓋掉 —— 跑完要 `git checkout` 那個 Contents.json 並刪掉 Default@*.png')
+    console.log('    最後重新編譯、送 App Store／Play 審核才會生效')
+  }
   console.log('資源雜湊表會在下次 npm run dev / build 自動重產（frontend 的 predev/prebuild）')
 }
 

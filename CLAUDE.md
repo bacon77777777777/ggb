@@ -534,7 +534,12 @@ npm run brand:sync            # 等同 node scripts/brand_sync.mjs
 2. **不要放 SVG。** 舊的 `logo.svg` 是 PNG 的自動描圖版（漸層變平塗、撕邊變雜點，
    30% 像素對不上），而導覽列用的就是它。2026-08-28 已刪，三處改吃 `logo.png` ——
    next/image 不優化 SVG，換成 PNG 後反而由它自動縮圖轉 WebP，更小也更好看。
-3. **App 圖示不會跟著 logo 自動變**，而且換了要 `cd mobile && npx cap sync` 重新編譯、
+3. **App 圖示不會跟著 logo 自動變**。`brand:sync` 只更新 `mobile/assets/icon.png`，
+   要進 Xcode 的圖示目錄得再跑 `cd mobile && npx @capacitor/assets generate --ios`
+   —— `cap sync` **不會**重產圖示（它只同步設定與外掛），2026-08-28 換 logo 後
+   模擬器仍是舊圖示就是漏了這步。⚠️ 那支會順手改寫 `Splash.imageset/Contents.json`、
+   塞進它自己產的 `Default@*.png` 把我們的 `splash.jpg` 蓋掉，跑完要
+   `git checkout` 那個 Contents.json 並刪掉 `Default@*.png`。之後還要重新編譯、
    送 App Store／Play 審核才生效。腳本會比對改檔時間，`appicon` 比 `vertical` 舊就警告。
 4. **預設頭像是八款輪替不是一張**。信箱驗證建帳號時由 `handle_new_user()` 隨機配一款
    （migration 634），機器人帳號也平均分佈在這八款。要換就整組換。

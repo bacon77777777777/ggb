@@ -111,7 +111,9 @@ maskable 來源：vertical.png（未提供 appicon-maskable.png，退回 vertica
 | `app-splash.png` | 2732² | `mobile/assets/splash.png` | 直式 logo，不吃 appicon（開機畫面要的是品牌字樣，不是圖示） |
 | `app-splash-dark.png` | 2732² | `mobile/assets/splash-dark.png` | 同上，深色底 |
 
-換完要 `cd mobile && npx cap sync`、重新編譯、送 App Store / Play 審核才會生效。
+換完要 `cd mobile && npx @capacitor/assets generate --ios`（`cap sync` 不會重產圖示）、
+把它順手蓋掉的 `Splash.imageset/Contents.json` 還原並刪掉它產的 `Default@*.png`、
+再重新編譯、送 App Store / Play 審核才會生效。
 只想改網頁端就跑 `node scripts/brand_sync.mjs --no-mobile`。
 
 ---
