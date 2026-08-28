@@ -163,8 +163,9 @@ const MANUAL_SPECS = [
    * 兩張常駐頁的主視覺。這兩頁（抽獎公平性、邀請好友）不是檔期活動、不會下架，
    * 所以它們的 hero 跟 logo 一樣是長期品牌資產，收進來一起管。
    */
-  { file: 'event-fairness-hero.webp', desc: '抽獎公平性頁主視覺', size: '1024×1535',
-    dest: ['frontend/public/images/fairness/hero2.webp'] },
+  // 母檔改收 PNG（8/28 老闆換圖時給的是 PNG）：無損留著，webp 由腳本壓
+  { file: 'event-fairness-hero.png', desc: '抽獎公平性頁主視覺', size: '1024×1535',
+    dest: [], alsoWebp: 'frontend/public/images/fairness/hero2.webp', webpQuality: 88 },
   { file: 'event-invite-hero.png', desc: '邀請好友頁主視覺', size: '800×1320',
     // 滿版顯示的大面積漸層插畫，頭像那組的 q80 會看得出色帶
     dest: [], alsoWebp: 'frontend/public/images/invite/invite.webp', webpQuality: 88 },

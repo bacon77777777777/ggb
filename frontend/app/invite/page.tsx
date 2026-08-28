@@ -16,7 +16,7 @@ import { asset } from '@/lib/asset';
 /**
  * 邀請好友頁 —— 滿版主視覺＋循環獎進度區
  *
- * 老闆定的形態：hero 圖上疊 QR（對位圖上印好的白框）與紅旗邀請碼；
+ * 老闆定的形態：hero 圖上疊 QR（對位圖上印好的白框）與下方的邀請碼；
  * 「分享＝複製邀請訊息」「下載＝存合成圖」在 Navbar 右側，CustomEvent
  * 丟回來執行。下方只推一件事：每邀 5 位好友領 100 積分（無上限），
  * 進度條＋領取鈕，活動頁設計語言、背景 #401a03 銜接 hero 底緣。
@@ -32,14 +32,15 @@ import { asset } from '@/lib/asset';
  * 換圖要重掃這幾個數字；CSS 與下載 canvas 共用，只改這裡。
  */
 const HERO_SRC = asset('/images/invite/invite.webp');
-const QR_CENTER_Y = 0.7875; // 量自新圖 invite.webp（800x1320）白框中心
+const QR_CENTER_Y = 0.7955; // 量自 8/28 換的新圖 invite.webp（800x1320）白框中心
 const QR_SIZE = 0.336; // 相對圖寬（= 269px / 800px）
 
 /**
- * QR 下方紅旗緞帶：x 212~595、y 1070~1139 → 中心 (50%, 92.04%)。
- * 旗上疊「邀請碼 XXXXXX＋複製圖標」；下載版只有字不含圖標（老闆指定）。
+ * 邀請碼放在白框下方。8/28 換的新主視覺**沒有紅旗緞帶**了（舊圖那條金紅緞帶
+ * 是印在圖上的），改成印在白框底下那塊深色陰影上 —— 逐像素掃出來的暗塊是
+ * y 1219~1296，黃字壓在上面對比夠。換圖要重掃這個數字。
  */
-const RIBBON_CENTER_Y = 0.9348; // 量自新圖 invite.webp（800x1320）底部紅旗完整上下緣中心
+const RIBBON_CENTER_Y = 0.9527; // 量自新圖 invite.webp（800x1320）白框下方深色塊中心
 const CODE_FONT_PX = 28; // 相對 800 寬的 canvas 字級
 const CODE_YELLOW = '#ffe600'; // 會員卡推薦碼同款黃
 
