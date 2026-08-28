@@ -111,20 +111,20 @@ const SPECS = [
     make: copyMaster('vertical.png'), dest: ['frontend/public/images/logo-stacked.png'] },
 
   // ── 方形圖示（直式 logo 衍生）
-  { out: 'favicon.png', desc: '瀏覽器分頁圖示 / 情報頁 JSON-LD 出版者標誌', size: '1024×1024',
-    make: () => squareIcon({ size: 1024, pct: 0.96, bg: WHITE }), dest: ['frontend/public/images/favicon.png'] },
-  { out: 'icon-192.png', desc: 'PWA 圖示', size: '192×192',
-    make: () => squareIcon({ size: 192, pct: 0.96, bg: WHITE }), dest: ['frontend/public/icons/icon-192.png'] },
-  { out: 'icon-512.png', desc: 'PWA 圖示', size: '512×512',
-    make: () => squareIcon({ size: 512, pct: 0.96, bg: WHITE }), dest: ['frontend/public/icons/icon-512.png'] },
-  { out: 'icon-maskable-192.png', desc: 'PWA 可裁切圖示（內容縮 62% 安全區）', size: '192×192',
-    make: () => squareIcon({ size: 192, pct: 0.62, bg: WHITE }), dest: ['frontend/public/icons/icon-maskable-192.png'] },
-  { out: 'icon-maskable-512.png', desc: 'PWA 可裁切圖示（內容縮 62% 安全區）', size: '512×512',
-    make: () => squareIcon({ size: 512, pct: 0.62, bg: WHITE }), dest: ['frontend/public/icons/icon-maskable-512.png'] },
-  { out: 'apple-touch-icon.png', desc: 'iOS 加到主畫面', size: '180×180',
-    make: () => squareIcon({ size: 180, pct: 0.96, bg: WHITE }), dest: ['frontend/public/icons/apple-touch-icon.png'] },
+  { out: 'favicon.png', desc: '瀏覽器分頁圖示 / 情報頁 JSON-LD 出版者標誌（方形系）', size: '1024×1024',
+    make: () => squareIcon({ size: 1024, ...APPICON }), dest: ['frontend/public/images/favicon.png'] },
+  { out: 'icon-192.png', desc: 'PWA / 加到主畫面（方形系）', size: '192×192',
+    make: () => squareIcon({ size: 192, ...APPICON }), dest: ['frontend/public/icons/icon-192.png'] },
+  { out: 'icon-512.png', desc: 'PWA / 加到主畫面（方形系）', size: '512×512',
+    make: () => squareIcon({ size: 512, ...APPICON }), dest: ['frontend/public/icons/icon-512.png'] },
+  { out: 'icon-maskable-192.png', desc: 'PWA 可裁切圖示（maskable 系）', size: '192×192',
+    make: () => squareIcon({ size: 192, ...MASKABLE }), dest: ['frontend/public/icons/icon-maskable-192.png'] },
+  { out: 'icon-maskable-512.png', desc: 'PWA 可裁切圖示（maskable 系）', size: '512×512',
+    make: () => squareIcon({ size: 512, ...MASKABLE }), dest: ['frontend/public/icons/icon-maskable-512.png'] },
+  { out: 'apple-touch-icon.png', desc: 'iOS 加到主畫面（方形系）', size: '180×180',
+    make: () => squareIcon({ size: 180, ...APPICON }), dest: ['frontend/public/icons/apple-touch-icon.png'] },
   { out: 'backend-favicon.png', desc: '後台分頁圖示', size: '1024×1024',
-    make: () => squareIcon({ size: 1024, pct: 0.96, bg: WHITE }), dest: ['backend/public/images/favicon.png'] },
+    make: () => squareIcon({ size: 1024, ...APPICON }), dest: ['backend/public/images/favicon.png'] },
 
   // ── 佔位圖
   { out: 'banner_defaulet.png', desc: '輪播破圖 / 情報無封面 / 交易所無圖（檔名 typo 是原本就有的）', size: '1200×400',
@@ -136,9 +136,11 @@ const SPECS = [
 
   // ── App 原生殼（換了要 cap sync + 重新送審才生效）
   { out: 'app-icon.png', desc: 'App 桌面圖示', size: '1024×1024', mobile: true,
-    make: () => squareIcon({ size: 1024, pct: 0.96, bg: WHITE }), dest: ['mobile/assets/icon.png'] },
-  { out: 'app-icon-foreground.png', desc: 'Android 自適應圖示前景（透明底）', size: '1024×1024', mobile: true,
-    make: () => squareIcon({ size: 1024, pct: 0.62, bg: CLEAR }), dest: ['mobile/assets/icon-foreground.png'] },
+    make: () => squareIcon({ size: 1024, ...APPICON }), dest: ['mobile/assets/icon.png'] },
+  { out: 'app-icon-foreground.png', desc: 'Android 自適應圖示前景（maskable 系）', size: '1024×1024', mobile: true,
+    // bg 強制透明：Android 自適應圖示的前景層外圍要透空，底色由 background 層畫。
+    // 若之後提供了滿版的 appicon-maskable.png，它本來就鋪滿畫布，這個 bg 不會有作用
+    make: () => squareIcon({ size: 1024, ...MASKABLE, bg: CLEAR }), dest: ['mobile/assets/icon-foreground.png'] },
   { out: 'app-icon-background.png', desc: 'Android 自適應圖示背景（純白）', size: '1024×1024', mobile: true,
     make: () => sharp({ create: { width: 1024, height: 1024, channels: 4, background: WHITE } }).png(PNG_OPTS).toBuffer(),
     dest: ['mobile/assets/icon-background.png'] },
@@ -196,6 +198,32 @@ async function overview() {
     .composite(t).png({ compressionLevel: 9 }).toBuffer()
 }
 
+const has = (f) => fs.existsSync(path.join(MASTERS, f))
+
+/**
+ * 方形圖示（加到主畫面 / PWA / App 桌面）的來源
+ *
+ * 這類圖示通常是**另外設計的**：滿版方塊、自帶底色、常常只放圖標不放字，
+ * 跟導覽列那顆橫式 logo 不是同一件事。所以拉成獨立母檔，不從 vertical 推。
+ *
+ * 沒放 appicon.png 就退回「直式 logo 貼白底 96%」—— 也就是 2026-08 換 logo 時
+ * 的做法，行為不變，之後補設計稿再自動接上。
+ */
+const APPICON = has('appicon.png')
+  ? { source: 'appicon', pct: 1, bg: CLEAR }
+  : { source: 'vertical', pct: 0.96, bg: WHITE }
+
+/**
+ * maskable 版：Android 會把圖示裁成圓形／squircle，超出中央 62% 的部分不保證看得到。
+ * 專門設計的 maskable 稿是「滿版、但重要內容自己縮在安全區內」，所以滿版直出；
+ * 只給了 appicon 沒給 maskable 的話，退而求其次把它整張縮到 62% 貼白底。
+ */
+const MASKABLE = has('appicon-maskable.png')
+  ? { source: 'appicon-maskable', pct: 1, bg: CLEAR }
+  : has('appicon.png')
+    ? { source: 'appicon', pct: 0.62, bg: WHITE }
+    : { source: 'vertical', pct: 0.62, bg: WHITE }
+
 const rel = (p) => path.relative(ROOT, p)
 const write = async (p, buf) => {
   if (DRY) return
@@ -204,6 +232,7 @@ const write = async (p, buf) => {
 }
 
 async function main() {
+  // appicon.png / appicon-maskable.png 是選配，缺了就走 fallback（見 APPICON / MASKABLE）
   for (const m of ['horizontal.png', 'vertical.png', 'horizontal.svg']) {
     if (!fs.existsSync(path.join(MASTERS, m))) {
       console.error(`✗ 缺母檔 brand/masters/${m}`)
@@ -211,6 +240,11 @@ async function main() {
     }
   }
   if (!DRY) await fs.promises.mkdir(GEN, { recursive: true })
+
+  // 方形圖示吃哪張母檔要講出來 —— 放了 appicon 卻打錯檔名時，
+  // 產出來的東西看起來「正常」（因為有 fallback），只是不是你想要的那張
+  console.log(`方形圖示來源：${APPICON.source}.png${has('appicon.png') ? '（滿版直出）' : '（未提供 appicon.png，退回直式 logo 貼白底）'}`)
+  console.log(`maskable 來源：${MASKABLE.source}.png${has('appicon-maskable.png') ? '（滿版直出）' : `（未提供 appicon-maskable.png，退回 ${MASKABLE.source} 縮 ${Math.round(MASKABLE.pct * 100)}%）`}\n`)
 
   let made = 0, copied = 0, skipped = 0
   for (const s of SPECS) {

@@ -51,6 +51,19 @@ brand/OVERVIEW.png 總覽聯絡表，換完一眼確認有沒有漏
 
 **App 圖示已一併重產但尚未生效**：`mobile/assets/` 五張換了要 `npx cap sync` 重新編譯送審。
 
+**「加到主畫面」的圖示拉成獨立母檔**（老闆說之後可能另外設計）。那顆圖示通常是滿版方塊、
+自帶底色、只放圖標不放字，跟導覽列的橫式 logo 不是同一件事，綁在直式 logo 上遲早要拆。
+新增兩張**選配**母檔，沒放就自動退回現行做法（直式 logo 貼白底 96%），行為完全不變：
+
+| 母檔 | 用途 |
+|------|------|
+| `masters/appicon.png` 1024² 滿版 | favicon、icon-192/512、apple-touch、後台 favicon、App 桌面圖示 |
+| `masters/appicon-maskable.png` 1024² 滿版 | icon-maskable-192/512、Android 自適應前景。重要內容要縮在中央 62% 圓內 |
+
+開機畫面（splash）**刻意不吃 appicon** —— 那裡要的是品牌字樣不是圖示。
+Android 自適應前景的底色強制透明：底色由 background 層畫，前景不透明會把它整個蓋掉。
+腳本開頭會印出實際用了哪張母檔，檔名打錯時才不會因為有 fallback 就默默產出錯的東西。
+
 ---
 
 ## v2026.08.27e｜2026-08-27｜新 logo 第二批：favicon 改版、橫式 logo.png、登入頁直式 logo

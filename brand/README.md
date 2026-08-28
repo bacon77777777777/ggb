@@ -18,7 +18,9 @@ npm run brand:sync
 
 ---
 
-## masters/ —— 你要換的就這三張
+## masters/ —— 你要換的就這裡
+
+### 必要（三張）
 
 | 檔 | 尺寸 | 說明 |
 |----|------|------|
@@ -28,6 +30,28 @@ npm run brand:sync
 
 換的時候尺寸可以不同，但**長寬比要接近**，不然衍生圖的留白會跑掉。
 
+### 選配：App 圖示（兩張，之後另外設計時再放）
+
+「加到主畫面 / PWA / App 桌面」那顆圖示通常是**另外設計的** —— 滿版方塊、自帶底色、
+常常只放圖標不放字，跟導覽列那顆橫式 logo 不是同一件事。所以拉成獨立母檔。
+
+| 檔 | 尺寸 | 說明 |
+|----|------|------|
+| `appicon.png` | 1024×1024 | **滿版**方形，四邊要出血到底（不要自己留白邊）。放了就直接當圖示用 |
+| `appicon-maskable.png` | 1024×1024 | 同上，但**重要內容要縮在中央 62% 的圓內** —— Android 會把圖示裁成圓形或 squircle，超出的部分不保證看得到 |
+
+**沒放就會自動退回**「直式 logo 貼白底 96%」，也就是現在的樣子，行為不變。
+之後補上設計稿，跑一次 sync 就自動接上，不用改程式。
+
+跑的時候第一行會印出實際用了哪張，例如：
+
+```
+方形圖示來源：vertical.png（未提供 appicon.png，退回直式 logo 貼白底）
+maskable 來源：vertical.png（未提供 appicon-maskable.png，退回 vertical 縮 62%）
+```
+
+檔名打錯時特別有用 —— 有 fallback 在，產出來的東西看起來「正常」，只是不是你要的那張。
+
 ---
 
 ## generated/ —— 自動產出，不要手動改
@@ -35,18 +59,28 @@ npm run brand:sync
 改這裡的檔案下次 `brand:sync` 就會被蓋掉。要調整請改母檔，或改
 [`scripts/brand_sync.mjs`](../scripts/brand_sync.mjs) 的 `SPECS`。
 
-### 從 `vertical.png` 產（方形系）
+### 方形系（來源：`appicon.png`，沒放就用 `vertical.png`）
 
 | 檔 | 尺寸 | 去處 | 用在哪 |
 |----|------|------|--------|
 | `favicon.png` | 1024² | `frontend/public/images/favicon.png` | 瀏覽器分頁、情報頁 JSON-LD 出版者標誌 |
-| `icon-192.png` | 192² | `frontend/public/icons/` | PWA |
-| `icon-512.png` | 512² | `frontend/public/icons/` | PWA |
-| `icon-maskable-192.png` | 192² | `frontend/public/icons/` | Android 可裁切圖示（內容縮 62% 安全區） |
-| `icon-maskable-512.png` | 512² | `frontend/public/icons/` | 同上 |
+| `icon-192.png` | 192² | `frontend/public/icons/` | PWA / 加到主畫面 |
+| `icon-512.png` | 512² | `frontend/public/icons/` | PWA / 加到主畫面 |
 | `apple-touch-icon.png` | 180² | `frontend/public/icons/` | iOS 加到主畫面 |
 | `backend-favicon.png` | 1024² | `backend/public/images/favicon.png` | 後台分頁 |
-| `logo-stacked.png` | 723×646 | `frontend/public/images/` | 登入頁（母檔直出） |
+
+### maskable 系（來源：`appicon-maskable.png`，沒放就退回 `appicon` 或 `vertical` 縮 62%）
+
+| 檔 | 尺寸 | 去處 | 用在哪 |
+|----|------|------|--------|
+| `icon-maskable-192.png` | 192² | `frontend/public/icons/` | Android PWA 可裁切圖示 |
+| `icon-maskable-512.png` | 512² | `frontend/public/icons/` | 同上 |
+
+### 直式 logo 直出
+
+| 檔 | 尺寸 | 去處 | 用在哪 |
+|----|------|------|--------|
+| `logo-stacked.png` | 723×646 | `frontend/public/images/` | 登入頁 |
 
 ### 從 `horizontal.png` 產（橫式系）
 
@@ -59,13 +93,13 @@ npm run brand:sync
 
 ### App 原生殼（換了要重新送審）
 
-| 檔 | 尺寸 | 去處 |
-|----|------|------|
-| `app-icon.png` | 1024² | `mobile/assets/icon.png` |
-| `app-icon-foreground.png` | 1024² | `mobile/assets/icon-foreground.png`（透明底，Android 自適應前景） |
-| `app-icon-background.png` | 1024² | `mobile/assets/icon-background.png`（純白） |
-| `app-splash.png` | 2732² | `mobile/assets/splash.png` |
-| `app-splash-dark.png` | 2732² | `mobile/assets/splash-dark.png` |
+| 檔 | 尺寸 | 去處 | 來源 |
+|----|------|------|------|
+| `app-icon.png` | 1024² | `mobile/assets/icon.png` | 方形系 |
+| `app-icon-foreground.png` | 1024² | `mobile/assets/icon-foreground.png` | maskable 系，**外圍強制透明**（底色由 background 層畫，前景不透明會把它整個蓋掉） |
+| `app-icon-background.png` | 1024² | `mobile/assets/icon-background.png` | 純白 |
+| `app-splash.png` | 2732² | `mobile/assets/splash.png` | 直式 logo，不吃 appicon（開機畫面要的是品牌字樣，不是圖示） |
+| `app-splash-dark.png` | 2732² | `mobile/assets/splash-dark.png` | 同上，深色底 |
 
 換完要 `cd mobile && npx cap sync`、重新編譯、送 App Store / Play 審核才會生效。
 只想改網頁端就跑 `node scripts/brand_sync.mjs --no-mobile`。
