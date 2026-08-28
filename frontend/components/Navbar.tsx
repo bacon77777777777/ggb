@@ -950,11 +950,11 @@ function NavbarInner() {
                 aria-label="通知"
               >
                 <Bell className="w-5 h-5 stroke-[2]" />
-                {/* 尺寸/位置對齊會員頁的設定齒輪紅點。手機端首頁壓在主題色上，
-                    紅點會糊進底色 → 直接改成**白點**（不描邊，描邊會讓它看起來像個圈）；
-                    桌機那條是白底，維持紅點＋白邊 */}
+                {/* 尺寸/位置對齊會員頁的設定齒輪。手機端首頁壓在主題色上，紅點會糊進底色
+                    → 改成**亮黃點**（老闆 2026-08-29，先前是白點），不描邊：
+                    描邊會讓它看起來像個圈。桌機那條是白底，維持紅點＋白邊 */}
                 {bellUnread && (
-                  <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-white md:bg-accent-red md:border-2 md:border-white md:dark:border-neutral-950" />
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-accent-yellow md:bg-accent-red md:border-2 md:border-white md:dark:border-neutral-950" />
                 )}
               </Link>
             )}

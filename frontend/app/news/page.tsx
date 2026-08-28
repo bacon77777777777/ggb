@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useState, useRef } from 'react
 import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
+import { rememberNewsView, readNewsView } from '@/lib/newsView';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { cn } from '@/lib/utils';
@@ -80,7 +81,7 @@ function Carousel({ items }: { items: NewsItem[] }) {
       onMouseEnter={stop} onMouseLeave={start}
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
       <Link href={`/news/${item.id}`} className="block w-full h-full"
-        onClick={() => trackEvent('news_article_click', { meta: { news_id: item.id, category: item.category, title: item.title, source: 'carousel' } })}
+        onClick={() => { rememberBeforeLeaving(item.id); trackEvent('news_article_click', { meta: { news_id: item.id, category: item.category, title: item.title, source: 'carousel' } }); }}
       >
         {item.image_url ? (
           <Image src={item.image_url} alt={item.title} fill className="object-cover" unoptimized />
@@ -114,7 +115,7 @@ function ArticleRow({ item, onLike }: { item: NewsItem; onLike: (id: string) => 
     <div className="relative flex items-start gap-3 py-2 border-b border-neutral-100 dark:border-neutral-800 last:border-0 active:bg-neutral-50 dark:active:bg-neutral-800/40 transition-colors">
       {/* 整行透明 link，覆蓋整個列 */}
       <Link href={`/news/${item.id}`} className="absolute inset-0 z-0" aria-label={item.title}
-        onClick={() => trackEvent('news_article_click', { meta: { news_id: item.id, category: item.category, title: item.title } })}
+        onClick={() => { rememberBeforeLeaving(item.id); trackEvent('news_article_click', { meta: { news_id: item.id, category: item.category, title: item.title } }); }}
       />
 
       {/* 縮圖 */}
@@ -170,7 +171,7 @@ function ArticleCard({ item, onLike }: { item: NewsItem; onLike: (id: string) =>
   return (
     <div className="group relative flex flex-col rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden hover:shadow-card transition-shadow">
       <Link href={`/news/${item.id}`} className="absolute inset-0 z-0" aria-label={item.title}
-        onClick={() => trackEvent('news_article_click', { meta: { news_id: item.id, category: item.category, title: item.title } })}
+        onClick={() => { rememberBeforeLeaving(item.id); trackEvent('news_article_click', { meta: { news_id: item.id, category: item.category, title: item.title } }); }}
       />
       {/* 封面 16:9 */}
       <div className="pointer-events-none relative z-10 w-full aspect-[16/9] bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
@@ -243,6 +244,17 @@ function LoadingSkeleton() {
  */
 let listCache: { tab: string; items: NewsItem[]; scrollY: number } | null = null;
 
+/*
+ * 模組變數只在「單頁應用的前後導航」之間有效 —— 從 LINE、推播或重新整理進到
+ * 文章內頁再返回，整份 JS 是重新載入的，listCache 是空的，位置就回不去了
+ *（老闆 2026-08-29）。所以位置與分頁籤再寫一份到 sessionStorage，
+ * 內頁的返回鍵也讀它來判斷「是不是從列表點進來的」。
+ */
+/** 點進文章前把位置記起來。分頁籤從 listCache 拿（它每次 render 都同步） */
+function rememberBeforeLeaving(id: string) {
+  rememberNewsView({ tab: listCache?.tab ?? 'all', y: window.scrollY, from: `/news/${id}` });
+}
+
 // ─── 主頁 ────────────────────────────────────────────────────────────────────
 export default function NewsPage() {
   // 從快取起手：第一幀就有完整內容，捲動位置才還原得回去
@@ -254,11 +266,26 @@ export default function NewsPage() {
 
   // 內容已經在 DOM 裡了才捲。用 layout effect + rAF：
   // layout effect 早於瀏覽器繪製，rAF 讓出一幀給圖片版位撐開
+  const pendingScrollRef = useRef<{ y: number; until: number } | null>(null);
   useLayoutEffect(() => {
-    const y = listCache?.scrollY ?? 0;
+    // 模組快取優先（同一趟前後導航），沒有就讀 sessionStorage（重新載入過）
+    const saved = readNewsView(true);
+    const y = listCache?.scrollY || saved?.y || 0;
+    if (saved?.tab && saved.tab !== 'all') setActiveTab(saved.tab);
     if (!y) return;
-    requestAnimationFrame(() => window.scrollTo(0, y));
+    // 縮圖還沒撐開版位時 scrollTo 會被瀏覽器夾住，所以留著目標一直試到定位為止
+    pendingScrollRef.current = { y, until: Date.now() + 3000 };
   }, []);
+
+  useEffect(() => {
+    const pending = pendingScrollRef.current;
+    if (!pending) return;
+    if (Date.now() > pending.until) { pendingScrollRef.current = null; return; }
+    requestAnimationFrame(() => {
+      window.scrollTo(0, pending.y);
+      if (Math.abs(window.scrollY - pending.y) < 2) pendingScrollRef.current = null;
+    });
+  }, [all.length, isLoading, activeTab]);
 
   // 持續記住捲到哪。passive 監聽，只寫一個數字，不觸發 re-render
   useEffect(() => {

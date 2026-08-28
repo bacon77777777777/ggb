@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Clock } from 'lucide-react';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -78,18 +78,9 @@ export default function NotificationDetailPage() {
     return () => { cancelled = true; };
   }, [id, user, supabase]);
 
+  // 骨架拿掉，跟路由切換時的 app/loading.tsx 用同一個等待畫面（老闆 2026-08-29）
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-neutral-950 pb-8">
-        <div className="px-4 pt-4 max-w-2xl mx-auto space-y-3">
-          <Skeleton className="h-3 w-24 rounded" />
-          <Skeleton className="h-6 w-full rounded" />
-          <div className="pt-4 space-y-2">
-            {[1, 2, 3].map(i => <Skeleton key={i} className="h-4 w-full rounded" />)}
-          </div>
-        </div>
-      </div>
-    );
+    return <ProductLoadingScreen />;
   }
 
   if (!note) {

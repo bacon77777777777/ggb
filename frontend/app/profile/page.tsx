@@ -7149,8 +7149,11 @@ function ProfileContent() {
                         className="w-[32px] h-[32px] bg-black/10 rounded-full flex items-center justify-center backdrop-blur-sm active:bg-black/20 transition-colors relative"
                       >
                         <Settings className="w-5 h-5 text-white" />
+                        {/* 黃點而不是紅點（老闆 2026-08-29）：紅點壓在主題色的頭圖上
+                            幾乎看不出來，而且紅色在站上是「錯誤／扣款」的語意，
+                            這裡只是「還有資料沒填」 */}
                         {settingsIncomplete && (
-                          <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-accent-red border-2 border-white/20 rounded-full" />
+                          <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-accent-yellow border-2 border-white/20 rounded-full" />
                         )}
                       </button>
                     </div>

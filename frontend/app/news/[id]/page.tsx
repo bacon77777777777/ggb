@@ -1,17 +1,18 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { Clock, Tag, Send, ChevronLeft, Share2, X } from 'lucide-react';
 import { TopFadeBlur } from '@/components/ui/TopFadeBlur';
 import { useQueryClient } from '@tanstack/react-query';
 import { swrLoad } from '@/lib/swr';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { cameFromNewsList } from '@/lib/newsView';
 import { useToast } from '@/components/ui/Toast';
 import { trackEvent, trackPageView, trackScrollDepth } from '@/lib/trackEvent';
 import CategoryBadge from '@/components/news/CategoryBadge';
@@ -447,6 +448,8 @@ function DesktopComments({
 // ─── 主頁 ─────────────────────────────────────────────────────────────────────
 export default function NewsDetailPage() {
   const params  = useParams();
+  const router   = useRouter();
+  const pathname = usePathname();
   const newsId  = params.id as string;
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -627,20 +630,13 @@ export default function NewsDetailPage() {
     }
   };
 
+  /*
+   * 路由切換時 app/loading.tsx 已經在放 IP 角色動畫（ProductLoadingScreen），
+   * 這裡再放一次骨架，玩家會先看到角色、進到內頁又跳成灰塊，兩段不同的等待畫面
+   * （老闆 2026-08-29）。改成同一個元件，看起來就是一段連續的等待。
+   */
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-neutral-950 pt-[env(safe-area-inset-top)] md:pt-0 pb-24">
-        <Skeleton className="w-full aspect-[4/3]" />
-        <div className="px-4 pt-4 space-y-3">
-          <Skeleton className="h-6 w-full rounded" />
-          <Skeleton className="h-6 w-3/4 rounded" />
-          <Skeleton className="h-4 w-1/2 rounded" />
-          <div className="pt-4 space-y-2">
-            {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-4 w-full rounded" />)}
-          </div>
-        </div>
-      </div>
-    );
+    return <ProductLoadingScreen />;
   }
 
   if (!item) {
@@ -663,10 +659,22 @@ export default function NewsDetailPage() {
 
       {/* ── 頂部操作列（絕對定位在圖片上方）── */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-20 flex items-center justify-between pt-[env(safe-area-inset-top)] pointer-events-none">
-        <Link href="/news"
+        {/*
+          返回要用 back() 不能用 <Link href="/news">（老闆 2026-08-29：文章內頁返回
+          沒有記憶瀏覽位置）—— Link 是**往前推一個新的列表頁**，Next 會把捲動位置
+          歸零，玩家每次返回都從最上面重看。確認是從列表點進來的就退回上一頁
+          （位置與歷史都還在），直接開網址進來的才 push 回列表。
+        */}
+        <button
+          type="button"
+          onClick={() => {
+            if (cameFromNewsList(pathname) && window.history.length > 1) router.back();
+            else router.push('/news');
+          }}
+          aria-label="返回"
           className="pointer-events-auto m-[10px] w-[38px] h-[38px] bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
           <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
-        </Link>
+        </button>
         <button onClick={handleShare}
           className="pointer-events-auto m-[10px] w-[38px] h-[38px] bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
           <Share2 className="w-4 h-4" />

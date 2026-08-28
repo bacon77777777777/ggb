@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { markRead } from '@/lib/announcementRead';
@@ -90,23 +90,9 @@ export default function AnnouncementDetailPage() {
       .finally(() => setIsLoading(false));
   }, [id]);
 
+  // 骨架拿掉，跟路由切換時的 app/loading.tsx 用同一個等待畫面（老闆 2026-08-29）
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-neutral-950 pb-8">
-        <Skeleton className="w-0 h-0" />
-        <div className="px-4 pt-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-4 w-12 rounded-full" />
-            <Skeleton className="h-3 w-24 rounded" />
-          </div>
-          <Skeleton className="h-6 w-full rounded" />
-          <Skeleton className="h-6 w-3/4 rounded" />
-          <div className="pt-4 space-y-2">
-            {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-4 w-full rounded" />)}
-          </div>
-        </div>
-      </div>
-    );
+    return <ProductLoadingScreen />;
   }
 
   if (notFound || !item) {
