@@ -164,7 +164,10 @@ export default function FeatureFlagsPage() {
 
   const ready = Boolean(flags) && !isLoading
   /* 推播格式與排程（老闆 2026-08-28）。排程由後端現查 pg_cron，不寫死在前端 */
-  type PushTemplate = { template: string; lastPreview: string | null; lastPushedAt: string | null; schedule: string[] }
+  type PushTemplate = {
+    template: string; lastPreview: string | null; lastPushedAt: string | null
+    schedule: string[]; scheduleSource?: 'cron' | 'default'; sample?: string
+  }
   const [pushTemplates, setPushTemplates] = useState<Record<string, PushTemplate>>({})
   const [editingKey, setEditingKey] = useState<LinePushKey | null>(null)
   const [draftTemplate, setDraftTemplate] = useState('')
@@ -718,6 +721,7 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                                 推播時間：{pushTemplates[item.key]?.schedule?.length
                                   ? pushTemplates[item.key].schedule.join('、')
                                   : '目前沒有排程，需要時手動觸發'}
+                                {pushTemplates[item.key]?.scheduleSource === 'default' && '（這個環境沒有排程表，顯示的是正式站的時間）'}
                               </span>
                             </InfoDot>
                           </span>
@@ -775,7 +779,8 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
             <div className="mb-1.5 flex items-center justify-between">
               <span className="text-sm text-neutral-700">推播文字格式</span>
               <span className="text-xs text-neutral-400">
-                推播時間：{(editingKey && pushTemplates[editingKey]?.schedule?.join('、')) || '無排程'}
+                推播時間：{(editingKey && pushTemplates[editingKey]?.schedule?.join('、')) || '無排程（手動觸發）'}
+                {editingKey && pushTemplates[editingKey]?.scheduleSource === 'default' && '（依 PROD 排程）'}
               </span>
             </div>
             <Textarea
@@ -792,15 +797,32 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
           </div>
 
           <div>
-            <div className="mb-1.5 text-sm text-neutral-700">最近一次的實際內容</div>
-            <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded-lg bg-neutral-50 p-3 text-xs leading-relaxed text-neutral-600">
-{(editingKey && pushTemplates[editingKey]?.lastPreview) || '這條還沒推過，等它跑過一次就會出現。'}
-            </pre>
-            {editingKey && pushTemplates[editingKey]?.lastPushedAt && (
-              <p className="mt-1 text-xs text-neutral-400">
-                最後送出：{new Date(pushTemplates[editingKey]!.lastPushedAt as string).toLocaleString('zh-TW')}
-              </p>
-            )}
+            {(() => {
+              const t = editingKey ? pushTemplates[editingKey] : undefined
+              const real = t?.lastPreview
+              const body = real || t?.sample || '（這條沒有固定格式）'
+              return (
+                <>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-sm text-neutral-700">
+                      {real ? '最近一次的實際內容' : '這條推播長這樣'}
+                    </span>
+                    {!real && (
+                      // 說清楚這是骨架不是實際發生過的事，不然數字會被當成真的
+                      <span className="text-xs text-neutral-400">格式範例，數字為示意</span>
+                    )}
+                  </div>
+                  <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-lg bg-neutral-50 p-3 text-xs leading-relaxed text-neutral-600">
+{body}
+                  </pre>
+                  {t?.lastPushedAt && (
+                    <p className="mt-1 text-xs text-neutral-400">
+                      最後送出：{new Date(t.lastPushedAt).toLocaleString('zh-TW')}
+                    </p>
+                  )}
+                </>
+              )
+            })()}
           </div>
 
           <div className="flex justify-end gap-2 pt-1">
