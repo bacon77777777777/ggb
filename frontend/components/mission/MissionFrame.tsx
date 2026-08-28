@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import Image from 'next/image';
+import Link from 'next/link';
 import { missionSvgs as svgPaths } from './mission-svgs';
 import RulesModal from '@/components/ui/RulesModal';
 import { asset } from '@/lib/asset';
@@ -489,7 +490,20 @@ function MissionFrame({
         
         {/* My Points */}
         <div className="relative flex flex-col gap-[8px] items-start ml-[24px] pt-[87px] w-full" data-name="mypoint">
-          <p className="font-sans font-medium text-[28px] text-white">我的積分</p>
+          <div className="flex items-center gap-[16px]">
+            <p className="font-sans font-medium text-[28px] text-white">我的積分</p>
+            {/*
+              「無限拿積分」膠囊（老闆 2026-08-29）：跟會員中心「邀請好友」那顆同一顆。
+              這張版是 750px 寬再整體縮放（約 0.52），所以尺寸要放大約一倍才會跟
+              會員中心那顆在螢幕上看起來一樣大：h-19→36、text-11→21、px-2→px-4。
+            */}
+            <Link
+              href="/invite"
+              className="inline-flex h-[36px] items-center rounded-full bg-accent-red px-[16px] text-[21px] font-bold leading-none text-white active:scale-95 transition-transform"
+            >
+              <span className="cjk-optical-center">無限拿積分</span>
+            </Link>
+          </div>
           <p className="font-['DIN_Alternate:Bold',sans-serif] text-[70px] font-bold text-white leading-none">{points.toLocaleString()}</p>
         </div>
       </div>
