@@ -6976,9 +6976,11 @@ function ProfileContent() {
           
           {/* 1. Mobile Menu View (Only shown on mobile when no tab is active) */}
           <div className={cn("md:hidden col-span-1", isMobileDetailOpen && "hidden")}>
-            {/* 動態島底下的漸層毛玻璃（老闆 2026-08-22）：橘底本來就有色，只模糊不帶色。
-                掛在 data-ptr-content 外面，下拉更新不會拖到它 */}
-            <TopFadeBlur />
+            {/* 動態島底下的漸層毛玻璃（老闆 2026-08-22）。掛在 data-ptr-content 外面，
+                下拉更新不會拖到它。
+                tint="light"（老闆 2026-08-28）：原本 none 只糊不帶色，動態島後面就是
+                一整塊實心主題色，時間與電量壓在上面很硬。帶一層白霧才化得開。 */}
+            <TopFadeBlur tint="light" />
             {/* 橘色動態背景：**fixed**，不跟著捲動、也不被下拉更新拖走
                 （老闆 2026-08-21：「往下捲動時橘色動態背景不要跟著被捲動，跟排行榜一樣」）。
                 排行榜的流體背景就是 fixed 當純背景、內容在上面捲，這裡照做，只鋪頭圖
