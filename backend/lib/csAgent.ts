@@ -203,8 +203,11 @@ async function verifyAndGrantTokens(rechargeId: number) {
   }
 
   try {
-    await supabase.from('admin_action_logs').insert({
-      admin_id:    'ai-cs-agent',
+    await supabase.from('action_logs').insert({
+      // admin_id 是 bigint，AI 客服不是後台帳號 → 身分寫在 username／role
+      admin_id:    null,
+      username:    'AI客服',
+      role:        'cs_agent',
       action:      'AI客服自動補發代幣',
       target_type: 'recharge',
       target_id:   String(rechargeId),

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createLinePusher } from '@/lib/linePush'
+import { scanMultiAccountIpBlocks, formatMultiIpAlert } from '@/lib/riskMultiIp'
 const pushLine = createLinePusher('line_push_risk')
 
 export const dynamic = 'force-dynamic'
@@ -103,7 +104,7 @@ export async function POST(req: NextRequest) {
   const { data: adminOps } = await supabase.rpc('execute_readonly_sql', {
     query: `
       SELECT admin_id, COUNT(*) AS op_count
-      FROM admin_action_logs
+      FROM action_logs
       WHERE created_at >= NOW() - INTERVAL '24 hours'
       GROUP BY admin_id
       HAVING COUNT(*) >= ${ADMIN_OP_MAX}
@@ -134,11 +135,24 @@ export async function POST(req: NextRequest) {
     high.push(`連續付款失敗：${r.name ?? r.email} 24h 內失敗 ${r.fail_count} 次（潛在測卡）`)
   }
 
+  // ── 7. 同網段多帳號同時在線（老闆 2026-08-28）──────────────────────
+  //    早晚這支也要看，不只每小時那支：多開通常是整批同時上線，
+  //    錯過就要等下一輪。門檻與視窗跟 risk-check 共用同一組設定值。
+  const { data: riskCfgRows } = await supabase.from('risk_alert_settings').select('key, value')
+  const riskCfg = Object.fromEntries((riskCfgRows ?? []).map((r: any) => [r.key, r.value]))
+  const ipWindowM = Number(riskCfg.multi_ip_window_minutes ?? 30)
+  const ipMinUsers = Number(riskCfg.multi_ip_min_users ?? 10)
+  const ipBlocks = await scanMultiAccountIpBlocks(supabase as any, {
+    windowMinutes: ipWindowM,
+    minAccounts: ipMinUsers,
+  })
+  const ipAlert = formatMultiIpAlert(ipBlocks, { minAccounts: ipMinUsers, windowMinutes: ipWindowM })
+
   // ── 推送 LINE ─────────────────────────────────────────────────────
   const now = new Date(Date.now() + 8 * 3600_000)
   const timeStr = `${now.getUTCHours().toString().padStart(2, '0')}:${now.getUTCMinutes().toString().padStart(2, '0')}`
 
-  if (high.length === 0 && warn.length === 0) {
+  if (high.length === 0 && warn.length === 0 && !ipAlert) {
     await pushLine(`風控｜${timeStr}\n目前無問題`)
     return NextResponse.json({ ok: true, high: 0, warn: 0 })
   }
@@ -153,8 +167,11 @@ export async function POST(req: NextRequest) {
     warn.forEach(w => lines.push(`• ${w}`))
   }
 
+  // 同網段那段是自帶標題的完整區塊，不塞進 • 條列裡（會被壓成一行看不懂）
+  if (ipAlert) lines.push('', ipAlert)
+
   lines.push('\n以上僅供參考，處置權在老闆。')
   await pushLine(lines.join('\n'))
 
-  return NextResponse.json({ ok: true, high: high.length, warn: warn.length })
+  return NextResponse.json({ ok: true, high: high.length, warn: warn.length, ipBlocks: ipBlocks.length })
 }

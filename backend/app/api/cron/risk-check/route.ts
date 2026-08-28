@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { createLinePusher } from '@/lib/linePush'
+import { scanMultiAccountIpBlocks, formatMultiIpAlert } from '@/lib/riskMultiIp'
 import { fetchAllRows } from '@/lib/fetchAllRows'
 const pushLine = createLinePusher('line_push_risk')
 
@@ -27,8 +28,9 @@ export async function POST(req: NextRequest) {
 
     const tokenThreshold       = Number(cfg.token_burn_1h_threshold  ?? 5000)
     const inventoryThreshold   = Number(cfg.low_inventory_threshold   ?? 5)
-    const multiIpWindowH       = Number(cfg.multi_ip_window_hours     ?? 24)
-    const multiIpMinUsers      = Number(cfg.multi_ip_min_users        ?? 3)
+    // 「同時在線」用分鐘視窗（老闆 2026-08-28）；舊的 multi_ip_window_hours 已停用
+    const multiIpWindowM       = Number(cfg.multi_ip_window_minutes   ?? 30)
+    const multiIpMinUsers      = Number(cfg.multi_ip_min_users        ?? 10)
     const rechargeRateCount    = Number(cfg.recharge_rate_count       ?? 5)
     const rechargeRateWindowM  = Number(cfg.recharge_rate_window_min  ?? 60)
     const logisticsOverdueDays = Number(cfg.logistics_overdue_days    ?? 7)
@@ -83,29 +85,18 @@ export async function POST(req: NextRequest) {
       alerts.push(`📦 庫存不足預警（閾值：≤${inventoryThreshold} 個）\n${lines.join('\n')}`)
     }
 
-    // ── 3. 同 IP 多帳號偵測 ────────────────────────────────────────────
-    const multiIpSince = new Date(now - multiIpWindowH * 3_600_000).toISOString()
-    const { data: ipLogs } = await supabase
-      .from('user_ip_log')
-      .select('ip, user_id')
-      .gte('created_at', multiIpSince)
-      .neq('ip', 'unknown')
-
-    if (ipLogs && ipLogs.length > 0) {
-      const ipUserMap: Record<string, Set<string>> = {}
-      for (const r of ipLogs) {
-        if (!ipUserMap[r.ip]) ipUserMap[r.ip] = new Set()
-        ipUserMap[r.ip].add(r.user_id)
-      }
-      const suspicious = Object.entries(ipUserMap)
-        .filter(([, s]) => s.size >= multiIpMinUsers)
-        .sort(([, a], [, b]) => b.size - a.size)
-
-      if (suspicious.length > 0) {
-        const lines = suspicious.slice(0, 5).map(([ip, s]) => `  • IP ${ip}：${s.size} 個帳號`)
-        alerts.push(`🕵️ 同IP多帳號偵測（${multiIpWindowH}h內 ≥${multiIpMinUsers}帳號）\n${lines.join('\n')}`)
-      }
-    }
+    // ── 3. 同網段多帳號同時在線（老闆 2026-08-28：IP 前三段相同就算同一個人）──
+    //    改讀 visit_logs / user_event_logs 的玩家 IP。原本讀 user_ip_log，
+    //    那張表只有綠界 callback 在寫、記的是綠界伺服器的 IP（見 lib/riskMultiIp.ts）
+    const ipBlocks = await scanMultiAccountIpBlocks(supabase as any, {
+      windowMinutes: multiIpWindowM,
+      minAccounts: multiIpMinUsers,
+    })
+    const ipAlert = formatMultiIpAlert(ipBlocks, {
+      minAccounts: multiIpMinUsers,
+      windowMinutes: multiIpWindowM,
+    })
+    if (ipAlert) alerts.push(ipAlert)
 
     // ── 4. 速率異常儲值：短時間內大量儲值成功 ──────────────────────────
     const rechargeWindowAgo = new Date(now - rechargeRateWindowM * 60_000).toISOString()

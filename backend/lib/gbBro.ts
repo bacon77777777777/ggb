@@ -240,7 +240,7 @@ async function updateSettlement(id: number, status: 'confirmed' | 'paid', note?:
     .single()
   if (error) throw new Error(error.message)
 
-  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: status === 'paid' ? '廠商月結標記已付款' : '廠商月結標記已確認', target_type: 'settlement', target_id: String(id), detail: { via: 'GB哥', note } }) } catch (_) { /* ignore log failure */ }
+  await logGbAction(supabase, actorId, { action: status === 'paid' ? '廠商月結標記已付款' : '廠商月結標記已確認', target_type: 'settlement', target_id: String(id), detail: { via: 'GB哥', note } })
 
   return data
 }
@@ -276,7 +276,7 @@ async function manageRefund(id: number, action: 'approve' | 'reject', note?: str
     .single()
   if (error) throw new Error(error.message)
 
-  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: action === 'approve' ? '核准退款申請' : '拒絕退款申請', target_type: 'refund', target_id: String(id), detail: { via: 'GB哥', note } }) } catch (_) { /* ignore log failure */ }
+  await logGbAction(supabase, actorId, { action: action === 'approve' ? '核准退款申請' : '拒絕退款申請', target_type: 'refund', target_id: String(id), detail: { via: 'GB哥', note } })
 
   return data
 }
@@ -302,7 +302,7 @@ async function markOrderDelivered(identifier: string, actorId?: string) {
     .eq('id', existing.id)
   if (error) throw new Error(error.message)
 
-  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '確認訂單送達', target_type: 'order', target_id: String(existing.id), detail: { via: 'GB哥' } }) } catch (_) { /* ignore log failure */ }
+  await logGbAction(supabase, actorId, { action: '確認訂單送達', target_type: 'order', target_id: String(existing.id), detail: { via: 'GB哥' } })
 
   return { success: true, order: existing }
 }
@@ -317,7 +317,7 @@ async function dismissRechargeReview(id: number, note?: string, actorId?: string
     .single()
   if (error) throw new Error(error.message)
 
-  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '忽略待複核儲值', target_type: 'recharge', target_id: String(id), detail: { via: 'GB哥', note } }) } catch (_) { /* ignore log failure */ }
+  await logGbAction(supabase, actorId, { action: '忽略待複核儲值', target_type: 'recharge', target_id: String(id), detail: { via: 'GB哥', note } })
 
   return data
 }
@@ -765,7 +765,7 @@ async function updateProductStock(productIds: number[], delta: number, reason?: 
     const statusNote = r.status !== 'active' ? `（商品目前${r.status === 'ended' ? '下架' : r.status}中）` : ''
     return `《${r.name}》${r.old} → ${r.new}（${delta > 0 ? '+' : ''}${delta}）${statusNote}`
   }).join('、')
-  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '調整商品庫存', target_type: 'product', target_id: productIds.join(','), detail: { delta, reason, summary, via: 'GB哥' } }) } catch (_) { /* ignore */ }
+  await logGbAction(supabase, actorId, { action: '調整商品庫存', target_type: 'product', target_id: productIds.join(','), detail: { delta, reason, summary, via: 'GB哥' } })
 
   return { updated: results, errors, summary, reason: reason ?? null }
 }
@@ -786,7 +786,7 @@ async function updateProductStatus(productIds: number[], status: string, actorId
   }
 
   const summary = results.map(r => `《${r.name}》→ ${r.status}`).join('、')
-  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '修改商品狀態', target_type: 'product', target_id: productIds.join(','), detail: { status, summary, via: 'GB哥' } }) } catch (_) { /* ignore */ }
+  await logGbAction(supabase, actorId, { action: '修改商品狀態', target_type: 'product', target_id: productIds.join(','), detail: { status, summary, via: 'GB哥' } })
 
   return { updated: results, errors, summary }
 }
@@ -798,7 +798,7 @@ async function updateProductPrice(productId: number, price: number, actorId?: st
   if (!p) return { error: '找不到商品' }
   const { error } = await supabase.from('products').update({ price, updated_at: new Date().toISOString() }).eq('id', productId)
   if (error) return { error: error.message }
-  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '修改商品價格', target_type: 'product', target_id: String(productId), detail: { old_price: p.price, new_price: price, via: 'GB哥' } }) } catch (_) { /* ignore */ }
+  await logGbAction(supabase, actorId, { action: '修改商品價格', target_type: 'product', target_id: String(productId), detail: { old_price: p.price, new_price: price, via: 'GB哥' } })
   return { ok: true, name: p.name, old_price: p.price, new_price: price }
 }
 
@@ -844,7 +844,7 @@ async function adjustUserTokens(userId: string, delta: number, reason: string, a
     detail:     { delta, reason, before: user.tokens, after: newTokens, by: actorId ?? 'GB哥' },
   })
 
-  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '調整用戶代幣', target_type: 'user', target_id: userId, detail: { delta, reason, old_tokens: user.tokens, new_tokens: newTokens, via: 'GB哥' } }) } catch (_) { /* ignore */ }
+  await logGbAction(supabase, actorId, { action: '調整用戶代幣', target_type: 'user', target_id: userId, detail: { delta, reason, old_tokens: user.tokens, new_tokens: newTokens, via: 'GB哥' } })
 
   return {
     ok: true,
@@ -874,7 +874,7 @@ async function updateOrderTracking(identifier: string, trackingNumber: string, s
   const { error } = await supabase.from('orders').update(update).eq('id', order.id)
   if (error) return { error: error.message }
 
-  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '更新物流單號', target_type: 'order', target_id: String(order.id), detail: { order_number: order.order_number, tracking_number: trackingNumber, status, via: 'GB哥' } }) } catch (_) { /* ignore */ }
+  await logGbAction(supabase, actorId, { action: '更新物流單號', target_type: 'order', target_id: String(order.id), detail: { order_number: order.order_number, tracking_number: trackingNumber, status, via: 'GB哥' } })
 
   return { ok: true, order_number: order.order_number, tracking_number: trackingNumber, status: status ?? order.status }
 }
@@ -896,7 +896,7 @@ async function cancelOrder(identifier: string, reason?: string, actorId?: string
     detail:     { order_number: order.order_number, reason, by: actorId ?? 'GB哥' },
   })
 
-  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '取消訂單', target_type: 'order', target_id: String(order.id), detail: { order_number: order.order_number, reason, via: 'GB哥' } }) } catch (_) { /* ignore */ }
+  await logGbAction(supabase, actorId, { action: '取消訂單', target_type: 'order', target_id: String(order.id), detail: { order_number: order.order_number, reason, via: 'GB哥' } })
 
   return { ok: true, order_number: order.order_number, reason }
 }
@@ -914,7 +914,7 @@ async function createCoupon(code: string, title: string, discountType: string, d
     is_active:      true,
   }).select('id, code').single()
   if (error) return { error: error.message }
-  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '建立折扣碼', target_type: 'coupon', target_id: data.code, detail: { title, discount_type: discountType, discount_value: discountValue, min_spend: minSpend, via: 'GB哥' } }) } catch (_) { /* ignore */ }
+  await logGbAction(supabase, actorId, { action: '建立折扣碼', target_type: 'coupon', target_id: data.code, detail: { title, discount_type: discountType, discount_value: discountValue, min_spend: minSpend, via: 'GB哥' } })
   return { ok: true, id: data.id, code: data.code, title, discount_type: discountType, discount_value: discountValue, min_spend: minSpend }
 }
 
@@ -924,7 +924,7 @@ async function toggleCoupon(code: string, isActive: boolean, actorId?: string) {
   if (!coupon) return { error: '找不到折扣碼' }
   const { error } = await supabase.from('coupons').update({ is_active: isActive }).eq('code', code.toUpperCase())
   if (error) return { error: error.message }
-  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: isActive ? '啟用折扣碼' : '停用折扣碼', target_type: 'coupon', target_id: code.toUpperCase(), detail: { title: coupon.title, is_active: isActive, via: 'GB哥' } }) } catch (_) { /* ignore */ }
+  await logGbAction(supabase, actorId, { action: isActive ? '啟用折扣碼' : '停用折扣碼', target_type: 'coupon', target_id: code.toUpperCase(), detail: { title: coupon.title, is_active: isActive, via: 'GB哥' } })
   return { ok: true, code: code.toUpperCase(), title: coupon.title, is_active: isActive }
 }
 
@@ -938,7 +938,7 @@ async function updateContentDraft(ids: string[], status: string, actorId?: strin
     .in('id', ids)
     .select('id, product_name, style, status')
   if (error) return { error: error.message }
-  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '更新文案草稿狀態', target_type: 'content_draft', target_id: ids.join(','), detail: { status, count: data?.length, via: 'GB哥' } }) } catch (_) { /* ignore */ }
+  await logGbAction(supabase, actorId, { action: '更新文案草稿狀態', target_type: 'content_draft', target_id: ids.join(','), detail: { status, count: data?.length, via: 'GB哥' } })
   return { ok: true, updated: data?.length ?? 0, items: data }
 }
 
@@ -991,7 +991,7 @@ async function riskAction(
     detail:     { action, reason, by: actorId ?? 'GB哥' },
   })
 
-  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: label, target_type: 'user', target_id: userId, detail: { reason, user_name: user.name, user_email: user.email, via: 'GB哥' } }) } catch (_) { /* ignore */ }
+  await logGbAction(supabase, actorId, { action: label, target_type: 'user', target_id: userId, detail: { reason, user_name: user.name, user_email: user.email, via: 'GB哥' } })
 
   return { ok: true, action: label, user: { name: user.name, email: user.email } }
 }
@@ -1795,6 +1795,34 @@ ${dynamicKnowledge}
 }
 
 // ─── Main entry point ──────────────────────────────────────────────
+
+/**
+ * GB哥 的稽核軌跡（老闆 2026-08-28 修）
+ *
+ * 兩個 bug 疊在一起，導致 GB哥 做過的每一件事**都沒有留下紀錄**：
+ *   1. 表名寫成 `admin_action_logs` —— 那張表從來不存在（兩個環境都只有 `action_logs`）
+ *   2. `admin_id` 塞的是 LINE user id 或 'GB哥-LINE' 字串，但那個欄位是 **bigint**
+ * 兩者都會讓 insert 失敗，而呼叫端一律 try/catch 吞掉，所以完全沒有人發現。
+ *
+ * 現在：admin_id 留空（GB哥 不是後台帳號），身分寫在 username／role，
+ * LINE 的操作者 id 收進 detail 供追查。
+ */
+async function logGbAction(
+  supabase: any,
+  actorId: string | null | undefined,
+  row: { action: string; target_type?: string; target_id?: string; detail?: Record<string, any> },
+) {
+  try {
+    await supabase.from('action_logs').insert({
+      admin_id: null,
+      username: 'GB哥',
+      role: 'gb_bro',
+      status: 'success',
+      ...row,
+      detail: { ...(row.detail ?? {}), line_user_id: actorId ?? null },
+    })
+  } catch { /* 稽核失敗不影響主流程 */ }
+}
 
 export async function askGbBro(question: string, lineUserId?: string): Promise<string> {
   const text   = question.trim()
