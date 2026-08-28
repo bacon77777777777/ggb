@@ -664,6 +664,12 @@ function NavbarInner() {
   return (
     <>
       <NavbarLayout
+        /* 手機端首頁：整條導航列吃主題色（老闆 2026-08-28）。桌機維持白底 ——
+           桌機那條同時放著分類連結與會員選單，整片染色會蓋掉那些元素的層次。
+           `md:` 變體在 tailwind 產出的 CSS 裡排在基礎工具類後面，桌機必定覆蓋。 */
+        surfaceClassName={isHomePage
+          ? "bg-primary border-transparent md:bg-white md:dark:bg-neutral-900 md:border-neutral-100 md:dark:border-neutral-800"
+          : undefined}
         innerClassName={(isProductDetailPage || isAnnouncementInnerPage) ? "max-w-[960px] !px-4" : undefined}
         className={cn(
           desktopOnlyNav && "hidden md:block",
@@ -919,7 +925,8 @@ function NavbarInner() {
                 href="/search?focus=1"
                 onClick={startKeyboardRelay}
                 className={cn(
-                  "p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform",
+                  // 手機端壓在主題色上 → 白色；桌機那條仍是白底，維持深灰
+                  "p-2 rounded-xl text-white md:text-neutral-600 md:dark:text-neutral-400 active:scale-90 transition-transform",
                   !isAuthenticated && "md:hidden",
                 )}
                 aria-label="搜尋"
@@ -936,15 +943,18 @@ function NavbarInner() {
                   "relative p-2 rounded-xl active:scale-90 transition-transform md:flex md:items-center",
                   pathname === '/announcements' || pathname.startsWith('/announcements/')
                     ? "text-primary"
-                    : "text-neutral-600 dark:text-neutral-400 md:hover:text-primary",
+                    // 手機端只在首頁出現（見下一行的 hidden），所以白色只會壓在主題色上
+                    : "text-white md:text-neutral-600 md:dark:text-neutral-400 md:hover:text-primary",
                   !isHomePage && "hidden"
                 )}
                 aria-label="通知"
               >
                 <Bell className="w-5 h-5 stroke-[2]" />
-                {/* 尺寸/位置對齊會員頁的設定齒輪紅點，邊框改用導航列底色才看得出來 */}
+                {/* 尺寸/位置對齊會員頁的設定齒輪紅點。手機端首頁壓在主題色上，
+                    紅點會糊進底色 → 直接改成**白點**（不描邊，描邊會讓它看起來像個圈）；
+                    桌機那條是白底，維持紅點＋白邊 */}
                 {bellUnread && (
-                  <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-accent-red border-2 border-white dark:border-neutral-950" />
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-white md:bg-accent-red md:border-2 md:border-white md:dark:border-neutral-950" />
                 )}
               </Link>
             )}
@@ -1091,7 +1101,11 @@ function NavbarInner() {
                   {/* Mobile login button: 細膠囊線框 */}
                   <Link
                     href="/login"
-                    className="md:hidden px-3 h-8 flex items-center rounded-full border border-primary text-[12px] font-black text-primary active:scale-95 transition-transform whitespace-nowrap"
+                    className={cn(
+                      "md:hidden px-3 h-8 flex items-center rounded-full border text-[12px] font-black active:scale-95 transition-transform whitespace-nowrap",
+                      // 首頁那條是主題色底，紅字紅框會糊掉
+                      isHomePage ? "border-white text-white" : "border-primary text-primary",
+                    )}
                   >
                     登入
                   </Link>

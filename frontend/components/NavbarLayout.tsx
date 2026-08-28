@@ -11,6 +11,12 @@ interface NavbarLayoutProps {
   rightClassName?: string;
   innerClassName?: string;
   isSticky?: boolean;
+  /**
+   * 底色與下緣分隔線。預設白底（深色模式深灰）。
+   * 首頁手機端傳主題色進來 —— 不用 className 疊 `bg-primary` 是因為
+   * 兩個都是同一組 tailwind 工具類，誰贏取決於樣式表順序，賭不得。
+   */
+  surfaceClassName?: string;
 }
 
 export default function NavbarLayout({
@@ -22,13 +28,15 @@ export default function NavbarLayout({
   centerClassName,
   rightClassName,
   innerClassName,
-  isSticky = true
+  isSticky = true,
+  surfaceClassName = "bg-white dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800",
 }: NavbarLayoutProps) {
   return (
     <nav className={cn(
       /* pt-[env(...)]：App 滿版模式（v2026.08.21c）下導航列白底延伸到動態島，
          內容從安全區下開始；網頁與偽 app env=0，完全無感 */
-      "bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 top-0 z-50 transition-colors pt-[env(safe-area-inset-top)]",
+      "border-b top-0 z-50 transition-colors pt-[env(safe-area-inset-top)]",
+      surfaceClassName,
       isSticky ? "sticky" : "relative",
       className
     )}>

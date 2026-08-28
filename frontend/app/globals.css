@@ -568,10 +568,20 @@ a, video, canvas {
   50%      { opacity: 0.55; transform: translate3d(0, -3%, 0) scale(1.08); }
 }
 
-/* 會員中心：蝦皮橘漸層底（#EE4D2D 系）+ 兩顆透明泡泡不規則變形飄動（一深一淺） */
+/* 會員中心：主題色漸層底 + 兩顆透明泡泡不規則變形飄動（一深一淺） */
+/*
+ * 底色跟著主題色走（老闆 2026-08-28）。原本寫死三顆橘色碼，後台換主題色時
+ * 會員中心整片還是橘的，跟導航列、按鈕對不起來。
+ *
+ * 不用 color-mix（iOS 16.2 以前不支援，App 的 webview 吃不到）：
+ * 改成「一層白色透明漸層疊在純主題色上」—— 左上原色、右下漸亮，
+ * 任何色相都成立，效果等同原本 #F26A43 → #FFA271 的提亮。
+ */
 .profile-bubbles {
   position: absolute; inset: 0; overflow: hidden;
-  background: linear-gradient(160deg, #F26A43 0%, #FF835A 52%, #FFA271 100%);
+  background:
+    linear-gradient(160deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.16) 52%, rgba(255,255,255,0.36) 100%),
+    rgb(var(--primary));
 }
 /* 泡泡：固定不規則形狀，只用「偏心連續旋轉」讓它邊變形邊飄。
    只動 transform → GPU 合成、linear 等速 → 完全連續、不重繪、不掉幀跳格
@@ -582,7 +592,7 @@ a, video, canvas {
 }
 .profile-bubbles .bubble-dark {
   width: 72%; aspect-ratio: 1; left: -14%; top: -20%;
-  background: rgba(190,70,40,0.26);
+  background: rgb(var(--primary-dark) / 0.30); /* 深色泡泡：跟著主題色的暗階 */
   transform-origin: 60% 55%;
   animation: bubble-spin-cw 34s linear infinite;
 }
