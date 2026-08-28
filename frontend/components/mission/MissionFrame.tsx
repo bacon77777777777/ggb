@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { missionSvgs as svgPaths } from './mission-svgs';
 import RulesModal from '@/components/ui/RulesModal';
 import { asset } from '@/lib/asset';
+import { hapticMedium } from '@/lib/haptics';
 
 const imgImage22 = asset("/images/mission/bg-overlay.png");
 const imgImage20 = asset("/images/mission/bg-pattern.png");
@@ -315,6 +316,14 @@ function MissionFrame({
 
   const handleClaim = (mission: Mission, e: React.MouseEvent) => {
     if (mission.status === 'claimed' || optimisticClaimedIds.has(mission.id)) return;
+
+    /*
+     * 震動回饋（老闆 2026-08-29：簽到頁所有領取動作都要有）。
+     * 一定要走 lib/haptics —— iOS 完全不支援 navigator.vibrate（Safari 與
+     * WKWebView 都沒有），直接寫 vibrate 在 iPhone 上是靜默失效。
+     * 擋掉重複領取之後才震：沒領到卻震一下，等於告訴玩家「領到了」。
+     */
+    hapticMedium();
     
     // Capture Position
     const rect = e.currentTarget.getBoundingClientRect();
@@ -482,7 +491,7 @@ function MissionFrame({
           <div 
             className="absolute bg-gradient-to-r content-stretch flex from-[#ffa048] h-[86px] items-center justify-center left-[111px] rounded-[100px] shadow-[0px_10px_30px_0px_rgba(213,78,0,0.25)] to-[#fd4703] top-[345px] w-[480px] cursor-pointer active:scale-95 transition-transform" 
             data-name="button"
-            onClick={onCheckIn}
+            onClick={() => { hapticMedium(); onCheckIn(); }}
           >
             <p className="font-sans font-medium leading-[normal] not-italic relative shrink-0 text-[32px] text-white">立即簽到</p>
           </div>
@@ -501,7 +510,13 @@ function MissionFrame({
               href="/invite"
               className="inline-flex h-[36px] items-center rounded-full bg-accent-red px-[16px] text-[21px] font-bold leading-none text-white active:scale-95 transition-transform"
             >
-              <span className="cjk-optical-center">無限拿積分</span>
+              {/*
+                這顆**不套** .cjk-optical-center（老闆 2026-08-29 回報字偏下）。
+                那個 +0.13em 是為了補正「中文在小膠囊裡看起來偏上」，但校準的對象是
+                內文字型（body 的 GGB CJK 堆疊）。這張版整體用 font-sans、又整頁縮放
+                0.52，套下去就從補正變成過度補正，字直接掉到膠囊下緣。
+              */}
+              無限拿積分
             </Link>
           </div>
           <p className="font-['DIN_Alternate:Bold',sans-serif] text-[70px] font-bold text-white leading-none">{points.toLocaleString()}</p>
