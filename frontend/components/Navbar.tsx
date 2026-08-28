@@ -16,6 +16,7 @@ import NavbarLayout from './NavbarLayout';
 import { countUnread } from '@/lib/announcementRead';
 import { startKeyboardRelay } from '@/lib/keyboardRelay';
 import { asset } from '@/lib/asset';
+import { cameFromAnnouncementsList } from '@/lib/announcementsView';
 
 export default function Navbar() {
   return (
@@ -120,10 +121,14 @@ function NavbarInner() {
     : null;
   const isNewsDetailPage = /^\/news\/[^/]+$/.test(pathname);
   const isAnnouncementDetailPage = /^\/announcements\/[^/]+$/.test(pathname);
+  /* 個人通知內頁（/announcements/n/<bigint>）—— 版面跟公告內頁一樣，
+     只是右上角不給分享（那是只有本人看得到的回條，分享出去別人也開不了） */
+  const isNotificationDetailPage = /^\/announcements\/n\/[^/]+$/.test(pathname);
+  const isAnnouncementInnerPage = isAnnouncementDetailPage || isNotificationDetailPage;
   /* 通知列表與內頁：右上角不放搜尋（老闆 2026-08-20）。
      通知是「平台要講的話」，看通知的人不是來找商品的，
      擺一顆放大鏡只是把注意力帶走 */
-  const isAnnouncementsArea = pathname === '/announcements' || isAnnouncementDetailPage;
+  const isAnnouncementsArea = pathname === '/announcements' || isAnnouncementInnerPage;
   const isFairnessPage = pathname.startsWith('/fairness');
   const isExchangeDetailPage =
     pathname !== '/exchange/new' && pathname !== '/exchange/manage' && /^\/exchange\/[^/]+$/.test(pathname);
@@ -590,6 +595,24 @@ function NavbarInner() {
       return;
     }
     
+    /*
+     * 通知內頁（公告 /announcements/<uuid>、個人通知 /announcements/n/<id>）
+     * 一律回通知列表 —— 列表會依 sessionStorage 還原分頁籤與捲動位置（老闆 2026-08-28）。
+     *
+     * 不能落到下面的 referrer 判斷：從 LINE、推播或重新整理進到內頁時
+     * document.referrer 是空的，會被當成外部來源而把人彈回首頁。
+     */
+    if (isAnnouncementInnerPage) {
+      // 真的是從列表點進來的才 back()（保留原本的歷史，不會愈疊愈深）；
+      // 直接開網址進來的就 push 回列表
+      if (cameFromAnnouncementsList(pathname) && window.history.length > 1) {
+        router.back();
+      } else {
+        router.push('/announcements');
+      }
+      return;
+    }
+
     // 2. Product detail pages: return to saved origin (search/home), otherwise go Home
     if (isProductDetailPage) {
       try {
@@ -641,7 +664,7 @@ function NavbarInner() {
   return (
     <>
       <NavbarLayout
-        innerClassName={(isProductDetailPage || isAnnouncementDetailPage) ? "max-w-[960px] !px-4" : undefined}
+        innerClassName={(isProductDetailPage || isAnnouncementInnerPage) ? "max-w-[960px] !px-4" : undefined}
         className={cn(
           desktopOnlyNav && "hidden md:block",
           isProductDetailPage && "fixed left-0 right-0",
@@ -658,10 +681,10 @@ function NavbarInner() {
           ) && "hidden md:block"
         )}
         isSticky={!isProductDetailPage}
-        leftClassName={(isProductDetailPage || isAnnouncementDetailPage) ? "flex-1" : "flex-1 md:flex-none md:w-auto"}
+        leftClassName={(isProductDetailPage || isAnnouncementInnerPage) ? "flex-1" : "flex-1 md:flex-none md:w-auto"}
         left={
           <>
-            {(isProductDetailPage || isAnnouncementDetailPage) ? (
+            {(isProductDetailPage || isAnnouncementInnerPage) ? (
               showBackButton && (
                 /* 統一元件：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */
                 <PageHeaderBack title={getPageTitle()} onBack={handleBack} className="flex-1" />
@@ -692,7 +715,7 @@ function NavbarInner() {
               </>
             )}
             
-            <Link href="/" className={cn("flex items-center group md:relative", (isProductDetailPage || isAnnouncementDetailPage) ? "hidden" : (!showLogo && "hidden md:flex"))}>
+            <Link href="/" className={cn("flex items-center group md:relative", (isProductDetailPage || isAnnouncementInnerPage) ? "hidden" : (!showLogo && "hidden md:flex"))}>
               <div className="flex items-center gap-1.5 transition-transform group-hover:scale-105">
                 <Image
                   src={asset("/images/logo.png")}
@@ -705,7 +728,7 @@ function NavbarInner() {
               </div>
             </Link>
 
-            <div className={cn("hidden", !(isProductDetailPage || isAnnouncementDetailPage) && "md:flex items-center gap-3 lg:gap-5")}>
+            <div className={cn("hidden", !(isProductDetailPage || isAnnouncementInnerPage) && "md:flex items-center gap-3 lg:gap-5")}>
               <Link
                 href="/"
                 className={cn(
@@ -906,7 +929,7 @@ function NavbarInner() {
             )}
 
             {/* 通知（鈴鐺）：手機僅首頁顯示；桌機取代原本的文字連結，固定在搜尋圖標右邊 */}
-            {!isProductDetailPage && !isAnnouncementDetailPage && (
+            {!isProductDetailPage && !isAnnouncementInnerPage && (
               <Link
                 href="/announcements"
                 className={cn(

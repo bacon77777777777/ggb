@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { cn } from '@/lib/utils';
 import { timeAgo } from '@/lib/timeAgo';
 import { getReadIds, isUnread, markRead, markAllRead } from '@/lib/announcementRead';
+import { rememberAnnouncementsView, readAnnouncementsView } from '@/lib/announcementsView';
 import { useSwipeTabs } from '@/lib/useSwipeTabs';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -79,18 +80,13 @@ export default function AnnouncementsPage() {
   const [supabase] = useState(() => createClient());
   const tabKeys = CATEGORIES.map(c => c.key);
 
-  /*
-   * 記住看到哪裡（老闆 2026-08-26：「點返回會回到通知列表，且記憶瀏覽位置」）
-   *
-   * 存在 sessionStorage 而不是 state —— 進詳情頁是換路由，元件會整個卸載。
-   * 只記分頁籤與捲動位置這兩件事，關掉分頁就失效，剛好符合「這一趟瀏覽」的語意。
-   */
-  const VIEW_KEY = 'ggb:announcements:view';
+  /** 待還原的捲動位置（從詳情頁返回時才有值） */
+  const pendingScrollRef = useRef<{ y: number; until: number } | null>(null);
 
-  const rememberView = useCallback(() => {
-    try {
-      sessionStorage.setItem(VIEW_KEY, JSON.stringify({ tab: activeTab, y: window.scrollY }));
-    } catch { /* 無痕模式寫不進去就算了，不要炸掉 */ }
+  /* `from` 記的是「等一下要去哪一頁」——返回時 Navbar 拿它跟當下路徑比對，
+     確認玩家真的是從列表點進去的，才用 router.back()（不然就 push 回列表） */
+  const rememberView = useCallback((from: string) => {
+    rememberAnnouncementsView({ tab: activeTab, y: window.scrollY, from });
   }, [activeTab]);
 
   useEffect(() => {
@@ -104,16 +100,18 @@ export default function AnnouncementsPage() {
     // 已讀改由「點進內頁」或「全部已讀」觸發
     setReadIds(getReadIds());
 
-    // 從詳情頁返回時把分頁籤接回去（捲動位置要等列表畫出來才還原，見下面）
-    try {
-      const saved = sessionStorage.getItem(VIEW_KEY);
-      if (saved) {
-        const { tab } = JSON.parse(saved) as { tab?: string };
-        // 用模組層級的 CATEGORIES 而不是 tabKeys —— 後者每次 render 都是新陣列，
-        // 放進依賴陣列會讓這個「只跑一次」的 effect 變成每次 render 都跑
-        if (tab && CATEGORIES.some(c => c.key === tab)) setActiveTab(tab);
-      }
-    } catch { /* ignore */ }
+    /*
+     * 從詳情頁返回時把分頁籤接回去，捲動位置先記著（要等列表畫出來才還原，見下面）。
+     * 這一筆是**一次性**的：讀完就清掉，否則玩家等一下從鈴鐺重新點進通知，
+     * 會莫名其妙被丟到上次看到的一半。
+     */
+    const saved = readAnnouncementsView(true);
+    if (saved) {
+      // 用模組層級的 CATEGORIES 而不是 tabKeys —— 後者每次 render 都是新陣列，
+      // 放進依賴陣列會讓這個「只跑一次」的 effect 變成每次 render 都跑
+      if (CATEGORIES.some(c => c.key === saved.tab)) setActiveTab(saved.tab);
+      if (saved.y > 0) pendingScrollRef.current = { y: saved.y, until: Date.now() + 3000 };
+    }
   }, []);
 
   /* 個人通知：綁定禮入帳、邀請獎勵可領這類只給本人看的回條。
@@ -148,7 +146,7 @@ export default function AnnouncementsPage() {
         .update({ is_read: true, read_at: new Date().toISOString() })
         .eq('id', n.id);
     }
-    rememberView();
+    rememberView(`/announcements/n/${n.id}`);
     router.push(`/announcements/n/${n.id}`);
   };
 
@@ -174,21 +172,22 @@ export default function AnnouncementsPage() {
 
   /*
    * 捲動位置只能在列表真的畫出來之後還原 —— 資料還沒到時頁面高度不夠，
-   * scrollTo 會被瀏覽器夾成 0。等 isLoading 結束再跳，並且只還原一次。
+   * scrollTo 會被瀏覽器夾成 0。
+   *
+   * 公告與個人通知是兩支獨立的 query，誰先到不一定；先前「只還原一次」的寫法
+   * 常常在只有公告、通知還沒進來的那一幀就用掉機會，位置被夾成 0 就再也回不去了。
+   * 改成一直試到真的跳到定位（或超過 3 秒放棄）。
    */
-  const restoredRef = useRef(false);
   useEffect(() => {
-    if (isLoading || restoredRef.current) return;
-    restoredRef.current = true;
-    try {
-      const saved = sessionStorage.getItem(VIEW_KEY);
-      if (!saved) return;
-      const { y } = JSON.parse(saved) as { y?: number };
-      if (typeof y === 'number' && y > 0) {
-        requestAnimationFrame(() => window.scrollTo(0, y));
-      }
-    } catch { /* ignore */ }
-  }, [isLoading, notes.length]);
+    const pending = pendingScrollRef.current;
+    if (!pending || isLoading) return;
+    if (Date.now() > pending.until) { pendingScrollRef.current = null; return; }
+    requestAnimationFrame(() => {
+      window.scrollTo(0, pending.y);
+      // 差距在 2px 內就算到位；還被夾住的話留著目標，等下一批資料進來再試
+      if (Math.abs(window.scrollY - pending.y) < 2) pendingScrollRef.current = null;
+    });
+  }, [isLoading, items.length, notes.length, activeTab]);
 
   // 換成全站共用的手勢（含邊緣讓位、水平捲動區讓位、斜滑防誤觸）
   const swipeTabs = useSwipeTabs(tabKeys, activeTab, setActiveTab);
@@ -276,7 +275,7 @@ export default function AnnouncementsPage() {
                   href={`/announcements/${item.id}`}
                   className="absolute inset-0 z-0"
                   aria-label={item.title}
-                  onClick={() => { markRead(item.id); rememberView(); }}
+                  onClick={() => { markRead(item.id); rememberView(`/announcements/${item.id}`); }}
                 />
                 {isUnread(item, readIds) && (
                   <span className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-2.5 h-2.5 rounded-full bg-accent-red" aria-label="未讀" />
