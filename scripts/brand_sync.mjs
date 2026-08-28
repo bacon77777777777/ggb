@@ -102,10 +102,8 @@ const copyMaster = (name) => async () => fs.promises.readFile(path.join(MASTERS,
  */
 const SPECS = [
   // ── 橫式 logo（原檔直出）
-  { out: 'logo.png', desc: '橫式 logo（前台導覽列 / 後台蓋圖來源）', size: '1554×500',
+  { out: 'logo.png', desc: '橫式 logo（導覽列 / 維護頁 / LINE 回跳頁 / 後台蓋圖來源）', size: '1554×500',
     make: copyMaster('horizontal.png'), dest: ['frontend/public/images/logo.png'] },
-  { out: 'logo.svg', desc: '橫式 logo 向量（導覽列 / 維護頁 / LINE 回跳頁）', size: 'vector',
-    make: copyMaster('horizontal.svg'), dest: ['frontend/public/images/logo.svg'] },
   // ── 直式 logo（原檔直出）
   { out: 'logo-stacked.png', desc: '直式 logo（登入頁）', size: '723×646',
     make: copyMaster('vertical.png'), dest: ['frontend/public/images/logo-stacked.png'] },
@@ -245,7 +243,7 @@ const write = async (p, buf) => {
 
 async function main() {
   // appicon.png / appicon-maskable.png 是選配，缺了就走 fallback（見 APPICON / MASKABLE）
-  for (const m of ['horizontal.png', 'vertical.png', 'horizontal.svg']) {
+  for (const m of ['horizontal.png', 'vertical.png']) {
     if (!fs.existsSync(path.join(MASTERS, m))) {
       console.error(`✗ 缺母檔 brand/masters/${m}`)
       process.exit(1)

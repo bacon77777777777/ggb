@@ -78,6 +78,24 @@ Android 自適應前景的底色強制透明：底色由 background 層畫，前
 （PROD 7 筆、STG 0 筆）。PROD／STG 都已套用。
 `brand/manual/` 也從一張補成八張 —— 原本只收 `avatar-01`，等於把「輪替」誤記成「一張預設圖」。
 
+**刪掉 `logo.svg`，導覽列改吃 PNG**
+
+`horizontal.svg` 跟 `horizontal.png` 為什麼要留兩張？查下去發現該砍的是 SVG：
+它是 PNG 的**自動描圖版**，紅字的漸層立體感變平塗、撕邊紙張的質感變成描圖雜點，
+逐像素比對有 **30% 明顯不同**。而導覽列、維護頁、LINE 回跳頁用的就是它 ——
+玩家每一頁看到的都是比較醜的那版，好看的 PNG 只用在登入頁跟蓋圖。
+
+檔案大小也沒佔到便宜：SVG brotli 後 70KB，但那是因為它畫得比較「簡單」。
+next/image **不優化 SVG**（要 `dangerouslyAllowSVG`），所以那 332KB 是原樣送出去的；
+換成 PNG 之後由 next/image 自動縮到實際尺寸並轉 WebP，導覽列只畫 112px 寬，約 20–30KB。
+
+三處改吃 `/images/logo.png`，`logo.svg` 與 `masters/horizontal.svg` 一併刪除，母檔剩兩張。
+順手把 `width`／`height` 改成正確比例（原本 112×28 是 4.0，實際圖是 3.108），省掉版面位移。
+
+**換 logo 的作業方式已寫進 `CLAUDE.md`**（「品牌素材（換 logo）」章節），含五條踩過的雷：
+logo.png 的公開網址不能改、不要再放 SVG、App 圖示不會自動跟著變且要送審、
+預設頭像是八款輪替、已烙進 R2 的舊 logo 要另外回填。
+
 ---
 
 ## v2026.08.27e｜2026-08-27｜新 logo 第二批：favicon 改版、橫式 logo.png、登入頁直式 logo

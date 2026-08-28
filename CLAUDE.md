@@ -501,6 +501,47 @@ curl -X POST https://admin.ggb.com.tw/api/admin/storage/clear-products \
 
 ---
 
+## 品牌素材（換 logo）—— 一律走 `brand/`，不要手動改散在各處的圖
+
+**`brand/` 是全站 logo 素材的唯一來源。** 換 logo 只做兩件事：
+
+```bash
+# 1. 換掉 brand/masters/ 的母檔（透明背景，長寬比照舊）
+# 2. 產出並同步到所有位置
+npm run brand:sync            # 等同 node scripts/brand_sync.mjs
+                              # --dry 乾跑｜--no-mobile 跳過 App 圖示
+```
+
+跑完打開 `brand/OVERVIEW.png`（總覽聯絡表）確認有沒有哪張漏掉。詳細對照表在 `brand/README.md`。
+
+| 資料夾 | 內容 |
+|--------|------|
+| `brand/masters/` | **要換的就這裡**。`horizontal.png` 橫式、`vertical.png` 直式、`appicon.png` + `appicon-maskable.png` App 圖示（1024² 滿版） |
+| `brand/generated/` | 16 張自動產出 → 複製到 35 個位置。**改這裡下次 sync 會被蓋掉** |
+| `brand/manual/` | 整張插畫，只複製不重產：OG 分享圖、邀請 OG、iOS 啟動頁、**預設頭像八款** |
+
+**為什麼要有這層**：帶 logo 的檔案散在 `frontend/public`、`backend/public`、`mobile/assets`
+三個獨立部署的 app 底下，路徑沒辦法共用（後台與 App 讀不到前台的檔案系統）。
+2026-06 換 logo 時 `images/20260629/` 這個「改版暫存資料夾」被當成正式路徑、根目錄同時留了
+一份同內容的死檔，兩份並存兩個月沒人發現；8/27 換新 logo 時又照著「兩邊都有」各塞一份。
+收成單一來源後不會再有這問題（2026-08-28）。
+
+### 換素材時必須知道的五件事
+
+1. **`frontend/public/images/logo.png` 的公開網址不能拿掉、不能改路徑。**
+   `lib/newsBranding.ts` 是後台程式、部署在 `admin.ggb.com.tw`，讀不到前台檔案系統，
+   是用 HTTP 抓 `https://www.ggb.com.tw/images/logo.png`。改了情報圖會全部蓋不上 logo，
+   **而且不會報錯**。`lib/productBranding.ts` 則是直接讀本機同一個檔。
+2. **不要放 SVG。** 舊的 `logo.svg` 是 PNG 的自動描圖版（漸層變平塗、撕邊變雜點，
+   30% 像素對不上），而導覽列用的就是它。2026-08-28 已刪，三處改吃 `logo.png` ——
+   next/image 不優化 SVG，換成 PNG 後反而由它自動縮圖轉 WebP，更小也更好看。
+3. **App 圖示不會跟著 logo 自動變**，而且換了要 `cd mobile && npx cap sync` 重新編譯、
+   送 App Store／Play 審核才生效。腳本會比對改檔時間，`appicon` 比 `vertical` 舊就警告。
+4. **預設頭像是八款輪替不是一張**。信箱驗證建帳號時由 `handle_new_user()` 隨機配一款
+   （migration 634），機器人帳號也平均分佈在這八款。要換就整組換。
+5. **已經烙進 R2 圖片的舊 logo 這支腳本救不回來**（情報封面約 700 張、匯入商品主圖 72 張）。
+   蓋圖程式讀的是本機／線上的 `logo.png`，所以**之後新蓋的都會是新 logo**，舊的要另外回填。
+
 ## 前台 UI 設計慣例
 
 - **靜態資源一律 `asset()`**：引用 `public/` 底下的圖／音／影（`/images/…`、`/loading/…`、`/icons/…`、

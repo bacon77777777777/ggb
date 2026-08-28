@@ -20,15 +20,21 @@ npm run brand:sync
 
 ## masters/ —— 你要換的就這裡
 
-### 必要（三張）
+### 必要（兩張）
 
 | 檔 | 尺寸 | 說明 |
 |----|------|------|
 | `horizontal.png` | 1554×500 | 橫式（撕卡包 + 吉吉比橫排），**透明背景** |
 | `vertical.png` | 723×646 | 直式（撕卡包在上、吉吉比在下），**透明背景** |
-| `horizontal.svg` | 向量 | 橫式的向量版。PNG 產不出 SVG，這張要另外給 |
 
 換的時候尺寸可以不同，但**長寬比要接近**，不然衍生圖的留白會跑掉。
+給到 1500px 寬以上比較保險 —— 蓋在情報封面／匯入商品圖上時會用到 400–500px。
+
+> **不要再放 SVG。** 2026-08-28 之前有一張 `logo.svg`，導覽列、維護頁、LINE 回跳頁用的都是它。
+> 那是 PNG 的自動描圖版：紅字的漸層立體感變平塗、撕邊紙張的質感變成描圖雜點，
+> 30% 的像素跟本尊對不上 —— 等於玩家每一頁看到的都是比較醜的那版。
+> 檔案也沒佔到便宜（brotli 後 70KB，PNG 給 next/image 縮到導覽列尺寸只要 20–30KB）。
+> 已刪除，三處改吃 `logo.png`。
 
 ### App 圖示（兩張，已產出佔位版，之後照著改）
 
@@ -91,8 +97,7 @@ maskable 來源：vertical.png（未提供 appicon-maskable.png，退回 vertica
 
 | 檔 | 尺寸 | 去處 | 用在哪 |
 |----|------|------|--------|
-| `logo.png` | 1554×500 | `frontend/public/images/` | 導覽列；**後台蓋圖也靠這張**（見下方警告） |
-| `logo.svg` | 向量 | `frontend/public/images/` | 導覽列、維護頁、LINE 回跳頁 |
+| `logo.png` | 1554×500 | `frontend/public/images/` | 導覽列、維護頁、LINE 回跳頁；**後台蓋圖也靠這張**（見下方警告） |
 | `banner_defaulet.png` | 1200×400 | `frontend/public/images/` | 輪播破圖 / 情報無封面 / 交易所無圖（檔名 typo 是原本就有的） |
 | `item_defaulet.webp` | 1024² | `frontend/public/images/` | 商品 / 品項 / 倉庫 / 商城佔位 |
 
