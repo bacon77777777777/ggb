@@ -76,13 +76,57 @@ async function send(text: string): Promise<{ ok: boolean; status?: number; body?
 }
 
 /**
+ * 套上老闆在後台設定的推播外框（migration 637）。
+ *
+ * 外框裡的 `{{content}}` 換成 agent 當下產生的內容 —— 這樣 20 幾支 cron route
+ * 一行都不用改，格式權完全在後台。查不到設定或外框裡沒有 {{content}} 時
+ * 一律回傳原文（fail open）：格式設定壞掉不該讓推播整條消失。
+ */
+async function applyTemplate(key: LinePushKey, text: string): Promise<string> {
+  try {
+    const { data } = await getSupabaseAdmin()
+      .from('line_push_templates')
+      .select('template')
+      .eq('key', key)
+      .single()
+    const tpl = String(data?.template ?? '').trim()
+    if (!tpl || !tpl.includes('{{content}}')) return text
+    return tpl.replace(/\{\{content\}\}/g, text)
+  } catch {
+    return text
+  }
+}
+
+/**
+ * 記下最近一次組出來的全文，後台「編輯格式」的彈窗直接拿它當預覽。
+ * 連被開關擋掉、沒真的送出的也記 —— 老闆常常是先看「它會長怎樣」才決定開不開。
+ */
+async function recordPreview(key: LinePushKey, text: string, sent: boolean) {
+  try {
+    await getSupabaseAdmin()
+      .from('line_push_templates')
+      .update({
+        last_preview: text.slice(0, 4000),
+        ...(sent ? { last_pushed_at: new Date().toISOString() } : {}),
+      })
+      .eq('key', key)
+  } catch { /* 預覽記錄失敗不影響推播 */ }
+}
+
+/**
  * 建立一個與特定推播開關綁定的 pushLine 函數。
  * 在 cron route 最上方：const pushLine = createLinePusher('line_push_xxx')
  */
 export function createLinePusher(key: LinePushKey) {
   return async function pushLine(text: string): Promise<{ ok: boolean; status?: number; body?: string }> {
     const enabled = await isFlagEnabled(key)
-    if (!enabled) return { ok: false, body: 'flag disabled' }
-    return send(text)
+    const finalText = await applyTemplate(key, text)
+    if (!enabled) {
+      void recordPreview(key, finalText, false)
+      return { ok: false, body: 'flag disabled' }
+    }
+    const res = await send(finalText)
+    void recordPreview(key, finalText, res.ok)
+    return res
   }
 }

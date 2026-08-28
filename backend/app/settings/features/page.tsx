@@ -3,6 +3,9 @@
 import { AdminLayout, PageCard } from '@/components'
 import { useEffect, useState } from 'react'
 import Textarea from '@/components/ui/Textarea'
+import Modal from '@/components/Modal'
+import Button from '@/components/ui/Button'
+import InfoDot from '@/components/ui/InfoDot'
 import { useAdmin } from '@/contexts/AdminContext'
 import ConfirmDialog from '@/components/ConfirmDialog'
 // 版型元件與「商城設定」頁共用，改一次兩頁一起變
@@ -26,24 +29,30 @@ type LinePushKey =
   | 'line_push_daily' | 'line_push_cfo' | 'line_push_cmo' | 'line_push_supply'
   | 'line_push_health' | 'line_push_market' | 'line_push_risk' | 'line_push_monitor'
   | 'line_push_finance' | 'line_push_deliver' | 'line_push_dormant' | 'line_push_recharge'
-  | 'line_push_content' | 'line_push_cto'
+  | 'line_push_content' | 'line_push_cto' | 'line_push_warehouse_dismantle' | 'line_push_weekly'
 
-// 說明只寫「推什麼」，不寫幾點推 —— 排程改在資料庫，寫死時間遲早會對不上
-const LINE_PUSH_ITEMS: { key: LinePushKey; label: string; desc: string }[] = [
-  { key: 'line_push_daily',    label: '每日早報',       desc: '當天待處理的事項總覽。' },
-  { key: 'line_push_cfo',      label: 'CFO 財務對帳',   desc: '代幣對帳、收入趨勢與廠商月結。' },
-  { key: 'line_push_cmo',      label: 'CMO 行銷日報',   desc: '行銷數據與跨部門的行動建議。' },
-  { key: 'line_push_supply',   label: '供應鏈警示',     desc: '超時未出貨與零庫存的商品。' },
-  { key: 'line_push_health',   label: '健康監測',       desc: '資料庫連線、金流錯誤率、尖峰時段零交易。' },
-  { key: 'line_push_market',   label: '市場 / 競品情報', desc: '競品爬取與市場探索的分析結果。' },
-  { key: 'line_push_risk',     label: '風控掃描',       desc: '異常帳號與可疑交易。' },
-  { key: 'line_push_monitor',  label: '平台監測',       desc: '平台整體狀態的定時回報。' },
-  { key: 'line_push_finance',  label: '對帳 / 月結',    desc: '綠界金流對帳與每月結算快照。' },
-  { key: 'line_push_deliver',  label: '自動出貨通知',   desc: '自動出貨跑完的結果。' },
-  { key: 'line_push_dormant',  label: '沉睡客喚回',     desc: '久未回訪的玩家名單。' },
-  { key: 'line_push_recharge', label: '待審核儲值',     desc: '卡住沒完成的儲值單。' },
-  { key: 'line_push_content',  label: 'AI 文案生成',    desc: 'AI 產出的行銷文案草稿。' },
-  { key: 'line_push_cto',      label: 'AI CTO 報告',    desc: '技術面的定期巡檢。' },
+/*
+ * desc = 列上直接看得到的一句話；info = 藍點裡的細節（老闆 2026-08-28 要求每列都要有）。
+ * **推播時間不寫在這裡**：排程改在資料庫，寫死遲早對不上 ——
+ * 由 /api/admin/line-push-templates 現查 pg_cron 帶回來，接在 info 後面。
+ */
+const LINE_PUSH_ITEMS: { key: LinePushKey; label: string; desc: string; info: string }[] = [
+  { key: 'line_push_daily',    label: '每日早報',       desc: '當天待處理的事項總覽。', info: '把當天要處理的事情整理成一則：待出貨、待審退款、卡住的儲值、廠商月結。報告本身照常寫進後台，關掉只是不推 LINE。' },
+  { key: 'line_push_cfo',      label: 'CFO 財務對帳',   desc: '代幣對帳、收入趨勢與廠商月結。', info: '代幣總量對帳（儲值＋手動 − 抽獎 − 退款）、收入趨勢與廠商月結金額。對不上時會直接標出差額。' },
+  { key: 'line_push_cmo',      label: 'CMO 行銷日報',   desc: '行銷數據與跨部門的行動建議。', info: '新客、回訪、轉換與各檔期的成效，附帶跨部門的行動建議。' },
+  { key: 'line_push_supply',   label: '供應鏈警示',     desc: '超時未出貨與零庫存的商品。', info: '超過約定時間還沒出貨的訂單，以及上架中但庫存歸零的商品。' },
+  { key: 'line_push_health',   label: '健康監測',       desc: '資料庫連線、金流錯誤率、尖峰時段零交易。', info: '資料庫連線、綠界錯誤率、尖峰時段零交易，另外會檢查資料權限（RLS）與限流服務有沒有掛掉。' },
+  { key: 'line_push_market',   label: '市場 / 競品情報', desc: '競品爬取與市場探索的分析結果。', info: '競品站台的爬取結果與市場探索分析。只抓公開頁面，不繞過任何存取控制。' },
+  { key: 'line_push_risk',     label: '風控掃描',       desc: '異常帳號與可疑交易。', info: '異常帳號與可疑交易：24 小時抽獎過量、大額儲值、連續付款失敗（測卡）、管理員高頻操作，以及同一網段（IP 前三段相同）多帳號同時在線。' },
+  { key: 'line_push_monitor',  label: '平台監測',       desc: '平台整體狀態的定時回報。', info: '平台整體狀態的定時回報：資料庫大小、線上人數、當日交易量。' },
+  { key: 'line_push_finance',  label: '對帳 / 月結',    desc: '綠界金流對帳與每月結算快照。', info: '綠界金流對帳（每 3 小時）與每月 1 號的月結快照。對不起來的訂單會列出來。' },
+  { key: 'line_push_deliver',  label: '自動出貨通知',   desc: '自動出貨跑完的結果。', info: '自動出貨跑完的結果：成功幾筆、失敗幾筆、失敗原因。' },
+  { key: 'line_push_dormant',  label: '沉睡客喚回',     desc: '久未回訪的玩家名單。', info: '久未回訪的玩家名單，會一併發送喚回優惠券。' },
+  { key: 'line_push_recharge', label: '待審核儲值',     desc: '卡住沒完成的儲值單。', info: '每 15 分鐘掃一次卡在中間沒完成的儲值單，避免玩家付了錢沒入帳。' },
+  { key: 'line_push_content',  label: 'AI 文案生成',    desc: 'AI 產出的行銷文案草稿。', info: 'AI 產出的行銷文案草稿。目前沒有排程，需要時才手動觸發。' },
+  { key: 'line_push_cto',      label: 'AI CTO 報告',    desc: '技術面的定期巡檢。', info: '技術面的定期巡檢：錯誤率、慢查詢、容量與能力缺口。' },
+  { key: 'line_push_warehouse_dismantle', label: '倉庫自動回收', desc: '寄存到期的品項換回代幣。', info: '倉庫寄存滿 30 天的品項自動換回代幣，跑完回報處理了幾筆。' },
+  { key: 'line_push_weekly', label: 'GB哥週報', desc: '每週一的營運週報。', info: 'GB哥 每週一的營運週報：本週數字、跟上週比、以及它自己看出來的問題。' },
 ]
 
 const DEFAULT_PUSH_FLAGS = LINE_PUSH_ITEMS.reduce((acc, { key }) => {
@@ -154,6 +163,48 @@ export default function FeatureFlagsPage() {
   const isSuperAdmin = adminUser?.role === 'super_admin' || adminUser?.role === 'superadmin'
 
   const ready = Boolean(flags) && !isLoading
+  /* 推播格式與排程（老闆 2026-08-28）。排程由後端現查 pg_cron，不寫死在前端 */
+  type PushTemplate = { template: string; lastPreview: string | null; lastPushedAt: string | null; schedule: string[] }
+  const [pushTemplates, setPushTemplates] = useState<Record<string, PushTemplate>>({})
+  const [editingKey, setEditingKey] = useState<LinePushKey | null>(null)
+  const [draftTemplate, setDraftTemplate] = useState('')
+  const [isTemplateSaving, setIsTemplateSaving] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/admin/line-push-templates', { credentials: 'include', cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (d?.templates) setPushTemplates(d.templates) })
+      .catch(() => {})
+  }, [])
+
+  const openTemplateEditor = (key: LinePushKey) => {
+    setEditingKey(key)
+    setDraftTemplate(pushTemplates[key]?.template ?? '{{content}}')
+  }
+
+  const saveTemplate = async () => {
+    if (!editingKey) return
+    setIsTemplateSaving(true)
+    try {
+      const res = await fetch('/api/admin/line-push-templates', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: editingKey, template: draftTemplate }),
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) { toast(body?.error || '存不起來，請再試一次', 'error'); return }
+      setPushTemplates(prev => ({
+        ...prev,
+        [editingKey]: { ...(prev[editingKey] ?? { lastPreview: null, lastPushedAt: null, schedule: [] }), template: draftTemplate },
+      }))
+      toast('推播格式已更新')
+      setEditingKey(null)
+    } finally {
+      setIsTemplateSaving(false)
+    }
+  }
+
   const pushOnCount = LINE_PUSH_ITEMS.filter(i => pushFlags[i.key]).length
   // 交換與交易所也在「類別」那一區，一起算進摘要
   const categoryCounts = [...CATEGORY_ITEMS, ...TRADE_ITEMS].reduce(
@@ -656,7 +707,32 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                   />
                   <div className="divide-y divide-neutral-100">
                     {LINE_PUSH_ITEMS.map((item) => (
-                      <Row key={item.key} title={item.label} desc={item.desc} state={pushFlags[item.key] ? 'on' : 'off'}>
+                      <Row
+                        key={item.key}
+                        title={
+                          <span className="inline-flex items-center gap-1.5">
+                            {item.label}
+                            <InfoDot>
+                              {item.info}
+                              <span className="mt-1.5 block text-neutral-300">
+                                推播時間：{pushTemplates[item.key]?.schedule?.length
+                                  ? pushTemplates[item.key].schedule.join('、')
+                                  : '目前沒有排程，需要時手動觸發'}
+                              </span>
+                            </InfoDot>
+                          </span>
+                        }
+                        desc={item.desc}
+                        state={pushFlags[item.key] ? 'on' : 'off'}
+                      >
+                        <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => openTemplateEditor(item.key)}
+                          className="whitespace-nowrap text-sm text-neutral-500 transition-colors hover:text-primary hover:underline"
+                        >
+                          編輯格式
+                        </button>
                         <Segmented
                           value={pushFlags[item.key] ? 'on' : 'off'}
                           disabled={isPushLoading || isPushSaving}
@@ -670,6 +746,7 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                             savePush(next)
                           }}
                         />
+                        </div>
                       </Row>
                     ))}
                   </div>
@@ -683,6 +760,55 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
           </SettingsShell>
         </PageCard>
       </div>
+
+      {/* 編輯推播格式（老闆 2026-08-28）
+          {{content}} 是 agent 當下產生的內容，外框由老闆決定 —— 這樣 20 幾支
+          cron route 一行都不用改。預覽拿的是「最近一次真的組出來的全文」，
+          不是編一份假資料，所以看到的就是 LINE 上會長的樣子。 */}
+      <Modal
+        isOpen={editingKey !== null}
+        onClose={() => setEditingKey(null)}
+        title={`編輯推播格式｜${LINE_PUSH_ITEMS.find(i => i.key === editingKey)?.label ?? ''}`}
+      >
+        <div className="space-y-4">
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="text-sm text-neutral-700">推播文字格式</span>
+              <span className="text-xs text-neutral-400">
+                推播時間：{(editingKey && pushTemplates[editingKey]?.schedule?.join('、')) || '無排程'}
+              </span>
+            </div>
+            <Textarea
+              value={draftTemplate}
+              onChange={(e) => setDraftTemplate(e.target.value)}
+              rows={6}
+              placeholder="{{content}}"
+            />
+            <p className="mt-1.5 text-xs leading-relaxed text-neutral-400">
+              <code className="rounded bg-neutral-100 px-1 py-0.5 text-neutral-600">{'{{content}}'}</code>
+              是 AI 當下產生的內容，一定要留著。前後可以自己加標題、分隔線或署名，
+              例如「【吉吉比】{'{{content}}'}\n—— 由 GB哥 自動發送」。
+            </p>
+          </div>
+
+          <div>
+            <div className="mb-1.5 text-sm text-neutral-700">最近一次的實際內容</div>
+            <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded-lg bg-neutral-50 p-3 text-xs leading-relaxed text-neutral-600">
+{(editingKey && pushTemplates[editingKey]?.lastPreview) || '這條還沒推過，等它跑過一次就會出現。'}
+            </pre>
+            {editingKey && pushTemplates[editingKey]?.lastPushedAt && (
+              <p className="mt-1 text-xs text-neutral-400">
+                最後送出：{new Date(pushTemplates[editingKey]!.lastPushedAt as string).toLocaleString('zh-TW')}
+              </p>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="secondary" onClick={() => setEditingKey(null)}>取消</Button>
+            <Button onClick={saveTemplate} isLoading={isTemplateSaving}>儲存</Button>
+          </div>
+        </div>
+      </Modal>
 
       <ConfirmDialog
         isOpen={pendingAction !== null}
