@@ -41,12 +41,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const admin = await requireAdminSession()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
-  // 抽獎公平性活動頁（slug='fairness'）不可刪除 —— 它是常駐的公平性說明頁、
-  // 抽獎流程與清資料都依賴它存在（老闆 2026-08-21）
-  const { data: ev } = await getSupabaseAdmin().from('events').select('slug').eq('id', id).maybeSingle()
-  if (ev?.slug === 'fairness') {
-    return NextResponse.json({ error: '抽獎公平性頁為系統常駐頁，不可刪除' }, { status: 403 })
-  }
+  // 2026-08-28 前這裡擋著 slug='fairness' 不給刪。那頁已經改成程式碼裡的常駐頁
+  //（frontend/app/events/fairness/），不再是 events 的一筆資料，守衛跟著拿掉。
   const { error } = await getSupabaseAdmin().from('events').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   await logAdminAction({ adminId: admin.adminId, action: '刪除活動頁', targetType: 'event', targetId: String(id), detail: { id }, ip: req.headers.get('x-forwarded-for') ?? '' })

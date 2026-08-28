@@ -9,7 +9,6 @@
 --        users WHERE is_bot = true（機器人帳號），
 --        draw_records WHERE is_bot = true（機器人抽獎記錄，維持排行榜），
 --        news / news_comments / news_likes（情報文章＋機器人互動，全部保留），
---        events WHERE slug='fairness'（抽獎公平性頁，常駐不刪），
 --        slot_danmaku_bots（機器人彈幕）
 -- ============================================================
 
@@ -35,9 +34,12 @@ TRUNCATE TABLE
   slot_themes
 RESTART IDENTITY CASCADE;
 
--- ── 1c. 活動頁全清，但保留「抽獎公平性」(slug='fairness') ──────────────
+-- ── 1c. 活動頁全清 ────────────────────────────────────────────────
+-- 2026-08-28 前這裡留了 `WHERE slug <> 'fairness'` 的例外。抽獎公平性頁已改成
+-- 程式碼裡的常駐頁（frontend/app/events/fairness/），不再是 events 的一筆資料，
+-- 例外跟著拿掉 —— 清完資料那頁照樣在。
 -- event_sections 的 FK 是 ON DELETE CASCADE，刪 events 會自動連帶刪 sections
-DELETE FROM events WHERE slug <> 'fairness';
+DELETE FROM events;
 
 -- ── 2. 使用者交易/行為資料（全清，CASCADE 處理 FK） ────────────
 TRUNCATE TABLE

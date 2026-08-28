@@ -337,10 +337,7 @@ export default function EventsPage() {
       render: ev => (
         <div className="flex items-center gap-2">
           <RowAction tone="primary" onClick={() => router.push(`/events/${ev.id}/edit`)}>編輯</RowAction>
-          {/* 抽獎公平性頁是系統常駐頁，不給刪除鍵（後端 API 也擋，見 2026-08-21） */}
-          {ev.slug !== 'fairness' && (
-            <RowAction tone="danger" onClick={() => setDeleteTarget(ev)}>刪除</RowAction>
-          )}
+          <RowAction tone="danger" onClick={() => setDeleteTarget(ev)}>刪除</RowAction>
         </div>
       ),
     },

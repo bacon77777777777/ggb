@@ -160,6 +160,15 @@ const MANUAL_SPECS = [
   { file: 'app-launch.jpg', desc: 'iOS 原生啟動畫面（直式滿版）', size: '1320×2862', mobile: true,
     dest: ['mobile/ios/App/App/Assets.xcassets/Splash.imageset/splash.jpg'] },
   /*
+   * 兩張常駐頁的主視覺。這兩頁（抽獎公平性、邀請好友）不是檔期活動、不會下架，
+   * 所以它們的 hero 跟 logo 一樣是長期品牌資產，收進來一起管。
+   */
+  { file: 'event-fairness-hero.webp', desc: '抽獎公平性頁主視覺', size: '1024×1535',
+    dest: ['frontend/public/images/fairness/hero2.webp'] },
+  { file: 'event-invite-hero.png', desc: '邀請好友頁主視覺', size: '800×1320',
+    // 滿版顯示的大面積漸層插畫，頭像那組的 q80 會看得出色帶
+    dest: [], alsoWebp: 'frontend/public/images/invite/invite.webp', webpQuality: 88 },
+  /*
    * 預設頭像八款，**是輪替用的不是只有一張**：信箱驗證建帳號時由
    * `handle_new_user()` 隨機配一款（migration 634），機器人帳號也是平均分佈在這八款。
    * 所以八張都要在這裡，換的時候整組一起換視覺才會一致。
@@ -295,7 +304,7 @@ async function main() {
       console.log(`  複製  brand/manual/${s.file.padEnd(20)} → ${d}`)
     }
     if (s.alsoWebp) {
-      await write(path.join(ROOT, s.alsoWebp), await sharp(buf).webp({ quality: 80, effort: 6 }).toBuffer())
+      await write(path.join(ROOT, s.alsoWebp), await sharp(buf).webp({ quality: s.webpQuality ?? 80, effort: 6 }).toBuffer())
       copied++
       console.log(`   └→   ${s.alsoWebp}`)
     }

@@ -58,6 +58,24 @@ interface Section {
   resolved?: { product: { id: number; name: string; type?: string } | null; prizes: Prize[] }
 }
 
+/**
+ * 把 preset 補成跟 API 回傳一樣的形狀。
+ *
+ * 下游有幾處拿 `section.id` 當 React key、`event.id` 做分享網址，
+ * 少了會是 undefined key（同型別區塊重複時 React 會警告並可能錯位重用 DOM）。
+ * 這裡用 slug + 索引補齊，preset 是靜態的，值穩定不會跳動。
+ */
+function normalizePreset(p: LpPreset): { event: EventData; sections: Section[] } {
+  return {
+    event: { ...p.event, id: p.event.id ?? `preset-${p.event.slug}` } as EventData,
+    sections: p.sections.map((s, i) => ({
+      ...s,
+      id: s.id ?? `${p.event.slug}-${i}`,
+      sort_order: s.sort_order ?? i,
+    })) as Section[],
+  }
+}
+
 const str = (v: unknown): string => (v as string) ?? ''
 const bool = (v: unknown): boolean => !!(v)
 
@@ -986,15 +1004,36 @@ function RelatedProductsSection({ products }: { products: RelProduct[] }) {
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 
-export default function LpRenderer({ slug }: { slug: string }) {
+/** 從程式碼直接餵進來的頁面資料，給常駐頁用（見下方 `preset`） */
+export type LpPreset = {
+  event: Omit<EventData, 'id'> & { id?: string }
+  sections: Array<Omit<Section, 'id'> & { id?: string }>
+}
+
+/**
+ * 活動頁渲染器。
+ *
+ * 兩種資料來源：
+ *   - `slug`：從 `/api/events/<slug>` 讀，後台「活動頁管理」建的檔期活動走這條
+ *   - `preset`：直接把內容寫在程式碼裡，**常駐頁走這條**（例：抽獎公平性頁）
+ *
+ * 常駐頁為什麼不放後台：它不是檔期活動，不會下架，內容是對玩家的公平性承諾。
+ * 放在 CMS 裡要另外做「不可刪除」的特例（後端 403 + 列表隱藏刪除鍵），
+ * 清資料腳本也得為它開一個 `WHERE slug <> 'fairness'` 的例外 —— 為了一頁永遠不會
+ * 被編輯的內容，在三個地方留特例。寫成程式碼就沒有這些事，改動也留在 git 裡。
+ */
+export default function LpRenderer({ slug, preset }: { slug?: string; preset?: LpPreset }) {
   const router = useRouter()
-  const [data, setData] = useState<{ event: EventData; sections: Section[] } | null>(null)
+  const [data, setData] = useState<{ event: EventData; sections: Section[] } | null>(
+    preset ? normalizePreset(preset) : null
+  )
   const [notFound, setNotFound] = useState(false)
   const [showSticky, setShowSticky] = useState(false)
   const [relProducts, setRelProducts] = useState<RelProduct[]>([])
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    if (preset || !slug) return
     fetch(`/api/events/${slug}`)
       .then(r => { if (!r.ok) throw new Error(); return r.json() })
       .then(d => {
@@ -1007,7 +1046,7 @@ export default function LpRenderer({ slug }: { slug: string }) {
         }
       })
       .catch(() => setNotFound(true))
-  }, [slug])
+  }, [slug, preset])
 
   useEffect(() => {
     const el = containerRef.current

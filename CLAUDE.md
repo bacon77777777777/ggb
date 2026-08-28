@@ -364,7 +364,7 @@ RLS 關掉、Redis 掛掉時 GB哥會自動 LINE 推播（health-check cron）�
 - **輪播圖管理四個 tab**：`banners`（首頁/挑戰/App 開屏三個 tab）＋ `site_promos`（首頁彈窗 tab 的**手動彈窗**，含「測試階段公告」）全清
   - ⚠️ 首頁彈窗的「**最新上架**」不在 `site_promos`——它靠 `platform_settings.promo_new_arrival_enabled` 開關＋當前商品**自動產生**，開關在保留清單，機制**保留**（清完商品後、重新上架商品就會自動再出現）
 - **機台（老虎機）全清**：`slot_machines`、`slot_themes`、`slot_theme_prizes`、`slot_prizes`、`slot_pool_items`、`slot_sessions`、`slot_spin_logs`（`slot_danmaku_bots` 是機器人彈幕，**保留**）
-- **活動頁**：`DELETE FROM events WHERE slug <> 'fairness'`（`event_sections` 隨 FK CASCADE 一起刪）—— **抽獎公平性頁 `slug='fairness'` 保留**
+- **活動頁**：`DELETE FROM events`（`event_sections` 隨 FK CASCADE 一起刪）—— 全清，沒有例外。**抽獎公平性頁不受影響**，它自 2026-08-28 起是程式碼裡的常駐頁（`frontend/app/events/fairness/`），不在 DB 裡
 - 所有真實用戶的交易記錄：`draw_records`、`recharge_records`、`orders`、`order_items`、`token_adjustments`
 - 用戶行為：`user_event_logs`、`user_events`、`visit_logs`、`search_logs`、`notifications` 等、`feed_events`（首頁推薦 feed 的曝光／點擊，migration 603）
 - 用戶進度：`user_badges`、`user_coupons`、`user_titles`、`referrals`、`daily_check_ins` 等
@@ -381,7 +381,6 @@ RLS 關掉、Redis 掛掉時 GB哥會自動 LINE 推播（health-check cron）�
 - `feature_flags`、`platform_settings`（設定；含 `promo_new_arrival_enabled` → **首頁「最新上架」彈窗機制保留**、運費/免責/商城設定等）
 - `users WHERE is_bot = true`（機器人帳號本身保留，排行榜用）
 - **`news` / `news_comments` / `news_likes`（情報文章＋機器人留言按讚，全部保留）** —— 真人留言隨帳號刪除消失，文章與機器人互動留著
-- **`events WHERE slug='fairness'`（抽獎公平性頁，常駐頁）** —— 後台已改成**不可刪除**（API 擋 403 ＋ 列表隱藏刪除鍵），清資料也用 `slug <> 'fairness'` 排除它
 - `slot_danmaku_bots`（機器人彈幕，保留）
 - ⚠️ `draw_records`（真人抽獎記錄會被清除；機器人的保留，維持排行榜）
 - **AI 記憶與經驗（全部保留，養 AI 的資產）**：
@@ -518,7 +517,7 @@ npm run brand:sync            # 等同 node scripts/brand_sync.mjs
 |--------|------|
 | `brand/masters/` | **要換的就這裡**。`horizontal.png` 橫式、`vertical.png` 直式、`appicon.png` + `appicon-maskable.png` App 圖示（1024² 滿版） |
 | `brand/generated/` | 16 張自動產出 → 複製到 35 個位置。**改這裡下次 sync 會被蓋掉** |
-| `brand/manual/` | 整張插畫，只複製不重產：OG 分享圖、邀請 OG、iOS 啟動頁、**預設頭像八款** |
+| `brand/manual/` | 整張插畫，只複製不重產：OG 分享圖、邀請 OG、iOS 啟動頁、**預設頭像八款**、兩張常駐頁主視覺（抽獎公平性、邀請好友） |
 
 **為什麼要有這層**：帶 logo 的檔案散在 `frontend/public`、`backend/public`、`mobile/assets`
 三個獨立部署的 app 底下，路徑沒辦法共用（後台與 App 讀不到前台的檔案系統）。

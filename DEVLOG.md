@@ -92,6 +92,35 @@ next/image **不優化 SVG**（要 `dangerouslyAllowSVG`），所以那 332KB �
 三處改吃 `/images/logo.png`，`logo.svg` 與 `masters/horizontal.svg` 一併刪除，母檔剩兩張。
 順手把 `width`／`height` 改成正確比例（原本 112×28 是 4.0，實際圖是 3.108），省掉版面位移。
 
+**抽獎公平性頁從活動頁模組移出，改成程式碼裡的常駐頁**
+
+老闆：這頁跟邀請好友頁沒問題的話是永久的，不該待在「活動頁管理」裡，要改就透過 Claude 改。
+
+它確實不是檔期活動 —— 不會下架、不會換檔，內容是對玩家的公平性承諾，由 FAQ、
+服務條款、退換貨與首頁底部警語列指過來。放在 CMS 裡的代價是**到處要為它開特例**：
+後端刪除 API 回 403、後台列表隱藏刪除鍵、清全站資料要寫 `WHERE slug <> 'fairness'`。
+三個特例養一頁永遠不會被編輯的內容。
+
+作法是**只換資料來源，不重寫版面**：`LpRenderer` 加一個 `preset` 參數，
+給 `slug` 就照舊打 API、給 `preset` 就吃程式碼裡的內容。所以視覺跟改之前一模一樣
+（已實機截圖確認）。內容原封不動搬進 `frontend/app/events/fairness/content.tsx`。
+
+- **網址刻意不動**（`/events/fairness`）：靜態路徑優先於 `[slug]`，而且 Navbar 在
+  `/events/` 底下會自己隱藏（LP 有自己的返回與分享列）。搬到 `/fairness` 要同時改
+  Navbar 的隱藏清單、處理那段從 CMS 化之後就沒作用的 `isFairnessPage` 死碼，
+  換來的只是網址好看一點
+- **三張說明圖從 R2 搬回本機**（`/images/fairness/gallery-1~3.webp`）——
+  常駐頁不該依賴 CMS 上傳出來的網址
+- 三個特例全部移除，清資料腳本改回 `DELETE FROM events`（migration 288 同步更新）
+- DB 那筆刪掉（migration 635，PROD／STG 都已套用）
+- 順帶刪掉 `images/fairness/01–03.webp` —— 程式碼 0 處、DB 0 處引用，594KB 死重
+
+**兩張常駐頁 hero 收進 `brand/manual/`**（老闆指定）：抽獎公平性 1024×1535、
+邀請好友 800×1320。邀請那張用老闆放進 `public/` 的 PNG 原檔當母版（1.8MB，
+沒有任何程式引用它，頁面吃的是 webp），移進 `brand/manual/` 後由 sync 產 webp。
+webp 品質改成可逐項指定：頭像顯示只有 40–100px，q80 夠用；滿版 hero 是大面積漸層
+插畫，q80 會看得出色帶，改 q88（實測離 PNG 原檔的色差比原本 repo 裡那張還小）。
+
 **換 logo 的作業方式已寫進 `CLAUDE.md`**（「品牌素材（換 logo）」章節），含五條踩過的雷：
 logo.png 的公開網址不能改、不要再放 SVG、App 圖示不會自動跟著變且要送審、
 預設頭像是八款輪替、已烙進 R2 的舊 logo 要另外回填。
