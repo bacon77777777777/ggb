@@ -199,9 +199,9 @@ export async function POST(req: NextRequest) {
     }
 
     // ── LINE 通知 ──────────────────────────────────────────────────
-    const lineToken = process.env.LINE_CHANNEL_ACCESS_TOKEN
-    const notifyId  = process.env.NOTIFY_TARGET_ID
-    if (lineToken && notifyId) {
+    // 這裡原本自己 fetch LINE API，繞過了 pushLine ——
+    // 後台把「AI 文案生成」關掉照樣會推，開關等於騙人（老闆 2026-08-28 稽核）
+    {
       const lines = [
         `文案草稿｜${draftDate}`,
         `商品：${productName}（${priceLabel}），共 ${inserts.length} 則`,
@@ -216,11 +216,7 @@ export async function POST(req: NextRequest) {
         })
       }
 
-      await fetch('https://api.line.me/v2/bot/message/push', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${lineToken}` },
-        body:    JSON.stringify({ to: notifyId, messages: [{ type: 'text', text: lines.join('\n') }] }),
-      }).catch(() => {})
+      await pushLine(lines.join('\n')).catch(() => {})
     }
 
     return NextResponse.json({ ok: true, date: draftDate, productName, count: inserts.length, detectedTags: detectedTags.length })

@@ -251,7 +251,17 @@ export default function InvitePage() {
   const claimNow = () => {
     if (!status) return;
     if (claimable <= 0) {
-      showToast(`累積滿 ${step} 位好友才能領取，再邀 ${step - (status.cycleProgress || 0)} 位`, 'info');
+      // 兩行寫法（老闆 2026-08-28）：先講還差幾位、再講領得到什麼，
+      // 比「累積滿 5 位才能領取」那種先講限制的說法好讀
+      const left = Math.max(1, step - (status.cycleProgress || 0));
+      showToast(
+        <>
+          再邀請 {left} 位
+          <br />
+          即可領取 {(status.pointsPerStep ?? 0).toLocaleString()} 積分
+        </>,
+        'info',
+      );
       return;
     }
     void claim();
