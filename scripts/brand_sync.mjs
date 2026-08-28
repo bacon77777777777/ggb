@@ -161,8 +161,20 @@ const MANUAL_SPECS = [
     dest: ['frontend/public/images/invite/invite_banner.png'] },
   { file: 'app-launch.jpg', desc: 'iOS 原生啟動畫面（直式滿版）', size: '1320×2862', mobile: true,
     dest: ['mobile/ios/App/App/Assets.xcassets/Splash.imageset/splash.jpg'] },
-  { file: 'avatar-01.png', desc: '預設頭像（另 7 款是動物，與品牌無關）', size: '1000×1000',
-    dest: ['frontend/public/images/avatar/01.png'], alsoWebp: 'frontend/public/images/avatar/01.webp' },
+  /*
+   * 預設頭像八款，**是輪替用的不是只有一張**：信箱驗證建帳號時由
+   * `handle_new_user()` 隨機配一款（migration 634），機器人帳號也是平均分佈在這八款。
+   * 所以八張都要在這裡，換的時候整組一起換視覺才會一致。
+   */
+  ...Array.from({ length: 8 }, (_, i) => {
+    const n = String(i + 1).padStart(2, '0')
+    return {
+      file: `avatar-${n}.png`, size: '1000×1000',
+      desc: `預設頭像 ${n}／08（新帳號隨機配一款）`,
+      dest: [`frontend/public/images/avatar/${n}.png`],
+      alsoWebp: `frontend/public/images/avatar/${n}.webp`,
+    }
+  }),
 ]
 
 /**
@@ -244,7 +256,20 @@ async function main() {
   // 方形圖示吃哪張母檔要講出來 —— 放了 appicon 卻打錯檔名時，
   // 產出來的東西看起來「正常」（因為有 fallback），只是不是你想要的那張
   console.log(`方形圖示來源：${APPICON.source}.png${has('appicon.png') ? '（滿版直出）' : '（未提供 appicon.png，退回直式 logo 貼白底）'}`)
-  console.log(`maskable 來源：${MASKABLE.source}.png${has('appicon-maskable.png') ? '（滿版直出）' : `（未提供 appicon-maskable.png，退回 ${MASKABLE.source} 縮 ${Math.round(MASKABLE.pct * 100)}%）`}\n`)
+  console.log(`maskable 來源：${MASKABLE.source}.png${has('appicon-maskable.png') ? '（滿版直出）' : `（未提供 appicon-maskable.png，退回 ${MASKABLE.source} 縮 ${Math.round(MASKABLE.pct * 100)}%）`}`)
+
+  /*
+   * App 圖示是「另外設計」的，換 logo 時**不會**自動跟著變。
+   * 換了 vertical.png 卻忘了換 appicon.png，網頁 logo 換新、手機上那顆還是舊的 ——
+   * 而且不會有任何錯誤，要有人開手機才會發現。所以比一下改檔時間先喊一聲。
+   */
+  const mtime = (f) => fs.statSync(path.join(MASTERS, f)).mtimeMs
+  for (const f of ['appicon.png', 'appicon-maskable.png']) {
+    if (has(f) && mtime(f) < mtime('vertical.png')) {
+      console.log(`⚠️  ${f} 比 vertical.png 舊 —— 換了 logo 但 App 圖示沒跟著換？`)
+    }
+  }
+  console.log()
 
   let made = 0, copied = 0, skipped = 0
   for (const s of SPECS) {

@@ -63,6 +63,20 @@ brand/OVERVIEW.png 總覽聯絡表，換完一眼確認有沒有漏
 開機畫面（splash）**刻意不吃 appicon** —— 那裡要的是品牌字樣不是圖示。
 Android 自適應前景的底色強制透明：底色由 background 層畫，前景不透明會把它整個蓋掉。
 腳本開頭會印出實際用了哪張母檔，檔名打錯時才不會因為有 fallback 就默默產出錯的東西。
+兩張母檔**已產出佔位版**放在 `masters/`（內容＝現行 fallback 的樣子），之後照尺寸換掉即可。
+另外加一個時間戳檢查：`appicon` 比 `vertical` 舊就警告 —— App 圖示不會跟著 logo 自動變，
+換了 logo 忘了換圖示的話網頁是新的、手機桌面是舊的，而且不會有任何錯誤訊息。
+
+**修：信箱註冊的玩家頭像全都一樣**（migration 634）
+
+前台放了八款預設頭像、機器人帳號也確實平均分佈在這八款（每款 24–26 個），
+但 `handle_new_user()` 從來沒寫過 `avatar_url` —— 真人用信箱註冊的帳號一直是 NULL，
+前台四處 fallback 到 `01.png`，所以**所有信箱註冊的玩家頭像長得一模一樣**
+（PROD 6 個真人帳號全是 NULL）。LINE 註冊走另一條路（建完帳號寫 line.picture），不受影響。
+
+新增 `random_default_avatar()`，`handle_new_user()` 建檔時隨機配一款；既有 NULL 一併補上
+（PROD 7 筆、STG 0 筆）。PROD／STG 都已套用。
+`brand/manual/` 也從一張補成八張 —— 原本只收 `avatar-01`，等於把「輪替」誤記成「一張預設圖」。
 
 ---
 

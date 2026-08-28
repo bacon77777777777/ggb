@@ -30,7 +30,7 @@ npm run brand:sync
 
 換的時候尺寸可以不同，但**長寬比要接近**，不然衍生圖的留白會跑掉。
 
-### 選配：App 圖示（兩張，之後另外設計時再放）
+### App 圖示（兩張，已產出佔位版，之後照著改）
 
 「加到主畫面 / PWA / App 桌面」那顆圖示通常是**另外設計的** —— 滿版方塊、自帶底色、
 常常只放圖標不放字，跟導覽列那顆橫式 logo 不是同一件事。所以拉成獨立母檔。
@@ -40,8 +40,13 @@ npm run brand:sync
 | `appicon.png` | 1024×1024 | **滿版**方形，四邊要出血到底（不要自己留白邊）。放了就直接當圖示用 |
 | `appicon-maskable.png` | 1024×1024 | 同上，但**重要內容要縮在中央 62% 的圓內** —— Android 會把圖示裁成圓形或 squircle，超出的部分不保證看得到 |
 
-**沒放就會自動退回**「直式 logo 貼白底 96%」，也就是現在的樣子，行為不變。
-之後補上設計稿，跑一次 sync 就自動接上，不用改程式。
+現在放的是**佔位版**（直式 logo 貼白底），跟沒放時的產出長得一樣。
+之後把設計稿照同尺寸換上去，跑一次 sync 就換掉了，不用改程式。
+（真的把檔案刪掉也不會壞，會自動退回「直式 logo 貼白底 96%」。）
+
+⚠️ **App 圖示不會跟著 logo 自動變** —— 換了 `vertical.png` 卻忘了換 `appicon.png`，
+網頁的 logo 換新、手機桌面那顆還是舊的，而且不會有任何錯誤。所以腳本會比對改檔時間，
+`appicon` 比 `vertical` 舊就先喊一聲。
 
 跑的時候第一行會印出實際用了哪張，例如：
 
@@ -116,7 +121,7 @@ maskable 來源：vertical.png（未提供 appicon-maskable.png，退回 vertica
 | `og-share.png` | 1200×630 | `frontend/public/images/line_default.png` | 全站分享預覽圖（LINE / FB） |
 | `og-invite.png` | 1200×630 | `frontend/public/images/invite/invite_banner.png` | 邀請頁分享預覽圖 |
 | `app-launch.jpg` | 1320×2862 | `mobile/ios/.../Splash.imageset/splash.jpg` | iOS 原生啟動畫面 |
-| `avatar-01.png` | 1000² | `frontend/public/images/avatar/01.png` + `.webp` | 預設頭像。另外 7 款是動物（兔／柴犬／恐龍／企鵝／熊／貴賓／貓），與品牌無關可留 |
+| `avatar-01.png` … `avatar-08.png` | 1000² | `frontend/public/images/avatar/01–08.png` + `.webp` | **預設頭像八款，是輪替用的**：信箱驗證建帳號時隨機配一款（migration 634），機器人帳號也平均分佈在這八款。要換就整組一起換，不然風格會混 |
 
 ---
 
