@@ -15,7 +15,8 @@
  * 桌機的 MobileTabbar 是 md:hidden，所以這條也只在手機顯示。
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import Image from 'next/image';
 import { X } from 'lucide-react';
@@ -31,64 +32,77 @@ const CTA_TEXT = '查看說明';
 const CTA_HREF = '/events/fairness';
 
 /**
- * 貼齊底部導航的上緣。
+ * 找出底部欄本體，警語列直接掛進去（見 render 的說明）。
  *
- * 不寫死高度：導航列實際是 61px（h-[60px] + 1px 上框線）而非直覺的 56px，
- * 釘在 56px 時底部 5px 會被導航（z-50）的白底蓋住，看得到的深色區比元素盒矮，
- * 內容就算數學上置中也會顯得偏下。offsetHeight 已含 safe-area 的 padding。
+ * 兩種底部欄都要認：首頁是 MobileTabbar，商品內頁是底部操作欄
+ * （立即抽獎／立即開包…）。兩者不會同時出現，取有高度的那個。
  *
- * 量到的高度是拿去當「透明底墊」，不是 bottom 偏移值 —— 見下方 render 的說明。
+ * 不抓著同一個節點：導航列先渲染 Suspense 骨架再換成本體，
+ * 骨架被卸載後 portal 會掛在孤兒節點上，警語列就整條消失。
+ * 所以 DOM 一動就重找（用 rAF 合併，一幀最多一次）。
  */
-function useTabbarOffset() {
-  const [offset, setOffset] = useState(0);
+function useBottomBar(active: boolean) {
+  const [bar, setBar] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
-    // 每次都重新查詢，不抓著同一個節點：導航列先渲染 Suspense 骨架再換成本體，
-    // 抓著舊節點時它被卸載會回報高度 0，警語列就會被釘到畫面最底、疊進導航列裡。
-    //
-    // 兩種底部欄都要認：首頁是 MobileTabbar，商品內頁是底部操作欄
-    // （立即抽獎／立即開包…）。兩者不會同時出現，取量到的最大值即可。
-    const sync = () => {
-      const els = document.querySelectorAll<HTMLElement>(
+    if (!active) { setBar(null); return; }
+    let raf = 0;
+    const find = () => {
+      const els = Array.from(document.querySelectorAll<HTMLElement>(
         '[data-testid="mobile-tabbar"], [data-testid="bottom-action-bar"]',
-      );
-      let h = 0;
-      els.forEach(el => { h = Math.max(h, el.offsetHeight || 0); });
-      setOffset(h);
+      ));
+      let best: HTMLElement | null = null;
+      for (const el of els) {
+        if (!el.isConnected || el.offsetHeight <= 0) continue;
+        if (!best || el.offsetHeight > best.offsetHeight) best = el;
+      }
+      setBar(prev => (prev === best ? prev : best));
     };
-    sync();
-    const raf = requestAnimationFrame(sync);   // 骨架換本體那一幀
-    const ro = new ResizeObserver(sync);
-    ro.observe(document.body);
-    window.addEventListener('resize', sync);
+    const schedule = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(find);
+    };
+    find();
+    schedule();
+    const mo = new MutationObserver(schedule);
+    mo.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('resize', schedule);
     return () => {
       cancelAnimationFrame(raf);
-      ro.disconnect();
-      window.removeEventListener('resize', sync);
+      mo.disconnect();
+      window.removeEventListener('resize', schedule);
     };
-  }, []);
+  }, [active]);
 
-  return offset;
+  return bar;
 }
 
 /**
  * 把自己的實際高度掛到 --promo-notice-h，讓頁面既有的浮動按鈕
  * （首頁的上架、排行榜）跟著上移。用量測而不是寫死高度。
  *
- * ref 掛在「深色那條」本身而不是外層固定容器：外層還墊著一塊等同底部欄
- * 高度的透明 padding，量外層會把導航列的高度也算進去，浮動按鈕就會被推高一截。
+ * ref 掛在「深色那條」本身：貼底部時它被掛進底部欄裡（見下方 render），
+ * 量到外層就會把整條底部欄的高度也算進去，浮動按鈕會被推高一截。
  */
 function usePublishHeight(active: boolean) {
-  const ref = useRef<HTMLDivElement>(null);
+  /*
+   * 用 callback ref 存成 state 而不是 useRef：警語列會從「還沒找到底部欄」的
+   * 暫時容器搬進底部欄裡（換父層＝DOM 節點重建），useRef 的話 effect 不會重跑，
+   * ResizeObserver 還盯著被移除的舊節點 —— 它被移除時會回報尺寸 0，
+   * `--promo-notice-h` 就歸零，首頁那兩顆浮動按鈕會掉回底部欄上。
+   */
+  const [el, setEl] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const root = document.documentElement;
-    if (!active || !ref.current) {
+    if (!active || !el) {
       root.style.setProperty('--promo-notice-h', '0px');
       return;
     }
-    const el = ref.current;
-    const sync = () => root.style.setProperty('--promo-notice-h', `${el.offsetHeight}px`);
+    // isConnected：節點已被搬走時不要拿 0 去蓋掉新節點剛寫進去的值
+    const sync = () => {
+      if (el.isConnected) root.style.setProperty('--promo-notice-h', `${el.offsetHeight}px`);
+    };
     sync();
     const ro = new ResizeObserver(sync);
     ro.observe(el);
@@ -96,9 +110,9 @@ function usePublishHeight(active: boolean) {
       ro.disconnect();
       root.style.setProperty('--promo-notice-h', '0px');
     };
-  }, [active]);
+  }, [active, el]);
 
-  return ref;
+  return setEl;
 }
 
 /**
@@ -147,33 +161,14 @@ export default function NoticeBar({ position = 'bottom' }: Props) {
   const visible = !isLoading && !closed && shouldShow(NOTICE_ID, mode, LOGGED_IN_DISMISS_DAYS);
 
   const isTop = position === 'top';
-  const ref = usePublishHeight(visible);
-  const tabbarH = useTabbarOffset();
+  const setStripEl = usePublishHeight(visible);
+  const bar = useBottomBar(visible && !isTop);
   const navH = useNavbarOffset(visible && isTop);
   if (!visible) return null;
 
-  return (
-    /*
-     * 貼底部時錨在 bottom: 0，再用等同底部欄高度的透明 padding 把自己頂上去，
-     * 而不是直接寫 bottom: <導航列高度>。
-     *
-     * 為什麼：iOS Safari 捲動時網址列會收合，fixed 元素只有錨在畫面最底
-     * （bottom: 0，底部欄與購買列都是這樣）才會被瀏覽器黏住；錨在某個像素偏移
-     * 的元素是照版面視窗算的，捲動當下會先跟著頁面跑掉，捲完才彈回導航列上緣
-     * —— 就是老闆看到的位移。改成跟底部欄同一種錨法，兩者就一起動、不會分家。
-     *
-     * 外層要 pointer-events-none：那塊透明 padding 蓋在底部欄／購買列上，
-     * 商品頁的購買列同為 z-40 且排在前面，不放行點擊會吃掉「立即開包」。
-     */
-    <div
-      className="fixed left-0 right-0 md:hidden z-40 pointer-events-none"
-      style={isTop
-        ? { top: navH || 57 }
-        : { bottom: 0, paddingBottom: tabbarH || 'calc(61px + env(safe-area-inset-bottom))' }}
-      data-testid="promo-notice-bar"
-    >
-      {/* 分隔線畫在朝向內容的那一側：貼底部時在上緣，貼頂部時在下緣 */}
-      <div ref={ref} className={`pointer-events-auto bg-neutral-800 dark:bg-neutral-900 ${isTop ? 'border-b' : 'border-t'} border-white/5 px-4 py-1.5 flex items-center gap-2.5`}>
+  /* 分隔線畫在朝向內容的那一側：貼底部時在上緣，貼頂部時在下緣 */
+  const strip = (
+    <div ref={setStripEl} className={`pointer-events-auto bg-neutral-800 dark:bg-neutral-900 ${isTop ? 'border-b' : 'border-t'} border-white/5 px-4 py-1.5 flex items-center gap-2.5`}>
         <Link href={CTA_HREF} className="flex items-center gap-2.5 flex-1 min-w-0">
           <Image
             src={asset("/images/ic.png")} alt="" width={24} height={24}
@@ -195,10 +190,55 @@ export default function NoticeBar({ position = 'bottom' }: Props) {
           onClick={() => { setClosed(true); dismiss(NOTICE_ID, mode); }}
           aria-label="關閉提示"
           className="flex-shrink-0 -mr-1 p-1 text-neutral-500 hover:text-neutral-300 transition-colors"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+
+  /* 商品內頁的 top 版：貼在頂部導航下緣（那裡底部已被購買列佔滿） */
+  if (isTop) {
+    return (
+      <div
+        className="fixed left-0 right-0 md:hidden z-40 pointer-events-none"
+        style={{ top: navH || 57 }}
+        data-testid="promo-notice-bar"
+      >
+        {strip}
       </div>
+    );
+  }
+
+  /*
+   * 貼底部版：**直接掛進底部欄本體**，用 `bottom-full` 疊在它上緣。
+   *
+   * 前兩版都是自己開一個 fixed 元素去對齊底部欄，兩版都在 iPhone Safari 上飛掉：
+   *   v1 `bottom: 61px` —— 錨在像素偏移的 fixed 元素是照版面視窗算的，
+   *      Safari 網址列收合時整條會先跟著頁面跑，捲完才彈回去。
+   *   v2 `bottom: 0` + 等同底部欄高度的透明 padding —— 錨對了，但那個高度是
+   *      JS 量出來的**快照**。底部欄自己寫 `pb-[env(safe-area-inset-bottom)]`，
+   *      Safari 工具列收合時 safe-area 由 0 變 ~34px、它當場重排，我們的數字
+   *      要等 ResizeObserver 回呼才跟上 —— 捲動當下就差那一截。
+   *      （PWA 沒有會收合的工具列，safe-area 是定值，所以老闆說 PWA 不會。）
+   *
+   * 掛進底部欄之後兩者是同一個圖層、同一次重排，沒有任何可以分家的空間，
+   * 也不用再墊那塊會吃掉「立即開包」點擊的透明 padding。
+   */
+  if (bar) {
+    return createPortal(
+      <div className="absolute bottom-full left-0 right-0">{strip}</div>,
+      bar,
+    );
+  }
+
+  // 底部欄還沒掛上（Suspense 骨架交替的那一兩幀）：先照舊釘在畫面底
+  return (
+    <div
+      className="fixed bottom-0 left-0 right-0 md:hidden z-40 pointer-events-none"
+      style={{ paddingBottom: 'calc(61px + env(safe-area-inset-bottom))' }}
+      data-testid="promo-notice-bar"
+    >
+      {strip}
     </div>
   );
 }

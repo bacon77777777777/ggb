@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { asset } from '@/lib/asset'
 
 /**
  * 登入頁的分享卡片
@@ -20,7 +21,8 @@ import type { Metadata } from 'next'
  */
 
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.ggb.com.tw').replace(/\/$/, '')
-const INVITE_OG = `${siteUrl}/images/invite/invite_banner.png`
+// 帶內容雜湊：換圖後網址才會變，LINE／FB 不會一直吃快取的舊圖（同 app/layout.tsx）
+const INVITE_OG = `${siteUrl}${asset('/images/invite/invite_banner.png')}`
 
 const TITLE = '邀請好友一起拿好禮｜吉吉比 線上轉蛋'
 const DESCRIPTION = '用邀請碼加入吉吉比，綁定 LINE 就送 300 積分，免費抽一次！線上一番賞、轉蛋、盲盒、卡牌，即抽即看、公正透明。'

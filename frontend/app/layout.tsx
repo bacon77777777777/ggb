@@ -70,7 +70,9 @@ const websiteJsonLd = {
  *
  * 換成 1200×630（1.91:1，各家通吃）的正式主視覺。
  */
-const OG_IMAGE = `${siteUrl}/images/line_default.png`
+/* 帶內容雜湊（asset()）：分享圖換了但網址沒變的話，LINE／FB 會一直吃自己快取的舊圖
+   —— 檔案一改網址就變，各家才知道要重抓（老闆 2026-08-28 看到還是舊圖） */
+const OG_IMAGE = `${siteUrl}${asset('/images/line_default.png')}`
 
 export const metadata: Metadata = {
   title: {
