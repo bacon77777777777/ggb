@@ -2055,7 +2055,11 @@ export default function Home() {
       {activePrimaryTab === 'sell' && (
         <Link
           href="/sell/new"
-          className="fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom)+var(--promo-notice-h,0px))] z-40 w-12 h-12 rounded-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 grid place-items-center active:scale-95 transition-transform"
+          className="fixed right-4 z-40 w-12 h-12 rounded-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 grid place-items-center active:scale-95 transition-[transform,bottom] duration-200 ease-out"
+          /* `--bottom-nav-shift`：底部欄往下滑收起時一起坐下來（MobileTabbar 發佈，沒設＝0px） */
+          style={{
+            bottom: 'calc(4.75rem + env(safe-area-inset-bottom) + var(--promo-notice-h, 0px) - var(--bottom-nav-shift, 0px))',
+          }}
           aria-label="商城上架"
         >
           <Plus className="w-6 h-6 stroke-[2]" />

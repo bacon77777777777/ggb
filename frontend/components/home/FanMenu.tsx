@@ -104,10 +104,14 @@ export default function FanMenu({ mainIcon, mainIconOpen, items }: {
       )}
 
       <div
-        className="fixed right-2 z-40 md:hidden"
+        className="fixed right-2 z-40 md:hidden transition-[bottom] duration-200 ease-out"
         /* 往下、往右各挪一點（老闆指定）：right 16→8px、bottom 5.5→4.5rem。
-           下限就到這 —— 再往下會貼上警語列（實測只剩 11px 空隙） */
-        style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom) + var(--promo-notice-h, 0px))' }}
+           下限就到這 —— 再往下會貼上警語列（實測只剩 11px 空隙）。
+           `--bottom-nav-shift` 是底部欄往下滑時收起的距離（MobileTabbar 發佈），
+           沒設就是 0px＝照舊；底欄收起時整顆跟著坐下來，不會浮在空白上。 */
+        style={{
+          bottom: 'calc(4.5rem + env(safe-area-inset-bottom) + var(--promo-notice-h, 0px) - var(--bottom-nav-shift, 0px))',
+        }}
       >
         {/* 子鈕：絕對定位在主鈕中心，再用 x/y 位移到弧上 */}
         <AnimatePresence>

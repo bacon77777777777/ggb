@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
@@ -16,6 +16,12 @@ import { prefetch } from '@/lib/swr';
 import { HOME_KEY, fetchHomeCatalog } from '@/lib/queries/home';
 import { newsListKey, fetchNewsList } from '@/lib/queries/news';
 import { rankingKey, fetchRanking } from '@/lib/queries/ranking';
+import { useHideOnScroll } from '@/lib/useHideOnScroll';
+
+/**
+ * 往下滑會把底部欄收起來的頁面（老闆 2026-08-29：先只有首頁，那裡才是長長的商品列表）。
+ */
+const HIDE_ON_SCROLL_PATHS = ['/'];
 
 export default function MobileTabbar() {
   return (
@@ -58,6 +64,31 @@ function MobileTabbarInner() {
   const isSecondaryPage = (!isMainTabPath && !isNewsDetail) || (pathname === '/profile' && !!activeTab);
 
   const { theme } = useTheme();
+
+  /*
+   * 首頁往下滑收起底部欄（老闆 2026-08-29）：底欄連同掛在它上緣的公平性警語列
+   * 一起推出畫面，商品列表就多出一整條的高度；手指往回撥 2px 立刻回來。
+   *
+   * 收起的距離是「自己的高度（含安全區）＋ 警語列高度」——
+   * 警語列是 portal 進來的 `absolute bottom-full`，只推 100% 的話它會剛好停在
+   * 畫面底部整條露出來。
+   */
+  const collapsed = useHideOnScroll({ enabled: HIDE_ON_SCROLL_PATHS.includes(pathname) });
+
+  /*
+   * 把收起的距離發佈成 `--bottom-nav-shift`，讓首頁那兩顆懸浮按鈕（扇形選單、
+   * 商城上架）跟著往下坐 —— 底欄走了它們還浮在原位，下面會空一塊。
+   * 這裡不含安全區：那兩顆自己的算式已經有 env(safe-area-inset-bottom)。
+   * 變數沒設時是 0px，也就是完全照舊，所以其他頁不受影響。
+   */
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty(
+      '--bottom-nav-shift',
+      collapsed ? 'calc(3.75rem + var(--promo-notice-h, 0px))' : '0px',
+    );
+    return () => { root.style.removeProperty('--bottom-nav-shift'); };
+  }, [collapsed]);
 
   /*
    * 按下就預取（老闆 2026-08-22 頁面加載優化 ⑤）：touchstart 時先把目標頁的主資料
@@ -121,11 +152,13 @@ function MobileTabbarInner() {
   return (
     <div
       className={cn(
-        'fixed bottom-0 left-0 right-0 md:hidden z-50 pb-[env(safe-area-inset-bottom)] transition-colors',
+        'fixed bottom-0 left-0 right-0 md:hidden z-50 pb-[env(safe-area-inset-bottom)]',
+        'transition-[transform,background-color,border-color] duration-200 ease-out',
         isRankingGlass
           ? 'bg-[#1b2148]/80 backdrop-blur-md border-t border-white/10'
           : 'bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-800',
       )}
+      style={collapsed ? { transform: 'translateY(calc(100% + var(--promo-notice-h, 0px)))' } : undefined}
       data-testid="mobile-tabbar"
     >
       <div className="relative h-[60px] w-full flex items-end">
