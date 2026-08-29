@@ -7,16 +7,10 @@ import { Button } from '@/components/ui';
 import { IpLoader } from '@/components/ui/IpLoader';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
-import { 
-  CreditCard, 
-  Smartphone, 
-  Banknote, 
-  CheckCircle2, 
+import {
+  CheckCircle2,
   Zap,
   Lock,
-  Globe,
-  Store,
-  Barcode,
   X
 } from 'lucide-react';
 
@@ -51,11 +45,11 @@ const TOPUP_PLANS = [
  * 但把一個必定失敗的選項擺在那邊給人按，跟自己壞掉沒兩樣。
  */
 const PAYMENT_METHODS = [
-  { id: 'credit_card', name: '信用卡 / 金融卡', desc: '刷卡完直接入帳', icon: <CreditCard className="w-5 h-5" /> },
-  { id: 'webatm', name: 'WebATM', desc: '需要讀卡機，只能用電腦', desktopOnly: true, icon: <Globe className="w-5 h-5" /> },
-  { id: 'vacc', name: 'ATM 轉帳', desc: '拿到一組虛擬帳號，轉帳後入帳', icon: <Banknote className="w-5 h-5" /> },
-  { id: 'cvs', name: '超商代碼繳費', desc: '拿到繳費代碼，到 ibon／FamiPort 機台操作', icon: <Store className="w-5 h-5" /> },
-  { id: 'barcode', name: '超商條碼繳費', desc: '產生繳費條碼，直接拿到超商櫃檯結帳', icon: <Barcode className="w-5 h-5" /> },
+  { id: 'credit_card', name: '信用卡 / 金融卡', desc: '刷卡完直接入帳' },
+  { id: 'webatm', name: 'WebATM', desc: '需要讀卡機，只能用電腦', desktopOnly: true },
+  { id: 'vacc', name: 'ATM 轉帳', desc: '拿到一組虛擬帳號，轉帳後入帳' },
+  { id: 'cvs', name: '超商代碼繳費', desc: '拿到繳費代碼，到 ibon／FamiPort 機台操作' },
+  { id: 'barcode', name: '超商條碼繳費', desc: '產生繳費條碼，直接拿到超商櫃檯結帳' },
 ];
 
 export default function TopupPage() {
@@ -421,13 +415,9 @@ export default function TopupPage() {
                           : "hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
                       )}
                     >
+                      {/* 付款方式不放圖示（老闆 2026-08-30）—— 名稱＋說明就分得出來，
+                          右邊還有選取圓點，圖示只是多一欄視覺噪音 */}
                       <div className="flex items-center gap-3 md:gap-4">
-                        <div className={cn(
-                          "w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center transition-colors shrink-0 border border-neutral-100 dark:border-neutral-700",
-                          selectedMethod === method.id ? "bg-white text-primary border-primary/20" : "bg-neutral-50 text-neutral-400 group-hover:text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
-                        )}>
-                          {React.cloneElement(method.icon as React.ReactElement, { className: 'w-4 h-4 md:w-5 md:h-5' })}
-                        </div>
                         <div className="flex flex-col items-start text-left">
                           <span className={cn(
                             "text-[14px] md:text-base font-bold",
@@ -454,12 +444,10 @@ export default function TopupPage() {
                 </div>
               </section>
 
-              {/* Terms Note (Mobile) */}
-              <div className="px-4 py-3 md:hidden">
-                <div className="text-[11px] text-neutral-400 leading-relaxed text-center">
-                  點擊確認付款即表示同意 <Link href="/terms" className="text-neutral-500 underline decoration-neutral-300">服務條款</Link>
-                </div>
-              </div>
+              {/* 這裡原本還有一段「點擊確認付款即表示同意服務條款」（手機版限定）。
+                  老闆 2026-08-30 移除 —— 手機版的訂單摘要就接在付款方式底下，
+                  那張卡裡已經有同一句（而且寫得更完整，含退款政策），
+                  兩段條款連著出現只是重複。 */}
             </div>
 
             {/* Right: Summary Card (Desktop) */}
