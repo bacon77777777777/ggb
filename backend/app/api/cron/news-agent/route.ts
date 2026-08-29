@@ -343,6 +343,26 @@ function extractBodyImages(html: string, limit: number): string[] {
 const WATERMARKED_SOURCES = ['dengeki.com']
 
 /**
+ * 已知**不會壓站標**的來源：整套視覺偵測與蓋 logo 白墊一律跳過，只蓋自家網址
+ *（老闆 2026-08-29 指定）。
+ *
+ * oneone 貼的是廠商官方宣傳圖原檔，上面只有權利人自己的東西
+ *（BANDAI 食玩圓標、©創通・サンライズ、※画像はイメージです…）。
+ * 對這種來源跑偵測，抓到的百分之百是誤判 —— 實測四張官方圖三張被判成
+ * 「有站標」，於是封面被蓋上白墊遮住版權聲明、四張內文圖全被丟掉，
+ * 那篇文章一張配圖都沒有。
+ *
+ * 跳過還順便省掉每張圖 1～2 次視覺呼叫。
+ *
+ * 要再加來源進來之前先確認：**它是不是自己壓浮水印**。判斷方式是隨機開幾篇，
+ * 看圖的角落有沒有跟照片內容無關的半透明站名。
+ */
+const NO_SITE_WATERMARK_SOURCES = ['universe.oneone.com.tw']
+
+const isCleanSource = (...urls: string[]) =>
+  urls.some(u => NO_SITE_WATERMARK_SOURCES.some(d => u?.includes(d)))
+
+/**
  * 「這是權利人自己的標記，不是新聞網站的浮水印」—— 用來否決視覺誤判
  *
  * 版權／免責聲明（©、※画像は…）與廠商官方標記（BANDAI 食玩圓標之類）
@@ -723,7 +743,18 @@ async function downloadSmartToR2(
       seen.add(h)
     }
 
-    // 不分來源一律檢查
+    /*
+     * 已知不壓站標的來源：不偵測、不蓋 logo，只縮圖 + 蓋自家網址就上傳。
+     * 對這種來源跑偵測只會製造誤判（詳見 NO_SITE_WATERMARK_SOURCES）。
+     */
+    if (isCleanSource(sourceUrl, imgUrl)) {
+      const resized = await sharp(buf).resize(1600, null, { withoutEnlargement: true }).toBuffer()
+      const webp = await sharp(await stampUrlWatermark(resized)).webp({ quality: 92 }).toBuffer()
+      const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`
+      return await r2Upload(key, webp, 'image/webp')
+    }
+
+    // 其餘來源不分來源一律檢查
     // 內容區只量原圖這一次，蓋完之後不能重量（白墊會跟留白邊連成一片）
     const box = await contentBox(buf)
     const found = await findWatermarkWithVision(buf, sourceUrl || imgUrl, box)
