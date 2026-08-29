@@ -433,8 +433,8 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         const p = paramsRef.current;
         for (let i = 0; i < N; i++) {
           const style = packStyles[i] ?? '01';
-          const builtinFront = asset(`/images/card/pack/${style}a.webp`);
-          const builtinBack = asset(`/images/card/pack/${style}b.webp`);
+          const builtinFront = asset(`/images/card/pack/${style}01.webp`);
+          const builtinBack = asset(`/images/card/pack/${style}02.webp`);
           // 自訂圖載不到（網址失效、格式不支援…）就退回內建款式 —— 寧可長得不一樣，也不要白色空包
           const loadOr = async (custom: string | undefined, fallback: string) => {
             if (!custom) return loadImage(fallback);
@@ -601,7 +601,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
 
     if (fallback) {
       const style = packStyles[0] ?? '01';
-      const src = params.frontImage || asset(`/images/card/pack/${style}a.webp`);
+      const src = params.frontImage || asset(`/images/card/pack/${style}01.webp`);
       return (
         <div className="w-full flex items-center justify-center" style={{ height, background: STUDIO_BG }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -88,18 +88,23 @@ import { asset } from '@/lib/asset';
 const FAIR_ENGINE_TYPES = ['ichiban', 'card', 'custom'];
 
 /**
- * 卡包外觀的款數。素材在 `public/images/card/pack/`，
- * 每款兩張：`NNa.webp` 正面、`NNb.webp` 背面。
+ * 內建卡包外觀（單張模式的輪播用；卡包模式吃商品自己的 pack_front/back_image_url）
  *
- * 加新款時：圖丟進那個資料夾（沿用 519×758、轉 WebP），然後把這個數字加一。
- * 之前這個 5 是直接寫在 Math.random() 裡的，加圖的人很容易漏改，
- * 結果新款躺在資料夾裡永遠抽不到。
+ * 素材在 `public/images/card/pack/`，每款兩張：`<款>01.webp` 正面、`<款>02.webp` 背面。
+ * 老闆 2026-08-30 換了整組圖，從六款（01~06）變成五款（a~e）。
+ *
+ * **加新款只要把字母加進這個陣列**（圖檔叫 `f01.webp`／`f02.webp` 就加 'f'）。
+ * 先前是「一個數字 + padStart」，數字寫死在 Math.random() 裡，加圖的人很容易漏改，
+ * 新款躺在資料夾裡永遠抽不到；改成陣列之後漏加就是漏加，看得出來。
+ *
+ * 出圖規格見 `components/card/packSpec.ts`（62 : 116，建議 1240 × 2320）。
+ * ⚠️ 圖一律轉 WebP 再放進來 —— 這組原檔是 PNG、十張 28.5MB，轉完 3.7MB。
  */
-const PACK_STYLE_COUNT = 6;
+const PACK_STYLES = ['a', 'b', 'c', 'd', 'e'] as const;
 
 function getRandomPackStyles(): string[] {
   return Array.from({ length: 9 }, () =>
-    String(Math.floor(Math.random() * PACK_STYLE_COUNT) + 1).padStart(2, '0')
+    PACK_STYLES[Math.floor(Math.random() * PACK_STYLES.length)]
   );
 }
 
@@ -378,8 +383,8 @@ const PackSelectionCarousel = forwardRef<PackSelectionCarouselHandle, PackSelect
                     輪播轉到後面時看到的會是鏡像的正面而不是卡背 */}
                 <div className="relative" style={{ transformStyle: 'preserve-3d' }}>
                   <ProductPackViewer3D
-                    packImage={asset(`/images/card/pack/${packStyles[index] ?? '01'}a.webp`)}
-                    backImage={asset(`/images/card/pack/${packStyles[index] ?? '01'}b.webp`)}
+                    packImage={asset(`/images/card/pack/${packStyles[index] ?? PACK_STYLES[0]}01.webp`)}
+                    backImage={asset(`/images/card/pack/${packStyles[index] ?? PACK_STYLES[0]}02.webp`)}
                     interactive={isActive}
                     showSSRGlare={false}
                   />
@@ -2057,7 +2062,7 @@ export default function ProductDetailPage() {
               <div className="fixed inset-0 z-[2100]">
               <GgbPackRip
                 /* 卡包正面用自己的欄位，沒設才退回商品主圖，再沒有才用內建款式 */
-                packImage={(product as any).pack_front_image_url || product.image_url || asset(`/images/card/pack/${activePackStyle}a.webp`)}
+                packImage={(product as any).pack_front_image_url || product.image_url || asset(`/images/card/pack/${activePackStyle}01.webp`)}
                 cardBack={(product as any).card_back_image_url || asset('/images/card/back.webp')}
                 cards={ordered.map(p => p.image_url || asset('/images/card/00004.webp'))}
                 prizeTier={packTiers[0] ?? 'blue'}
@@ -2080,7 +2085,7 @@ export default function ProductDetailPage() {
               <CardDrawAnimation
                 isOpen={isVideoOpen}
                 prizes={wonPrizes}
-                packImage={asset(`/images/card/pack/${activePackStyle}a.webp`)}
+                packImage={asset(`/images/card/pack/${activePackStyle}01.webp`)}
                 onGoToWarehouse={handleVideoEnd}
                 onContinue={handleCardContinue}
               />
