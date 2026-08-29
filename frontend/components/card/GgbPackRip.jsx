@@ -30,6 +30,8 @@ const PARAM_DEFAULTS = {
   peelCurl: 45,
   // 背景流星（老闆 2026-08-29）
   starOn: true, starCount: 500, starSpeed: 5, starSize: 20, starTrail: 0, starBrightness: 100,
+  // 封條的銀色壓紋（老闆 2026-08-29：看起來像塑膠套，關掉）
+  sealTexture: false,
 };
 
 /* ============================================================
@@ -893,7 +895,11 @@ export default function GGBPackRip({
     const load = (u2) => new Promise((res, rej) => {
       const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = u2;
     });
-    Promise.all([load(packImg), load(SEAL_URL)]).then(([pk, seal]) => {
+    /* 封條壓紋（SEAL_URL）預設不畫 —— 老闆 2026-08-29：「很像塑膠套」。
+       關掉之後上緣就只是卡包自己那 7% 的圖，撕的動作、摩擦火花、捲曲都不變；
+       「這裡是封口」的暗示改由膠囊釦（下面 drawStrip 畫的那顆三點小片）承擔。
+       後台「抽獎模組設定 → 撕開封口 → 開包節奏 → 封條壓紋」可以開回來。 */
+    Promise.all([load(packImg), cfg.sealTexture ? load(SEAL_URL) : Promise.resolve(null)]).then(([pk, seal]) => {
       if (!alive) return;
       const c = document.createElement("canvas");
       c.width = Math.round(w * 2); c.height = Math.round(stripH * 2);
@@ -904,12 +910,12 @@ export default function GGBPackRip({
       g.lineTo(c.width - r, 0); g.quadraticCurveTo(c.width, 0, c.width, r);
       g.lineTo(c.width, c.height); g.closePath(); g.clip();
       g.drawImage(pk, 0, 0, pk.width, pk.height * STRIP_FRAC, 0, 0, c.width, c.height);
-      g.globalAlpha = 0.9; g.drawImage(seal, 0, 0, c.width, c.height); g.globalAlpha = 1;
+      if (seal) { g.globalAlpha = 0.9; g.drawImage(seal, 0, 0, c.width, c.height); g.globalAlpha = 1; }
       stripSrcRef.current = c;
       drawStrip();
     }).catch(() => {});
     return () => { alive = false; };
-  }, [packImg, dims]); // eslint-disable-line
+  }, [packImg, dims, cfg.sealTexture]); // eslint-disable-line
   useEffect(() => { drawStrip(); }); // progress 變動時重繪
 
   /*

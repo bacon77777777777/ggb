@@ -73,6 +73,9 @@ export const MACHINE_PARAM_SPECS: Record<string, ParamSpec[]> = {
     { key: 'flipDelay',   label: '翻牌延遲', group: '開包節奏', type: 'range', min: 200, max: 1200, step: 50, default: 500, unit: 'ms',
       hint: '發完牌到最上張自動翻面的等待時間。' },
 
+    { key: 'sealTexture', label: '封條壓紋', group: '開包節奏', type: 'toggle', default: false,
+      hint: '包裝上緣那條銀色細直紋。老闆 2026-08-29 覺得「很像塑膠套」，預設關掉 —— 關掉後上緣只剩卡包自己的圖，撕的動作、摩擦火花、捲曲都不變，「這裡是封口」改由那顆三點膠囊釦提示。' },
+
     { key: 'peelCurl',    label: '封條捲曲半徑', group: '開包節奏', type: 'range', min: 20, max: 140, step: 1, default: 45, unit: 'px',
       hint: '封條被撕起來後捲成多大一捲（3D 圓柱，會捲向鏡頭）。數字越小捲越緊、越早繞回來蓋住自己；越大越像單純翹起一片。撕越長就繞越多圈，半徑不變。' },
 
