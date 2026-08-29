@@ -21,43 +21,25 @@ const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 C
 const UA_MOBILE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'
 const UA_BOT = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
 
-// ─── Google News RSS 搜尋詞（中文 + 日文 + 英文，多語言廣覆蓋）─────────────
-// 每次全局最多 8 篇，每詞最多 2 篇
-
-type Locale = 'TW' | 'JP' | 'US'
-
-const RSS_QUERIES: Array<{ q: string; category: string; locale: Locale }> = [
-  // ── 繁體中文（台灣）
-  { q: '一番賞 發售',         category: 'ichiban',  locale: 'TW' },
-  { q: '盒玩 發售 新品',      category: 'toy'    , locale: 'TW' },
-  { q: '盲盒 新品 上市',      category: 'toy'    , locale: 'TW' },
-  { q: '轉蛋 新品 發售',      category: 'gacha',    locale: 'TW' },
-  { q: '卡牌 新彈 發售',      category: 'tcg',      locale: 'TW' },
-  { q: '扭蛋 新商品',         category: 'gacha',    locale: 'TW' },
-  // ── 日文（日本）
-  { q: '一番くじ 新商品 発売',           category: 'ichiban',  locale: 'JP' },
-  { q: '一番くじ 予約',                  category: 'ichiban',  locale: 'JP' },
-  { q: 'バンダイ ガシャポン 新商品',     category: 'gacha',    locale: 'JP' },
-  { q: 'ガシャポン 発売 予約',           category: 'gacha',    locale: 'JP' },
-  { q: 'ブラインドボックス 新商品 発売', category: 'toy'    , locale: 'JP' },
-  { q: 'ポップマート 新商品',            category: 'toy'    , locale: 'JP' },
-  { q: 'ポケモンカード 新弾 発売',       category: 'tcg',      locale: 'JP' },
-  { q: '遊戯王 OCG 新カード 発売',       category: 'tcg',      locale: 'JP' },
-  { q: 'ヴァイスシュヴァルツ 新弾',      category: 'tcg',      locale: 'JP' },
-  { q: 'ワンピースカードゲーム 新弾',    category: 'tcg',      locale: 'JP' },
-  { q: '寶可夢 卡牌 新彈',               category: 'tcg',      locale: 'TW' },
-  { q: '遊戲王 卡牌 新彈 上市',          category: 'tcg',      locale: 'TW' },
-  { q: '食玩 新商品 発売',               category: 'toy',      locale: 'JP' },
-  { q: 'ソフビ 新作 発売',               category: 'toy',      locale: 'JP' },
-  { q: 'TOPTOY 盲盒 新品',               category: 'toy',      locale: 'TW' },
-  { q: 'デュエルマスターズ 新弾',        category: 'tcg',      locale: 'JP' },
-  // ── 英文（全球）
-  { q: 'gashapon new product release 2026', category: 'gacha',    locale: 'US' },
-  { q: 'Pokemon TCG new set 2026',          category: 'tcg',      locale: 'US' },
-  { q: 'blind box figure new release',      category: 'toy'    , locale: 'US' },
-  { q: 'Pop Mart new figure',               category: 'toy'    , locale: 'US' },
-  { q: 'Yu-Gi-Oh OCG new card 2026',        category: 'tcg',      locale: 'US' },
-]
+/*
+ * Google News 已移除（老闆 2026-08-29 指定）
+ *
+ * 兩個理由：
+ *   1. **它抓到的是各家媒體的轉載**，站標風險完全不可控 —— 我們才剛把唯一
+ *      會壓站標的電撃ホビー拿掉，從 Google News 進來的稿等於把它換個門走回來。
+ *   2. **它從來沒真正運作過。** `resolveGoogleLink` 靠 HTTP 轉址，但 Google
+ *      現在是 JS 轉址，網址原封不動 —— 整條流程都在抓 Google 自己那頁中繼頁面：
+ *      內文圖 0 張（全是 googleusercontent，被 BLOCKED_IMG_DOMAINS 擋掉）、
+ *      正文 0 字，Claude 只能靠 RSS 標題硬寫。實測產出的文章只有 420 字，
+ *      其他來源都是 1000～2000 字。
+ *
+ * 解得開（用文章頁的 data-n-a-id/-sg/-ts 打 Google News 自己的 batchexecute，
+ * 實測可還原成 inside-games.jp 的真實網址、5 張內文圖、3523 字正文），
+ * 但那是 Google 的內部 RPC，會壞的相依，而且解決不了第 1 點。
+ *
+ * `tcg` 分類原本主要靠這組查詢供稿，移除後只能靠 ホビーウォッチ／PRTimes
+ * 偶爾出現的トレカ新聞 —— 要補齊得另外找卡牌專門的來源。
+ */
 
 // ── 直接 RSS 來源（非 Google News）──────────────────────────────────────────
 /**
@@ -231,17 +213,6 @@ const DIRECT_FEEDS: Array<{ url: string; category: string; label: string; titleF
  * WATERMARKED_SOURCES 與那整套「偵測 → 蓋白墊 → 複驗」保留不動：
  * 之後任何來源開始壓站標都還接得住，而現在它幾乎不會被觸發。
  */
-
-const LOCALE_PARAMS: Record<Locale, { hl: string; gl: string; ceid: string }> = {
-  TW: { hl: 'zh-TW', gl: 'TW', ceid: 'TW:zh-Hant' },
-  JP: { hl: 'ja',    gl: 'JP', ceid: 'JP:ja'       },
-  US: { hl: 'en-US', gl: 'US', ceid: 'US:en'       },
-}
-
-function rssUrl(q: string, locale: Locale) {
-  const { hl, gl, ceid } = LOCALE_PARAMS[locale]
-  return `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=${hl}&gl=${gl}&ceid=${ceid}`
-}
 
 // ─── RSS 解析 ────────────────────────────────────────────────────────────────
 
@@ -880,7 +851,7 @@ function pickCategory(
 const BLOCKED_IMG_DOMAINS = [
   'google.com', 'googleapis.com', 'googleusercontent.com',
   'gstatic.com', 'ggpht.com', 'lh3.google', 'lh4.google',
-  'news.google.', 'encrypted-tbn', 'facebook.com/images', 'fbcdn.net',
+  'news.google.', 'encrypted-tbn', 'facebook.com/images', 'facebook.com/tr', 'fbcdn.net',
 ]
 
 function resolveImageUrl(imgUrl: string, pageUrl: string): string {
@@ -933,16 +904,7 @@ function extractImageFromJina(jinaText: string, pageUrl: string): string {
 }
 
 // Google News link → 실제 기사 URL（follow redirect）
-async function resolveGoogleLink(googleUrl: string): Promise<string> {
-  try {
-    const res = await fetch(googleUrl, {
-      signal: AbortSignal.timeout(8_000),
-      headers: { 'User-Agent': UA },
-      redirect: 'follow',
-    })
-    return res.url !== googleUrl ? res.url : googleUrl
-  } catch { return googleUrl }
-}
+
 
 // ─── 圖片下載至 R2 ───────────────────────────────────────────────────────────
 
@@ -1247,15 +1209,14 @@ export async function POST(req: NextRequest) {
   /**
    * 分類配額 —— 一番賞與卡牌長期掛零的原因
    *
-   * 來源是照「HTML → DIRECT_FEEDS → Google News」的順序跑，寫滿 MAX_TOTAL 就 break。
-   * 而 DIRECT_FEEDS 四個（PR TIMES／電擊／Animate／巴哈）**來源分類全是 figure**，
-   * 一番賞與卡牌只存在於最後那組 Google News 查詢裡 —— 前面兩組先把 3 篇的額度用完，
-   * 那組查詢等於從來沒跑到。近 14 天實際比例：figure 95、toy 28、gacha 28、
-   * ichiban 2、tcg 2。不是抓不到，是根本沒輪到。
+   * 原本來源是照固定順序跑、寫滿 MAX_TOTAL 就 break，而前面幾組**來源分類全是
+   * figure**，一番賞與卡牌只存在於最後一組 —— 前面先把額度用完，後面等於從來沒
+   * 跑到。近 14 天實際比例：figure 95、toy 28、gacha 28、ichiban 2、tcg 2。
+   * 不是抓不到，是根本沒輪到。
    *
    * 兩件事一起做：
    *   1. 同一分類一次最多 1 篇（3 篇＝三個不同分類），figure 吃不完整場
-   *   2. Google News 查詢照「近 7 天誰最少」排序 —— 不寫死輪值表，DB 就是進度表
+   *   2. 來源組照「近 7 天誰最少」排序 —— 不寫死輪值表，DB 就是進度表
    */
   const CATEGORIES = ['ichiban', 'tcg', 'gacha', 'figure', 'toy']
   const countSince = (ms: number) => {
@@ -1538,141 +1499,24 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Google News RSS ──────────────────────────────────────────────────────
-  // 查詢也照缺稿程度排：一番賞／卡牌落後時，它們的查詢先跑
-  const orderedQueries = [...RSS_QUERIES].sort(
-    (a, b) => (categoryRank.get(a.category) ?? 99) - (categoryRank.get(b.category) ?? 99)
-  )
-  const runGoogleNews = async () => {
-    for (const { q, category, locale } of orderedQueries) {
-      if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
-
-      const xml = await fetchText(rssUrl(q, locale))
-      if (!xml) { results.errors++; continue }
-
-      const rawItems = parseRss(xml).filter(it => isRecent(it.pubDate))
-      // trusted domain 排前面
-      const items = rawItems.sort((a, b) => {
-        const da = (() => { try { return new URL(a.link).hostname } catch { return '' } })()
-        const db = (() => { try { return new URL(b.link).hostname } catch { return '' } })()
-        return (trustedDomains.has(db) ? 1 : 0) - (trustedDomains.has(da) ? 1 : 0)
-      })
-      let perQuery = 0
-
-      for (const item of items) {
-        if (Date.now() > DEADLINE || perQuery >= MAX_PER_QUERY || results.written >= MAX_TOTAL) break
-
-        // 配額檢查在 resolve redirect 之前 —— 額度滿了不必付這趟 fetch
-        if (quotaFull(classifyByTitle(item.title) ?? category)) { results.skipped++; results.skipReasons.catQuota++; continue }
-
-        // Google News 的 link 是 redirect，先 resolve 到真實 URL
-        const realUrl = await resolveGoogleLink(item.link)
-        if (existing.has(realUrl) || existing.has(item.link)) { results.skipped++; results.skipReasons.duplicate++; continue }
-
-        // 抓實際文章頁：取 og:image + body text（若 block 仍繼續用 RSS 資料）
-        const articleHtml = await fetchText(realUrl, 15_000)
-        let ogImage = articleHtml
-          ? (resolveImageUrl(extractOgImage(articleHtml), realUrl) || resolveImageUrl(extractBodyImage(articleHtml), realUrl))
-          : resolveImageUrl(item.rssImage, realUrl)
-        let jinaText = ''
-        if (!ogImage) {
-          jinaText = await fetchViaJina(realUrl)
-          if (jinaText) ogImage = extractImageFromJina(jinaText, realUrl)
-        }
-        // 沒有真實圖片 → 直接跳過，不呼叫 Claude，省 token
-        if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
-        // 站方拿自家 logo 當 og:image → 這篇不發，換下一篇（老闆指定）
-        if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
-
-        const bodyText = articleHtml
-          ? articleHtml
-              .replace(/<script[\s\S]*?<\/script>/gi, '')
-              .replace(/<style[\s\S]*?<\/style>/gi, '')
-              .replace(/<[^>]+>/g, ' ')
-              .replace(/\s+/g, ' ').trim()
-              .slice(0, 1500)
-          : (jinaText || item.description).slice(0, 1500)
-
-        if (isDuplicateSource(item.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
-
-        // Claude 改寫
-        const draft = await rewriteArticle(
-          claude, item.title, item.description, bodyText, realUrl, category
-        )
-        if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
-
-        // 標題相似度去重（同主題 Jaccard >= 0.55 視為重複）
-        if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
-
-        const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
-        // 封面與內文圖共用同一條路徑：每張都用 Claude 視覺驗浮水印，
-        // 有就蓋 GGB logo 再驗一次確認蓋乾淨了
-        // 同一篇文章共用一份已處理清單，封面先進去，內文圖就不會重複處理同一張
-        const seenImages = new Set<string>()
-        const hostedCover = await downloadSmartToR2(ogImage, isWatermarked, realUrl, seenImages)
-        // 轉存不成功 = 沒驗過或沒蓋乾淨 → 整篇不發，不退回原圖 hotlink
-        if (!hostedCover) { results.skipped++; results.skipReasons.wmUnsafe++; continue }
-        const imageUrl = hostedCover
-        const finalCategory = pickCategory(draft, [draft.title, item.title], category)
-
-        // 內文配圖：從已抓過的文章 HTML 取 2 張（非封面），轉存 R2 後插在段落之間。
-        // 不做圖片生成、不額外請求文章頁，成本只有 R2 儲存。
-        // 文章頁抓不到就退回 RSS 的 content:encoded。
-        // 電擊的文章頁常在 8 秒內回不來（160KB、三種 UA 都試過），
-        // 封面因為有 item.rssImage 兜底所以看不出來，內文圖卻是直接整段放棄 ——
-        // 489 篇裡只有 1 篇有內文圖就是這樣來的。
-        const contentWithImages = await injectBodyImages(
-          draft.content, articleHtml || item.rssHtml, ogImage, realUrl, isWatermarked, seenImages
-        )
-
-        const id = Math.floor(10000000 + Math.random() * 90000000).toString()
-        const { error } = await supabase.from('news').insert({
-          id,
-          title:      draft.title,
-          summary:    draft.summary,
-          content:    contentWithImages,
-          image_url:  imageUrl,
-          source_url: realUrl,
-          category:   finalCategory,
-          tags:       draft.tags ?? [],
-          is_active:  !!imageUrl,
-        })
-
-        if (!error) {
-          results.written++
-          catWritten[finalCategory] = (catWritten[finalCategory] ?? 0) + 1
-          results.articles.push(draft.title)
-          existing.add(realUrl)
-          sessionTitles.push(tokenize(draft.title))  // 加入本次 session 比對池
-          await generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, draft.category ?? category)
-          void supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).then(null, () => {})
-          perQuery++
-        } else if (error.code === '23505') {
-          results.skipped++; results.skipReasons.duplicate++
-        } else {
-          console.error('[news-agent] insert error:', error.message)
-          results.errors++
-        }
-
-        await new Promise(r => setTimeout(r, 300))
-      }
-    }
-  }
 
   /**
    * 來源組的執行順序照「現在最缺哪一類」決定，不是寫死的。
    *
-   * 原本永遠是 HTML → DIRECT_FEEDS → Google News，而前兩組只產得出 toy 與 figure，
-   * 每次都先把 3 篇額度吃掉兩篇，一番賞／卡牌只能撿最後一格。
-   * 現在每跑完一組就重排一次：哪一組供得出「目前最落後的分類」，哪一組先上。
-   * cats 要照實列 —— Google News 沒有 figure 的查詢，寫進去它會永遠排第一。
+   * 每跑完一組就重排一次：哪一組供得出「目前最落後的分類」，哪一組先上。
+   * cats 要照實列，寫了供不出來的分類，那一組會永遠排第一卻交不出東西。
+   *
+   * Google News 那組已於 2026-08-29 移除（老闆指定），理由見檔案上方的說明。
+   * `tcg` 現在沒有專屬來源，只能靠 ホビーウォッチ／PRTimes 偶爾出現的
+   * トレカ新聞 —— 要補齊得另外找卡牌專門的來源。
    */
   const groups = [
-    // oneone 供得出一番賞／扭蛋／公仔／盒玩四類，是目前唯一補得到 ichiban 的非 Google 來源
-    { cats: ['ichiban', 'gacha', 'figure', 'toy'], run: runOneOne      },
-    { cats: ['toy', 'figure'],                     run: runHtmlSources },
-    { cats: ['figure'],                            run: runDirectFeeds },
-    { cats: ['ichiban', 'tcg', 'gacha', 'toy'],    run: runGoogleNews  },
+    // oneone 供得出一番賞／扭蛋／公仔／盒玩四類
+    { cats: ['ichiban', 'gacha', 'figure', 'toy'],       run: runOneOne      },
+    // 玩具人（繁中）
+    { cats: ['toy', 'figure'],                           run: runHtmlSources },
+    // ホビーウォッチ 一番くじ／ガンプラ／フィギュア／トレカ 都有，不再只掛 figure
+    { cats: ['figure', 'ichiban', 'tcg', 'toy'],         run: runDirectFeeds },
   ]
   const groupRank = (g: { cats: string[] }) => {
     const open = g.cats.filter(c => !quotaFull(c)).map(c => categoryRank.get(c) ?? 99)
