@@ -49,16 +49,88 @@ const UA_BOT = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/b
  * 故改抓列表頁的文章連結。繁中原生、內文長、圖多且無浮水印，
  * 是目前最適合的來源之一。
  */
-const HTML_SOURCES: Array<{ url: string; category: string; label: string }> = [
-  { url: 'https://www.toy-people.com/?cat=8', category: 'toy',    label: 'ToyPeople-新聞' },
-  { url: 'https://www.toy-people.com/',       category: 'figure', label: 'ToyPeople-首頁' },
-]
+interface HtmlSource {
+  url: string
+  category: string
+  label: string
+  /** 列表頁 → 文章網址（絕對或站內相對皆可） */
+  extract: (html: string) => string[]
+  /**
+   * 文章頁 → 封面圖網址。不給就走預設（og:image → 掃 <img>）。
+   * Union Arena 一定要給：它每篇的 og:image 都是站台通用橫幅（見下方說明）。
+   */
+  pickCover?: (html: string) => string
+}
 
 /** 從玩具人列表頁取出文章連結（?p=數字） */
 function extractToyPeopleLinks(html: string): string[] {
   const links = [...html.matchAll(/href="(https:\/\/www\.toy-people\.com\/\?p=\d+)"/g)].map(m => m[1])
   return [...new Set(links)]
 }
+
+/**
+ * UNION ARENA（萬代自家 TCG 官方站）—— 老闆 2026-08-29 指定加入
+ *
+ * 補的是「卡牌有官方一手消息」這一塊。**它只有一個品牌**（沒有寶可夢、遊戲王、
+ * 海賊王卡、球員卡），所以是補充不是主力；卡牌的量靠 inside-games。
+ *
+ * 三件跟別家不一樣的事：
+ *
+ * ① **列表頁的分類是 client-side 的。** `?tags=products` 那個網址不會讓伺服器
+ *    幫你過濾，回來的 1MB HTML 是全部分類。能用的是每個 `<li>` 上的 `data-tags`，
+ *    自己挑 `products`（商品情報），跳過卡表／牌組／賽事報導／規則勘誤。
+ *
+ * ② **「商品情報」連到的是商品頁不是新聞內頁**（`/jp/products/…`，不是
+ *    `/jp/news/<id>.php`）。第一版照著新聞內頁去抓，結果 1097 則裡挑出 0 篇 ——
+ *    因為連到 `/jp/news/N.php` 的那些全是規則勘誤與活動公告。
+ *    商品頁反而比新聞頁好：有主視覺、有發售日、有內容物。
+ *
+ * ③ **og:image 是站台通用橫幅 `ogp.png`**（新聞頁與商品頁都是），不是商品圖 ——
+ *    照預設流程會被封面體檢擋掉，一篇都產不出來。真正的主視覺在
+ *    `/jp/images/products/<系列>/img_mv*`，實測 710×768 的官方主視覺、
+ *    上面就印著發售日、無浮水印。
+ */
+const UNION_ARENA_ORIGIN = 'https://www.unionarena-tcg.com'
+
+/**
+ * 只取近期的商品情報
+ *
+ * 列表頁是**全部歷史**（實測 1097 則、其中商品情報 138 筆，跨好幾年）。
+ * 不設日期上限的話：每輪抓前 8 筆、寫過的進黑名單，跑久了就會一路往回
+ * 把兩年前的舊商品當成新聞發出去。
+ * 日期在同一個 `<li>` 的 `newsDate`，就用它擋。
+ */
+const UNION_ARENA_MAX_AGE_DAYS = 14
+
+function extractUnionArenaLinks(html: string): string[] {
+  const out: string[] = []
+  const cutoff = Date.now() - UNION_ARENA_MAX_AGE_DAYS * 86400_000
+  const re = /<li class="newsDetail"[^>]*data-tags="([^"]*)"[\s\S]{0,400}?href="(\/jp\/products\/[^"]+\.php)"[\s\S]{0,900}?newsDate">\s*(\d{4})\.(\d{2})\.(\d{2})/g
+  for (const m of html.matchAll(re)) {
+    if (!m[1].split(',').includes('products')) continue
+    const t = Date.parse(`${m[3]}-${m[4]}-${m[5]}T00:00:00+09:00`)
+    if (!isNaN(t) && t < cutoff) continue
+    const url = UNION_ARENA_ORIGIN + m[2]
+    if (!out.includes(url)) out.push(url)
+  }
+  return out
+}
+
+function pickUnionArenaCover(html: string): string {
+  const imgs = [...html.matchAll(/<img[^>]+src="(\/jp\/images\/products\/[^"]+)"/g)]
+    .map(m => m[1])
+    .filter(u => !/img_thumbnail/i.test(u))   // 列表用的小縮圖，不是主視覺
+  // 主視覺優先（img_mv*，上面就印著發售日），沒有就退回第一張商品圖
+  const mv = imgs.find(u => /\/img_mv/i.test(u)) ?? imgs[0]
+  return mv ? UNION_ARENA_ORIGIN + mv : ''
+}
+
+const HTML_SOURCES: HtmlSource[] = [
+  { url: 'https://www.toy-people.com/?cat=8', category: 'toy',    label: 'ToyPeople-新聞', extract: extractToyPeopleLinks },
+  { url: 'https://www.toy-people.com/',       category: 'figure', label: 'ToyPeople-首頁', extract: extractToyPeopleLinks },
+  { url: `${UNION_ARENA_ORIGIN}/jp/news/`,    category: 'tcg',    label: 'UnionArena',
+    extract: extractUnionArenaLinks, pickCover: pickUnionArenaCover },
+]
 
 /**
  * oneone 宇宙（universe.oneone.com.tw）—— 繁中玩具情報，老闆 2026-08-29 指定
@@ -179,7 +251,26 @@ function extractOneOneBodyImages(html: string, limit: number): string[] {
  */
 const TOY_TOPIC_RE = /フィギュア|一番くじ|ガシャポン|ガチャ|カプセルトイ|プライズ|景品|食玩|ぬいぐるみ|ソフビ|プラモ|ガンプラ|ROBOT魂|トレカ|カードゲーム|新弾|一番賞|轉蛋|扭蛋|盒玩|盲盒|公仔|模型|卡牌|周邊|開賣|發售/
 
+/**
+ * 卡牌題材關鍵字 —— 給 inside-games 這種綜合遊戲媒體做前置過濾
+ *
+ * 比 TOY_TOPIC_RE 專一：那支是玩具通用詞（フィギュア／一番くじ／ガシャポン…），
+ * 用在遊戲媒體上會把大量電玩新聞放進來。
+ */
+const TCG_TOPIC_RE = /ポケカ|ポケモンカード|遊戯王|デュエル・?マスターズ|デュエマ|ヴァイスシュヴァルツ|ワンピースカード|ユニオンアリーナ|トレカ|トレーディングカード|カードゲーム|TCG|新弾|拡張パック|ブースターパック/
+
 const DIRECT_FEEDS: Array<{ url: string; category: string; label: string; titleFilter?: RegExp }> = [
+  /*
+   * inside-games —— `tcg` 分類的主力（老闆 2026-08-29 指定）
+   *
+   * Google News 移除後 tcg 沒有來源了。這家是綜合遊戲媒體，但**卡牌是多品牌的**
+   * （實測 50 則裡 4 則卡牌新聞：ポケカ 30 週年抽選、ポケポケ 新シーズン、
+   * 遊戲王原畫展周邊…），一天大約 1～2 則，剛好對得上一天 12 篇裡 tcg 該有的份量。
+   * 圖是官方原圖、無浮水印（抓過一張 ポケカ 確認）。
+   *
+   * 只收卡牌題材：フィギュア／グッズ那些交給 ホビーウォッチ，不重複抓。
+   */
+  { url: 'https://www.inside-games.jp/rss/index.rdf', category: 'tcg', label: 'InsideGames', titleFilter: TCG_TOPIC_RE },
   /*
    * ホビーウォッチ（Impress）—— 2026-08-29 起的主力
    *
@@ -1264,15 +1355,19 @@ export async function POST(req: NextRequest) {
       const listHtml = await fetchText(src.url, 10_000)
       if (!listHtml) { results.errors++; continue }
 
-      for (const realUrl of extractToyPeopleLinks(listHtml).slice(0, 8)) {
+      for (const realUrl of src.extract(listHtml).slice(0, 8)) {
         if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
         if (existing.has(realUrl)) { results.skipped++; results.skipReasons.duplicate++; continue }
 
         const articleHtml = await fetchText(realUrl, 10_000)
         if (!articleHtml) { results.skipped++; results.skipReasons.noHtml++; continue }
 
-        const ogImage = resolveImageUrl(extractOgImage(articleHtml), realUrl)
-                     || resolveImageUrl(extractBodyImage(articleHtml), realUrl)
+        // 來源有自訂取圖規則就只認它（Union Arena 的 og:image 是站台通用橫幅，
+        // 退回預設等於拿站標當封面）
+        const ogImage = src.pickCover
+          ? resolveImageUrl(src.pickCover(articleHtml), realUrl)
+          : (resolveImageUrl(extractOgImage(articleHtml), realUrl)
+             || resolveImageUrl(extractBodyImage(articleHtml), realUrl))
         if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
         // 站方拿自家 logo 當 og:image → 這篇不發，換下一篇（老闆指定）
         if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
@@ -1507,15 +1602,15 @@ export async function POST(req: NextRequest) {
    * cats 要照實列，寫了供不出來的分類，那一組會永遠排第一卻交不出東西。
    *
    * Google News 那組已於 2026-08-29 移除（老闆指定），理由見檔案上方的說明。
-   * `tcg` 現在沒有專屬來源，只能靠 ホビーウォッチ／PRTimes 偶爾出現的
-   * トレカ新聞 —— 要補齊得另外找卡牌專門的來源。
+   * `tcg` 改由 inside-games（多品牌卡牌新聞）＋ Union Arena（萬代官方，單一品牌）
+   * 供稿。球員卡目前沒有來源 —— 日本 ACG 媒體幾乎不報，要另找專門來源。
    */
   const groups = [
     // oneone 供得出一番賞／扭蛋／公仔／盒玩四類
     { cats: ['ichiban', 'gacha', 'figure', 'toy'],       run: runOneOne      },
-    // 玩具人（繁中）
-    { cats: ['toy', 'figure'],                           run: runHtmlSources },
-    // ホビーウォッチ 一番くじ／ガンプラ／フィギュア／トレカ 都有，不再只掛 figure
+    // 玩具人（繁中）＋ Union Arena（官方卡牌）
+    { cats: ['toy', 'figure', 'tcg'],                    run: runHtmlSources },
+    // ホビーウォッチ（figure/ichiban/tcg/toy）＋ inside-games（tcg）＋ PRTimes／GNN
     { cats: ['figure', 'ichiban', 'tcg', 'toy'],         run: runDirectFeeds },
   ]
   const groupRank = (g: { cats: string[] }) => {
