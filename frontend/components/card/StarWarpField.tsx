@@ -57,7 +57,10 @@ const DEFAULTS = {
   turbulence: 0,
   brightness: 100,
   glitterIntensity: 3,
-  trailAmount: 100,
+  /* 0 = 每幀整張擦掉，只留下當幀的星點與一小段位移線（老闆的 Framer 面板就是 0）。
+     先前照他貼過來的舊 Variant 設 100，殘影會疊成滿畫面的放射長線 —— 那是光速
+     隧道，不是他要的細碎星塵，而且會蓋掉卡片的金／紫光環。 */
+  trailAmount: 0,
   reverse: false,
 };
 

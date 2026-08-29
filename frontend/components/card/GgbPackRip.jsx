@@ -29,7 +29,7 @@ const PARAM_DEFAULTS = {
   sfxVolume: 1,
   peelCurl: 45,
   // 背景流星（老闆 2026-08-29）
-  starOn: true, starCount: 500, starSpeed: 5, starSize: 20, starTrail: 100, starBrightness: 100,
+  starOn: true, starCount: 500, starSpeed: 5, starSize: 20, starTrail: 0, starBrightness: 100,
 };
 
 /* ============================================================
