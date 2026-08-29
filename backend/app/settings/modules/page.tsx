@@ -23,6 +23,8 @@ import ParamsPanel from './ParamsPanel'
  *     連卡包模式的商品頁都跟著停 —— migration 591 拆成獨立的 card_showcase。
  */
 
+/** `desc` 只留給看這個檔案的人當說明，**不再顯示在畫面上** ——
+    老闆 2026-08-29：模組選單裡括弧那段全部不要 */
 type Theme = { value: string; label: string; desc: string }
 
 type Row =
@@ -224,14 +226,17 @@ export default function ModulesSettingsPage() {
                 return (
                   <div key={row.productType} className="space-y-2">
                     <SettingsRow title={row.title} desc={row.desc}>
+                      {/* 選項只印模組名（老闆 2026-08-29）。原本是 `{label}（{desc}）`，
+                          於是「沉浸撕紙」在選單裡變成「沉浸撕紙（全畫面場景，撕開揭曉最大賞，
+                          再進開獎列表）」，一行塞滿。括弧那段不再顯示在畫面上任何地方。 */}
                       <div className="flex items-center gap-2">
                         <SelectField
                           value={cur}
                           onChange={e => { handleChange(row.productType, e.target.value); setOpenParams(null) }}
                           className="min-w-[15rem] border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                         >
-                          {row.themes.map(({ value, label, desc }) => (
-                            <option key={value} value={value}>{label}（{desc}）</option>
+                          {row.themes.map(({ value, label }) => (
+                            <option key={value} value={value}>{label}</option>
                           ))}
                         </SelectField>
                         <button
