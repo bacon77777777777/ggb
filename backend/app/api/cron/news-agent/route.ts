@@ -442,6 +442,50 @@ async function fetchText(url: string, timeoutMs = 10_000): Promise<string> {
   return ''
 }
 
+/**
+ * 從文章頁抽出**正文**（2026-08-29）
+ *
+ * 原本是「整頁去標籤、取前 1500 字」。對版面簡單的站沒事，對選單長的站是災難 ——
+ * CardboardConnection 的前 1500 字全是導覽列：
+ *
+ *   「…Baseball Review Home Site Search Forum Repackz Products New Release
+ *     Calendar Reviews Auction Search Brands Collecting Supplies Hot Top 50…」
+ *
+ * Claude 看不到任何商品資訊，當然回 null。實測球員卡每輪被退 17~18 篇，
+ * 一直以為是篩選規則太嚴，其實是**餵進去的內容根本不是文章**。
+ *
+ * 作法：先縮到正文容器再去標籤。`<article>` 是 HTML5 語意標籤，
+ * 現代 CMS 幾乎都有（實測 CardboardConnection 與 ホビーウォッチ 都有）；
+ * 沒有就退回幾個常見的 class，再沒有才用整頁（維持舊行為，不會比現在差）。
+ *
+ * 容器內仍要拿掉 nav/header/footer/aside —— 有些站把側欄放在 <article> 裡面。
+ */
+function extractArticleText(html: string, limit = 1500): string {
+  if (!html) return ''
+  const clean = (frag: string) => frag
+    .replace(/<(script|style|nav|header|footer|aside|form)[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#\d+;/g, ' ')
+    .replace(/\s+/g, ' ').trim()
+
+  // <article> 可能有多個（相關文章列表），取最長的那個才是正文
+  const articles = [...html.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/gi)].map(m => m[1])
+  if (articles.length) {
+    const best = articles.sort((a, b) => b.length - a.length)[0]
+    const text = clean(best)
+    if (text.length >= 200) return text.slice(0, limit)
+  }
+
+  for (const cls of ['entry-content', 'post-content', 'article-body', 'articleBody', 'td-post-content']) {
+    const i = html.indexOf(cls)
+    if (i < 0) continue
+    const text = clean(html.slice(i, i + 60_000))
+    if (text.length >= 200) return text.slice(0, limit)
+  }
+
+  return clean(html).slice(0, limit)   // 都找不到就照舊
+}
+
 function extractMeta(html: string, prop: string): string {
   return (
     html.match(new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]*content=["']([^"']{1,500})["']`, 'i'))?.[1] ??
@@ -1496,12 +1540,7 @@ export async function POST(req: NextRequest) {
 
         const title = extractMeta(articleHtml, 'og:title') || ''
         const desc  = extractMeta(articleHtml, 'og:description') || ''
-        const bodyText = articleHtml
-          .replace(/<script[\s\S]*?<\/script>/gi, '')
-          .replace(/<style[\s\S]*?<\/style>/gi, '')
-          .replace(/<[^>]+>/g, ' ')
-          .replace(/\s+/g, ' ').trim()
-          .slice(0, 1500)
+        const bodyText = extractArticleText(articleHtml)
 
         if (isDuplicateSource(title)) { results.skipped++; results.skipReasons.titleDup++; continue }
         if (quotaFull(classifyByTitle(title) ?? src.category)) { results.skipped++; results.skipReasons.catQuota++; continue }
@@ -1680,12 +1719,7 @@ export async function POST(req: NextRequest) {
         if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
 
         const bodyText = articleHtml
-          ? articleHtml
-              .replace(/<script[\s\S]*?<\/script>/gi, '')
-              .replace(/<style[\s\S]*?<\/style>/gi, '')
-              .replace(/<[^>]+>/g, ' ')
-              .replace(/\s+/g, ' ').trim()
-              .slice(0, 1500)
+          ? extractArticleText(articleHtml)
           : (jinaText || item.description).slice(0, 1500)
 
         if (isDuplicateSource(item.title)) { results.skipped++; results.skipReasons.titleDup++; continue }

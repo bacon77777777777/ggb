@@ -4,6 +4,57 @@
 
 ---
 
+## v2026.08.29o｜2026-08-29｜球員卡產不出來的真正原因：餵給 Claude 的「內文」是導覽選單
+
+球員卡接上之後每輪都被退 17~18 篇（`claudeReject`）。先以為是篩選規則太嚴
+（標題都叫「Set Review」，撞到「不收開箱評測」那條），把「官方收錄清單」列為
+可接受之後**還是被退**。
+
+直接問 Claude 為什麼退，它的理由是：
+「沒有實際的 checklist、卡表、品項清單或售價等具體商品情報。」
+
+去看送進去的內容才發現 —— **那根本不是文章**：
+
+```
+2026 Panini Immaculate Collection Baseball Review Home Site Search Forum
+Repackz Products New Release Calendar Reviews Auction Search Brands
+Collecting Supplies Hot Top 50 Sports Card Auctions Players …
+```
+
+是網站的**導覽選單**。原本的做法是「整頁去標籤、取前 1500 字」，
+對版面簡單的站沒事，但這個站的選單很長，1500 字全被選單吃掉。
+Claude 看不到任何商品資訊，退回是正確的判斷 —— **錯的是我們餵的東西**。
+
+### 修法：先縮到正文容器再去標籤
+
+新增 `extractArticleText()`：
+
+1. `<article>` —— HTML5 語意標籤，現代 CMS 幾乎都有
+   （實測 CardboardConnection 與 ホビーウォッチ 都有）。有多個時取**最長**的，
+   因為相關文章列表也會用 `<article>`
+2. 沒有就退回常見 class：`entry-content`／`post-content`／`article-body`／
+   `articleBody`／`td-post-content`
+3. 都沒有才用整頁 —— 維持舊行為，不會比現在差
+
+容器內仍要拿掉 `nav/header/footer/aside/form`：有些站把側欄放在 `<article>` 裡面。
+
+驗證：同一篇 Panini Immaculate，改之前 Claude 回 null、改之後回「接受」，
+理由是「包含發售日期、產品配置、開箱內容保證和收錄卡手等官方公布的商品內容」。
+
+### 這個修正影響的不只球員卡
+
+所有走「抓文章頁 → 送 Claude 改寫」的來源都吃這條路徑
+（ホビーウォッチ、inside-games、PRTimes、玩具人、Union Arena）。
+其他來源的 `claudeReject` 一直偏高，很可能也有一部分是同樣的原因。
+
+### 教訓
+
+**退件率高的時候，先看送進去的是什麼，不要先改判斷規則。**
+我一開始的假設是「規則太嚴」，改了規則沒用；真正的問題在上游。
+如果一開始就把 `bodyText` 印出來看一眼，可以省掉兩輪部署。
+
+---
+
 ## v2026.08.29n｜2026-08-29｜狀態列文字黑白自動判斷；頭像格子高度改用 CSS 推導
 
 ### 一、動態島文字始終是黑的
