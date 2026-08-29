@@ -170,15 +170,20 @@ const MANUAL_SPECS = [
     // 滿版顯示的大面積漸層插畫，頭像那組的 q80 會看得出色帶
     dest: [], alsoWebp: 'frontend/public/images/invite/invite.webp', webpQuality: 88 },
   /*
-   * 預設頭像八款，**是輪替用的不是只有一張**：信箱驗證建帳號時由
-   * `handle_new_user()` 隨機配一款（migration 634），機器人帳號也是平均分佈在這八款。
-   * 所以八張都要在這裡，換的時候整組一起換視覺才會一致。
+   * 預設頭像三十款（原本八款，老闆 2026-08-29 補到 30），**是輪替用的不是只有一張**：
+   * 信箱驗證建帳號時由 `handle_new_user()` 隨機配一款，機器人帳號也是平均分佈。
+   * 所以三十張都要在這裡，換的時候整組一起換視覺才會一致。
+   *
+   * ⚠️ 改這個數字時，另外三個地方要一起改，不然會對不上：
+   *   1. `frontend/app/profile/page.tsx` 的 `DEFAULT_AVATARS`（頭像選擇彈窗）
+   *   2. `handle_new_user()` 的隨機範圍（migration 641）
+   *   3. 機器人帳號的頭像分佈
    */
-  ...Array.from({ length: 8 }, (_, i) => {
+  ...Array.from({ length: 30 }, (_, i) => {
     const n = String(i + 1).padStart(2, '0')
     return {
       file: `avatar-${n}.png`, size: '1000×1000',
-      desc: `預設頭像 ${n}／08（新帳號隨機配一款）`,
+      desc: `預設頭像 ${n}／30（新帳號隨機配一款）`,
       dest: [`frontend/public/images/avatar/${n}.png`],
       alsoWebp: `frontend/public/images/avatar/${n}.webp`,
     }

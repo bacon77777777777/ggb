@@ -784,9 +784,39 @@ function ProfileContent() {
    * 上傳那條路不變：加號 → 原生選圖／相機 → 既有的裁切器 → 上傳 R2 → 存檔。
    * 開裁切器時要把彈窗關掉，兩層蓋在一起會看不到裁切畫面。
    */
-  const DEFAULT_AVATARS = Array.from({ length: 8 }, (_, i) => `/images/avatar/${String(i + 1).padStart(2, '0')}.webp`);
+  /** 30 款（原 8 款，老闆 2026-08-29 補到 30）。改數字要同步 scripts/brand_sync.mjs 與 handle_new_user() */
+  const DEFAULT_AVATARS = Array.from({ length: 30 }, (_, i) => `/images/avatar/${String(i + 1).padStart(2, '0')}.webp`);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [tempAvatar, setTempAvatar] = useState<string | null>(null);
+
+  /*
+   * 頭像格子只露 4.5 排（老闆 2026-08-29）
+   *
+   * 31 格（1 個上傳 + 30 款）在五欄版面是 7 排，全開彈窗會長到快滿版。
+   * 露 4.5 排的用意跟頁籤淡出一樣 —— **第五排被切一半，才看得出下面還有**。
+   * 剛好停在整排會被讀成「就這些」。
+   *
+   * 高度用量的不是寫死的：格子寬度隨彈窗寬度變，寫死 px 在小螢幕會切錯位置。
+   * 4.5 排 = 4.5 個格高 + 4 個間距（gap-3 = 12px）。
+   */
+  const avatarGridRef = useRef<HTMLDivElement>(null);
+  const [avatarGridMaxH, setAvatarGridMaxH] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    if (!showAvatarPicker) return;
+    const el = avatarGridRef.current;
+    if (!el) return;
+    const sync = () => {
+      const first = el.firstElementChild as HTMLElement | null;
+      if (!first) return;
+      const cell = first.getBoundingClientRect().height;
+      if (!cell) return;
+      setAvatarGridMaxH(Math.round(cell * 4.5 + 12 * 4));
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [showAvatarPicker]);
 
   const openAvatarPicker = () => {
     setTempAvatar(null);
@@ -7712,7 +7742,11 @@ function ProfileContent() {
         onClose={() => { setTempAvatar(null); setShowAvatarPicker(false); }}
         title="設定頭像"
       >
-        <div className="grid grid-cols-5 gap-3 mb-4">
+        <div
+          ref={avatarGridRef}
+          style={{ maxHeight: avatarGridMaxH }}
+          className="grid grid-cols-5 gap-3 mb-4 overflow-y-auto overscroll-contain scrollbar-hide"
+        >
           {/* 上傳格：虛線外框 + 灰底 + 加號，點下去開原生的「照片／相機」選單 */}
           <button
             type="button"
