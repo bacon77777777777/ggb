@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Box, Truck, Trophy, Settings, LogOut, ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, HelpCircle, Info, FileText, Shield, RefreshCcw, RefreshCw, Wallet, Heart, User, ChevronDown, X, Loader2, CreditCard, Copy, Ticket, Store, History, MessageCircle, Star, UserPlus, Search } from 'lucide-react';
+import { Box, Truck, Trophy, Settings, LogOut, ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, HelpCircle, Info, FileText, Shield, RefreshCcw, RefreshCw, Wallet, Heart, User, ChevronDown, X, Loader2, CreditCard, Copy, Ticket, Store, History, MessageCircle, Star, UserPlus, Search, Plus } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
 import PageHeader from '@/components/ui/PageHeader';
@@ -773,8 +773,50 @@ function ProfileContent() {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [cropperSrc, setCropperSrc] = useState<string | null>(null);
 
+  /*
+   * 頭像改成彈窗選（老闆 2026-08-29）
+   *
+   * 原本點「頭像」那一列直接開檔案選擇器 —— 玩家只有「上傳自己的圖」一條路，
+   * 站上那八款預設頭像根本沒有入口，只有註冊時隨機配到。
+   * 改成先開彈窗（沿用「設定性別」那個 Modal），一排五個：
+   * 第一格是上傳（虛線框＋灰底＋加號），其餘是預設頭像，全部圓形。
+   *
+   * 上傳那條路不變：加號 → 原生選圖／相機 → 既有的裁切器 → 上傳 R2 → 存檔。
+   * 開裁切器時要把彈窗關掉，兩層蓋在一起會看不到裁切畫面。
+   */
+  const DEFAULT_AVATARS = Array.from({ length: 8 }, (_, i) => `/images/avatar/${String(i + 1).padStart(2, '0')}.webp`);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [tempAvatar, setTempAvatar] = useState<string | null>(null);
+
+  const openAvatarPicker = () => {
+    setTempAvatar(null);
+    setShowAvatarPicker(true);
+  };
+
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
+  };
+
+  /** 選預設頭像後存檔（自訂上傳走 handleCropConfirm，那條已經自己存了） */
+  const handleSaveDefaultAvatar = async () => {
+    if (!tempAvatar) return;
+    setIsUploadingAvatar(true);
+    try {
+      await supabase.auth.updateUser({ data: { avatar_url: tempAvatar } });
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        await supabase.from('users').update({ avatar_url: tempAvatar }).eq('id', authUser.id);
+      }
+      toast.success('頭像更新成功');
+      setShowAvatarPicker(false);
+      setTempAvatar(null);
+      await refreshProfile();
+    } catch (error) {
+      console.error('Avatar update error:', error);
+      toast.error('頭像更新失敗');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   };
 
   // Step 1: 選完圖片後 → 開 cropper
@@ -782,6 +824,7 @@ function ProfileContent() {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
+    setShowAvatarPicker(false);   // 裁切器要蓋在最上層，彈窗留著會擋住
     const reader = new FileReader();
     reader.onload = ev => { if (ev.target?.result) setCropperSrc(ev.target.result as string); };
     reader.readAsDataURL(file);
@@ -6481,7 +6524,7 @@ function ProfileContent() {
                   <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm overflow-hidden divide-y divide-neutral-100 dark:divide-neutral-800">
                     <div 
                       className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
-                      onClick={handleAvatarClick}
+                      onClick={openAvatarPicker}
                     >
                       <label className="text-[15px] text-neutral-800 dark:text-neutral-200">頭像</label>
                       <div className="flex items-center gap-2">
@@ -6671,7 +6714,7 @@ function ProfileContent() {
                 <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm overflow-hidden divide-y divide-neutral-100 dark:divide-neutral-800">
                   <div 
                     className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
-                    onClick={handleAvatarClick}
+                    onClick={openAvatarPicker}
                   >
                     <label className="text-[15px] text-neutral-800 dark:text-neutral-200">頭像</label>
                     <div className="flex items-center gap-2">
@@ -7660,6 +7703,58 @@ function ProfileContent() {
           className="w-full bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 h-[44px] rounded-lg font-bold text-[15px] active:scale-[0.98] transition-all"
         >
           關閉
+        </button>
+      </Modal>
+
+      {/* 頭像選擇彈窗（老闆 2026-08-29）—— 一排五個、全部圓形，第一格是上傳 */}
+      <Modal compact
+        isOpen={showAvatarPicker}
+        onClose={() => { setTempAvatar(null); setShowAvatarPicker(false); }}
+        title="設定頭像"
+      >
+        <div className="grid grid-cols-5 gap-3 mb-4">
+          {/* 上傳格：虛線外框 + 灰底 + 加號，點下去開原生的「照片／相機」選單 */}
+          <button
+            type="button"
+            onClick={handleAvatarClick}
+            disabled={isUploadingAvatar}
+            aria-label="上傳自己的頭像"
+            className="aspect-square rounded-full border-2 border-dashed border-neutral-300 dark:border-neutral-600 bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-400 active:scale-95 transition-transform disabled:opacity-50"
+          >
+            <Plus className="w-6 h-6" />
+          </button>
+
+          {DEFAULT_AVATARS.map((src) => {
+            const selected = (tempAvatar ?? user?.avatar_url) === src;
+            return (
+              <button
+                key={src}
+                type="button"
+                onClick={() => setTempAvatar(src)}
+                disabled={isUploadingAvatar}
+                aria-label="選擇預設頭像"
+                className={cn(
+                  "aspect-square rounded-full overflow-hidden relative border-2 active:scale-95 transition-transform disabled:opacity-50",
+                  selected ? "border-primary" : "border-transparent",
+                )}
+              >
+                <Image src={asset(src)} alt="" fill className="object-cover" unoptimized />
+                {selected && (
+                  <span className="absolute inset-0 flex items-center justify-center bg-primary/25">
+                    <CheckCircle2 className="w-5 h-5 text-white drop-shadow" />
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={handleSaveDefaultAvatar}
+          disabled={isUploadingAvatar || !tempAvatar}
+          className="w-full bg-primary text-white h-[44px] rounded-lg font-bold text-[15px] shadow-lg shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {isUploadingAvatar ? <Loader2 className="w-5 h-5 animate-spin" /> : '儲存'}
         </button>
       </Modal>
 

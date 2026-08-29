@@ -388,7 +388,6 @@ export default function SearchPage() {
     (flags.card ? 1 : 0) +
     (flags.custom ? 1 : 0);
   const hasAnyPrimaryFeature = enabledPrimaryFeatureCount > 0;
-  const hidePrimaryTabs = enabledPrimaryFeatureCount < 2;
   const singlePrimaryTab: PrimaryTabId | null =
     enabledPrimaryFeatureCount === 1
       ? flags.sell
@@ -416,16 +415,53 @@ export default function SearchPage() {
     if (activePrimaryTab !== 'all') setActivePrimaryTab('all');
   }, [activePrimaryTab, hasAnyPrimaryFeature]);
 
+  /**
+   * 這次關鍵字在各分類各命中幾件 —— 只算關鍵字，不套分類篩選
+   *（否則選了「轉蛋」之後其他分類就全變 0，整列會塌掉）
+   */
+  const queryTypeCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    if (!trimmedQuery) return counts;
+    const q = trimmedQuery.toLowerCase();
+    for (const product of allProducts) {
+      const name = (product.name || '').toLowerCase();
+      const series = ((product as { series?: string | null }).series || '').toLowerCase();
+      const sid = (product as { supplier_id?: number | null }).supplier_id;
+      const supplier = (sid ? supplierNames.get(Number(sid)) ?? '' : '').toLowerCase();
+      if (!(name.includes(q) || series.includes(q) || (!!supplier && supplier.includes(q)))) continue;
+      const t = String((product as { type?: string | null }).type || '');
+      if (t) counts.set(t, (counts.get(t) ?? 0) + 1);
+    }
+    return counts;
+  }, [allProducts, trimmedQuery, supplierNames]);
+
+  /*
+   * 分類頁籤只顯示「這次搜尋真的有結果」的（老闆 2026-08-29）
+   *
+   * 七個分類不分結果全都列出來，大多數關鍵字底下有一半是死頁籤 ——
+   * 點進去是空的，比沒有那顆更糟。改成有命中才顯示。
+   *
+   * 沒輸入關鍵字時（「猜你喜歡」瀏覽模式）維持全列，那裡的頁籤是導覽用的。
+   * 只剩「精選」一顆時整列由 hidePrimaryTabs 收掉。
+   */
   const primaryTabs = useMemo(() => {
     const base: { id: PrimaryTabId; label: string }[] = [{ id: 'all', label: '精選' }];
-    if (flags.sell) base.push({ id: 'sell', label: '商城' });
-    if (flags.ichiban) base.push({ id: 'ichiban', label: '一番賞' });
-    if (flags.blindbox) base.push({ id: 'blindbox', label: '盒玩' });
-    if (flags.gacha) base.push({ id: 'gacha', label: '轉蛋' });
-    if (flags.card) base.push({ id: 'card', label: '抽卡' });
-    if (flags.custom) base.push({ id: 'custom', label: '自製賞' });
+    const show = (enabled: boolean, type: string) =>
+      enabled && (!trimmedQuery || (queryTypeCounts.get(type) ?? 0) > 0);
+    const sellHit = !trimmedQuery
+      || sellListings.some(l => String(l?.title || '').toLowerCase().includes(trimmedQuery.toLowerCase()));
+    if (flags.sell && sellHit) base.push({ id: 'sell', label: '商城' });
+    if (show(flags.ichiban, 'ichiban')) base.push({ id: 'ichiban', label: '一番賞' });
+    if (show(flags.blindbox, 'blindbox')) base.push({ id: 'blindbox', label: '盒玩' });
+    if (show(flags.gacha, 'gacha')) base.push({ id: 'gacha', label: '轉蛋' });
+    if (show(flags.card, 'card')) base.push({ id: 'card', label: '抽卡' });
+    if (show(flags.custom, 'custom')) base.push({ id: 'custom', label: '自製賞' });
     return base;
-  }, [flags.blindbox, flags.card, flags.custom, flags.gacha, flags.ichiban, flags.sell]);
+  }, [flags.blindbox, flags.card, flags.custom, flags.gacha, flags.ichiban, flags.sell,
+      trimmedQuery, queryTypeCounts, sellListings]);
+
+  /** 只剩「精選」一顆就整列收掉 —— 一顆頁籤不構成選擇 */
+  const hidePrimaryTabs = primaryTabs.length < 2;
 
   const secondaryTabs = useMemo(() => {
     return [

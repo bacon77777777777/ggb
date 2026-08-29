@@ -285,6 +285,14 @@ const DIRECT_FEEDS: Array<{
   titleFilter?: RegExp
   /** 命中就跳過，比 titleFilter 後判定（綜合型來源的自家廣告與投資文用這個擋） */
   titleSkip?: RegExp
+  /**
+   * 這個來源多久才准出一篇（小時）。用來壓低配角來源的比重。
+   *
+   * 老闆 2026-08-29：「球員卡兩天一篇或三天一篇也行，畢竟寶可夢或其他日系
+   * 卡牌才是主流」。沒有這個節流的話，只要它排在前面就會一直吃掉 tcg 的名額。
+   * 判斷依據是 news 表裡同網域最近一篇的時間，不需要另外存狀態。
+   */
+  minIntervalHours?: number
 }> = [
   /*
    * 球員卡（老闆 2026-08-29 指定：未來會有這條商品線，情報先鋪）
@@ -300,12 +308,19 @@ const DIRECT_FEEDS: Array<{
    * ⚠️ 球員卡的商品圖幾乎都是白底，而我們的浮水印是單層白字 —— 蓋上去看不見。
    *    這條線真的重要的話，浮水印要做「依亮度自動選白字或深色字」。
    */
+  /*
+   * **順序刻意把球員卡放前面**，配合 minIntervalHours 一起看才對：
+   * 球員卡有 60 小時節流，等於每 2~3 天才准出一篇；沒被節流的那一輪讓它先拿
+   * tcg 名額，其餘所有輪次都是日系卡牌（inside-games）在用。
+   * 反過來把它排最後的話，tcg 名額會被日系吃光，球員卡永遠輪不到 ——
+   * 那是加來源之前實際發生過的狀況。
+   */
   // 純產品導向，20 則全是 Set Review + Checklist，但量少（約 10 篇/月）
   { url: 'https://www.cardboardconnection.com/feed', category: 'tcg', label: 'CardboardConn',
-    titleFilter: SPORTSCARD_TOPIC_RE, titleSkip: SPORTSCARD_SKIP_RE },
+    titleFilter: SPORTSCARD_TOPIC_RE, titleSkip: SPORTSCARD_SKIP_RE, minIntervalHours: 60 },
   // 更新較勤但內容混雜，靠上面兩條規則篩
   { url: 'https://cardlines.com/feed/', category: 'tcg', label: 'CardLines',
-    titleFilter: SPORTSCARD_TOPIC_RE, titleSkip: SPORTSCARD_SKIP_RE },
+    titleFilter: SPORTSCARD_TOPIC_RE, titleSkip: SPORTSCARD_SKIP_RE, minIntervalHours: 60 },
   /*
    * inside-games —— `tcg` 分類的主力（老闆 2026-08-29 指定）
    *
@@ -1143,6 +1158,17 @@ ${combined}
 商品名稱、品牌、系列名、發售日期、價格等事實資訊必須忠實保留，
 但描述、評論、鋪陳一律用自己的話寫。
 
+【品牌名不可張冠李戴】卡牌品牌各自獨立，**不可以把 A 品牌寫成 B 品牌**。
+實際出過的錯：把 BANDAI 自家的「ユニオンアリーナ／UNION ARENA」寫成「遊戲王」——
+那是完全不同公司的產品，玩家會被誤導。對照表（左邊出現時，右邊是唯一正確寫法）：
+- ユニオンアリーナ／UNION ARENA → **UNION ARENA**（保留英文，不譯、不可叫遊戲王）
+- 遊戯王／遊戲王 → 遊戲王
+- ポケモンカード／ポケカ → 寶可夢卡牌
+- ワンピースカードゲーム → 海賊王卡牌
+- ヴァイスシュヴァルツ → Weiss Schwarz（保留英文）
+- デュエル・マスターズ／デュエマ → 決鬥大師
+不確定是哪個品牌時，**照原文保留，不要猜**。
+
 【英文來源】球員名、隊名、聯盟名一律用**台灣慣用譯名**（Shohei Ohtani→大谷翔平、
 Lakers→湖人、NBA／MLB 這種縮寫保留原文）。**產品線與商品名保留英文**
 （Topps Chrome、Panini Prizm、Upper Deck —— 玩家就是用英文搜尋與交易的）。
@@ -1309,6 +1335,20 @@ export async function POST(req: NextRequest) {
   const recentTitles  = (existingRows ?? [])
     .filter((r: any) => new Date(r.created_at ?? 0).getTime() > Date.now() - 7 * 86400_000)
     .map((r: any) => tokenize(r.title ?? ''))
+  /**
+   * 各來源網域最近一篇的發佈時間 —— 給 DIRECT_FEEDS 的 minIntervalHours 用
+   *
+   * 不另外存狀態：news 表本身就是進度表，跟分類配額用 last24h 是同一個思路。
+   */
+  const lastPostAtByHost = new Map<string, number>()
+  for (const r of (existingRows ?? []) as any[]) {
+    let host = ''
+    try { host = new URL(r.source_url).hostname.replace(/^www\./, '') } catch { continue }
+    const t = new Date(r.created_at ?? 0).getTime()
+    if (!host || isNaN(t)) continue
+    if (t > (lastPostAtByHost.get(host) ?? 0)) lastPostAtByHost.set(host, t)
+  }
+
   // 歷史上成功抓到圖片的來源域名（優先處理）
   const trustedDomains = new Set(
     (existingRows ?? [])
@@ -1342,7 +1382,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const limitOverride: number | undefined = typeof body?.limit === 'number' ? body.limit : undefined
 
-  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0, catQuota: 0, selfPromo: 0, adLeak: 0 } }
+  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0, catQuota: 0, selfPromo: 0, adLeak: 0, throttled: 0 } }
   const DEADLINE     = Date.now() + 240_000  // 最多跑 4 分鐘
   /*
    * 每次全局上限（手動觸發可傳 limit 覆寫）
@@ -1561,6 +1601,17 @@ export async function POST(req: NextRequest) {
   const runDirectFeeds = async () => {
     for (const feed of DIRECT_FEEDS) {
       if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
+
+      // 節流的來源：距離上一篇還不夠久就整個跳過，連 feed 都不用抓
+      if (feed.minIntervalHours) {
+        let host = ''
+        try { host = new URL(feed.url).hostname.replace(/^www\./, '') } catch { host = '' }
+        const last = host ? lastPostAtByHost.get(host) ?? 0 : 0
+        if (last && Date.now() - last < feed.minIntervalHours * 3600_000) {
+          results.skipped++; results.skipReasons.throttled++
+          continue
+        }
+      }
 
       const xml = await fetchText(feed.url)
       if (!xml) { results.errors++; continue }
