@@ -188,16 +188,49 @@ function extractOneOneBodyImages(html: string, limit: number): string[] {
   return [...new Set(urls)].slice(0, limit)
 }
 
-const DIRECT_FEEDS: Array<{ url: string; category: string; label: string }> = [
-  // PR TIMES ホビー・玩具カテゴリ（日本企業プレスリリース）
-  { url: 'https://prtimes.jp/rss/category/17.rss',     category: 'figure',   label: 'PRTimes-hobby' },
-  // 電撃ホビーウェブ
-  { url: 'https://hobby.dengeki.com/feed/',             category: 'figure',   label: 'DengekiHobby' },
-  // Animate Times
-  { url: 'https://www.animatetimes.com/rss.xml',       category: 'figure',   label: 'AnimateTimes' },
-  // 巴哈姆特 GNN 遊戲動漫新聞（繁中）
-  { url: 'https://gnn.gamer.com.tw/rss.xml',           category: 'figure',   label: 'GNN-TW' },
+/**
+ * 玩具／周邊題材的關鍵字 —— 給綜合型 feed 用的前置過濾
+ *
+ * PRTimes 的 index.rdf 是**全分類消防栓**（馬肉、鰻魚、籃球都在裡面），
+ * 巴哈 GNN 是遊戲新聞台（實測 31 則裡玩具相關只有 1 則）。
+ * 不先濾掉，每一則不相干的都要付一次文章 fetch ＋ 一次 Claude 改寫才被退回。
+ */
+const TOY_TOPIC_RE = /フィギュア|一番くじ|ガシャポン|ガチャ|カプセルトイ|プライズ|景品|食玩|ぬいぐるみ|ソフビ|プラモ|ガンプラ|ROBOT魂|トレカ|カードゲーム|新弾|一番賞|轉蛋|扭蛋|盒玩|盲盒|公仔|模型|卡牌|周邊|開賣|發售/
+
+const DIRECT_FEEDS: Array<{ url: string; category: string; label: string; titleFilter?: RegExp }> = [
+  /*
+   * ホビーウォッチ（Impress）—— 2026-08-29 起的主力
+   *
+   * 題材幾乎 100% 重疊（一番くじ／ガンプラ／フィギュア／ROBOT魂），
+   * 圖是廠商官方商品照與自家展場照，**兩種都沒有站標**。
+   * 實測 12 則全部有 og:image、全部通過封面體檢。
+   */
+  { url: 'https://hobby.watch.impress.co.jp/data/rss/1.0/hbw/feed.rdf', category: 'figure', label: 'HobbyWatch' },
+  /*
+   * PR TIMES —— 官方新聞稿，圖就是廠商自己發的原圖（沒有任何媒體站標）
+   *
+   * 舊的 `rss/category/17.rss` 已經 404（實測），換成全站 `index.rdf` 並用
+   * 標題關鍵字過濾。它一次只有 200 則、大約涵蓋兩小時，所以 6 小時一輪會
+   * 漏掉大部分 —— 撈得到就是賺，不當主力。
+   */
+  { url: 'https://prtimes.jp/index.rdf', category: 'figure', label: 'PRTimes', titleFilter: TOY_TOPIC_RE },
+  /*
+   * 巴哈姆特 GNN（繁中）—— 遊戲新聞台，玩具題材是少數
+   * 近 30 天實際產出 0 篇。留著但加關鍵字過濾，不再為了它燒 Claude 額度。
+   */
+  { url: 'https://gnn.gamer.com.tw/rss.xml', category: 'figure', label: 'GNN-TW', titleFilter: TOY_TOPIC_RE },
 ]
+
+/*
+ * 拿掉了電撃ホビー（`hobby.dengeki.com/feed/`）—— 老闆 2026-08-29 指定，
+ * 因為**它是唯一會在圖上壓自己站標的來源**。
+ *
+ * 它原本佔近 30 天文章的 88%（290/329），所以不是單純刪掉：同一次把
+ * ホビーウォッチ 補上（題材重疊、圖乾淨），並修好兩條死掉的 feed。
+ *
+ * WATERMARKED_SOURCES 與那整套「偵測 → 蓋白墊 → 複驗」保留不動：
+ * 之後任何來源開始壓站標都還接得住，而現在它幾乎不會被觸發。
+ */
 
 const LOCALE_PARAMS: Record<Locale, { hl: string; gl: string; ceid: string }> = {
   TW: { hl: 'zh-TW', gl: 'TW', ceid: 'TW:zh-Hant' },
@@ -226,7 +259,9 @@ interface RssItem {
 
 function parseRss(xml: string): RssItem[] {
   const items: RssItem[] = []
-  const itemRe = /<item>([\s\S]*?)<\/item>/gi
+  // `<item rdf:about="…">`：ホビーウォッチ 與 PRTimes 走 RSS 1.0／RDF，
+  // 舊的 /<item>/ 只認沒有屬性的標籤，那兩家會一則都解不出來
+  const itemRe = /<item\b[^>]*>([\s\S]*?)<\/item>/gi
   let m
   while ((m = itemRe.exec(xml)) !== null) {
     const block = m[1]
@@ -237,7 +272,10 @@ function parseRss(xml: string): RssItem[] {
     const desc  = block.match(/<description>([\s\S]*?)<\/description>/i)?.[1]
       ?.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/, '$1')
       ?.replace(/<a[^>]+>|<\/a>|<font[^>]+>|<\/font>/gi, '').trim() ?? ''
-    const pubDate = block.match(/<pubDate>([\s\S]*?)<\/pubDate>/i)?.[1]?.trim() ?? ''
+    // RDF 沒有 pubDate，日期在 dc:date
+    const pubDate = (block.match(/<pubDate>([\s\S]*?)<\/pubDate>/i)?.[1]
+      ?? block.match(/<dc:date>([\s\S]*?)<\/dc:date>/i)?.[1]
+      ?? '').trim()
     const source  = block.match(/<source[^>]*>([\s\S]*?)<\/source>/i)?.[1]?.trim() ?? ''
     // 從 enclosure / media:content / media:thumbnail / content:encoded 取圖片
     const contentEncoded = block.match(/<content:encoded>([\s\S]*?)<\/content:encoded>/i)?.[1]
@@ -1413,7 +1451,9 @@ export async function POST(req: NextRequest) {
       const xml = await fetchText(feed.url)
       if (!xml) { results.errors++; continue }
 
-      const rawItems = parseRss(xml).filter(it => isRecent(it.pubDate, 3)) // 只抓 3 天內
+      const rawItems = parseRss(xml)
+        .filter(it => isRecent(it.pubDate, 3))                       // 只抓 3 天內
+        .filter(it => !feed.titleFilter || feed.titleFilter.test(it.title))  // 綜合型 feed 先用標題濾題材
       const items = rawItems.sort((a, b) => {
         const da = (() => { try { return new URL(a.link).hostname } catch { return '' } })()
         const db = (() => { try { return new URL(b.link).hostname } catch { return '' } })()
