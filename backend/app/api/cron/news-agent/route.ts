@@ -294,6 +294,18 @@ const DIRECT_FEEDS: Array<{
    * 判斷依據是 news 表裡同網域最近一篇的時間，不需要另外存狀態。
    */
   minIntervalHours?: number
+  /**
+   * 只收幾天內的文章，預設 3 天。
+   *
+   * 低頻來源要自己的窗口：CardboardConnection 一個月才十幾篇、而且是一陣一陣的，
+   * 實測最新一篇是 **25.6 天前** —— 用 3 天窗口它永遠貢獻 0 則，
+   * 等於接了等於沒接（我一度誤判成被改寫階段退回，其實根本沒進到那一步）。
+   *
+   * 放寬的代價是「舊聞當新聞發」。對球員卡這種**商品情報**影響小：
+   * 「2026 Panini Immaculate 收錄清單」講的是還沒發售的商品，寫於三週前
+   * 不影響它的正確性。時效性強的來源（ホビーウォッチ、PRTimes）維持 3 天。
+   */
+  maxAgeDays?: number
 }> = [
   /*
    * 球員卡（老闆 2026-08-29 指定：未來會有這條商品線，情報先鋪）
@@ -318,10 +330,12 @@ const DIRECT_FEEDS: Array<{
    */
   // 純產品導向，20 則全是 Set Review + Checklist，但量少（約 10 篇/月）
   { url: 'https://www.cardboardconnection.com/feed', category: 'tcg', label: 'CardboardConn',
-    titleFilter: SPORTSCARD_TOPIC_RE, titleSkip: SPORTSCARD_SKIP_RE, minIntervalHours: 60 },
+    titleFilter: SPORTSCARD_TOPIC_RE, titleSkip: SPORTSCARD_SKIP_RE,
+    minIntervalHours: 60, maxAgeDays: 30 },
   // 更新較勤但內容混雜，靠上面兩條規則篩
   { url: 'https://cardlines.com/feed/', category: 'tcg', label: 'CardLines',
-    titleFilter: SPORTSCARD_TOPIC_RE, titleSkip: SPORTSCARD_SKIP_RE, minIntervalHours: 60 },
+    titleFilter: SPORTSCARD_TOPIC_RE, titleSkip: SPORTSCARD_SKIP_RE,
+    minIntervalHours: 60, maxAgeDays: 14 },
   /*
    * inside-games —— `tcg` 分類的主力（老闆 2026-08-29 指定）
    *
@@ -1797,7 +1811,7 @@ export async function POST(req: NextRequest) {
       if (!xml) { results.errors++; continue }
 
       const rawItems = parseRss(xml)
-        .filter(it => isRecent(it.pubDate, 3))                       // 只抓 3 天內
+        .filter(it => isRecent(it.pubDate, feed.maxAgeDays ?? 3))     // 預設只抓 3 天內，低頻來源自訂
         .filter(it => !feed.titleFilter || feed.titleFilter.test(it.title))  // 綜合型 feed 先用標題濾題材
         .filter(it => !feed.titleSkip   || !feed.titleSkip.test(it.title))   // 自家廣告、投資文先擋掉
       const items = rawItems.sort((a, b) => {
