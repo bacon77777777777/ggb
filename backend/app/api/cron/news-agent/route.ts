@@ -672,6 +672,18 @@ const MIN_COVER_W = 480
 const MIN_COVER_H = 270
 const MIN_COVER_COLORS = 300
 
+/**
+ * 封面**來源原圖**的雜湊 —— 用來擋「同商品不同通路」的重複文章
+ *
+ * 吃 `fetchImageOnce` 的快取，不會多抓一次；封面在 `isUsableCover` 已經下載過。
+ * 雜湊的是來源原圖而不是轉存後的成品：成品經過縮圖與編碼，同一張來源圖
+ * 不同時間轉出來的位元組不保證一樣。
+ */
+async function coverHashOf(url: string): Promise<string | null> {
+  const buf = await fetchImageOnce(url)
+  return buf ? crypto.createHash('sha1').update(buf).digest('hex') : null
+}
+
 async function isUsableCover(url: string): Promise<boolean> {
   try {
     const buf = await fetchImageOnce(url)
@@ -1293,15 +1305,40 @@ Lakers→湖人、NBA／MLB 這種縮寫保留原文）。**產品線與商品�
 
 // ─── 標題相似度去重 ──────────────────────────────────────────────────────────
 
-// 把標題拆成 CJK 單字 + 英數詞，過濾掉短於 2 字的助詞雜訊
+const CJK_RE = /[\u3400-\u9fff\uf900-\ufaff\u3040-\u30ff]/
+
+/**
+ * 標題切詞：拉丁字照空白切，中日文切成**兩字一組**
+ *
+ * 原本只有「照空白與標點切、留長度 ≥2 的詞」。拉丁語系沒問題，
+ * **中文沒有空格，整句會變成一個 token** —— 於是：
+ *
+ *   「寶可夢卡牌30周年紀念商品追加抽選！御三家9種套組同步開放」
+ *   「寶可夢卡牌30週年紀念商品 Yodobashi線上抽選販售」        → 相似度 0.000
+ *   「寶可夢卡牌30週年…」vs「鬼滅之刃角色Q版公仔…」（完全無關）→ 相似度 0.000
+ *
+ * 兩篇講同一件事跟兩篇完全無關**分數一樣是 0**，這個指標對中文毫無鑑別力，
+ * 等於中文標題的主題去重從來沒有生效過。
+ *
+ * 改成中日文取字元 bigram 之後才有分數（同題材 0.26~0.44、無關 0.00）。
+ *
+ * ⚠️ 但**光靠標題還是分不開「同商品不同通路」與「同系列不同商品」** ——
+ * 實測前者 0.256、後者 0.442，要擋的反而比要留的低。
+ * 那一類靠 `cover_hash`（封面原圖雜湊）擋，見 migration 642。
+ */
 function tokenize(title: string): Set<string> {
-  return new Set(
-    title
-      .toLowerCase()
-      .replace(/[！？。、，【】「」『』《》〈〉・\-\s]+/g, ' ')
-      .split(' ')
-      .filter(t => t.length >= 2)
-  )
+  const flat = title
+    .toLowerCase()
+    .replace(/[！？。、，【】「」『』《》〈〉・\-\s]+/g, ' ')
+
+  const out = new Set<string>()
+  for (const w of flat.split(' ')) {
+    if (w.length >= 2 && !CJK_RE.test(w)) out.add(w)      // 拉丁詞、型號、英文品名
+  }
+  // 中日文與數字連成一串再切 bigram（去掉空白與標點，「30周年」才不會被切斷）
+  const cjk = [...flat].filter(c => CJK_RE.test(c) || /[0-9a-z]/.test(c)).join('')
+  for (let i = 0; i + 2 <= cjk.length; i++) out.add(cjk.slice(i, i + 2))
+  return out
 }
 
 // Jaccard 相似度：兩組 token 交集 / 聯集
@@ -1415,10 +1452,17 @@ export async function POST(req: NextRequest) {
   // 已寫入的 source_url 集合（防重複 URL）
   const { data: existingRows } = await supabase
     .from('news')
-    .select('source_url, title, created_at, image_url, category')
+    .select('source_url, title, created_at, image_url, category, cover_hash')
     .not('source_url', 'is', null)
     .gte('created_at', new Date(Date.now() - 30 * 86400_000).toISOString())
   const existing      = new Set((existingRows ?? []).map((r: any) => r.source_url as string))
+  /**
+   * 近 30 天用過的封面原圖雜湊。同一張官方宣傳圖被兩篇不同來源文章用到，
+   * 對玩家就是「同一則新聞出現兩次」（老闆 2026-08-29 回報的寶可夢那兩篇）。
+   */
+  const usedCoverHashes = new Set(
+    (existingRows ?? []).map((r: any) => r.cover_hash as string | null).filter(Boolean) as string[],
+  )
   // 近 7 天標題的 token set，用於主題去重
   const recentTitles  = (existingRows ?? [])
     .filter((r: any) => new Date(r.created_at ?? 0).getTime() > Date.now() - 7 * 86400_000)
@@ -1470,7 +1514,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const limitOverride: number | undefined = typeof body?.limit === 'number' ? body.limit : undefined
 
-  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0, catQuota: 0, selfPromo: 0, adLeak: 0, throttled: 0, brandMix: 0 } }
+  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0, catQuota: 0, selfPromo: 0, adLeak: 0, throttled: 0, brandMix: 0, coverDup: 0 } }
   const DEADLINE     = Date.now() + 240_000  // 最多跑 4 分鐘
   /*
    * 每次全局上限（手動觸發可傳 limit 覆寫）
@@ -1557,6 +1601,11 @@ export async function POST(req: NextRequest) {
         if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
         // 站方拿自家 logo 當 og:image → 這篇不發，換下一篇（老闆指定）
         if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
+        // 同一張官方宣傳圖 = 同一則新聞，換個通路寫一次不該再發一篇（migration 642）
+        const coverHash = await coverHashOf(ogImage)
+        if (coverHash && usedCoverHashes.has(coverHash)) {
+          results.skipped++; results.skipReasons.coverDup++; continue
+        }
 
         const title = extractMeta(articleHtml, 'og:title') || ''
         const desc  = extractMeta(articleHtml, 'og:description') || ''
@@ -1588,13 +1637,15 @@ export async function POST(req: NextRequest) {
         const { error } = await supabase.from('news').insert({
           id, title: draft.title, summary: draft.summary, content: contentWithImages,
           image_url: imageUrl, source_url: realUrl,
-          category: finalCategory, tags: draft.tags ?? [], is_active: !!imageUrl,
+          category: finalCategory, tags: draft.tags ?? [], is_active: !!imageUrl, cover_hash: coverHash,
         })
         if (!error) {
           results.written++
           catWritten[finalCategory] = (catWritten[finalCategory] ?? 0) + 1
           results.articles.push(`[${src.label}] ${draft.title}`)
           existing.add(realUrl)
+        if (coverHash) usedCoverHashes.add(coverHash)
+          if (coverHash) usedCoverHashes.add(coverHash)
           sessionTitles.push(tokenize(draft.title))
           await generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, finalCategory)
           void supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).then(null, () => {})
@@ -1642,6 +1693,11 @@ export async function POST(req: NextRequest) {
       const ogImage = extractOgImage(articleHtml)
       if (!isOneOneCoverUrl(ogImage)) { results.skipped++; results.skipReasons.noImage++; continue }
       if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
+      // 同一張官方宣傳圖 = 同一則新聞，換個通路寫一次不該再發一篇（migration 642）
+      const coverHash = await coverHashOf(ogImage)
+      if (coverHash && usedCoverHashes.has(coverHash)) {
+        results.skipped++; results.skipReasons.coverDup++; continue
+      }
 
       const srcCategory = oneOneCategory(articleHtml, 'toy')
       if (quotaFull(classifyByTitle(item.title) ?? srcCategory)) { results.skipped++; results.skipReasons.catQuota++; continue }
@@ -1671,13 +1727,14 @@ export async function POST(req: NextRequest) {
       const { error } = await supabase.from('news').insert({
         id, title: draft.title, summary: draft.summary, content: contentWithImages,
         image_url: hostedCover, source_url: realUrl,
-        category: finalCategory, tags: draft.tags ?? [], is_active: !!hostedCover,
+        category: finalCategory, tags: draft.tags ?? [], is_active: !!hostedCover, cover_hash: coverHash,
       })
       if (!error) {
         results.written++
         catWritten[finalCategory] = (catWritten[finalCategory] ?? 0) + 1
         results.articles.push(`[oneone] ${draft.title}`)
         existing.add(realUrl)
+        if (coverHash) usedCoverHashes.add(coverHash)
         sessionTitles.push(tokenize(draft.title))
         await generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, finalCategory)
         void supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).then(null, () => {})
@@ -1737,6 +1794,11 @@ export async function POST(req: NextRequest) {
         if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
         // 站方拿自家 logo 當 og:image → 這篇不發，換下一篇（老闆指定）
         if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
+        // 同一張官方宣傳圖 = 同一則新聞，換個通路寫一次不該再發一篇（migration 642）
+        const coverHash = await coverHashOf(ogImage)
+        if (coverHash && usedCoverHashes.has(coverHash)) {
+          results.skipped++; results.skipReasons.coverDup++; continue
+        }
 
         const bodyText = articleHtml
           ? extractArticleText(articleHtml)
@@ -1775,7 +1837,7 @@ export async function POST(req: NextRequest) {
         const { error } = await supabase.from('news').insert({
           id, title: draft.title, summary: draft.summary, content: contentWithImages,
           image_url: imageUrl, source_url: realUrl,
-          category: finalCategory, tags: draft.tags ?? [], is_active: !!imageUrl,
+          category: finalCategory, tags: draft.tags ?? [], is_active: !!imageUrl, cover_hash: coverHash,
         })
         if (!error) {
           results.written++
