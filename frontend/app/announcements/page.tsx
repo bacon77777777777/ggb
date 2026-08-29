@@ -38,10 +38,12 @@ const MESSAGE_TYPES = ['exchange_message', 'sell_message'];
 
 const CATEGORIES = [
   { key: 'all', label: '所有' },
-  { key: 'mine', label: '我的' },
   { key: '消息', label: '消息' },
   { key: '活動', label: '活動' },
   { key: '系統', label: '系統' },
+  // 「我的」排最後（老闆 2026-08-29）：前面四個是平台發的公告、同一個維度；
+  // 「我的」是個人通知，性質不同，夾在中間會讓前四個看起來被切斷
+  { key: 'mine', label: '我的' },
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {

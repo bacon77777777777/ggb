@@ -16,6 +16,7 @@ import { cn, formatViewCount } from '@/lib/utils';
 import { trackPageView, trackEvent } from '@/lib/trackEvent';
 import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
 import { asset } from '@/lib/asset';
+import { useSentinelRegistry } from '@/lib/useSentinelRegistry';
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 
@@ -280,13 +281,83 @@ export default function SearchPage() {
    * 這裡取個人化推薦（照玩家自己的抽獎紀錄，見 lib/recommendations），
    * 排到清單最前面，後面才接原本的全部商品。
    */
+  /*
+   * 廠商名對照表 —— 讓關鍵字也搜得到廠商（老闆 2026-08-29）
+   *
+   * 搜尋是純前端過濾（商品一次載 600 筆），所以只要把 supplier_id → name
+   * 建成表，比對時多看一個欄位就好，不必動查詢。
+   * 廠商數是個位數，一次載完沒有成本。
+   *
+   * `suppliers` 只讀得到 id/name/is_active/is_platform —— 其餘欄位（分潤、
+   * 統編、聯絡人）已於 migration 640 從 anon 撤掉。
+   */
+  const [supplierNames, setSupplierNames] = useState<Map<number, string>>(new Map());
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const { data } = await supabase.from('suppliers').select('id, name');
+      if (!alive || !data) return;
+      setSupplierNames(new Map(data.map((r: { id: number; name: string | null }) => [Number(r.id), String(r.name ?? '')])));
+    })();
+    return () => { alive = false; };
+  }, [supabase]);
+
+  /*
+   * 「猜你喜歡」下拉刷新要換一批（老闆 2026-08-29，跟首頁「綜合 → 推薦」同一套）
+   *
+   * 下拉更新不是整頁 reload，而是 PathnameKeyed 換 key 把頁面重掛
+   *（見 lib/contentRefresh.ts），所以**每次刷新＝一次新的 mount**。
+   * 只要排序帶一點「每次掛載才決定」的隨機性，刷新自然就換一批。
+   *
+   * 沿用首頁那三段做法：
+   *   1. 多取一些候選（8 → 24），不然池子太小怎麼洗都是同一批
+   *   2. 每次掛載發一副新的隨機權重（jitter），分數高的仍常在前排
+   *   3. 上一輪露出在最前面的這一輪降權往後沉 —— 「刷新＝給我沒看過的」才有感
+   *
+   * jitter 放 ref：同一次掛載內 sort 必須穩定，不能在 comparator 裡擲骰子。
+   */
+  const RECO_POOL = 24;
+  const RECO_SEEN_DEMOTE = 0.35;
+  const recoJitter = useRef<Map<number, number>>(new Map());
+  const recoSeen = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    try {
+      recoSeen.current = new Set(
+        (JSON.parse(sessionStorage.getItem('ggb:search:reco:seen') || '[]') as unknown[]).map(Number),
+      );
+    } catch { /* 讀不到就當沒看過 */ }
+  }, []);
+
+  /*
+   * 分批載入改成自動（老闆 2026-08-29：不該是按鈕，要跟首頁一樣捲到底就補）
+   *
+   * 用哨兵登記簿而不是單一 ref：這頁有三份清單（商城／混合／一般），
+   * 切頁籤時哨兵會重掛，只留最後一顆會觀察到已卸載的節點。
+   * 細節見 lib/useSentinelRegistry。
+   */
+  const listSentinel = useSentinelRegistry();
+
   const [recommendedIds, setRecommendedIds] = useState<number[]>([]);
   useEffect(() => {
     if (trimmedQuery) { setRecommendedIds([]); return; }
     let alive = true;
     (async () => {
-      const rows = await fetchRecommendations(supabase, -1, null, 8);
-      if (alive) setRecommendedIds(rows.map(r => Number(r.id)));
+      const rows = await fetchRecommendations(supabase, -1, null, RECO_POOL);
+      if (!alive) return;
+      const ids = rows.map(r => Number(r.id));
+      // 名次分（越前面越高）× 隨機權重，看過的打折
+      const scored = ids.map((id, i) => {
+        let j = recoJitter.current.get(id);
+        if (j === undefined) { j = Math.random(); recoJitter.current.set(id, j); }
+        const rank = (ids.length - i) / ids.length;
+        const seen = recoSeen.current.has(id) ? RECO_SEEN_DEMOTE : 1;
+        return { id, score: rank * (0.55 + j * 0.9) * seen };
+      }).sort((a, b) => b.score - a.score).map(x => x.id);
+      setRecommendedIds(scored);
+      // 這一輪露出在最前面的，下一輪降權
+      try {
+        sessionStorage.setItem('ggb:search:reco:seen', JSON.stringify(scored.slice(0, 8)));
+      } catch { /* 無痕模式寫不進去就算了 */ }
     })();
     return () => { alive = false; };
   }, [trimmedQuery, supabase]);
@@ -367,11 +438,14 @@ export default function SearchPage() {
   const filteredProducts = useMemo(() => {
     const base = trimmedQuery
       ? allProducts.filter((product) => {
-          // 名稱或系列命中都算（吉伊卡哇可能只在 series 欄）
+          // 名稱、系列、廠商名命中都算
+          //（吉伊卡哇可能只在 series 欄；廠商名是老闆 2026-08-29 加的）
           const q = trimmedQuery.toLowerCase();
           const name = (product.name || '').toLowerCase();
           const series = ((product as { series?: string | null }).series || '').toLowerCase();
-          return name.includes(q) || series.includes(q);
+          const sid = (product as { supplier_id?: number | null }).supplier_id;
+          const supplier = (sid ? supplierNames.get(Number(sid)) ?? '' : '').toLowerCase();
+          return name.includes(q) || series.includes(q) || (!!supplier && supplier.includes(q));
         })
       : allProducts;
 
@@ -437,6 +511,7 @@ export default function SearchPage() {
     flags.gacha,
     flags.ichiban,
     trimmedQuery,
+    supplierNames,
     productHeat,
   ]);
 
@@ -481,6 +556,28 @@ export default function SearchPage() {
       });
     });
   }, [isLoading, visibleCount, filteredProducts.length]);
+
+  /*
+   * 盯著清單底部的哨兵，看得到就再載 10 筆 —— rootMargin 400px 讓它在
+   * 快捲到底之前就先補好，玩家不會看到空白。
+   * 桌機首屏可能一次填不滿，這樣也會一路補到畫面滿為止。
+   */
+  useEffect(() => {
+    const total = activePrimaryTab === 'sell' ? filteredSellListings.length : filteredProducts.length;
+    if (total === 0 || visibleCount >= total) return;
+    const nodes = listSentinel.liveNodes();
+    if (nodes.length === 0) return;
+    const io = new IntersectionObserver(
+      entries => {
+        if (entries.some(e => e.isIntersecting)) {
+          setVisibleCount(prev => (prev < total ? prev + 10 : prev));
+        }
+      },
+      { rootMargin: '400px' },
+    );
+    for (const el of nodes) io.observe(el);
+    return () => io.disconnect();
+  }, [activePrimaryTab, filteredProducts.length, filteredSellListings.length, visibleCount, listSentinel, listSentinel.version]);
 
   const persistSearchState = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -784,14 +881,8 @@ export default function SearchPage() {
                   ))}
                 </div>
                 {visibleCount < filteredSellListings.length && (
-                  <div className="flex justify-center mt-4">
-                    <button
-                      type="button"
-                      onClick={() => setVisibleCount((c) => c + 10)}
-                      className="px-4 py-2 text-[13px] font-black text-primary bg-primary/5 rounded-full hover:bg-primary/10 transition-colors"
-                    >
-                      載入更多
-                    </button>
+                  <div ref={listSentinel.register} className="flex justify-center py-6 text-[13px] font-black text-neutral-400">
+                    載入中...
                   </div>
                 )}
               </>
@@ -903,16 +994,10 @@ export default function SearchPage() {
                     ))}
               </div>
               {visibleCount < filteredProducts.length && (
-                <div className="flex justify-center mt-4">
-                  <button
-                    type="button"
-                    onClick={() => setVisibleCount((c) => c + 10)}
-                    className="px-4 py-2 text-[13px] font-black text-primary bg-primary/5 rounded-full hover:bg-primary/10 transition-colors"
-                  >
-                    載入更多
-                  </button>
-                </div>
-              )}
+                  <div ref={listSentinel.register} className="flex justify-center py-6 text-[13px] font-black text-neutral-400">
+                    載入中...
+                  </div>
+                )}
             </>
           )}
         </div>
@@ -994,14 +1079,8 @@ export default function SearchPage() {
                   ))}
                 </div>
                 {visibleCount < filteredProducts.length && (
-                  <div className="flex justify-center mt-4">
-                    <button
-                      type="button"
-                      onClick={() => setVisibleCount((c) => c + 10)}
-                      className="px-4 py-2 text-[13px] font-black text-primary bg-primary/5 rounded-full hover:bg-primary/10 transition-colors"
-                    >
-                      載入更多
-                    </button>
+                  <div ref={listSentinel.register} className="flex justify-center py-6 text-[13px] font-black text-neutral-400">
+                    載入中...
                   </div>
                 )}
               </>
