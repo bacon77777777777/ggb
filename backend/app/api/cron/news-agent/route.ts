@@ -342,6 +342,14 @@ function extractBodyImages(html: string, limit: number): string[] {
  */
 const WATERMARKED_SOURCES = ['dengeki.com']
 
+/**
+ * 「這是權利人自己的標記，不是新聞網站的浮水印」—— 用來否決視覺誤判
+ *
+ * 版權／免責聲明（©、※画像は…）與廠商官方標記（BANDAI 食玩圓標之類）
+ * 是誤判的兩大宗。清單只放**權利人**的東西，不放新聞網站的名字。
+ */
+const RIGHTS_MARK_RE = /©|\(c\)|copyright|画像は|イメージです|創通|サンライズ|東映|集英社|BANDAI|バンダイ|食玩|SHOKUGAN|GASHAPON|ガシャポン|TAKARA|TOMY|GOOD ?SMILE|グッドスマイル|MEGAHOUSE|FURYU|フリュー|SEGA|セガ|TAITO|タイトー|KOTOBUKIYA|コトブキヤ/i
+
 /** 這張圖是不是來自會壓浮水印的站 */
 const isWatermarkedSource = (...urls: string[]) =>
   urls.some(u => WATERMARKED_SOURCES.some(d => u?.includes(d)))
@@ -465,13 +473,21 @@ async function edgeStrips(buf: Buffer, box: Box): Promise<[string, string] | nul
   } catch { return null }
 }
 
-async function askVision(strips: [string, string], prompt: string, re: RegExp): Promise<string | null> {
+async function askVision(strips: [string, string], prompt: string): Promise<string> {
   const claude = createClaude('news-agent-wm-verify', process.env.ANTHROPIC_API_KEY)
   const res = await claude.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    // 給它一句話的思考空間再作答。逼它一個字答完反而會亂猜 ——
-    // 實測「不准說明」時三張錯兩張，允許先描述再作答是三張全對
-    max_tokens: 150,
+    /*
+     * 給它思考空間再作答。逼它一個字答完反而會亂猜 —— 實測「不准說明」時
+     * 三張錯兩張，允許先描述再作答是三張全對。
+     *
+     * **但 150 太小**（2026-08-29）：說明還沒講完就被截斷，結論那行根本沒寫出來，
+     * 而解析是「取全文最後一次出現的代碼」—— 於是從說明文字裡的「（BR区域）」
+     * 把答案撿走。實測一張的判定是 BR，它自己的理由卻寫著
+     * 「属于商品本身的官方logo，不算网站浮水印…未发现浮水印」。
+     * 老闆回報的「浮水印在右下角但你蓋左下角」就是這樣來的。
+     */
+    max_tokens: 400,
     messages: [{
       role: 'user',
       content: [
@@ -483,9 +499,18 @@ async function askVision(strips: [string, string], prompt: string, re: RegExp): 
       ],
     }],
   })
-  const raw = (res.content[0] as { text?: string }).text ?? ''
-  const all = [...raw.toUpperCase().matchAll(re)].map(m => m[1])
-  return all.length ? all[all.length - 1] : null   // 取最後一次出現＝結論那行
+  return (res.content[0] as { text?: string }).text ?? ''
+}
+
+/**
+ * 從回答裡取結論。**只認 `ANSWER=` 那一行**，不從說明文字裡撿。
+ *
+ * 舊版是「全文最後一次出現的代碼」，遇到說明被截斷（或說明裡順口提到
+ * 「下緣的右側（BR区域）」）就會把說明當成結論 —— 見上面 max_tokens 的說明。
+ */
+function readAnswer(raw: string, re: RegExp): string | null {
+  const m = [...raw.toUpperCase().matchAll(re)].map(x => x[1])
+  return m.length ? m[m.length - 1] : null
 }
 
 /**
@@ -521,18 +546,36 @@ async function findWatermarkWithVision(buf: Buffer, sourceUrl = '', box?: Box): 
     let host = ''
     try { host = new URL(sourceUrl).hostname.replace(/^www\./, '') } catch { host = '' }
 
-    const ans = await askVision(strips, [
+    const raw = await askVision(strips, [
       '兩張圖分別是同一張照片的「上緣整條」與「下緣整條」（已拉高對比）。',
       host ? `照片取自新聞網站 ${host}。` : '',
       '請判斷這個新聞網站有沒有在角落壓上自己的站標／浮水印（通常半透明、低對比，跟照片內容無關）。',
       '有的話在哪一角：TL（上緣的左邊三分之一）、TR（上緣的右邊三分之一）、BL（下緣的左邊三分之一）、BR（下緣的右邊三分之一）；沒有就 NONE。',
       '注意：商品或包裝上印的品牌標誌、玩具廠商官方 logo（BANDAI、GASHAPON、FuRyu、TOMY、Good Smile…）、',
       '作品本身的 logo、宣傳圖裡的價格與規格文字，都**不算**浮水印，不要選它們。',
-      '先用一句話說明，最後單獨一行只寫 TL、TR、BL、BR 或 NONE。',
-    ].join(''), /\b(TL|TR|BL|BR|NONE)\b/g)
+      '先用一到兩句話說明，然後換兩行：倒數第二行寫 MARK=<你在那一角看到的文字，逐字照抄；沒有文字就寫 MARK=->，',
+      '最後一行寫 ANSWER=TL 或 ANSWER=TR 或 ANSWER=BL 或 ANSWER=BR 或 ANSWER=NONE。這兩行不可以有其他文字。',
+    ].join(''))
 
+    const ans = readAnswer(raw, /ANSWER\s*=\s*(TL|TR|BL|BR|NONE)/g)
     if (!ans) return remember(null)
     if (ans === 'NONE') return remember('none')
+
+    /*
+     * 用「它讀到的字」否決誤判（2026-08-29）
+     *
+     * 模型很容易把**廠商官方標記**與**版權／免責聲明**當成新聞網站的浮水印。
+     * 實測 oneone 的四張官方宣傳圖，三張被判成有站標，MARK 分別是
+     * 「©universe」「※画像はイメージです…サンライズ」「BANDAI 食玩」——
+     * 全都是權利人自己的東西，蓋掉比露出來更糟。
+     * 同一輪的電ホビ 對照組 MARK 是「電撃hobby.net」，不在這份清單裡，照樣保留。
+     *
+     * 只做否決、不做「一定要含站名才算」：有些站的浮水印是沒有字的圖樣，
+     * 要求含站名會把真的漏掉。寧可多蓋，不要漏蓋（老闆的原則）。
+     */
+    const mark = raw.match(/MARK\s*=\s*(.+)/i)?.[1]?.trim() ?? ''
+    if (mark && RIGHTS_MARK_RE.test(mark)) return remember('none')
+
     const map: Record<string, WmCorner> = { TL: 'top-left', TR: 'top-right', BL: 'bottom-left', BR: 'bottom-right' }
     return remember(map[ans])
   } catch {
@@ -554,14 +597,14 @@ async function verifyBrandedClean(buf: Buffer, sourceUrl = '', box?: Box): Promi
     if (!strips) return false
     let host = ''
     try { host = new URL(sourceUrl).hostname.replace(/^www\./, '') } catch { host = '' }
-    const ans = await askVision(strips, [
+    const raw = await askVision(strips, [
       '兩張圖分別是同一張照片的「上緣整條」與「下緣整條」（已拉高對比）。',
       '我們已經在其中一角蓋上白色方塊＋粉紅色扭蛋機的「吉吉比」logo，那是我們自己的，請完全忽略它。',
       `請問在那個白色方塊以外，還看不看得到${host ? ` ${host}` : '原本新聞網站'}壓上去的站標／浮水印？`,
-      '商品或包裝上的品牌標誌、玩具廠商 logo、作品 logo 都不算。',
-      '先用一句話說明，最後單獨一行只寫 CLEAN 或 DIRTY。',
-    ].join(''), /\b(CLEAN|DIRTY)\b/g)
-    return ans === 'CLEAN'
+      '商品或包裝上的品牌標誌、玩具廠商 logo、作品 logo、版權與免責聲明都不算。',
+      '先用一句話說明，最後單獨一行寫 ANSWER=CLEAN 或 ANSWER=DIRTY，那一行不可以有其他文字。',
+    ].join(''))
+    return readAnswer(raw, /ANSWER\s*=\s*(CLEAN|DIRTY)/g) === 'CLEAN'
   } catch { return false }
 }
 

@@ -17,6 +17,7 @@
  */
 import sharp from 'sharp'
 import type { WmCorner } from './dengekiWm'
+import { WM_STAMP_BASE64 } from './newsWatermarkStamp'
 
 // GGB logo（蓋浮水印用），模組層快取
 let _logoBuf: Buffer | null = null
@@ -55,45 +56,31 @@ async function getLogoRatio(logo: Buffer): Promise<number> {
  *   白墊 + logo —— 遮掉**別人**壓在角落的站標，只有偵測到才蓋，只蓋一角
  *   這支         —— 蓋**我們自己**的網址，不分來源、每張都蓋、蓋滿整張
  *
- * 用 SVG `<pattern>` 讓 librsvg 自己去平鋪，不用 sharp 的 tile 合成：
- * 斜向重複要無縫，得自己算相位差，交給 pattern + patternTransform 直接省掉。
+ * 文字是預先排好的 PNG 圖章（`newsWatermarkStamp.ts`），執行期只做
+ * 縮放 → 旋轉 → 補透明邊 → 平鋪，**完全不碰字型**。
+ * 第一版用 SVG `<text>`，在沒有系統字型的 serverless 上會靜靜地畫出空白 ——
+ * 詳細的驗證數據寫在那支檔案的檔頭，不要改回去。
  *
- * 兩層文字（黑底白字錯開 1px）是必要的：白色單層在白底商品照上幾乎看不見，
- * 而玩具新聞的官方宣傳圖有一半是白底。
+ * 補透明邊就是間距：旋轉後的圖章右邊補 30%、下面補 55%，`tile: true`
+ * 就會照這個週期無縫重複，不用自己算斜向的相位差。
  *
- * 參數是實際比對挑出來的（三種濃度各印一張白底 BANDAI 商品照與一張深色
- * banner 比對）：字級 = 圖寬/24、不透明度 0.45、-30 度。再淡就會在白底上
- * 消失，再濃就開始蓋掉商品細節。
+ * 濃淡（白字 0.45 疊黑影 0.25）已經烙進 PNG。兩層是必要的：白色單層在白底
+ * 商品照上幾乎看不見，而玩具新聞的官方宣傳圖有一半是白底。
  *
  * 全程本地 sharp，不呼叫任何服務。
  */
-const WM_TEXT      = 'www.ggb.com.tw'
-const WM_ANGLE     = -30
-const WM_OPACITY   = 0.45
-/** 字級 = 圖寬 / 這個數 */
-const WM_FONT_DIV  = 24
-/** 橫向、縱向的重複間距（相對於字級） */
-const WM_GAP_X     = 1.4
-const WM_GAP_Y     = 3.8
-/** 小圖不要蓋到看不出東西 */
-const WM_MIN_FONT  = 13
+/** 文字寬度佔圖寬的比例 */
+const WM_WIDTH_RATIO = 0.30
+/** 圖章原始寬度（放大只會糊，取原寬當上限） */
+const WM_MAX_W = 760
+/** 小圖也要看得出來，但不要蓋滿整張 */
+const WM_MIN_W = 90
+const WM_ANGLE = -30
+/** 旋轉後往右／往下補多少透明邊當間距（相對於旋轉後的尺寸） */
+const WM_GAP_X = 0.30
+const WM_GAP_Y = 0.55
 
-function wmPatternSvg(W: number, H: number): Buffer {
-  const size = Math.max(WM_MIN_FONT, Math.round(W / WM_FONT_DIV))
-  // 7.4em ≈ 'www.ggb.com.tw' 在 Helvetica bold 的寬度
-  const tw = Math.round(size * 7.4 * WM_GAP_X)
-  const th = Math.round(size * WM_GAP_Y)
-  const cx = Math.round(tw / 2), cy = Math.round(th / 2)
-  const off = Math.max(1, Math.round(size / 14))
-  const font = 'font-family="Helvetica,Arial,sans-serif" font-weight="700" text-anchor="middle" dominant-baseline="middle"'
-  return Buffer.from(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">` +
-    `<defs><pattern id="wm" patternUnits="userSpaceOnUse" width="${tw}" height="${th}" patternTransform="rotate(${WM_ANGLE})">` +
-    `<text x="${cx + off}" y="${cy + off}" font-size="${size}" ${font} fill="#000" fill-opacity="${(WM_OPACITY * 0.55).toFixed(3)}">${WM_TEXT}</text>` +
-    `<text x="${cx}" y="${cy}" font-size="${size}" ${font} fill="#fff" fill-opacity="${WM_OPACITY}">${WM_TEXT}</text>` +
-    `</pattern></defs><rect width="100%" height="100%" fill="url(#wm)"/></svg>`
-  )
-}
+const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 }
 
 /**
  * 蓋上網址浮水印，回傳 PNG（無損）—— 讓呼叫端自己決定最後要編成 webp 還是 jpeg，
@@ -110,10 +97,21 @@ export async function stampUrlWatermark(buf: Buffer): Promise<Buffer> {
     const meta = await sharp(buf).metadata()
     const W = meta.width ?? 0, H = meta.height ?? 0
     if (!W || !H) return buf
-    return await sharp(buf)
-      .composite([{ input: wmPatternSvg(W, H), blend: 'over' }])
-      .png()
-      .toBuffer()
+
+    const stamp = Buffer.from(WM_STAMP_BASE64, 'base64')
+    const stampW = Math.max(WM_MIN_W, Math.min(WM_MAX_W, Math.round(W * WM_WIDTH_RATIO)))
+    const rotated = await sharp(stamp).resize(stampW)
+      .rotate(WM_ANGLE, { background: TRANSPARENT })
+      .png().toBuffer()
+    const rm = await sharp(rotated).metadata()
+    const tile = await sharp(rotated).extend({
+      top: 0, left: 0,
+      bottom: Math.round((rm.height ?? 1) * WM_GAP_Y),
+      right:  Math.round((rm.width  ?? 1) * WM_GAP_X),
+      background: TRANSPARENT,
+    }).png().toBuffer()
+
+    return await sharp(buf).composite([{ input: tile, tile: true, blend: 'over' }]).png().toBuffer()
   } catch { return buf }
 }
 
