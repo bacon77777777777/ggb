@@ -381,8 +381,11 @@ export default function TopupPage() {
                       </div>
                       {plan.bonus > 0 ? (
                         <div className="mt-0.5 md:mt-1 w-full flex justify-center">
-                          <span className="text-[9px] md:text-xs font-black text-accent-emerald bg-accent-emerald/10 px-1.5 py-0.5 rounded-xl whitespace-nowrap">
-                            +{plan.bonus.toLocaleString()} 贈點
+                          {/* 字級與樣式對齊「訂單摘要」的額外贈點（老闆 2026-08-30）：
+                              text-sm md:text-base + font-black，數字走 font-amount。
+                              原本是 text-[9px] md:text-xs，比摘要小了兩階。 */}
+                          <span className="text-sm md:text-base font-black text-accent-emerald bg-accent-emerald/10 px-1.5 py-0.5 rounded-xl whitespace-nowrap">
+                            <span className="font-amount">+{plan.bonus.toLocaleString()}</span> 贈點
                           </span>
                         </div>
                       ) : (
@@ -467,17 +470,18 @@ export default function TopupPage() {
               <div className="space-y-3 md:space-y-5">
                 <div className="flex justify-between items-center text-sm md:text-base whitespace-nowrap">
                   <span className="text-neutral-500 dark:text-neutral-400 font-bold">儲值代幣</span>
+                  {/* G 幣圖示在數字左邊（老闆 2026-08-30）—— 這頁四處金額都是同一個排法 */}
                   <div className="flex items-center gap-1">
-                    <span className="text-neutral-900 dark:text-neutral-100 font-black font-amount">{selectedPlan.points.toLocaleString()}</span>
                     <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16} className="w-4 h-4 object-contain" />
+                    <span className="text-neutral-900 dark:text-neutral-100 font-black font-amount">{selectedPlan.points.toLocaleString()}</span>
                   </div>
                 </div>
                 {selectedPlan.bonus > 0 && (
                   <div className="flex justify-between items-center text-sm md:text-base whitespace-nowrap">
                     <span className="text-neutral-500 dark:text-neutral-400 font-bold">額外贈點</span>
                     <div className="flex items-center gap-1">
-                      <span className="text-accent-emerald font-black font-amount">+{selectedPlan.bonus.toLocaleString()}</span>
                       <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16} className="w-4 h-4 object-contain" />
+                      <span className="text-accent-emerald font-black font-amount">+{selectedPlan.bonus.toLocaleString()}</span>
                     </div>
                   </div>
                 )}
@@ -583,8 +587,8 @@ export default function TopupPage() {
                     <span className="text-neutral-500 dark:text-neutral-400 font-bold">儲值方案</span>
                     <div className="text-right">
                       <div className="flex items-center justify-end gap-1 font-black text-neutral-900 dark:text-white font-amount">
-                        {selectedPlan.points.toLocaleString()} 
                         <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16} className="w-4 h-4 object-contain" />
+                        {selectedPlan.points.toLocaleString()}
                       </div>
                       {selectedPlan.bonus > 0 && (
                         /*
@@ -599,8 +603,8 @@ export default function TopupPage() {
                          * ⚠️ 改摘要那列的樣式時，這裡要一起改 —— 兩邊是刻意要長一樣的。
                          */
                         <div className="flex items-center justify-end gap-1 text-sm md:text-base whitespace-nowrap">
-                          <span className="text-accent-emerald font-black font-amount">+{selectedPlan.bonus.toLocaleString()}</span>
                           <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16} className="w-4 h-4 object-contain" />
+                          <span className="text-accent-emerald font-black font-amount">+{selectedPlan.bonus.toLocaleString()}</span>
                         </div>
                       )}
                     </div>
