@@ -587,7 +587,16 @@ export default function TopupPage() {
                         <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16} className="w-4 h-4 object-contain" />
                       </div>
                       {selectedPlan.bonus > 0 && (
-                        <div className="text-xs font-bold text-accent-emerald font-amount">
+                        /*
+                         * 字體與粗細跟方案卡上的贈點膠囊一致（老闆 2026-08-30：「太粗了」）。
+                         *
+                         * 原本掛 `font-amount`，而 `.font-amount` 除了換成 Oswald 還會加
+                         * `-webkit-text-stroke: 0.5px currentColor` —— 那是**合成加粗**，
+                         * 在這種 12px 的小綠字上特別明顯。方案卡的贈點膠囊本來就沒套
+                         * font-amount（吃 font-sans），兩邊看起來才會不一樣。
+                         * 這裡整個拿掉 font-amount，跟方案卡同一個字體與 font-black。
+                         */
+                        <div className="text-xs font-black text-accent-emerald">
                           + {selectedPlan.bonus.toLocaleString()} G 贈點
                         </div>
                       )}
