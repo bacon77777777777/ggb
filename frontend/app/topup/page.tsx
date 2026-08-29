@@ -588,16 +588,19 @@ export default function TopupPage() {
                       </div>
                       {selectedPlan.bonus > 0 && (
                         /*
-                         * 字體與粗細跟方案卡上的贈點膠囊一致（老闆 2026-08-30：「太粗了」）。
+                         * 跟「訂單摘要」的「額外贈點」那一列完全同一套（老闆 2026-08-30 指定）。
                          *
-                         * 原本掛 `font-amount`，而 `.font-amount` 除了換成 Oswald 還會加
-                         * `-webkit-text-stroke: 0.5px currentColor` —— 那是**合成加粗**，
-                         * 在這種 12px 的小綠字上特別明顯。方案卡的贈點膠囊本來就沒套
-                         * font-amount（吃 font-sans），兩邊看起來才會不一樣。
-                         * 這裡整個拿掉 font-amount，跟方案卡同一個字體與 font-black。
+                         * 兩邊本來長得不一樣：摘要是 `text-sm md:text-base` + `font-black
+                         * font-amount` + G 幣圖示；這裡卻是 `text-xs font-bold font-amount`
+                         * 再用一個英文字母 G 當單位 —— 字級小一階、字重差一階、單位還不同。
+                         * 老闆先反應「太粗」（12px 的字掛 font-amount 的 0.5px 描邊特別明顯），
+                         * 再指定整組對齊摘要那列。字級拉到 sm/base 之後，同樣的描邊就跟摘要一致了。
+                         *
+                         * ⚠️ 改摘要那列的樣式時，這裡要一起改 —— 兩邊是刻意要長一樣的。
                          */
-                        <div className="text-xs font-black text-accent-emerald">
-                          + {selectedPlan.bonus.toLocaleString()} G 贈點
+                        <div className="flex items-center justify-end gap-1 text-sm md:text-base whitespace-nowrap">
+                          <span className="text-accent-emerald font-black font-amount">+{selectedPlan.bonus.toLocaleString()}</span>
+                          <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16} className="w-4 h-4 object-contain" />
                         </div>
                       )}
                     </div>
