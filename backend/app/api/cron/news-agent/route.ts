@@ -78,6 +78,116 @@ function extractToyPeopleLinks(html: string): string[] {
   return [...new Set(links)]
 }
 
+/**
+ * oneone 宇宙（universe.oneone.com.tw）—— 繁中玩具情報，老闆 2026-08-29 指定
+ *
+ * 為什麼單獨寫一支而不是丟進 DIRECT_FEEDS：這個來源有三件事跟別家不一樣，
+ * 走共用流程一定會出事。
+ *
+ * ① **它是同業**（站上就有「線上抽一番賞」與 /store）。每篇內文都被塞了
+ *    「就上台港最大 oneone 線上商城」這類置入與回站連結 —— 不先清乾淨，
+ *    等於在我們自己的情報頁幫對手導流。所以送進 Claude 的是
+ *    `oneOneBodyText()` 清過的版本，不是整頁純文字；改寫完再檢查一次，
+ *    還留著就整篇不發。
+ * ② **他們的 404 頁會回一整份正常版面**（實測 /posts/6228 是 HTTP 404
+ *    卻吐 46KB HTML，裡面就有紅底商城 banner）。`fetchText` 只收 res.ok，
+ *    所以拿不到 404 的內容 —— 但圖片仍走下面的白名單，不靠這一層擋。
+ * ③ **圖分三種路徑，只有兩種能用**（老闆特別交代：不要抓到紅底 logo 當封面）：
+ *
+ *      upload/featured/…            文章封面            ✅
+ *      images/editor/YYYY-MM-DD/…   內文圖（官方原圖）   ✅
+ *      images/<雜湊>.png            商城廣告版位         ❌ ← 紅底 oneone logo
+ *      upload/author/…              作者頭像             ❌
+ *      /assets/images/…             站台 logo、按鈕       ❌
+ *
+ *    用白名單而不是「跳過含 logo 字樣的 <img>」那種黑名單：廣告圖的檔名是
+ *    雜湊（c522e1ae….png），字面上完全看不出它是 logo。
+ *
+ * 圖片本身沒有 oneone 浮水印 —— 他們貼的是廠商官方宣傳圖原檔，角落的
+ * BANDAI／©創通・サンライズ 是**權利人標記，不可以蓋掉**（下游的浮水印
+ * 流程本來就只認 WATERMARKED_SOURCES，這裡不必特別處理）。
+ */
+const ONEONE_FEED = 'https://universe.oneone.com.tw/feed'
+const ONEONE_CDN  = 'd89889xojlqhy.cloudfront.net'
+/** 一次最多看幾則；真正寫幾篇仍受 MAX_TOTAL 與分類配額管 */
+const ONEONE_SCAN = 12
+
+const isOneOneCoverUrl = (u: string) => !!u && u.includes(`${ONEONE_CDN}/upload/featured/`)
+const isOneOneBodyUrl  = (u: string) => !!u && u.includes(`${ONEONE_CDN}/images/editor/`)
+
+/** 他們自家生意的分類：4=線上抽（自家平台公告）、38=集團動態 */
+const ONEONE_SKIP_CATEGORY = new Set(['4', '38'])
+
+/** 他們的分類代碼 → 我們的 category；沒對到的交給 pickCategory 用標題判 */
+const ONEONE_CATEGORY: Record<string, string> = {
+  '7':  'ichiban',   // 一番賞
+  '5':  'gacha',     // 盲盒扭蛋
+  '12': 'figure',    // 公仔週邊
+  '8':  'toy',       // 動漫
+  '10': 'toy',       // 潮流文創
+  '28': 'toy',       // 電影娛樂
+  '53': 'toy',       // 聯名消息
+}
+
+/** 文章頁掛的分類代碼（一篇通常 2~4 個） */
+function oneOneCategoryIds(html: string): string[] {
+  return [...html.matchAll(/post-category-marker"\s+href="\/category\/(\d+)"/g)].map(m => m[1])
+}
+
+function oneOneCategory(html: string, fallback: string): string {
+  for (const id of oneOneCategoryIds(html)) {
+    if (ONEONE_CATEGORY[id]) return ONEONE_CATEGORY[id]
+  }
+  return fallback
+}
+
+/**
+ * 商城置入的特徵字。改寫後的稿子也用它複驗 —— 漏一句就是幫對手打廣告。
+ * 「快抽選」是他們的自家產品名（oneone LITE 快抽選）。
+ */
+const ONEONE_AD_RE = /oneone|線上商城|線上輕鬆等商品|24\s*小時線上抽|快抽選/i
+
+/**
+ * 內文純文字，商城置入整段刪掉
+ *
+ * 以 <p> 為單位過濾，不是逐句 —— 業配句常常沒有句號，逐句切會把它跟
+ * 後面的真內容黏成同一段，一起被丟掉或一起被留下。
+ * 兩層都要：整段是商城連結的（含 oneone.com.tw）先拿掉，剩下的再比對字樣，
+ * 因為有些置入是純文字沒包連結。
+ */
+function oneOneBodyText(html: string): string {
+  const i = html.indexOf('post-content')
+  const seg = (i >= 0 ? html.slice(i, i + 80_000) : html)
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+  const plain = (x: string) => x
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ').trim()
+
+  const kept = [...seg.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)]
+    .map(m => m[1])
+    .filter(b => !/oneone\.com\.tw/i.test(b))
+    .map(plain)
+    .filter(t => t && !ONEONE_AD_RE.test(t))
+  if (kept.length) return kept.join('\n').slice(0, 1500)
+
+  // 版型改成不用 <p> 時的退路：先拔掉回站連結整塊，再逐句過濾
+  return plain(seg.replace(/<a[^>]+href="[^"]*oneone\.com\.tw[^"]*"[\s\S]*?<\/a>/gi, ' '))
+    .split(/(?<=[。！？])/)
+    .filter(x => !ONEONE_AD_RE.test(x))
+    .join('')
+    .slice(0, 1500)
+}
+
+/** 內文配圖只收 images/editor/ 底下的（廣告版位與作者頭像都不在這一層） */
+function extractOneOneBodyImages(html: string, limit: number): string[] {
+  const i = html.indexOf('post-content')
+  const seg = i >= 0 ? html.slice(i, i + 80_000) : html
+  const urls = [...seg.matchAll(/https:\/\/[^"'\s)]+/g)].map(m => m[0]).filter(isOneOneBodyUrl)
+  return [...new Set(urls)].slice(0, limit)
+}
+
 const DIRECT_FEEDS: Array<{ url: string; category: string; label: string }> = [
   // PR TIMES ホビー・玩具カテゴリ（日本企業プレスリリース）
   { url: 'https://prtimes.jp/rss/category/17.rss',     category: 'figure',   label: 'PRTimes-hobby' },
@@ -471,10 +581,12 @@ async function injectBodyImages(
   pageUrl: string,
   forceBrand = false,
   seen?: Set<string>,
+  /** 自訂取圖規則（oneone 只收 images/editor/，見該來源的說明） */
+  pickImages?: (html: string, limit: number) => string[],
 ): Promise<string> {
   if (!content || !articleHtml) return content
 
-  const candidates = extractBodyImages(articleHtml, 6)
+  const candidates = (pickImages ?? extractBodyImages)(articleHtml, 6)
     .map(u => resolveImageUrl(u, pageUrl))
     .filter(u => u && u !== coverUrl)
   if (candidates.length === 0) return content
@@ -1011,7 +1123,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const limitOverride: number | undefined = typeof body?.limit === 'number' ? body.limit : undefined
 
-  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0, catQuota: 0 } }
+  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0, catQuota: 0, selfPromo: 0, adLeak: 0 } }
   const DEADLINE     = Date.now() + 240_000  // 最多跑 4 分鐘
   const MAX_TOTAL    = limitOverride ?? 3    // 每次全局上限（手動觸發可傳 limit:1）
   const MAX_PER_QUERY = limitOverride === 1 ? 1 : 2
@@ -1134,6 +1246,84 @@ export async function POST(req: NextRequest) {
           results.errors++; results.skipReasons.insertErr++
           console.error('[news-agent] insert error:', error.message)
         }
+      }
+    }
+  }
+
+  /**
+   * oneone 宇宙 —— 繁中來源，圖是廠商官方原圖（老闆 2026-08-29 指定）
+   *
+   * 流程跟其他來源一樣，多了四道只有這個來源需要的關卡（理由見檔案上方
+   * ONEONE_FEED 那段的說明）：
+   *   1. 標題出現 oneone → 那是他們自家平台公告，不是商品情報
+   *   2. 分類掛到 線上抽／集團動態 → 同上
+   *   3. 封面**只認 upload/featured/**，og:image 不合就跳過，
+   *      不退回掃 <img>（掃到的第一張很可能是紅底商城 banner）
+   *   4. 改寫完再比對一次商城字樣，還留著就整篇不發
+   */
+  const runOneOne = async () => {
+    if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) return
+
+    const xml = await fetchText(ONEONE_FEED, 12_000)
+    if (!xml) { results.errors++; return }
+
+    for (const item of parseRss(xml).slice(0, ONEONE_SCAN)) {
+      if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
+
+      const realUrl = item.link
+      if (!realUrl || existing.has(realUrl)) { results.skipped++; results.skipReasons.duplicate++; continue }
+      // 他們自家平台的公告（「oneone LITE 快抽選開幕」那種）從標題就擋掉，省一趟 fetch
+      if (ONEONE_AD_RE.test(item.title)) { results.skipped++; results.skipReasons.selfPromo++; continue }
+      if (isDuplicateSource(item.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+
+      const articleHtml = await fetchText(realUrl, 12_000)
+      if (!articleHtml) { results.skipped++; results.skipReasons.noHtml++; continue }
+      if (oneOneCategoryIds(articleHtml).some(id => ONEONE_SKIP_CATEGORY.has(id))) {
+        results.skipped++; results.skipReasons.selfPromo++; continue
+      }
+
+      const ogImage = extractOgImage(articleHtml)
+      if (!isOneOneCoverUrl(ogImage)) { results.skipped++; results.skipReasons.noImage++; continue }
+      if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
+
+      const srcCategory = oneOneCategory(articleHtml, 'toy')
+      if (quotaFull(classifyByTitle(item.title) ?? srcCategory)) { results.skipped++; results.skipReasons.catQuota++; continue }
+
+      const bodyText = oneOneBodyText(articleHtml)
+      const draft = await rewriteArticle(claude, item.title, item.description, bodyText, realUrl, srcCategory)
+      if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
+      if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+      // 改寫後複驗：對手商城字樣一句都不能漏到我們的情報頁
+      if ([draft.title, draft.summary, draft.content].some(t => ONEONE_AD_RE.test(t ?? ''))) {
+        results.skipped++; results.skipReasons.adLeak++; continue
+      }
+
+      const seenImages = new Set<string>()
+      const hostedCover = await downloadSmartToR2(ogImage, false, realUrl, seenImages)
+      if (!hostedCover) { results.skipped++; results.skipReasons.wmUnsafe++; continue }
+      const contentWithImages = await injectBodyImages(
+        draft.content, articleHtml, ogImage, realUrl, false, seenImages, extractOneOneBodyImages,
+      )
+      const finalCategory = pickCategory(draft, [draft.title, item.title], srcCategory)
+
+      const id = Math.floor(10000000 + Math.random() * 90000000).toString()
+      const { error } = await supabase.from('news').insert({
+        id, title: draft.title, summary: draft.summary, content: contentWithImages,
+        image_url: hostedCover, source_url: realUrl,
+        category: finalCategory, tags: draft.tags ?? [], is_active: !!hostedCover,
+      })
+      if (!error) {
+        results.written++
+        catWritten[finalCategory] = (catWritten[finalCategory] ?? 0) + 1
+        results.articles.push(`[oneone] ${draft.title}`)
+        existing.add(realUrl)
+        sessionTitles.push(tokenize(draft.title))
+        await generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, finalCategory)
+        void supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).then(null, () => {})
+        await new Promise(r => setTimeout(r, 300))
+      } else {
+        results.errors++; results.skipReasons.insertErr++
+        console.error('[news-agent] insert error:', error.message)
       }
     }
   }
@@ -1360,6 +1550,8 @@ export async function POST(req: NextRequest) {
    * cats 要照實列 —— Google News 沒有 figure 的查詢，寫進去它會永遠排第一。
    */
   const groups = [
+    // oneone 供得出一番賞／扭蛋／公仔／盒玩四類，是目前唯一補得到 ichiban 的非 Google 來源
+    { cats: ['ichiban', 'gacha', 'figure', 'toy'], run: runOneOne      },
     { cats: ['toy', 'figure'],                     run: runHtmlSources },
     { cats: ['figure'],                            run: runDirectFeeds },
     { cats: ['ichiban', 'tcg', 'gacha', 'toy'],    run: runGoogleNews  },

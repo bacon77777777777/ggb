@@ -10,6 +10,9 @@ import Link from 'next/link';
  * 操作教學不放這裡（那是常見問題），退換貨的申請流程與應備文件也不放
  *（那是退換貨資訊），這裡只寫法律效果並連過去。同一條規則在兩個頁面
  * 各寫一次的話，改了其中一邊就會變成互相矛盾的兩份文件。
+ *
+ * 第十條（智慧財產權）是自己寫的條文，不是抄同業的版本 —— 內容也涵蓋
+ * 情報文章的圖片來源與檢舉下架管道，這兩件事同業的條款多半沒寫。
  */
 
 const L = ({ href, children }: { href: string; children: React.ReactNode }) => (
@@ -132,7 +135,19 @@ export default function TermsPage() {
           </section>
 
           <section className="p-6">
-            <h2 className="text-base font-black text-neutral-900 dark:text-white mb-3">十、準據法與管轄</h2>
+            <h2 className="text-base font-black text-neutral-900 dark:text-white mb-3">十、智慧財產權</h2>
+            <ul className="space-y-2 text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed list-disc pl-4">
+              <li>本平台之網站架構、版面設計、程式、圖像、字體、商標、標誌，以及由本平台撰寫之文章、商品介紹與活動文案，其著作權、商標權及其他智慧財產權均屬本平台或授權本平台使用之權利人所有。</li>
+              <li>未經本平台或各該權利人事前書面同意，任何人不得重製、改作、編輯、公開傳輸、公開播送、散布、出租、出借前述內容，亦不得為還原工程、反向組譯或以自動化程式大量擷取。</li>
+              <li>基於個人非商業目的之瀏覽、分享單一頁面連結，或於合理範圍內引用並註明出處者，不在此限。</li>
+              <li>情報文章中的商品圖片、品牌名稱與商標，權利屬各該廠商或授權人所有，本平台係為新聞報導與商品介紹之目的合理使用，不表示本平台與該等權利人具有任何合作或代理關係。</li>
+              <li>會員上傳或張貼之內容（包含暱稱、頭像、留言、商品圖片與說明），應由會員自行確保未侵害他人權利。會員同意授權本平台在營運與宣傳所必要之範圍內，無償、非專屬地使用、重製與公開傳輸該等內容；此項授權於內容刪除後即行終止，但已合理使用之部分不受影響。</li>
+              <li>權利人如認為本平台上的內容侵害其權利，請來信 <a href="mailto:support@ggb.com.tw" className="text-primary font-bold underline underline-offset-2">support@ggb.com.tw</a> 並敘明權利證明與涉及網址；經查證屬實者，本平台將移除或限制該內容，並得對重複侵權之帳號依第七條處理。</li>
+            </ul>
+          </section>
+
+          <section className="p-6">
+            <h2 className="text-base font-black text-neutral-900 dark:text-white mb-3">十一、準據法與管轄</h2>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">
               本條款依中華民國法律解釋及適用。因本條款所生之爭議，雙方同意先行協商；
               協商不成時，以台灣台北地方法院為第一審管轄法院，但不影響消費者依消費者保護法
