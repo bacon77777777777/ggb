@@ -12,6 +12,7 @@ import { useSwipeTabs } from '@/lib/useSwipeTabs';
 import { TopFadeBlur } from '@/components/ui/TopFadeBlur';
 import { asset } from '@/lib/asset';
 import { useStatusBarText } from '@/components/native/StatusBarStyle';
+import { useRequireLogin } from '@/hooks/useRequireLogin';
 
 export default function MissionPage() {
   const { user, refreshProfile, isLoading: authLoading } = useAuth();
@@ -20,6 +21,15 @@ export default function MissionPage() {
   useStatusBarText('white');
   const { showToast } = useToast();
   const router = useRouter();
+  /*
+   * 未登入也看得到這一頁（老闆 2026-08-30）
+   *
+   * 原本是「沒登入就踢去 /login」。但簽到頁本身就是**招募畫面** ——
+   * 看得到連續 7 天送多少、有哪些任務，才會想登入；先踢走等於把誘因藏起來。
+   * 訪客看到的是同一張版：積分改成「登入後顯示」（跟會員中心同一套樣式）、
+   * 任務清單照列（讀公開的 tasks 表），按簽到／領取才跳登入提示。
+   */
+  const requireLogin = useRequireLogin();
   
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'achievement'>('daily');
   const swipeTabs = useSwipeTabs(['daily', 'weekly', 'achievement'] as const, activeTab, setActiveTab);
@@ -44,13 +54,6 @@ export default function MissionPage() {
     audioRef.current = new Audio(asset('/audio/23424.mp3'));
     audioRef.current.load();
   }, []);
-
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [authLoading, user, router]);
 
   // Fetch Check-in Status
   const fetchCheckInStatus = useCallback(async () => {
@@ -97,15 +100,47 @@ export default function MissionPage() {
     }
   }, [userId]);
 
+  /**
+   * 訪客的任務清單：直接讀 tasks 表（公開可讀），全部當成未完成。
+   * 不能用 get_user_missions —— 那支是照 auth.uid() 算進度的，訪客拿不到東西，
+   * 版面會只剩一張空的任務卡。
+   */
+  const fetchPublicTasks = useCallback(async () => {
+    const supabase = createClient();
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('id, type, title, description, target_value, reward_coins, condition_type, sort_order')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+      if (error) throw error;
+      setMissions((data ?? []).map((t: any) => ({
+        id: String(t.id),
+        title: t.title,
+        reward: t.reward_coins,
+        description: t.description || '',
+        status: 'pending' as const,
+        type: t.type as 'daily' | 'weekly' | 'achievement',
+        condition_type: t.condition_type,
+        target_value: t.target_value,
+        current_value: 0,
+      })));
+    } catch (error) {
+      console.error('Error fetching public tasks:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (userId) {
       fetchCheckInStatus();
       fetchMissions();
     } else if (!authLoading) {
-      // If no user and auth finished, stop loading (will redirect via other effect)
-      setLoading(false);
+      fetchPublicTasks();
     }
-  }, [userId, authLoading, fetchCheckInStatus, fetchMissions]);
+  }, [userId, authLoading, fetchCheckInStatus, fetchMissions, fetchPublicTasks]);
 
   // Play Success Sound
   const playSuccessSound = useCallback(() => {
@@ -116,6 +151,8 @@ export default function MissionPage() {
   }, []);
 
   const handleCheckIn = useCallback(async () => {
+    // 訪客按「立即簽到」→ 跳登入提示（登入完回到這一頁）
+    if (!requireLogin('登入後就可以簽到領積分')) return;
     if (checkingIn || !userId) return;
     
     setCheckingIn(true);
@@ -139,9 +176,11 @@ export default function MissionPage() {
     } finally {
       setCheckingIn(false);
     }
-  }, [checkingIn, userId, showToast, refreshProfile, fetchCheckInStatus, fetchMissions, playSuccessSound]);
+  }, [checkingIn, userId, requireLogin, showToast, refreshProfile, fetchCheckInStatus, fetchMissions, playSuccessSound]);
 
   const handleMissionAction = useCallback(async (mission: Mission) => {
+    // 訪客點任何一顆任務按鈕都先問登入 —— 任務進度本來就要有帳號才算得出來
+    if (!requireLogin('登入後就可以做任務領積分')) return;
     if (mission.status === 'claimed') return;
 
     if (mission.status === 'completed') {
@@ -178,7 +217,7 @@ export default function MissionPage() {
         router.push('/');
       }
     }
-  }, [router, showToast, refreshProfile, fetchMissions, playSuccessSound]);
+  }, [router, requireLogin, showToast, refreshProfile, fetchMissions, playSuccessSound]);
 
   const updateScale = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -251,6 +290,7 @@ export default function MissionPage() {
           <MissionFrame 
             consecutiveDays={consecutiveDays}
             points={user?.points || 0}
+            isGuest={!user}
             missions={missions}
             activeTab={activeTab}
             onTabChange={setActiveTab}

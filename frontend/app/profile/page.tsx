@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, Suspense, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Box, Truck, Trophy, Settings, LogOut, ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, HelpCircle, Info, FileText, Shield, RefreshCcw, RefreshCw, Wallet, Heart, User, ChevronDown, X, Loader2, CreditCard, Copy, Ticket, Store, History, MessageCircle, Star, UserPlus, Search, Plus } from 'lucide-react';
@@ -20,6 +20,8 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
+import { makeListViewMemory } from '@/lib/listViewMemory';
+import { restoreScrollTo } from '@/lib/restoreScroll';
 import { ProfileSkeleton } from '@/components/Skeletons';
 import { WarehouseItemDetailModal } from '@/components/warehouse/WarehouseItemDetailModal';
 import WarehouseGridCell from '@/components/warehouse/WarehouseGridCell';
@@ -684,6 +686,27 @@ function ProfileContent() {
   const mobileDeliveryScrollRef = useRef<HTMLDivElement>(null);
   const [mobileDrawDisplayCount, setMobileDrawDisplayCount] = useState(10);
   const mobileDrawScrollRef = useRef<HTMLDivElement>(null);
+  const followsScrollRef = useRef<HTMLDivElement>(null);
+  /** 還原中要接回去的抽獎紀錄筆數（下面那個「換頁籤收回第一頁」的 effect 掛載時也會跑） */
+  const drawRestoreRef = useRef(0);
+
+  // 從商品頁／公平性驗證頁返回：把清單捲回原本看到的位置
+  useLayoutEffect(() => {
+    const stops: (() => void)[] = [];
+    const follows = followsView.read(true);
+    if (follows?.y) stops.push(restoreScrollTo(follows.y, 3000, () => followsScrollRef.current));
+    const draws = drawView.read(true);
+    if (draws?.y) {
+      // 筆數要一起接回去，不然清單只剩第一頁那麼高，位置會被夾在那個高度的底部
+      if (draws.count && draws.count > 10) {
+        drawRestoreRef.current = draws.count;
+        setMobileDrawDisplayCount(draws.count);
+      }
+      stops.push(restoreScrollTo(draws.y, 3000, () => mobileDrawScrollRef.current));
+    }
+    return () => stops.forEach(stop => stop());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   /*
    * 選取中的獎品分屬哪幾家廠商。一張配送訂單只能有一家（migration 612 起 RPC 也會擋），
    * 所以跨廠商的選取只能回收 —— 不擋你選，只是把「這批能做什麼」寫在按鈕上。
@@ -2301,8 +2324,13 @@ function ProfileContent() {
     setMobileDeliveryDisplayCount(10);
   }, [activeDeliveryTab]);
 
-  // Mobile draw-history lazy load reset
+  // Mobile draw-history lazy load reset（還原中先接回原本的筆數）
   useEffect(() => {
+    if (drawRestoreRef.current > 10) {
+      setMobileDrawDisplayCount(drawRestoreRef.current);
+      drawRestoreRef.current = 0;
+      return;
+    }
     setMobileDrawDisplayCount(10);
   }, [activeTab]);
 
@@ -5686,6 +5714,12 @@ function ProfileContent() {
                                         toast.error('該商品完抽後可驗證');
                                         return;
                                       }
+                                      drawView.remember({
+                                        tab: '',
+                                        y: mobileDrawScrollRef.current?.scrollTop ?? 0,
+                                        count: mobileDrawDisplayCount,
+                                        from: `/fairness/${item.productId}`,
+                                      });
                                       router.push(
                                         `/fairness/${item.productId}?nonce=${encodeURIComponent(result.ticket_number)}&txid_hash=${encodeURIComponent(result.txid_hash!)}`
                                       );
@@ -5975,7 +6009,14 @@ function ProfileContent() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-2 pt-2 pb-24 bg-neutral-50 dark:bg-neutral-950">
+              <div
+                ref={followsScrollRef}
+                className="flex-1 overflow-y-auto px-2 pt-2 pb-24 bg-neutral-50 dark:bg-neutral-950"
+                /* 點商品卡前先記下位置（商品卡自己就是連結，逐張補 onClick 會漏） */
+                onClickCapture={() => followsView.remember({
+                  tab: activeFollowsTab, y: followsScrollRef.current?.scrollTop ?? 0, count: 0, from: '',
+                })}
+              >
                 {isLoadingData ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
                     {Array.from({ length: 6 }).map((_, i) => (
@@ -8344,6 +8385,16 @@ const datePickerStyles = `
     border-color: #a3a3a3;
   }
 `;
+
+/*
+ * 返回時捲回原位（老闆 2026-08-30）
+ *
+ * 這頁的清單各自捲在自己的 overflow 容器裡、不是整頁在捲，所以記的是容器的
+ * scrollTop 而不是 window.scrollY。只有真的會離開這頁的兩條動線需要記：
+ * 「我的關注」點商品卡、以及抽獎紀錄的「驗證」按鈕（去公平性驗證頁）。
+ */
+const followsView = makeListViewMemory('ggb:profile:follows');
+const drawView = makeListViewMemory('ggb:profile:draws');
 
 export default function ProfilePage() {
   return (

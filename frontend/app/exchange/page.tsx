@@ -9,6 +9,8 @@ import { useFeatureGate } from '@/lib/useFeatureGate';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { asset } from '@/lib/asset';
+import { makeListViewMemory } from '@/lib/listViewMemory';
+import { restoreScrollTo } from '@/lib/restoreScroll';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,6 +58,17 @@ type SeriesOption = { id: string; name: string };
 
 type SortMode = 'latest' | 'value-desc' | 'value-asc';
 
+/*
+ * 返回時接回「這一趟看到哪」（老闆 2026-08-30）
+ *
+ * sessionStorage 的 cacheKey 只存前 30 筆，捲得深一點就接不回去 —— 頁面高度
+ * 不夠，scrollTo 會被瀏覽器夾在那個高度的底部。所以整份清單與已載到第幾頁
+ * 另外記在模組層（單頁應用的前後導航之間有效，重新整理本來就該重抓）。
+ * 位置與「是不是從詳情返回」走跟情報／公告同一套 listViewMemory。
+ */
+let offersCache: { offers: ExchangeOffer[]; page: number } | null = null;
+const exchangeView = makeListViewMemory('ggb:exchange:view');
+
 export default function ExchangeListPage() {
   /*
    * 這一頁原本**完全沒有擋** —— 功能在後台關掉之後，
@@ -94,6 +107,27 @@ export default function ExchangeListPage() {
   const [activeSeries, setActiveSeries] = useState('all');
   const [sortMode, setSortMode] = useState<SortMode>('latest');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  /*
+   * 從詳情頁返回：把整份清單、已載到第幾頁、捲動位置一起接回去。
+   * setPage 會讓下面的載入 effect 重跑（page ≠ 0 是 append 不是覆蓋），
+   * 它的 cleanup 也會把剛剛那支 page 0 的請求標成 cancelled，不會反過來把清單洗成 30 筆。
+   */
+  useLayoutEffect(() => {
+    const view = exchangeView.read(true);
+    if (!view || !view.y) return;
+    const cached = offersCache;
+    if (cached && cached.offers.length > 0) {
+      setOffers(cached.offers);
+      if (cached.page > 0) setPage(cached.page);
+    }
+    return restoreScrollTo(view.y);
+  }, []);
+
+  // 清單與頁數同步進模組快取
+  useEffect(() => {
+    if (offers.length > 0) offersCache = { offers, page };
+  }, [offers, page]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -724,6 +758,7 @@ export default function ExchangeListPage() {
                   if (typeof window !== 'undefined') {
                     sessionStorage.setItem(`exchange:title:${offer.id}`, `@${offer.user.name}`);
                   }
+                  exchangeView.remember({ tab: '', y: window.scrollY, count: offers.length, from: `/exchange/${offer.id}` });
                   router.push(`/exchange/${offer.id}`);
                 }}
                 className="bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden text-left active:scale-[0.99] transition-transform"

@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useState, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { rememberNewsView, readNewsView } from '@/lib/newsView';
+import { restoreScrollTo } from '@/lib/restoreScroll';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { cn } from '@/lib/utils';
@@ -33,14 +34,14 @@ interface NewsItem {
   liked?: boolean;
 }
 
-// 依實際篇數排序；每一類都有足夠內容，避免出現空頁籤
+// 頁籤順序照老闆 2026-08-30 指定（平台的主力商品排前面，公仔景品收尾）
 const CATEGORIES = [
   { key: 'all',     label: '全部' },
-  { key: 'figure',  label: '公仔景品' },
+  { key: 'ichiban', label: '一番賞' },
   { key: 'gacha',   label: '轉蛋' },
   { key: 'toy',     label: '盒玩周邊' },
-  { key: 'ichiban', label: '一番賞' },
   { key: 'tcg',     label: '卡牌' },
+  { key: 'figure',  label: '公仔景品' },
 ];
 
 
@@ -242,7 +243,7 @@ function LoadingSkeleton() {
  * 用模組變數而不是 sessionStorage：這只需要在單頁應用的前後導航之間有效，
  * 重新整理時本來就該重抓最新文章，順便自然失效。
  */
-let listCache: { tab: string; items: NewsItem[]; scrollY: number } | null = null;
+let listCache: { tab: string; items: NewsItem[]; scrollY: number; count: number } | null = null;
 
 /*
  * 模組變數只在「單頁應用的前後導航」之間有效 —— 從 LINE、推播或重新整理進到
@@ -250,9 +251,17 @@ let listCache: { tab: string; items: NewsItem[]; scrollY: number } | null = null
  *（老闆 2026-08-29）。所以位置與分頁籤再寫一份到 sessionStorage，
  * 內頁的返回鍵也讀它來判斷「是不是從列表點進來的」。
  */
-/** 點進文章前把位置記起來。分頁籤從 listCache 拿（它每次 render 都同步） */
+/**
+ * 點進文章前把位置記起來。分頁籤與「展開到第幾篇」從 listCache 拿
+ *（它每次 render 都同步）。篇數一定要一起記 —— 理由見下面的還原邏輯。
+ */
 function rememberBeforeLeaving(id: string) {
-  rememberNewsView({ tab: listCache?.tab ?? 'all', y: window.scrollY, from: `/news/${id}` });
+  rememberNewsView({
+    tab: listCache?.tab ?? 'all',
+    y: window.scrollY,
+    count: listCache?.count ?? 0,
+    from: `/news/${id}`,
+  });
 }
 
 // ─── 主頁 ────────────────────────────────────────────────────────────────────
@@ -264,28 +273,41 @@ export default function NewsPage() {
   const supabase = createClient();
   const queryClient = useQueryClient();
 
-  // 內容已經在 DOM 裡了才捲。用 layout effect + rAF：
-  // layout effect 早於瀏覽器繪製，rAF 讓出一幀給圖片版位撐開
-  const pendingScrollRef = useRef<{ y: number; until: number } | null>(null);
+  /*
+   * 分頁（老闆 2026-08-24：情報頁一次吃 60 篇很卡）。
+   * 一次只渲染 PAGE_SIZE 篇，捲到底再加 PAGE_STEP 篇 —— 資料本來就一次撈回來了，
+   * 卡的是「同時掛上 60 張卡片＋60 張圖」；限制渲染量就順了。
+   */
+  const PAGE_SIZE = 12;
+  const PAGE_STEP = 10;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  /*
+   * 返回還原：位置 **和當時展開到第幾篇**（老闆 2026-08-30：返回永遠停在同一個位置）
+   *
+   * 只還原 y 會壞在分頁上：列表每次掛載都退回 PAGE_SIZE 篇，頁面高度不到當初的
+   * 一半，`window.scrollTo` 會被瀏覽器夾在「12 篇那麼高」的底部 —— 不管當初捲到
+   * 哪裡，返回後都停在同一個高度。所以要先把篇數補回去，等版位撐開了再捲。
+   *
+   * 還原中不讓下面的「換分頁重置」把篇數打回 12：那個 effect 掛載時也會跑一次，
+   * 而還原分頁籤本身又會讓它再跑一次。用 ref 記著目標篇數，玩家自己換分頁才清掉。
+   */
+  const restoredCountRef = useRef(0);
   useLayoutEffect(() => {
     // 模組快取優先（同一趟前後導航），沒有就讀 sessionStorage（重新載入過）
     const saved = readNewsView(true);
     const y = listCache?.scrollY || saved?.y || 0;
+    const count = Math.max(listCache?.count ?? 0, saved?.count ?? 0);
     if (saved?.tab && saved.tab !== 'all') setActiveTab(saved.tab);
     if (!y) return;
-    // 縮圖還沒撐開版位時 scrollTo 會被瀏覽器夾住，所以留著目標一直試到定位為止
-    pendingScrollRef.current = { y, until: Date.now() + 3000 };
-  }, []);
+    if (count > PAGE_SIZE) {
+      restoredCountRef.current = count;
+      setVisibleCount(count);
+    }
 
-  useEffect(() => {
-    const pending = pendingScrollRef.current;
-    if (!pending) return;
-    if (Date.now() > pending.until) { pendingScrollRef.current = null; return; }
-    requestAnimationFrame(() => {
-      window.scrollTo(0, pending.y);
-      if (Math.abs(window.scrollY - pending.y) < 2) pendingScrollRef.current = null;
-    });
-  }, [all.length, isLoading, activeTab]);
+    // 縮圖還沒撐開版位時 scrollTo 會被夾住，restoreScrollTo 會一直試到定位
+    return restoreScrollTo(y);
+  }, []);
 
   // 持續記住捲到哪。passive 監聽，只寫一個數字，不觸發 re-render
   useEffect(() => {
@@ -294,18 +316,19 @@ export default function NewsPage() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // 清單與分頁籤同步進快取
+  // 清單、分頁籤、已展開篇數同步進快取
   useEffect(() => {
-    listCache = { tab: activeTab, items: all, scrollY: listCache?.scrollY ?? 0 };
-  }, [all, activeTab]);
+    listCache = { tab: activeTab, items: all, scrollY: listCache?.scrollY ?? 0, count: visibleCount };
+  }, [all, activeTab, visibleCount]);
 
   useEffect(() => {
     trackEvent('news_list_view', { path: '/news' });
   }, []);
 
   const handleTabChange = (value: string) => {
-    // 換分頁等於換一份清單，位置要歸零 —— 不然會停在上一個分頁捲到的高度
+    // 換分頁等於換一份清單，位置與篇數都要歸零 —— 不然會停在上一個分頁捲到的高度
     if (listCache) listCache.scrollY = 0;
+    restoredCountRef.current = 0;
     setActiveTab(value);
     if (value !== 'all') {
       trackEvent('news_category_filter', { path: '/news', meta: { category: value } });
@@ -360,44 +383,32 @@ export default function NewsPage() {
   }, [activeTab]);
 
   /*
-   * 捲動位置記憶（老闆 2026-08-20）：點進文章前記下列表的捲動位置，
-   * 讀完返回時回到原地。只在「從文章返回」時還原 —— 從底部導航新進來
-   * 沒有存值，照常從頂端開始。存 sessionStorage：換頁時 PathnameKeyed
-   * 會整棵重掛，元件內的 state 活不過去。
+   * 舊的 `ggb:news:scroll` 那一套已經拿掉（2026-08-30）：它跟上面的還原是兩套
+   * 各自 scrollTo 的機制，而且只記位置不記篇數，晚一步把畫面拉回夾住的高度。
+   * 現在只留 lib/newsView 這一套。
    */
-  const rememberScroll = useCallback(() => {
-    try { sessionStorage.setItem('ggb:news:scroll', String(window.scrollY)); } catch { /* 略 */ }
-  }, []);
-  useEffect(() => {
-    if (isLoading) return;
-    let raw: string | null = null;
-    try {
-      raw = sessionStorage.getItem('ggb:news:scroll');
-      sessionStorage.removeItem('ggb:news:scroll');
-    } catch { /* 略 */ }
-    const y = Number(raw);
-    if (y > 0) {
-      // 等這一輪 render 畫完（列表高度就緒）再捲，太早捲會捲不到位
-      requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, y)));
-    }
-  }, [isLoading]);
 
   const filtered = all;
-  const carousel = [...filtered].sort((a, b) => b.view_count - a.view_count).slice(0, 5);
+  /*
+   * 輪播是「人氣前 5」，但名單要固定在**這次進頁面時**的那一份：
+   * 背景更新會把剛讀完那篇的瀏覽數加上去，名單一換、列表就多／少一列 ——
+   * 位置才剛還原好，畫面又自己跳一格。換分頁時重新選。
+   */
+  const carouselRef = useRef<{ tab: string; ids: string[] } | null>(null);
+  let carousel = [...filtered].sort((a, b) => b.view_count - a.view_count).slice(0, 5);
+  if (carouselRef.current?.tab === activeTab) {
+    const byId = new Map(filtered.map(i => [i.id, i]));
+    const kept = carouselRef.current.ids.map(id => byId.get(id)).filter(Boolean) as NewsItem[];
+    if (kept.length) carousel = kept;
+  } else if (carousel.length) {
+    carouselRef.current = { tab: activeTab, ids: carousel.map(c => c.id) };
+  }
   const carouselIds = new Set(carousel.map(c => c.id));
   // 列表不重複顯示輪播中已出現的文章
   const listItems = filtered.filter(item => !carouselIds.has(item.id));
 
-  /*
-   * 分頁（老闆 2026-08-24：情報頁一次吃 60 篇很卡）。
-   * 一次只渲染 PAGE_SIZE 篇，捲到底再加 PAGE_STEP 篇 —— 資料本來就一次撈回來了，
-   * 卡的是「同時掛上 60 張卡片＋60 張圖」；限制渲染量就順了。
-   * 換分頁時重置回第一頁。
-   */
-  const PAGE_SIZE = 12;
-  const PAGE_STEP = 10;
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [activeTab]);
+  // 換分頁回到第一頁；還原中的話用還原的篇數（restoredCountRef 的說明在上面）
+  useEffect(() => { setVisibleCount(Math.max(PAGE_SIZE, restoredCountRef.current)); }, [activeTab]);
   const visibleListItems = listItems.slice(0, visibleCount);
   const hasMoreArticles = listItems.length > visibleCount;
   /*
@@ -421,8 +432,8 @@ export default function NewsPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 pb-24">
 
-      {/* 手機端（onClickCapture：點任何文章連結前先記下捲動位置） */}
-      <div className="md:hidden" onClickCapture={rememberScroll}>
+      {/* 手機端（點文章時由 ArticleRow 的 rememberBeforeLeaving 記下位置） */}
+      <div className="md:hidden">
         {/* 固定 Tab 欄 */}
         <div className="sticky top-0 z-20 bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800 px-2 pt-[env(safe-area-inset-top)]">
           <Tabs value={activeTab} onValueChange={handleTabChange}>

@@ -20,6 +20,7 @@ import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { categoryState } from '@/lib/categoryFlags';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { filterBannersBySchedule } from '@/lib/schedule';
+import { restoreScrollTo } from '@/lib/restoreScroll';
 import PromoPopup from '@/components/promo/PromoPopup';
 import FanMenu from '@/components/home/FanMenu';
 import NoticeBar from '@/components/promo/NoticeBar';
@@ -314,6 +315,14 @@ export default function Home() {
   const secondaryTabsRef = useRef<HTMLDivElement>(null);
   const restoringSecondaryTabRef = useRef<string | null>(null);
   const restoringScrollRef = useRef<number | null>(null);
+  /*
+   * 返回時要接回去的「已載入幾筆」（老闆 2026-08-30）
+   *
+   * 只還原捲動位置是不夠的：列表每次掛載都退回第一批 10 筆，頁面高度不到當初的
+   * 一半，scrollTo 會被瀏覽器夾在那個高度的底部 —— 不管當初捲到哪，返回後都停在
+   * 同一個地方。until 是「還原中」的有效期，過了就恢復正常的換頁籤重置。
+   */
+  const restoringCountRef = useRef<{ count: number; until: number } | null>(null);
   const [homeDisplayCount, setHomeDisplayCount] = useState(10);
   const homeSentinel = useSentinelRegistry();
 
@@ -373,6 +382,7 @@ export default function Home() {
     // 帶參數進來就不要再套用上次離開時的頁籤
     sessionStorage.removeItem(homeRestoreKey);
     restoringScrollRef.current = null;
+    restoringCountRef.current = null;
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, [homeRestoreKey]);
 
@@ -438,6 +448,7 @@ export default function Home() {
         priceMin?: string;
         priceMax?: string;
         scrollY?: number;
+        displayCount?: number;
         timestamp?: number;
       };
       const now = Date.now();
@@ -450,6 +461,10 @@ export default function Home() {
         restoringSecondaryTabRef.current = parsed.activeSecondaryTab;
       }
       restoringScrollRef.current = typeof parsed.scrollY === 'number' ? parsed.scrollY : null;
+      if (typeof parsed.displayCount === 'number' && parsed.displayCount > 10) {
+        restoringCountRef.current = { count: parsed.displayCount, until: Date.now() + 3000 };
+        setHomeDisplayCount(parsed.displayCount);
+      }
       if (parsed.sortMode) setSortMode(parsed.sortMode);
       if (typeof parsed.priceMin === 'string') setPriceMin(parsed.priceMin);
       if (typeof parsed.priceMax === 'string') setPriceMax(parsed.priceMax);
@@ -889,6 +904,13 @@ export default function Home() {
 
   // Home page lazy load — reset on tab change
   useEffect(() => {
+    // 還原中就先接回當初的筆數（這個 effect 掛載時也會跑一次，而還原頁籤又會讓它再跑）
+    const restoring = restoringCountRef.current;
+    if (restoring && Date.now() < restoring.until) {
+      setHomeDisplayCount(prev => Math.max(prev, restoring.count));
+      return;
+    }
+    restoringCountRef.current = null;
     setHomeDisplayCount(10);
   }, [activePrimaryTab, activeSecondaryTab]);
 
@@ -937,13 +959,10 @@ export default function Home() {
       restoringScrollRef.current = null;
       return;
     }
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: y, left: 0, behavior: 'auto' });
-        restoringScrollRef.current = null;
-        sessionStorage.removeItem(homeRestoreKey);
-      });
-    });
+    restoringScrollRef.current = null;
+    sessionStorage.removeItem(homeRestoreKey);
+    // 卡片圖載完才撐開版位，一次性的 scrollTo 會被夾住 —— 交給 restoreScrollTo 重試
+    return restoreScrollTo(y);
   }, [isLoading, loadError, filteredProducts.length]);
 
   const persistHomeState = useCallback(() => {
@@ -955,11 +974,12 @@ export default function Home() {
       priceMin,
       priceMax,
       scrollY: window.scrollY,
+      displayCount: homeDisplayCount,
       timestamp: Date.now(),
     };
     sessionStorage.setItem(homeStateKey, JSON.stringify(payload));
     sessionStorage.setItem(homeRestoreKey, '1');
-  }, [activePrimaryTab, activeSecondaryTab, sortMode, priceMin, priceMax]);
+  }, [activePrimaryTab, activeSecondaryTab, sortMode, priceMin, priceMax, homeDisplayCount]);
 
   // 內容區左右滑 = 切主分類。沿用點擊同一條路（含方向動畫與次分類重設）
   // eslint-disable-next-line @typescript-eslint/no-use-before-define

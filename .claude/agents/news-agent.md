@@ -12,14 +12,20 @@ description: 手動觸發 GGB 新聞採集 agent，或查詢目前文章狀態�
 curl -s -X POST https://admin.ggb.com.tw/api/cron/news-agent \
   -H "Content-Type: application/json" \
   -H "x-cron-secret: $(grep CRON_SECRET /Users/bacon/ggb/backend/.env.local | cut -d= -f2)" \
+  -d '{"manual":true}' \
   | jq .
 ```
+
+⚠️ **手動觸發一定要帶 `{"manual":true}`**：這樣寫進去的文章會標記 `is_manual`，
+不佔排程的每日分類配額（migration 644）。漏了它，測試寫的幾篇會把當天排程的
+額度吃掉，排程那幾場就一篇都寫不出來（2026-08-29 就是這樣停擺一整天）。
 
 ### 2. 本機測試（需先啟動 dev server）
 ```bash
 curl -s -X POST http://localhost:3000/api/cron/news-agent \
   -H "Content-Type: application/json" \
   -H "x-cron-secret: $(grep CRON_SECRET /Users/bacon/ggb/backend/.env.local | cut -d= -f2)" \
+  -d '{"manual":true}' \
   | jq .
 ```
 
@@ -27,8 +33,9 @@ curl -s -X POST http://localhost:3000/api/cron/news-agent \
 用 `getSupabaseAdmin()` 查詢 `news` 表，顯示最新 10 篇和下架草稿數量。
 
 ## 排程資訊
-- 每天 TW 06:30（UTC 22:30）自動執行
-- pg_cron job 名稱：`news-agent-daily`
+- 台灣時間 02:00 / 08:00 / 14:00 / 20:00（每 6 小時），一場最多 5 篇
+- pg_cron job 名稱：`news-agent-6h`（排程以 DB 為準：`SELECT jobname, schedule FROM cron.job;`）
+- 每日分類配額：公仔景品 5｜一番賞 5｜轉蛋 4｜盒玩周邊 4｜卡牌 2＝20（只算排程寫的）
 
 ## 資料結構
 ```

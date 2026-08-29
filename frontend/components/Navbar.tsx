@@ -6,6 +6,7 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { LoginCtaText } from '@/components/LoginCtaText';
 import { PageHeaderBack } from '@/components/ui/PageHeader';
 import { createClient } from '@/lib/supabase/client';
 import { Search, Bell, MessageCircle, LogOut, User as UserIcon, ChevronDown, ChevronLeft, X, History, Flame, Heart, CheckCircle2, Share2, Copy, MoreVertical, Flag, BookOpen } from 'lucide-react';
@@ -1107,7 +1108,7 @@ function NavbarInner() {
                       isHomePage ? "border-white text-white" : "border-primary text-primary",
                     )}
                   >
-                    登入
+                    <LoginCtaText />
                   </Link>
                   {/* Desktop login button */}
                   <Link
@@ -1117,7 +1118,7 @@ function NavbarInner() {
                       isProductDetailPage && "hidden md:flex"
                     )}
                   >
-                    登入
+                    <LoginCtaText />
                   </Link>
                 </>
               )

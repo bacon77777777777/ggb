@@ -14,6 +14,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { cn, formatViewCount } from '@/lib/utils';
 import { trackPageView, trackEvent } from '@/lib/trackEvent';
+import { restoreScrollTo } from '@/lib/restoreScroll';
 import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
 import { asset } from '@/lib/asset';
 import { useSentinelRegistry } from '@/lib/useSentinelRegistry';
@@ -583,14 +584,11 @@ export default function SearchPage() {
     const y = restoringScrollRef.current;
     if (y === null) return;
     if (isLoading) return;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: y, left: 0, behavior: 'auto' });
-        restoringScrollRef.current = null;
-        isRestoringRef.current = false;
-        sessionStorage.removeItem(searchRestoreKey);
-      });
-    });
+    restoringScrollRef.current = null;
+    isRestoringRef.current = false;
+    sessionStorage.removeItem(searchRestoreKey);
+    // 卡片圖載完才撐開版位，一次性的 scrollTo 會被夾住 —— 交給 restoreScrollTo 重試
+    return restoreScrollTo(y);
   }, [isLoading, visibleCount, filteredProducts.length]);
 
   /*

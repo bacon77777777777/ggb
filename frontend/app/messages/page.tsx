@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { asset } from '@/lib/asset';
+import { useListScrollMemory } from '@/lib/useListScrollMemory';
 
 type ThreadPreview = {
   id: string;
@@ -27,6 +28,8 @@ function formatTime(ts: number) {
 
 export default function MessagesListPage() {
   const router = useRouter();
+  // 返回時捲回原本看到的那一則（老闆 2026-08-30：每一頁的返回都要記得位置）
+  const rememberScroll = useListScrollMemory('ggb:messages:view');
   const [threads, setThreads] = useState<ThreadPreview[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { user, isLoading: isAuthLoading } = useAuth();
@@ -225,6 +228,7 @@ export default function MessagesListPage() {
                           .contains('meta', { offer_id: offerId, sender_id: otherId });
                       }
                     } catch {}
+                    rememberScroll();
                     router.push(`/messages/${t.id}`);
                   }}
                   className={cn(

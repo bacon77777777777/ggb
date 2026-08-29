@@ -250,7 +250,14 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
     const who = profile?.nickname ?? propNickname ?? '這位玩家';
     showAlert({
       title: '膜拜大神',
-      message: `是否膜拜 ${who}？\n(膜拜後可獲得 10 積分，每日限一次)`,
+      /* 兩行 JSX 而不是 `\n` —— AlertDialog 的訊息區沒有 whitespace-pre-line，
+         換行字元會被摺掉，接成一整段（老闆 2026-08-30 截圖） */
+      message: (
+        <>
+          是否膜拜 {who}？<br />
+          膜拜後可獲得 10 積分
+        </>
+      ),
       type: 'confirm',
       confirmText: '確認膜拜',
       onConfirm: async () => {

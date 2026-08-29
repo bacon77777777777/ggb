@@ -19,7 +19,8 @@ export async function POST(req: Request) {
       'Content-Type': 'application/json',
       'x-cron-secret': secret,
     },
-    body: JSON.stringify({ limit: 5 }),
+    // manual: true —— 後台手動生成是測試/補稿，不佔排程的每日分類配額（migration 644）
+    body: JSON.stringify({ limit: 5, manual: true }),
   })
 
   const data = await res.json().catch(() => ({}))

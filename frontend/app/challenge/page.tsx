@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { X, Trophy } from 'lucide-react';
 import { scheduleState, inheritSchedule, untilText, filterBannersBySchedule } from '@/lib/schedule';
 import { useRouteTransition } from '@/components/ui/RouteTransition';
+import { useListScrollMemory } from '@/lib/useListScrollMemory';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import { categoryState } from '@/lib/categoryFlags';
@@ -474,6 +475,8 @@ function MachineCard({
 export default function ChallengePage() {
   const router = useRouter();
   const { navigate } = useRouteTransition();
+  // 返回機台列表時捲回原本看到的那一台（老闆 2026-08-30）
+  const rememberScroll = useListScrollMemory('ggb:challenge:view');
   const supabase = createClient();
 
   /*
@@ -808,6 +811,7 @@ export default function ChallengePage() {
                       // 我的寬限期 → 直接回到機台。
                       // 用 navigate 而非 router.push：先蓋上全屏 loading 再換頁，
                       // 否則點下去畫面沒反應，玩家會以為沒按到而重複點
+                      rememberScroll();
                       navigate(`/challenge/${machine.id}`);
                       return;
                     }
@@ -833,6 +837,7 @@ export default function ChallengePage() {
           onConfirm={bet => {
             // 不先關彈窗再換頁 —— 那會讓畫面停在機台列表上等路由，
             // 看起來像關掉彈窗之後什麼都沒發生。直接蓋 loading 過去。
+            rememberScroll();
             navigate(`/challenge/${entering.id}?bet=${bet}`);
           }}
         />

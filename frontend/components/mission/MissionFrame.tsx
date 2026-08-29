@@ -224,6 +224,8 @@ const ACHIEVEMENT_BADGE_IMAGE: Record<string, string> = {
 interface MissionFrameProps {
   consecutiveDays: number;
   points: number;
+  /** 未登入：積分改成「登入後顯示」，簽到／領取都會先跳登入提示 */
+  isGuest?: boolean;
   missions: Mission[];
   activeTab: 'daily' | 'weekly' | 'achievement';
   onTabChange: (tab: 'daily' | 'weekly' | 'achievement') => void;
@@ -235,6 +237,7 @@ interface MissionFrameProps {
 function MissionFrame({ 
   consecutiveDays, 
   points, 
+  isGuest = false,
   missions, 
   activeTab, 
   onTabChange, 
@@ -519,7 +522,21 @@ function MissionFrame({
               無限拿積分
             </Link>
           </div>
-          <p className="font-['DIN_Alternate:Bold',sans-serif] text-[70px] font-bold text-white leading-none">{points.toLocaleString()}</p>
+          {isGuest ? (
+            /* 跟會員中心的訪客名稱同一套樣式（白字＋點狀底線）。
+               字級 36px 是因為這張版是 750px 設計稿再整頁縮 0.5 —— 換算到畫面上
+               跟會員中心那行的 16px 差不多大 */
+            <Link
+              href="/login"
+              /* mt：這行只有 36px 高、積分數字是 70px，不補一段的話會整個貼在
+                 「我的積分」底下（老闆 2026-08-30：往下一點點） */
+              className="mt-[20px] inline-block font-sans font-medium leading-none text-white text-[36px] underline decoration-dotted underline-offset-4 decoration-white/50"
+            >
+              登入後顯示
+            </Link>
+          ) : (
+            <p className="font-['DIN_Alternate:Bold',sans-serif] text-[70px] font-bold text-white leading-none">{points.toLocaleString()}</p>
+          )}
         </div>
       </div>
       

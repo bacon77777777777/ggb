@@ -1576,7 +1576,7 @@ export async function POST(req: NextRequest) {
   // 已寫入的 source_url 集合（防重複 URL）
   const { data: existingRows } = await supabase
     .from('news')
-    .select('source_url, title, created_at, image_url, category, cover_hash, subject_key')
+    .select('source_url, title, created_at, image_url, category, cover_hash, subject_key, is_manual')
     .not('source_url', 'is', null)
     .gte('created_at', new Date(Date.now() - 30 * 86400_000).toISOString())
   const existing      = new Set((existingRows ?? []).map((r: any) => r.source_url as string))
@@ -1607,7 +1607,7 @@ export async function POST(req: NextRequest) {
   /**
    * 各來源網域最近一篇的發佈時間 —— 給 DIRECT_FEEDS 的 minIntervalHours 用
    *
-   * 不另外存狀態：news 表本身就是進度表，跟分類配額用 last24h 是同一個思路。
+   * 不另外存狀態：news 表本身就是進度表，跟分類配額看當日篇數是同一個思路。
    */
   const lastPostAtByHost = new Map<string, number>()
   for (const r of (existingRows ?? []) as any[]) {
@@ -1650,16 +1650,26 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}))
   const limitOverride: number | undefined = typeof body?.limit === 'number' ? body.limit : undefined
+  /**
+   * 手動觸發（body 帶 `manual: true` 或 `limit`）＝ 測試新來源，不是正常出稿
+   *
+   * 老闆 2026-08-30：「不要算手動的，手動都是拿來測試新增的」。
+   * 寫進去的文章標記 is_manual（migration 644），**不佔每日配額、也不受它擋**，
+   * 排程那四場的產能不會被前一天的測試吃掉。
+   *
+   * ⚠️ pg_cron 送的是 `{}`，兩個旗標都沒有 —— 只有排程才算進配額。
+   * 用 curl 手動打的時候記得帶 `{"manual":true}`，不然那幾篇會被當成排程產出。
+   */
+  const isManual = limitOverride !== undefined || body?.manual === true
 
   const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0, catQuota: 0, selfPromo: 0, adLeak: 0, throttled: 0, brandMix: 0, coverDup: 0, subjectDup: 0 } }
   const DEADLINE     = Date.now() + 240_000  // 最多跑 4 分鐘
   /*
    * 每次全局上限（手動觸發可傳 limit 覆寫）
    *
-   * 老闆 2026-08-29 從 3 調到 5。**實際產量不是 20 篇/天而是 15** ——
-   * 下面的 DAILY_PER_CATEGORY = 3 才是真正的天花板（5 個分類 × 3）。
-   * 老闆指定「其他不動」，所以那個維持 3。
-   * 實測成本：滿產 12 篇/天約 US$0.30，每篇約 US$0.026 → 15 篇/天約 US$11/月。
+   * 排程一天四場（02/08/14/20）× 5 篇 = 20 篇/天的上限。實際天花板是下面的
+   * DAILY_QUOTA 合計 19 篇 —— 老闆 2026-08-30 指定的各分類數字加起來就是 19。
+   * 實測成本每篇約 US$0.026 → 滿產約 US$15/月。
    */
   const MAX_TOTAL    = limitOverride ?? 5
   const MAX_PER_QUERY = limitOverride === 1 ? 1 : 2
@@ -1673,65 +1683,80 @@ export async function POST(req: NextRequest) {
    * 不是抓不到，是根本沒輪到。
    *
    * 兩件事一起做：
-   *   1. 同一分類一次最多 1 篇（3 篇＝三個不同分類），figure 吃不完整場
-   *   2. 來源組照「近 7 天誰最少」排序 —— 不寫死輪值表，DB 就是進度表
+   *   1. 同一分類一次最多 MAX_PER_CATEGORY 篇，figure 吃不完整場
+   *   2. 來源組照「今天誰的配額用得最少」排序 —— 不寫死輪值表，DB 就是進度表
    */
   const CATEGORIES = ['ichiban', 'tcg', 'gacha', 'figure', 'toy']
+  /**
+   * 每日各分類配額（老闆 2026-08-30 指定）：公仔景品 5、一番賞 5、轉蛋 4、
+   * 盒玩周邊 4、卡牌 2 —— 合計 20，剛好等於四場 × MAX_TOTAL。
+   * 卡牌只有 2 是因為它的來源本來就最少。
+   */
+  const DAILY_QUOTA: Record<string, number> = {
+    figure: 5, ichiban: 5, gacha: 4, toy: 4, tcg: 2,
+  }
+  const quotaOf = (c: string) => DAILY_QUOTA[c] ?? 2
+
+  /** 只算排程寫的：手動觸發是測試，不佔配額 */
   const countSince = (ms: number) => {
     const out: Record<string, number> = {}
     for (const r of (existingRows ?? []) as any[]) {
+      if (r.is_manual) continue
       if (new Date(r.created_at ?? 0).getTime() < Date.now() - ms) continue
       const c = String(r.category ?? 'toy')
       out[c] = (out[c] ?? 0) + 1
     }
     return out
   }
-  const last24h = countSince(86400_000)
-  const last7d  = countSince(7 * 86400_000)
+  /**
+   * 配額看「台灣時間今天」，不是滾動 24 小時（老闆 2026-08-30：每日 20 篇）
+   *
+   * 滾動視窗會讓前一天寫的一路壓著隔天的場次；排程那四場剛好都落在同一個
+   * 台灣日（02/08/14/20），用日界線才對得上「每日 N 篇」的講法。
+   */
+  const twMidnight = (() => {
+    const tw = new Date(Date.now() + 8 * 3600_000)
+    tw.setUTCHours(0, 0, 0, 0)
+    return tw.getTime() - 8 * 3600_000
+  })()
+  const todayCount: Record<string, number> = {}
+  for (const r of (existingRows ?? []) as any[]) {
+    if (r.is_manual) continue
+    if (new Date(r.created_at ?? 0).getTime() < twMidnight) continue
+    const c = String(r.category ?? 'toy')
+    todayCount[c] = (todayCount[c] ?? 0) + 1
+  }
+  const last7d = countSince(7 * 86400_000)
 
-  // 排序看近 24 小時（當天輪替），同分再看近 7 天（長期落後的先補）
+  /*
+   * 排序看「今天的配額用掉幾成」而不是絕對篇數 —— 配額不一樣大，
+   * 用絕對數字排的話額度小的（卡牌 2）永遠排在最前面，先把場次佔走。
+   * 同分再看近 7 天（長期落後的先補）。
+   */
+  const usedRatio = (c: string) => (todayCount[c] ?? 0) / quotaOf(c)
   const categoryRank = new Map(
     [...CATEGORIES]
-      .sort((a, b) =>
-        ((last24h[a] ?? 0) - (last24h[b] ?? 0)) || ((last7d[a] ?? 0) - (last7d[b] ?? 0))
-      )
+      .sort((a, b) => (usedRatio(a) - usedRatio(b)) || ((last7d[a] ?? 0) - (last7d[b] ?? 0)))
       .map((c, i) => [c, i] as const)
   )
 
   /**
-   * 兩層額度（數字以下面的常數為準，這段只解釋為什麼）：
+   * 兩層額度（數字以上面的 DAILY_QUOTA 與下面的常數為準，這段只解釋為什麼）：
    *   單次 —— 一場最多 MAX_TOTAL 篇，同一分類最多 MAX_PER_CATEGORY 篇
    *           → 5 篇至少橫跨三個分類（2+2+1），figure 吃不完整場
-   *   單日 —— 任一分類近 24 小時滿 DAILY_PER_CATEGORY 篇就讓位，
-   *           把剩下的場次讓給還沒補到的分類
+   *   單日 —— 分類寫滿當日配額就讓位，把剩下的場次讓給還沒補到的分類
    *
-   * 真正的天花板是**單日那層**：5 分類 × 3 = 15 篇/天，不是 4 場 × 5 = 20 篇。
-   * 排程跑滿一天會收斂成各分類 3 篇上下（來源夠的話）。
+   * ⚠️ MAX_PER_CATEGORY 鎖死 2、不跟 limit 走（2026-08-29 的教訓）：
+   * 原本是 `ceil(MAX_TOTAL / 3)`，手動 limit 傳 18 時 figure 一場就能拿 6 篇。
+   * figure 的來源數（HobbyWatch／PRTimes／GNN-TW／ToyPeople 首頁…）本來就遠多於
+   * 其他四類，閘門一開就是它灌滿版面。
    */
-  /**
-   * ⚠️ 這兩個常數在 2026-08-29 改過，改的理由要看懂再動：
-   *
-   * 老闆當天回報「最新幾篇公仔景品佔多數」。查 PROD 的實際產出，排程自己跑的
-   * 那四場（02/08/14/20）分類是有輪的；灌爆的是**手動觸發**的那幾場 ——
-   * 15:00 / 16:00 / 17:00 都不是排程時段，16:00 一場就寫了 11 篇 figure。
-   *
-   * 兩個原因疊在一起：
-   *   1. 單日上限原本寫 `limitOverride === undefined && ...`，
-   *      **手動帶 limit 時整條被跳過**（本意是「測試時不要一篇都寫不出來」）
-   *   2. 單次上限原本是 `ceil(MAX_TOTAL / 3)`，**會跟著 limit 一起放大** ——
-   *      limit 傳 18，figure 一場就能拿 6 篇
-   * 而 figure 的來源數（HobbyWatch／PRTimes／GNN-TW／ToyPeople 首頁…）本來就
-   * 遠多於其他四類，閘門一開就是它灌滿。
-   *
-   * 改法：手動觸發**放寬**成兩倍而不是解除（測試照樣寫得出東西，但不會灌爆），
-   * 單次上限鎖死 2 不跟 limit 走。
-   */
-  const DAILY_PER_CATEGORY = limitOverride === undefined ? 3 : 6
   const MAX_PER_CATEGORY = 2
   const catWritten: Record<string, number> = {}
   const quotaFull = (c: string) =>
     (catWritten[c] ?? 0) >= MAX_PER_CATEGORY ||
-    (last24h[c] ?? 0) + (catWritten[c] ?? 0) >= DAILY_PER_CATEGORY
+    // 手動觸發是測試：不佔配額，也不被配額擋，只留單次的分類上限防灌爆
+    (!isManual && (todayCount[c] ?? 0) + (catWritten[c] ?? 0) >= quotaOf(c))
 
   const runHtmlSources = async () => {
     for (const src of HTML_SOURCES) {
@@ -1802,6 +1827,7 @@ export async function POST(req: NextRequest) {
           id, title: draft.title, summary: draft.summary, content: contentWithImages,
           image_url: imageUrl, source_url: realUrl,
           category: finalCategory, tags: draft.tags ?? [], is_active: !!imageUrl, cover_hash: coverHash, subject_key: subjKey,
+          is_manual: isManual,
         })
         if (!error) {
           results.written++
@@ -1901,6 +1927,7 @@ export async function POST(req: NextRequest) {
         id, title: draft.title, summary: draft.summary, content: contentWithImages,
         image_url: hostedCover, source_url: realUrl,
         category: finalCategory, tags: draft.tags ?? [], is_active: !!hostedCover, cover_hash: coverHash, subject_key: subjKey,
+        is_manual: isManual,
       })
       if (!error) {
         results.written++
@@ -2021,6 +2048,7 @@ export async function POST(req: NextRequest) {
           id, title: draft.title, summary: draft.summary, content: contentWithImages,
           image_url: imageUrl, source_url: realUrl,
           category: finalCategory, tags: draft.tags ?? [], is_active: !!imageUrl, cover_hash: coverHash, subject_key: subjKey,
+          is_manual: isManual,
         })
         if (!error) {
           results.written++
@@ -2077,5 +2105,5 @@ export async function POST(req: NextRequest) {
   }
 
 
-  return NextResponse.json({ ok: true, ...results, byCategory: catWritten, last24h })
+  return NextResponse.json({ ok: true, ...results, manual: isManual, byCategory: catWritten, todayCount, quota: DAILY_QUOTA })
 }

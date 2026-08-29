@@ -25,6 +25,7 @@ import './market.css';
 import { useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useFeatureGate } from '@/lib/useFeatureGate';
+import { useListScrollMemory } from '@/lib/useListScrollMemory';
 import { MALL_SHELL } from './proto/shell';
 import { initMall } from './proto/mall';
 import { loadMallData, makeMallDb, loadMe, loadCategories } from './proto/data';
@@ -36,6 +37,10 @@ export default function MallPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const rootRef = useRef<HTMLDivElement | null>(null);
+  // 從商品頁返回時捲回原本看到的位置（老闆 2026-08-30）。
+  // 這頁的 DOM 是引擎自己畫的，所以只記位置、不記清單 —— 引擎重畫完
+  // restoreScrollTo 還在重試，位置接得回去
+  const rememberScroll = useListScrollMemory('ggb:sell:view');
 
   // 舊網址相容：/sell?open=<id> → /sell/<id>
   const legacyOpen = searchParams?.get('open') || '';
@@ -64,7 +69,7 @@ export default function MallPage() {
         categories,
         db: me ? makeMallDb() : null,
         // 點商品卡 → 獨立商品頁
-        nav: (url: string) => router.push(url),
+        nav: (url: string) => { rememberScroll(); router.push(url); },
       });
     });
 

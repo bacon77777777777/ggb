@@ -18,6 +18,11 @@ export interface ListView {
   tab: string
   /** 當時的捲動位置 */
   y: number
+  /**
+   * 當時列表展開到第幾篇（有分頁的列表才有意義）。
+   * 不還原它，返回時頁面只剩第一頁那麼高，捲動位置會被瀏覽器夾在那個高度的底部。
+   */
+  count?: number
   /** 接下來要去的內頁路徑，返回時拿來跟當下路徑比對 */
   from: string
   ts: number
@@ -44,6 +49,7 @@ export function makeListViewMemory(storageKey: string) {
       return {
         tab: typeof v.tab === 'string' ? v.tab : 'all',
         y: typeof v.y === 'number' ? v.y : 0,
+        count: typeof v.count === 'number' ? v.count : 0,
         from: typeof v.from === 'string' ? v.from : '',
         ts: v.ts,
       }

@@ -358,19 +358,26 @@ export function SocialLoginButtons() {
         只藏該藏的那一顆。
       */}
       {LINE_CHANNEL_ID && (
-      <button
-        type="button"
-        onClick={startLineLogin}
-        /* 綠色與陰影照 Figma（#17C417 / 0 5px 8px rgba(17,194,17,.2)）。
-           note：LINE 官方品牌綠是 #06C755，稿上用的是另一支綠，以稿為準。 */
-        className={cn(
-          LOGIN_BUTTON_BASE,
-          'bg-[#17C417] text-white shadow-[0_5px_8px_rgba(17,194,17,0.2)]',
-        )}
-      >
-        <BrandIcon src={LINE_ICON} />
-        <span className={LABEL_BOX}>LINE登入</span>
-      </button>
+      <div className="relative">
+        <button
+          type="button"
+          onClick={startLineLogin}
+          /* 綠色與陰影照 Figma（#17C417 / 0 5px 8px rgba(17,194,17,.2)）。
+             note：LINE 官方品牌綠是 #06C755，稿上用的是另一支綠，以稿為準。 */
+          className={cn(
+            LOGIN_BUTTON_BASE,
+            'bg-[#17C417] text-white shadow-[0_5px_8px_rgba(17,194,17,0.2)]',
+          )}
+        >
+          <BrandIcon src={LINE_ICON} />
+          <span className={LABEL_BOX}>LINE登入</span>
+        </button>
+        {/* 右上角的紅膠囊（老闆 2026-08-30）：貼在按鈕邊角外緣，
+            pointer-events-none 讓它不會擋到底下那顆按鈕的點擊區 */}
+        <span className="pointer-events-none absolute -right-1.5 -top-2 rounded-full bg-accent-red px-2 py-1 text-[11px] font-black leading-none text-white shadow-[0_2px_4px_rgba(0,0,0,0.15)]">
+          拿300積分
+        </span>
+      </div>
       )}
 
       <button

@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { timeAgo } from '@/lib/timeAgo';
 import { getReadIds, isUnread, markRead, markAllRead } from '@/lib/announcementRead';
 import { rememberAnnouncementsView, readAnnouncementsView } from '@/lib/announcementsView';
+import { restoreScrollTo } from '@/lib/restoreScroll';
 import { useSwipeTabs } from '@/lib/useSwipeTabs';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -83,7 +84,7 @@ export default function AnnouncementsPage() {
   const tabKeys = CATEGORIES.map(c => c.key);
 
   /** 待還原的捲動位置（從詳情頁返回時才有值） */
-  const pendingScrollRef = useRef<{ y: number; until: number } | null>(null);
+  const pendingScrollRef = useRef<number | null>(null);
 
   /* `from` 記的是「等一下要去哪一頁」——返回時 Navbar 拿它跟當下路徑比對，
      確認玩家真的是從列表點進去的，才用 router.back()（不然就 push 回列表） */
@@ -112,7 +113,7 @@ export default function AnnouncementsPage() {
       // 用模組層級的 CATEGORIES 而不是 tabKeys —— 後者每次 render 都是新陣列，
       // 放進依賴陣列會讓這個「只跑一次」的 effect 變成每次 render 都跑
       if (CATEGORIES.some(c => c.key === saved.tab)) setActiveTab(saved.tab);
-      if (saved.y > 0) pendingScrollRef.current = { y: saved.y, until: Date.now() + 3000 };
+      if (saved.y > 0) pendingScrollRef.current = saved.y;
     }
   }, []);
 
@@ -174,22 +175,15 @@ export default function AnnouncementsPage() {
 
   /*
    * 捲動位置只能在列表真的畫出來之後還原 —— 資料還沒到時頁面高度不夠，
-   * scrollTo 會被瀏覽器夾成 0。
-   *
-   * 公告與個人通知是兩支獨立的 query，誰先到不一定；先前「只還原一次」的寫法
-   * 常常在只有公告、通知還沒進來的那一幀就用掉機會，位置被夾成 0 就再也回不去了。
-   * 改成一直試到真的跳到定位（或超過 3 秒放棄）。
+   * scrollTo 會被瀏覽器夾成 0。公告與個人通知是兩支獨立的 query，誰先到不一定，
+   * 所以交給 restoreScrollTo 自己驅動 rAF 一直試到定位（見 lib/restoreScroll.ts）。
    */
   useEffect(() => {
-    const pending = pendingScrollRef.current;
-    if (!pending || isLoading) return;
-    if (Date.now() > pending.until) { pendingScrollRef.current = null; return; }
-    requestAnimationFrame(() => {
-      window.scrollTo(0, pending.y);
-      // 差距在 2px 內就算到位；還被夾住的話留著目標，等下一批資料進來再試
-      if (Math.abs(window.scrollY - pending.y) < 2) pendingScrollRef.current = null;
-    });
-  }, [isLoading, items.length, notes.length, activeTab]);
+    const y = pendingScrollRef.current;
+    if (y === null || isLoading) return;
+    pendingScrollRef.current = null;
+    return restoreScrollTo(y);
+  }, [isLoading]);
 
   // 換成全站共用的手勢（含邊緣讓位、水平捲動區讓位、斜滑防誤觸）
   const swipeTabs = useSwipeTabs(tabKeys, activeTab, setActiveTab);
