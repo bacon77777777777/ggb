@@ -687,6 +687,17 @@ const MIN_COVER_W = 480
 const MIN_COVER_H = 270
 const MIN_COVER_COLORS = 300
 
+/*
+ * 內文圖的尺寸下限。比封面寬鬆（內文圖本來就可能小一點），但小到這種程度的
+ * 一定不是商品照 —— 實測 CardboardConnection 的內文圖抓到一張 **125×50** 的
+ * 「Hobby Boxes best price」廣告橫幅。
+ *
+ * 尺寸才是這類東西的破綻：那張的色彩數有 787，色彩檢查抓不到；
+ * 檔名也沒有 logo／banner 字樣，`extractBodyImages` 的關鍵字黑名單同樣漏掉。
+ */
+const MIN_BODY_W = 300
+const MIN_BODY_H = 200
+
 /**
  * 封面**來源原圖**的雜湊 —— 用來擋「同商品不同通路」的重複文章
  *
@@ -694,6 +705,14 @@ const MIN_COVER_COLORS = 300
  * 雜湊的是來源原圖而不是轉存後的成品：成品經過縮圖與編碼，同一張來源圖
  * 不同時間轉出來的位元組不保證一樣。
  */
+/** 這張圖大到可以當內文配圖嗎？（擋站方的小廣告橫幅） */
+async function bigEnoughForBody(buf: Buffer): Promise<boolean> {
+  try {
+    const m = await sharp(buf).metadata()
+    return (m.width ?? 0) >= MIN_BODY_W && (m.height ?? 0) >= MIN_BODY_H
+  } catch { return false }
+}
+
 async function coverHashOf(url: string): Promise<string | null> {
   const buf = await fetchImageOnce(url)
   return buf ? crypto.createHash('sha1').update(buf).digest('hex') : null
@@ -1022,6 +1041,7 @@ async function downloadSmartToR2(
      * 對這種來源跑偵測只會製造誤判（詳見 NO_SITE_WATERMARK_SOURCES）。
      */
     if (isCleanSource(sourceUrl, imgUrl)) {
+      if (role === 'body' && !(await bigEnoughForBody(buf))) return null
       const resized = await sharp(buf).resize(1600, null, { withoutEnlargement: true }).toBuffer()
       const webp = await sharp(await stampUrlWatermark(resized)).webp({ quality: 92 }).toBuffer()
       const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`
@@ -1036,6 +1056,8 @@ async function downloadSmartToR2(
 
     const alwaysWatermarked = isWatermarkedSource(sourceUrl, imgUrl)
     if (found === 'none') {
+      // 內文圖的尺寸下限：擋掉站方的小廣告橫幅（見 MIN_BODY_W 的說明）
+      if (role === 'body' && !(await bigEnoughForBody(buf))) return null
       // 已知一定會壓浮水印的站卻回報乾淨 → 是漏看，不是真的乾淨
       if (alwaysWatermarked) return null
       // 來源圖多半只有 800px 寬（電擊、PR TIMES 都是），quality 82 壓完
@@ -1889,6 +1911,12 @@ export async function POST(req: NextRequest) {
         if (!error) {
           results.written++
           catWritten[finalCategory] = (catWritten[finalCategory] ?? 0) + 1
+          // 讓 minIntervalHours 在同一輪內也生效 —— 少了這步，節流只擋得住
+          // 「跨輪」，一輪裡分類名額有幾個它就發幾篇（實測老闆只要兩篇卻發了三篇）
+          try {
+            const h = new URL(feed.url).hostname.replace(/^www\./, '')
+            if (h) lastPostAtByHost.set(h, Date.now())
+          } catch { /* 網址壞掉就算了，節流失效比整篇不發好 */ }
           results.articles.push(`[${feed.label}] ${draft.title}`)
           existing.add(realUrl); sessionTitles.push(tokenize(draft.title))
           await generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, draft.category ?? feed.category)
