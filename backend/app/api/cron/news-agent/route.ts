@@ -524,6 +524,28 @@ const isCleanSource = (...urls: string[]) =>
   urls.some(u => NO_SITE_WATERMARK_SOURCES.some(d => u?.includes(d)))
 
 /**
+ * 品牌張冠李戴的防呆（2026-08-29）
+ *
+ * prompt 已經有「品牌名不可張冠李戴」的對照表，但那只是降低機率 ——
+ * 實測重發三輪，第一輪正確、第三輪又寫出「UNION ARENA 遊戲王卡牌」。
+ * 模型的輸出是機率性的，靠指示擋不住，要在程式層再把一次。
+ *
+ * 規則：某個來源的稿子裡出現「這個來源不可能提到的競品品牌」就整篇不發。
+ * 寧可少一篇，不要發一篇把 BANDAI 的產品說成別家的稿。
+ */
+const BRAND_CONFLICTS: Array<{ host: string; forbid: RegExp }> = [
+  // UNION ARENA 是 BANDAI 自家的 TCG，跟遊戲王（KONAMI）沒有任何關係
+  { host: 'unionarena-tcg.com', forbid: /遊戲王|遊戯王|Yu-?Gi-?Oh/i },
+]
+
+/** 這篇稿子有沒有把來源的品牌寫成別家的？ */
+function hasBrandMixup(sourceUrl: string, ...texts: Array<string | undefined>): boolean {
+  const rule = BRAND_CONFLICTS.find(r => sourceUrl.includes(r.host))
+  if (!rule) return false
+  return texts.some(t => !!t && rule.forbid.test(t))
+}
+
+/**
  * 「這是權利人自己的標記，不是新聞網站的浮水印」—— 用來否決視覺誤判
  *
  * 版權／免責聲明（©、※画像は…）與廠商官方標記（BANDAI 食玩圓標之類）
@@ -1142,12 +1164,14 @@ ${combined}
 ✅ 新商品發售消息（轉蛋/一番賞/盒玩/卡牌/扭蛋/公仔景品 新品上市、預售、到貨）
 ✅ 商品情報曝光（新品圖片首公開、品項公開）
 ✅ 聯名商品、限定版發售情報
+✅ **官方公布的商品內容**：收錄清單（checklist）、卡表、品項一覽、規格與售價說明 ——
+   這些是商品情報，**不是**開箱心得。英文的「Set Review and Checklist」屬於這一類
 
 直接 null 的情況（不接受）：
 ❌ 實體店鋪開幕、搬遷、促銷活動
 ❌ 公司業績、經營新聞、股價、授權合作消息
 ❌ 錦標賽、大會、比賽結果（除非是新卡牌發售）
-❌ 玩家開箱、抽卡開箱心得
+❌ 玩家開箱、抽卡開箱心得（**個人抽到什麼**的心得才算；官方收錄清單不算）
 ❌ 市場分析、產業報告
 ❌ 商品已停售、絕版回憶文
 
@@ -1382,7 +1406,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const limitOverride: number | undefined = typeof body?.limit === 'number' ? body.limit : undefined
 
-  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0, catQuota: 0, selfPromo: 0, adLeak: 0, throttled: 0 } }
+  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0, catQuota: 0, selfPromo: 0, adLeak: 0, throttled: 0, brandMix: 0 } }
   const DEADLINE     = Date.now() + 240_000  // 最多跑 4 分鐘
   /*
    * 每次全局上限（手動觸發可傳 limit 覆寫）
@@ -1485,6 +1509,10 @@ export async function POST(req: NextRequest) {
         const draft = await rewriteArticle(claude, title, desc, bodyText, realUrl, src.category)
         if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
         if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+        // 品牌張冠李戴：模型偶爾會把 UNION ARENA 寫成遊戲王，程式層再擋一次
+        if (hasBrandMixup(realUrl, draft.title, draft.summary, draft.content)) {
+          results.skipped++; results.skipReasons.brandMix++; continue
+        }
 
         // 每張圖都驗浮水印，轉存不成功就整篇不發（老闆規則：百分之百不要
         // 看到別人的 logo）。原本會退回 ogImage hotlink —— 那等於把沒驗過的
@@ -1563,6 +1591,10 @@ export async function POST(req: NextRequest) {
       const draft = await rewriteArticle(claude, item.title, item.description, bodyText, realUrl, srcCategory)
       if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+      // 品牌張冠李戴：模型偶爾會把 UNION ARENA 寫成遊戲王，程式層再擋一次
+      if (hasBrandMixup(realUrl, draft.title, draft.summary, draft.content)) {
+        results.skipped++; results.skipReasons.brandMix++; continue
+      }
       // 改寫後複驗：對手商城字樣一句都不能漏到我們的情報頁
       if ([draft.title, draft.summary, draft.content].some(t => ONEONE_AD_RE.test(t ?? ''))) {
         results.skipped++; results.skipReasons.adLeak++; continue
@@ -1661,6 +1693,10 @@ export async function POST(req: NextRequest) {
         const draft = await rewriteArticle(claude, item.title, item.description, bodyText, realUrl, feed.category)
         if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
         if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+        // 品牌張冠李戴：模型偶爾會把 UNION ARENA 寫成遊戲王，程式層再擋一次
+        if (hasBrandMixup(realUrl, draft.title, draft.summary, draft.content)) {
+          results.skipped++; results.skipReasons.brandMix++; continue
+        }
 
         const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
         // 封面與內文圖共用同一條路徑：每張都用 Claude 視覺驗浮水印，
