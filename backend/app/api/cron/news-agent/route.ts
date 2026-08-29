@@ -259,7 +259,53 @@ const TOY_TOPIC_RE = /フィギュア|一番くじ|ガシャポン|ガチャ|カ
  */
 const TCG_TOPIC_RE = /ポケカ|ポケモンカード|遊戯王|デュエル・?マスターズ|デュエマ|ヴァイスシュヴァルツ|ワンピースカード|ユニオンアリーナ|トレカ|トレーディングカード|カードゲーム|TCG|新弾|拡張パック|ブースターパック/
 
-const DIRECT_FEEDS: Array<{ url: string; category: string; label: string; titleFilter?: RegExp }> = [
+/**
+ * 球員卡：正面關鍵字（品牌／產品線）
+ *
+ * 用品牌白名單而不是「sports card」這種泛稱：這兩家的標題一定會出現
+ * Topps／Panini／Upper Deck 之類的產品線名，泛稱反而抓不到。
+ */
+const SPORTSCARD_TOPIC_RE = /Topps|Panini|Upper Deck|Bowman|Onit|Prizm|Chrome|Optic|Mosaic|Donruss|Immaculate|Obsidian|Flawless|Artifacts|Checklist|Set Review|Pok[eé]mon/i
+
+/**
+ * 球員卡：一定要排除的
+ *
+ * CardLines 的內容是混的 —— 商品預覽之外還有投資分析（「Top 10 NFL Rookies
+ * To Invest In」）、辨偽教學，以及**他們自家的開箱拍賣廣告**（Cardlines Break
+ * Auctions／Club Rewards）。後者跟 oneone 的商城置入是同一類問題：
+ * 幫對手導流。這些就算送進 Claude 也會被「不是商品發售消息」退回，
+ * 但那要付一次改寫的錢，不如先擋掉。
+ */
+const SPORTSCARD_SKIP_RE = /Cardlines|Break Auction|Club Rewards|Invest|Repack|Fake|To Buy|Top \d+/i
+
+const DIRECT_FEEDS: Array<{
+  url: string
+  category: string
+  label: string
+  titleFilter?: RegExp
+  /** 命中就跳過，比 titleFilter 後判定（綜合型來源的自家廣告與投資文用這個擋） */
+  titleSkip?: RegExp
+}> = [
+  /*
+   * 球員卡（老闆 2026-08-29 指定：未來會有這條商品線，情報先鋪）
+   *
+   * 兩家都是英文美系來源（NBA／MLB／NFL／足球），圖是**廠商官方商品渲染圖、
+   * 無浮水印**（抓過 Panini Immaculate 的鐵盒圖確認）。
+   *
+   * 官方站 Topps 與 Panini 都掛 Cloudflare 挑戰頁，依取材原則不繞過。
+   * Sports Collectors Daily（403）、Beckett（500）、日系 BBM／Epoch／Calbee
+   *（都沒有 feed）皆不可用。
+   *
+   * ⚠️ 中華職棒卡目前沒有來源，這兩家不會報。
+   * ⚠️ 球員卡的商品圖幾乎都是白底，而我們的浮水印是單層白字 —— 蓋上去看不見。
+   *    這條線真的重要的話，浮水印要做「依亮度自動選白字或深色字」。
+   */
+  // 純產品導向，20 則全是 Set Review + Checklist，但量少（約 10 篇/月）
+  { url: 'https://www.cardboardconnection.com/feed', category: 'tcg', label: 'CardboardConn',
+    titleFilter: SPORTSCARD_TOPIC_RE, titleSkip: SPORTSCARD_SKIP_RE },
+  // 更新較勤但內容混雜，靠上面兩條規則篩
+  { url: 'https://cardlines.com/feed/', category: 'tcg', label: 'CardLines',
+    titleFilter: SPORTSCARD_TOPIC_RE, titleSkip: SPORTSCARD_SKIP_RE },
   /*
    * inside-games —— `tcg` 分類的主力（老闆 2026-08-29 指定）
    *
@@ -1097,6 +1143,10 @@ ${combined}
 商品名稱、品牌、系列名、發售日期、價格等事實資訊必須忠實保留，
 但描述、評論、鋪陳一律用自己的話寫。
 
+【英文來源】球員名、隊名、聯盟名一律用**台灣慣用譯名**（Shohei Ohtani→大谷翔平、
+Lakers→湖人、NBA／MLB 這種縮寫保留原文）。**產品線與商品名保留英文**
+（Topps Chrome、Panini Prizm、Upper Deck —— 玩家就是用英文搜尋與交易的）。
+
 【假名一律不留】標題與內文都不可出現平假名或片假名。台灣讀者看不懂
 「ゾイド」「ズゴック」「ムチュート」「デク」這種字，看到只會直接跳過。
 處理方式：
@@ -1294,7 +1344,15 @@ export async function POST(req: NextRequest) {
 
   const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0, catQuota: 0, selfPromo: 0, adLeak: 0 } }
   const DEADLINE     = Date.now() + 240_000  // 最多跑 4 分鐘
-  const MAX_TOTAL    = limitOverride ?? 3    // 每次全局上限（手動觸發可傳 limit:1）
+  /*
+   * 每次全局上限（手動觸發可傳 limit 覆寫）
+   *
+   * 老闆 2026-08-29 從 3 調到 5。**實際產量不是 20 篇/天而是 15** ——
+   * 下面的 DAILY_PER_CATEGORY = 3 才是真正的天花板（5 個分類 × 3）。
+   * 老闆指定「其他不動」，所以那個維持 3。
+   * 實測成本：滿產 12 篇/天約 US$0.30，每篇約 US$0.026 → 15 篇/天約 US$11/月。
+   */
+  const MAX_TOTAL    = limitOverride ?? 5
   const MAX_PER_QUERY = limitOverride === 1 ? 1 : 2
 
   /**
@@ -1510,6 +1568,7 @@ export async function POST(req: NextRequest) {
       const rawItems = parseRss(xml)
         .filter(it => isRecent(it.pubDate, 3))                       // 只抓 3 天內
         .filter(it => !feed.titleFilter || feed.titleFilter.test(it.title))  // 綜合型 feed 先用標題濾題材
+        .filter(it => !feed.titleSkip   || !feed.titleSkip.test(it.title))   // 自家廣告、投資文先擋掉
       const items = rawItems.sort((a, b) => {
         const da = (() => { try { return new URL(a.link).hostname } catch { return '' } })()
         const db = (() => { try { return new URL(b.link).hostname } catch { return '' } })()
