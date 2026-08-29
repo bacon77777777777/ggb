@@ -924,7 +924,12 @@ export default function GGBPackRip({
       g.moveTo(0, c.height); g.lineTo(0, r); g.quadraticCurveTo(0, 0, r, 0);
       g.lineTo(c.width - r, 0); g.quadraticCurveTo(c.width, 0, c.width, r);
       g.lineTo(c.width, c.height); g.closePath(); g.clip();
-      g.drawImage(pk, 0, 0, pk.width, pk.height * STRIP_FRAC, 0, 0, c.width, c.height);
+      /* 取樣要跟卡包本體同一套 cover 裁切 —— 上面那層背景是 cover，
+         這裡若還照整張圖的上緣 7% 取，封條的花紋就跟它底下的卡包對不齊。 */
+      const cvS = Math.max(w / pk.width, h / pk.height);   // cover 的縮放倍率
+      const cvW = w / cvS, cvH = h / cvS;                  // 來源上實際被用到的區域
+      const cvX = (pk.width - cvW) / 2, cvY = (pk.height - cvH) / 2;
+      g.drawImage(pk, cvX, cvY, cvW, cvH * STRIP_FRAC, 0, 0, c.width, c.height);
       if (seal) { g.globalAlpha = 0.9; g.drawImage(seal, 0, 0, c.width, c.height); g.globalAlpha = 1; }
       stripSrcRef.current = c;
       drawStrip();
@@ -1043,7 +1048,12 @@ export default function GGBPackRip({
           }}>
             <div style={{
               position: "absolute", inset: 0, zIndex: 2,
-              backgroundImage: `url("${packImg}")`, backgroundSize: `${w}px ${h}px`,
+              /* cover 置中裁切，不是拉伸（老闆 2026-08-29 回報「怎麼被拉高了」）。
+                 原本寫 `${w}px ${h}px` 是把整張圖硬撐成卡包大小 —— 比例一不合就變形，
+                 統一比例那天所有既有商品圖（多半是 1:1.7）當場全部被縱向拉長 10%。
+                 改成 cover 之後：比例正確的圖完全不受影響（cover 等同滿版），
+                 比例不合的只是被裁掉一點，不會變形。輪播那邊本來就是 cover，這樣兩邊也一致。 */
+              backgroundImage: `url("${packImg}")`, backgroundSize: "cover", backgroundPosition: "center",
               clipPath: `inset(${stripH}px 0 0 0)`,
               borderRadius: 10,
               transform: phase === "ripped" ? "translateY(70%) scale(.9)" : "none",
