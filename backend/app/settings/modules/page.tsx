@@ -31,7 +31,7 @@ type Row =
 
 const CARD_MODULES: Theme[] = [
   { value: 'card_peel',  label: '撕開封口',   desc: '拖曳封口把手撕開卡包，卡牌一一揭曉' },
-  { value: 'card_pack',  label: '蓄力開卡包', desc: '按住蓄力撕開卡包，卡牌一一揭曉' },
+  { value: 'card_pack',  label: '蓄力開包', desc: '按住蓄力撕開卡包，卡牌一一揭曉' },
   { value: 'card_video', label: '過場影片',   desc: '播放開卡影片，播完回商品頁彈出恭喜獲得' },
 ]
 
@@ -45,7 +45,7 @@ const CATEGORIES: { key: string; label: string; info: string; rows: Row[] }[] = 
       desc: '商品頁沒有另外指定時套用這一款',
       themes: [
         { value: 'ichiban_grid', label: '經典列表', desc: '票券網格排列，各自拖拉撕開' },
-        { value: 'ichiban_tear', label: '沉浸式撕紙', desc: '全畫面場景，撕開揭曉最大賞，再進開獎列表' },
+        { value: 'ichiban_tear', label: '沉浸撕紙', desc: '全畫面場景，撕開揭曉最大賞，再進開獎列表' },
       ],
     }],
   },
@@ -57,11 +57,11 @@ const CATEGORIES: { key: string; label: string; info: string; rows: Row[] }[] = 
       kind: 'default', productType: 'blindbox', title: '預設開盒演出',
       desc: '商品頁沒有另外指定時套用這一款',
       themes: [
-        { value: 'blindbox_classic', label: '原始經典', desc: '過場華麗動畫' },
-        { value: 'blindbox_mode2', label: '販賣機・兔子', desc: '可愛兔子貨架，盒子飛入取物口' },
-        { value: 'blindbox_mode3', label: '販賣機・叢林', desc: '叢林主題貨架，盒子飛入取物口' },
-        { value: 'blindbox_mode4', label: '販賣機・賽璐璐', desc: '賽璐璐動畫風貨架' },
-        { value: 'blindbox_mode5', label: '販賣機・立體物理', desc: '3D 盒子推出翻落' },
+        { value: 'blindbox_classic', label: '經典動畫', desc: '過場華麗動畫' },
+        { value: 'blindbox_mode2', label: '兔子販賣機', desc: '可愛兔子貨架，盒子飛入取物口' },
+        { value: 'blindbox_mode3', label: '叢林販賣機', desc: '叢林主題貨架，盒子飛入取物口' },
+        { value: 'blindbox_mode4', label: '賽璐璐機台', desc: '賽璐璐動畫風貨架' },
+        { value: 'blindbox_mode5', label: '立體販賣機', desc: '3D 盒子推出翻落' },
       ],
     }],
   },
@@ -73,11 +73,11 @@ const CATEGORIES: { key: string; label: string; info: string; rows: Row[] }[] = 
       kind: 'default', productType: 'gacha', title: '預設轉蛋機台',
       desc: '商品頁沒有另外指定時套用這一款',
       themes: [
-        { value: 'gacha_classic', label: '原始經典', desc: '物理蛋球掉落轉蛋機' },
-        { value: 'gacha_mode2', label: '新款機台', desc: '旋鈕式轉蛋機，蛋口出蛋設計' },
-        { value: 'gacha_mode3', label: '金光閃閃機台', desc: '旋鈕式轉蛋機，金光閃閃特效版' },
+        { value: 'gacha_classic', label: '經典蛋球', desc: '物理蛋球掉落轉蛋機' },
+        { value: 'gacha_mode2', label: '旋鈕機台', desc: '旋鈕式轉蛋機，蛋口出蛋設計' },
+        { value: 'gacha_mode3', label: '金光機台', desc: '旋鈕式轉蛋機，金光閃閃特效版' },
         { value: 'gacha_mode4', label: '狗狗蛋箱', desc: '蛋箱風格轉蛋機，無旋鈕設計' },
-        { value: 'gacha_mode5', label: '紫金旋鈕機台', desc: '旋鈕式轉蛋機，操作鈕在頁面底部' },
+        { value: 'gacha_mode5', label: '紫金機台', desc: '旋鈕式轉蛋機，操作鈕在頁面底部' },
       ],
     }],
   },
@@ -110,7 +110,7 @@ const CATEGORIES: { key: string; label: string; info: string; rows: Row[] }[] = 
     rows: [{
       kind: 'default', productType: 'custom', title: '預設開獎演出',
       desc: '商品頁沒有另外指定時套用這一款',
-      themes: [{ value: 'custom_combo', label: '影片互動 Combo', desc: '全畫面影片播放，互動點擊揭曉最大賞' }],
+      themes: [{ value: 'custom_combo', label: '影片互動', desc: '全畫面影片播放，互動點擊揭曉最大賞' }],
     }],
   },
 ]

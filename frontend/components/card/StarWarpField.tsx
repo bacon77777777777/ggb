@@ -46,11 +46,14 @@ export type StarWarpFieldProps = {
 
 const DEFAULTS = {
   particleCount: 500,
-  colors: ['#ffffff', '#FF0000', '#FFE500'] as [string, string, string],
+  /* 三色全白（老闆 2026-08-29 的 Framer 面板 Color 1/2/3 都是 #FFFFFF）。
+     他先前貼過來的那份 COMPONENT_DEFAULTS 寫的是白／紅／金，那是另一個 Variant
+     的舊值 —— 以面板截圖為準。紅黃版在暗紫底上會變成霓虹管，跟參考完全不同。 */
+  colors: ['#ffffff', '#ffffff', '#ffffff'] as [string, string, string],
   speed: 5,
   density: 100,
   starSize: 20,
-  focalDepth: 13,
+  focalDepth: 8,
   turbulence: 0,
   brightness: 100,
   glitterIntensity: 3,

@@ -2,30 +2,30 @@
 
 const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
   gacha:    [
-    { value: 'gacha_classic', label: '原始經典（物理蛋球掉落）' },
-    { value: 'gacha_mode2',   label: '新款機台（旋鈕式蛋口出蛋）' },
-    { value: 'gacha_mode3',   label: '金光閃閃機台（旋鈕式蛋口出蛋）' },
-    { value: 'gacha_mode4',   label: '狗狗蛋箱（無旋鈕，蛋口出蛋）' },
-    { value: 'gacha_mode5',   label: '紫金旋鈕機台（操作鈕在底部）' },
+    { value: 'gacha_classic', label: '經典蛋球' },
+    { value: 'gacha_mode2',   label: '旋鈕機台' },
+    { value: 'gacha_mode3',   label: '金光機台' },
+    { value: 'gacha_mode4',   label: '狗狗蛋箱' },
+    { value: 'gacha_mode5',   label: '紫金機台' },
   ],
   ichiban:  [
-    { value: 'ichiban_grid', label: '經典列表（票券網格撕開）' },
-    { value: 'ichiban_tear', label: '沉浸式撕紙（全畫面揭曉）' },
+    { value: 'ichiban_grid', label: '經典列表' },
+    { value: 'ichiban_tear', label: '沉浸撕紙' },
   ],
   card:     [
-    { value: 'card_pack',  label: '蓄力開卡包（按住撕開 → 翻牌）' },
-    { value: 'card_peel',  label: '撕開封口（拖曳把手撕開 → 逐張翻牌＋累計價值）' },
-    { value: 'card_video', label: '過場影片（播完回商品頁彈出恭喜）' },
+    { value: 'card_pack',  label: '蓄力開包' },
+    { value: 'card_peel',  label: '撕開封口' },
+    { value: 'card_video', label: '過場影片' },
   ],
   custom:   [
-    { value: 'custom_combo', label: '影片互動 Combo（全畫面影片＋互動點擊）' },
+    { value: 'custom_combo', label: '影片互動' },
   ],
   blindbox: [
-    { value: 'blindbox_classic', label: '原始經典（過場華麗動畫）' },
-    { value: 'blindbox_mode2',   label: '販賣機（可愛兔子貨架，盒子飛入取物口）' },
-    { value: 'blindbox_mode3',   label: '販賣機（叢林探險，盒子飛入取物口）' },
-    { value: 'blindbox_mode4',   label: '販賣機（賽璐璐風格，盒子飛入取物口）' },
-    { value: 'blindbox_mode5',   label: '販賣機（立體物理，3D 盒子推出翻落）' },
+    { value: 'blindbox_classic', label: '經典動畫' },
+    { value: 'blindbox_mode2',   label: '兔子販賣機' },
+    { value: 'blindbox_mode3',   label: '叢林販賣機' },
+    { value: 'blindbox_mode4',   label: '賽璐璐機台' },
+    { value: 'blindbox_mode5',   label: '立體販賣機' },
   ],
 }
 
