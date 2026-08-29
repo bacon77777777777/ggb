@@ -11,6 +11,7 @@ import sharp from 'sharp'
 import { brandCoverImage, contentBox, stampUrlWatermark } from '@/lib/newsBranding'
 import type { WmCorner } from '@/lib/dengekiWm'
 import { createClaude } from '@/lib/aiUsage'
+import { toTaiwanProse } from '@/lib/productNaming'
 import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
@@ -1303,6 +1304,35 @@ Lakers→湖人、NBA／MLB 這種縮寫保留原文）。**產品線與商品�
   catch { return null }
 }
 
+/**
+ * 把改寫結果台灣化（2026-08-29）
+ *
+ * 改寫 prompt 明明寫了「繁體中文（台灣用語）」，實跑還是會出簡體 ——
+ * 同一個系列，一篇是「《阿卡納迪亞》惡魔型迪亞茲」、另一篇是
+ * 「《阿卡那迪亚》露米提亚 1/6 比例手办彩色样品首展」。
+ * 跟品牌張冠李戴一樣，**指示只降低機率，擋不住**。
+ *
+ * 但這件事跟品牌寫錯不一樣：**字體是可以修的，不該把整篇丟掉**
+ *（老闆 2026-08-29：「簡體可以發啊，最好翻譯成繁體的，為什麼要不發？」）。
+ * 改寫的錢已經付了，為了字形丟掉整篇不划算。
+ *
+ * 用 `toTaiwanProse()`（長文專用）而**不是**商品名那套 `normalizeToTaiwan()`：
+ * 後者用 s2twp，`p` 是詞語轉換，套在繁體長文上會把「設計對象」改成「設計物件」、
+ * 「風采」改成「風採」、「高級質感」改成「高階質感」—— 改壞比不改更糟。
+ * 長文只換字 + 領域詞典（「手办」→「公仔」），排版一律不動。
+ *
+ * **在插圖之前跑**：那時 content 還沒有任何 R2 網址，不會誤傷連結。
+ */
+function taiwanize(draft: ArticleDraft): ArticleDraft {
+  return {
+    ...draft,
+    title:   toTaiwanProse(draft.title),
+    summary: toTaiwanProse(draft.summary),
+    content: toTaiwanProse(draft.content),
+    tags:    (draft.tags ?? []).map(t => toTaiwanProse(t)),
+  }
+}
+
 // ─── 標題相似度去重 ──────────────────────────────────────────────────────────
 
 const CJK_RE = /[\u3400-\u9fff\uf900-\ufaff\u3040-\u30ff]/
@@ -1614,8 +1644,9 @@ export async function POST(req: NextRequest) {
         if (isDuplicateSource(title)) { results.skipped++; results.skipReasons.titleDup++; continue }
         if (quotaFull(classifyByTitle(title) ?? src.category)) { results.skipped++; results.skipReasons.catQuota++; continue }
 
-        const draft = await rewriteArticle(claude, title, desc, bodyText, realUrl, src.category)
+        let draft = await rewriteArticle(claude, title, desc, bodyText, realUrl, src.category)
         if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
+        draft = taiwanize(draft)   // 簡體轉繁 + 台灣用語（見 taiwanize 的說明）
         if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
         // 品牌張冠李戴：模型偶爾會把 UNION ARENA 寫成遊戲王，程式層再擋一次
         if (hasBrandMixup(realUrl, draft.title, draft.summary, draft.content)) {
@@ -1703,8 +1734,9 @@ export async function POST(req: NextRequest) {
       if (quotaFull(classifyByTitle(item.title) ?? srcCategory)) { results.skipped++; results.skipReasons.catQuota++; continue }
 
       const bodyText = oneOneBodyText(articleHtml)
-      const draft = await rewriteArticle(claude, item.title, item.description, bodyText, realUrl, srcCategory)
+      let draft = await rewriteArticle(claude, item.title, item.description, bodyText, realUrl, srcCategory)
       if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
+      draft = taiwanize(draft)   // 簡體轉繁 + 台灣用語（見 taiwanize 的說明）
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
       // 品牌張冠李戴：模型偶爾會把 UNION ARENA 寫成遊戲王，程式層再擋一次
       if (hasBrandMixup(realUrl, draft.title, draft.summary, draft.content)) {
@@ -1806,8 +1838,9 @@ export async function POST(req: NextRequest) {
 
         if (isDuplicateSource(item.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
-        const draft = await rewriteArticle(claude, item.title, item.description, bodyText, realUrl, feed.category)
+        let draft = await rewriteArticle(claude, item.title, item.description, bodyText, realUrl, feed.category)
         if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
+        draft = taiwanize(draft)   // 簡體轉繁 + 台灣用語（見 taiwanize 的說明）
         if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
         // 品牌張冠李戴：模型偶爾會把 UNION ARENA 寫成遊戲王，程式層再擋一次
         if (hasBrandMixup(realUrl, draft.title, draft.summary, draft.content)) {

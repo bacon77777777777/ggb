@@ -22,6 +22,23 @@ import * as OpenCC from 'opencc-js'
 const s2twp = OpenCC.Converter({ from: 'cn', to: 'twp' })
 
 /**
+ * 只換字、不換詞的簡繁轉換 —— 給**長文**用（情報文章）
+ *
+ * `s2twp` 的 `p` 是 phrase（詞語轉換），為「簡體商品名」設計。套在已經是繁體的
+ * 長文上會做一堆不該做的替換，實測正式站的文章被改壞：
+ *
+ *   設計對象 → 設計物件   （「物件」是 object 的誤譯，這裡指的是設計的對象）
+ *   風采     → 風採       （「風採」不是詞）
+ *   高級質感 → 高階質感   （語意跑掉，高階是 advanced 不是 premium）
+ *   宣布     → 宣佈       （教育部標準用「宣布」）
+ *
+ * 商品名那條路徑維持 `s2twp` 不動 —— 它處理的是短字串、而且來源常常真的是
+ * 中國賣家的簡體，詞語轉換在那裡是有價值的。
+ */
+const s2t = OpenCC.Converter({ from: 'cn', to: 'tw' })
+const t2s = OpenCC.Converter({ from: 'tw', to: 'cn' })
+
+/**
  * 日文新字體 → 繁體（蔵→藏、竜→龍、桜→櫻、剣→劍、沢→澤…）。
  *
  * 只在字串「確定是日文」時才套用，判準是含假名。原因是這個轉換表會把
@@ -75,6 +92,16 @@ const TW_TERMS: [RegExp, string][] = [
   [/硬件/g, '硬體'],
   [/網絡/g, '網路'],
   [/激活/g, '啟用'],
+]
+
+/**
+ * 只在**商品名**替換的詞
+ *
+ * `預售` 在台灣是正常用詞（預售屋、預售票），長文裡把它改成「預購」是多餘的修改 ——
+ * 實測正式站一篇本來就正確的文章被這樣動到。但商品名的來源常是中國賣家的
+ * 「預售」＝我們的「預購」，那個情境改是對的，所以留在商品名那條路徑。
+ */
+const TW_TERMS_NAME_ONLY: [RegExp, string][] = [
   [/預售/g, '預購'],
 ]
 
@@ -84,9 +111,52 @@ export function hasJapanese(s: string): boolean {
   return /[぀-ゟ゠-ヿ]/.test(s)
 }
 
-/** 有沒有簡體字。用幾個高頻簡體字當探針，比整串比對便宜。 */
+/**
+ * 有沒有簡體字（`s !== s2t(s)`）
+ *
+ * ⚠️ 這個判斷會**誤報**：`采`、`里`、`准`、`複` 這些字繁簡通用，
+ * 純繁體字串照樣會不相等。要判斷「整段是不是簡體」請用 `looksSimplified()`。
+ */
 export function hasSimplified(s: string): boolean {
-  return s !== s2twp(s)
+  return s !== s2t(s)
+}
+
+/**
+ * 整段文字**是不是簡體**（文件層級，不是逐字）
+ *
+ * 逐字判斷做不到：`采`／`里`／`准`／`布` 這些字繁簡都在用，
+ * 任何 S→T 對照表都會把正確的「風采」改成「風採」、「里長」改成「裡長」。
+ * 實測正式站的繁體文章被這樣改壞過（設計對象→設計物件、高級質感→高階質感）。
+ *
+ * 改用兩個方向一起看：
+ *   有簡體專用字（`s2t` 會動它） **而且** 沒有繁體專用字（`t2s` 不會動它）
+ *
+ * 繁體文章一定含繁體專用字（動、劇、質、學…），`t2s` 會動 → 判為繁體，不轉。
+ * 簡體文章沒有繁體專用字 → 判為簡體，轉。
+ * 實測五組（含「風采依舊，里長宣布准許」這種滿是通用字的）全部判對。
+ */
+export function looksSimplified(s: string): boolean {
+  if (!s) return false
+  return s2t(s) !== s && t2s(s) === s
+}
+
+/**
+ * 長文的台灣化：**確定是簡體才換字**，領域用語一律套用
+ *
+ * 給情報文章用。跟 `normalizeToTaiwan()`（商品名用）的差別：
+ *   - 換字前先過 `looksSimplified()` —— 不然會把正確的繁體改壞（見上）
+ *   - 用 s2t 不用 s2twp（後者的詞語轉換會亂動長文）
+ *   - 不做全形轉半形、括號空白收斂 —— 那是為了對齊廠商 Excel，長文不需要
+ *
+ * 領域詞典不設條件：「高達→鋼彈」「手辦→公仔」在繁體文章裡一樣該換，
+ * 而且那些詞沒有歧義，不會誤傷。
+ */
+export function toTaiwanProse(raw: string): string {
+  if (!raw) return raw
+  let s = String(raw)
+  if (looksSimplified(s)) s = s2t(s)
+  for (const [re, to] of TW_TERMS) s = s.replace(re, to)
+  return s
 }
 
 /**
@@ -103,6 +173,7 @@ export function normalizeToTaiwan(raw: string): string {
   s = s2twp(s)
 
   for (const [re, to] of TW_TERMS) s = s.replace(re, to)
+  for (const [re, to] of TW_TERMS_NAME_ONLY) s = s.replace(re, to)
 
   s = s
     // 全形空白（U+3000）換半形。廠商從 Excel 貼過來常常整串都是全形。

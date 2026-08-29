@@ -704,7 +704,20 @@ SFSafariViewController）**跟 webview 不共用 cookie**，所以交接不能�
 - 所有 migration 執行後 commit 並 push（不需詢問）
 - **推版前必須更新 `DEVLOG.md` + 同步 `dev_logs` DB 表**：
   - 先更新 `DEVLOG.md`（格式：`## v2026.MM.DDx｜YYYY-MM-DD｜標題`）
-  - 再執行 `cd backend && export $(grep -v '^#' .env.local | xargs) && npx tsx scripts/sync_devlog_to_db.ts` 同步至後台「開發紀錄」
+  - 同步到 `dev_logs` DB 表，**STG 與 PROD 要各跑一次**：
+    ```bash
+    cd backend
+    # STG（.env.local 指向的環境，本機預設就是 STG）
+    export $(grep -v '^#' .env.local | xargs) && npx tsx scripts/sync_devlog_to_db.ts
+    # PROD（一定要用 DEVLOG_DB_URL 指定，否則寫不到正式站）
+    DEVLOG_DB_URL="postgresql://postgres.akdqleelvqvjhjnfkpfq:OhpiiPc5OshSrtHt@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres" \
+      npx tsx scripts/sync_devlog_to_db.ts
+    ```
+  - ⚠️ **只跑第一行等於只同步 STG，而且畫面照樣顯示「✅ 同步完成」**——
+    `backend/.env.local` 指向 STG，腳本就寫 STG。2026-08-28 與 08-29 都因此讓
+    PROD 的開發紀錄落後十幾筆，兩次都是事後才發現（08-29 那次一天內漏了 14 筆）。
+    推正之後順手查一下：
+    `SELECT max(version) FROM dev_logs;` 兩個環境要一樣。
   - 後台開發紀錄（`/dev-logs`）讀的是 `dev_logs` DB 表，**不是** DEVLOG.md 本身，兩邊必須同步
   - 再 commit + push
 - **推版節奏**：完成功能後不自動推版，等老闆本地測試完、明確說「推版」再推
