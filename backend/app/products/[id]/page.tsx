@@ -981,16 +981,27 @@ export default function EditProductPage() {
                   </SelectField>
                 </div>
               )}
-              {/* 抽卡三張圖排成一列：卡包正面（＝商品主圖）、卡包背面、卡牌背面。
-                  卡包模式的輪播與開包演出都吃這三張，不再用內建隨機款式 */}
+              {/* 抽卡的圖：商品圖片、卡包正面、卡包背面、卡牌背面。
+                  卡包模式的輪播與開包演出都吃自己的卡包圖，不再用內建隨機款式。
+
+                  ⚠️ 卡包正面／背面**只有卡包模式才會生效**（老闆 2026-08-29 回報
+                  「單張的為什麼可以選卡包正面或背面」）。前台只有兩個地方讀那兩個欄位
+                  —— 商品頁 3D 輪播與撕開封口演出 —— 兩處都綁死卡包模式；單張模式的
+                  輪播吃的是內建六款、玩家滑到哪張就用哪張（activePackStyle），跟商品
+                  自己的圖無關。先前這排只判斷「是不是抽卡商品」，於是單張模式也看得到
+                  兩個選了不會生效的欄位。
+                  已經存在 DB 裡的值不清掉（存檔仍照舊寫回），切回卡包模式還在。
+                  商品圖片與卡牌背面兩種模式都會用到，不能整排收掉。 */}
               {isCardType && (
                 <div className="col-span-2 grid grid-cols-4 gap-3">
-                  {([
-                    { key: 'image',     label: '商品圖片', preview: formData.imagePreview },
-                  { key: 'packFront', label: '卡包正面', preview: formData.packFrontImagePreview },
-                    { key: 'packBack', label: '卡包背面', preview: formData.packBackImagePreview },
+                  {(([
+                    { key: 'image', label: '商品圖片', preview: formData.imagePreview },
+                    ...(isPackMode ? [
+                      { key: 'packFront', label: '卡包正面', preview: formData.packFrontImagePreview },
+                      { key: 'packBack',  label: '卡包背面', preview: formData.packBackImagePreview },
+                    ] : []),
                     { key: 'cardBack', label: '卡牌背面', preview: formData.cardBackImagePreview },
-                  ] as const).map(({ key, label, preview }) => (
+                  ]) as { key: 'image' | 'packFront' | 'packBack' | 'cardBack'; label: string; preview: string }[]).map(({ key, label, preview }) => (
                     <div key={key}>
                       <label className="block text-xs font-medium text-neutral-500 mb-1">{label}</label>
                       <div className="flex items-center gap-2">
