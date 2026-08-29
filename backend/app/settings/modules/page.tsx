@@ -37,6 +37,10 @@ const CARD_MODULES: Theme[] = [
   { value: 'card_video', label: '過場影片',   desc: '播放開卡影片，播完回商品頁彈出恭喜獲得' },
 ]
 
+/* ⚠️ 每組 themes 的**第一個**同時是「DB 還沒有那一列時的預設值」
+   （下面 `settings[row.productType] || row.themes[0].value`），所以調順序
+   等於同時調預設。老闆 2026-08-29 要的排法剛好就是目前 DB 實際在用的那款
+   （ichiban_tear／blindbox_mode5／gacha_mode2），兩者一致。 */
 const CATEGORIES: { key: string; label: string; info: string; rows: Row[] }[] = [
   {
     key: 'ichiban',
@@ -46,8 +50,8 @@ const CATEGORIES: { key: string; label: string; info: string; rows: Row[] }[] = 
       kind: 'default', productType: 'ichiban', title: '預設開獎演出',
       desc: '商品頁沒有另外指定時套用這一款',
       themes: [
-        { value: 'ichiban_grid', label: '經典列表', desc: '票券網格排列，各自拖拉撕開' },
         { value: 'ichiban_tear', label: '沉浸撕紙', desc: '全畫面場景，撕開揭曉最大賞，再進開獎列表' },
+        { value: 'ichiban_grid', label: '票券網格', desc: '票券網格排列，各自拖拉撕開' },
       ],
     }],
   },
@@ -59,11 +63,11 @@ const CATEGORIES: { key: string; label: string; info: string; rows: Row[] }[] = 
       kind: 'default', productType: 'blindbox', title: '預設開盒演出',
       desc: '商品頁沒有另外指定時套用這一款',
       themes: [
-        { value: 'blindbox_classic', label: '經典動畫', desc: '過場華麗動畫' },
-        { value: 'blindbox_mode2', label: '兔子販賣機', desc: '可愛兔子貨架，盒子飛入取物口' },
-        { value: 'blindbox_mode3', label: '叢林販賣機', desc: '叢林主題貨架，盒子飛入取物口' },
-        { value: 'blindbox_mode4', label: '賽璐璐機台', desc: '賽璐璐動畫風貨架' },
         { value: 'blindbox_mode5', label: '立體販賣機', desc: '3D 盒子推出翻落' },
+        { value: 'blindbox_classic', label: '華麗過場', desc: '過場華麗動畫' },
+        /* 兔子／叢林／賽璐璐三款移除（老闆 2026-08-29：「只留這兩個，其他移除，不需要了」）。
+           前台程式與圖素沒有刪，只是後台不再讓人選；查過 PROD 與 STG，
+           沒有任何商品在用這三個值，所以移掉不會有商品指到選單裡沒有的模組。 */
       ],
     }],
   },
@@ -75,8 +79,8 @@ const CATEGORIES: { key: string; label: string; info: string; rows: Row[] }[] = 
       kind: 'default', productType: 'gacha', title: '預設轉蛋機台',
       desc: '商品頁沒有另外指定時套用這一款',
       themes: [
-        { value: 'gacha_classic', label: '經典蛋球', desc: '物理蛋球掉落轉蛋機' },
         { value: 'gacha_mode2', label: '旋鈕機台', desc: '旋鈕式轉蛋機，蛋口出蛋設計' },
+        { value: 'gacha_classic', label: '蛋球機台', desc: '物理蛋球掉落轉蛋機' },
         { value: 'gacha_mode3', label: '金光機台', desc: '旋鈕式轉蛋機，金光閃閃特效版' },
         { value: 'gacha_mode4', label: '狗狗蛋箱', desc: '蛋箱風格轉蛋機，無旋鈕設計' },
         { value: 'gacha_mode5', label: '紫金機台', desc: '旋鈕式轉蛋機，操作鈕在頁面底部' },

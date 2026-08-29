@@ -1,16 +1,20 @@
 'use client'
 
 const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
+  /* 順序＝下拉選單的順序，第一個同時是「沒設定時的預設」。
+     老闆 2026-08-29 指定各類別把目前在用的那款排第一，並把三個叫「經典」的
+     改成講得出畫面長相的名字（經典列表／經典動畫／經典蛋球 → 票券網格／
+     華麗過場／蛋球機台）。 */
   gacha:    [
-    { value: 'gacha_classic', label: '經典蛋球' },
     { value: 'gacha_mode2',   label: '旋鈕機台' },
+    { value: 'gacha_classic', label: '蛋球機台' },
     { value: 'gacha_mode3',   label: '金光機台' },
     { value: 'gacha_mode4',   label: '狗狗蛋箱' },
     { value: 'gacha_mode5',   label: '紫金機台' },
   ],
   ichiban:  [
-    { value: 'ichiban_grid', label: '經典列表' },
     { value: 'ichiban_tear', label: '沉浸撕紙' },
+    { value: 'ichiban_grid', label: '票券網格' },
   ],
   card:     [
     { value: 'card_pack',  label: '蓄力開包' },
@@ -18,14 +22,16 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
     { value: 'card_video', label: '過場影片' },
   ],
   custom:   [
-    { value: 'custom_combo', label: '影片互動' },
+    { value: 'custom_tear', label: '沉浸撕紙' },
+    { value: 'custom_grid', label: '票券網格' },
   ],
+  /* 盒玩只留兩款（老闆 2026-08-29：「只留這兩個，其他移除，不需要了」）。
+     兔子／叢林／賽璐璐三款的前台程式與圖素都沒有刪，只是後台不再讓人選 ——
+     查過 PROD 與 STG，沒有任何商品在用這三個值，所以移掉不會有商品變成
+     選單裡找不到的狀態。 */
   blindbox: [
-    { value: 'blindbox_classic', label: '經典動畫' },
-    { value: 'blindbox_mode2',   label: '兔子販賣機' },
-    { value: 'blindbox_mode3',   label: '叢林販賣機' },
-    { value: 'blindbox_mode4',   label: '賽璐璐機台' },
     { value: 'blindbox_mode5',   label: '立體販賣機' },
+    { value: 'blindbox_classic', label: '華麗過場' },
   ],
 }
 
