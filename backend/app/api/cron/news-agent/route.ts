@@ -460,30 +460,49 @@ async function fetchText(url: string, timeoutMs = 10_000): Promise<string> {
  *
  * 容器內仍要拿掉 nav/header/footer/aside —— 有些站把側欄放在 <article> 裡面。
  */
+/**
+ * 把文章頁縮到「正文容器」的 HTML —— 文字與**取圖都要用這個**
+ *
+ * 取圖不縮範圍會拿到側欄「相關文章」的縮圖。實測 ホビーウォッチ 的
+ * `/docs/special/2135846.html`，整頁由上往下掃到的前六張是
+ * `2136/662`、`2135/950`、`2135/951`…**屬於本篇（2135/846）的 0 張** ——
+ * 於是文章的封面是 A 商品、內文圖全是 B、C、D 商品（老闆回報的那兩篇）。
+ *
+ * `<article>` 可能有多個（相關文章列表也用這個標籤），取**最長**的才是正文。
+ */
+function articleScope(html: string): string {
+  if (!html) return ''
+  const articles = [...html.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/gi)].map(m => m[1])
+  if (articles.length) {
+    const best = articles.sort((a, b) => b.length - a.length)[0]
+    if (best.length >= 400) return best
+  }
+  for (const cls of ['entry-content', 'post-content', 'article-body', 'articleBody', 'td-post-content']) {
+    const i = html.indexOf(cls)
+    if (i < 0) continue
+    const frag = html.slice(i, i + 60_000)
+    if (frag.length >= 400) return frag
+  }
+  return html   // 都找不到就照舊用整頁
+}
+
+/**
+ * 從文章頁抽出**正文文字**（2026-08-29）
+ *
+ * 原本是「整頁去標籤、取前 1500 字」。對版面簡單的站沒事，對選單長的站是災難 ——
+ * CardboardConnection 的前 1500 字全是導覽列，Claude 看不到任何商品資訊、
+ * 每輪退 17~18 篇。錯的不是篩選規則，是餵進去的東西。
+ *
+ * 容器內仍要拿掉 nav/header/footer/aside —— 有些站把側欄放在 `<article>` 裡面。
+ */
 function extractArticleText(html: string, limit = 1500): string {
   if (!html) return ''
-  const clean = (frag: string) => frag
+  const text = articleScope(html)
     .replace(/<(script|style|nav|header|footer|aside|form)[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#\d+;/g, ' ')
     .replace(/\s+/g, ' ').trim()
-
-  // <article> 可能有多個（相關文章列表），取最長的那個才是正文
-  const articles = [...html.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/gi)].map(m => m[1])
-  if (articles.length) {
-    const best = articles.sort((a, b) => b.length - a.length)[0]
-    const text = clean(best)
-    if (text.length >= 200) return text.slice(0, limit)
-  }
-
-  for (const cls of ['entry-content', 'post-content', 'article-body', 'articleBody', 'td-post-content']) {
-    const i = html.indexOf(cls)
-    if (i < 0) continue
-    const text = clean(html.slice(i, i + 60_000))
-    if (text.length >= 200) return text.slice(0, limit)
-  }
-
-  return clean(html).slice(0, limit)   // 都找不到就照舊
+  return text.slice(0, limit)
 }
 
 function extractMeta(html: string, prop: string): string {
@@ -876,7 +895,8 @@ async function injectBodyImages(
 ): Promise<string> {
   if (!content || !articleHtml) return content
 
-  const candidates = (pickImages ?? extractBodyImages)(articleHtml, 6)
+  // 取圖也要縮到正文容器，否則抓到的是側欄「相關文章」的縮圖（見 articleScope）
+  const candidates = (pickImages ?? extractBodyImages)(articleScope(articleHtml), 6)
     .map(u => resolveImageUrl(u, pageUrl))
     .filter(u => u && u !== coverUrl)
   if (candidates.length === 0) return content
