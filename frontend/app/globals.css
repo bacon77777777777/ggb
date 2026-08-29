@@ -609,3 +609,15 @@ a, video, canvas {
   .profile-bubbles .bubble { animation: none !important; }
   .rank-aurora .orb { opacity: 0.4; }
 }
+
+/*
+ * 警語列（NoticeBar）的「查看說明」
+ *
+ * 主題色摻一點白 —— 純 --primary-light 壓在深灰底上太燙、跟旁邊的白字也搶。
+ * 摻白而不是直接寫死一個淺紅：後台換主題色時這行要跟著走（老闆 2026-08-30）。
+ * 第一行是不支援 color-mix 的舊瀏覽器（iOS 16.1 以下）的退路。
+ */
+.notice-cta {
+  color: rgb(var(--primary-light));
+  color: color-mix(in srgb, rgb(var(--primary-light)) 68%, #fff);
+}

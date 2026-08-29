@@ -179,8 +179,9 @@ export default function NoticeBar({ position = 'bottom' }: Props) {
               flex 置中對齊的是行框而不是字形 */}
           <p className="text-[11px] text-neutral-300 leading-[1.35] flex-1 relative -top-px">
             {TEXT}
-            {/* 用 primary-light 而非 primary：#EE4D2D 壓在深底上偏濁，淺一階才讀得出來 */}
-            <span className="ml-1 text-primary-light underline underline-offset-2 font-bold whitespace-nowrap">
+            {/* 用 primary-light 而非 primary：#EE4D2D 壓在深底上偏濁，淺一階才讀得出來。
+                再摻一點白（.notice-cta，見 globals.css）壓深底才不刺眼 */}
+            <span className="notice-cta ml-1 underline underline-offset-2 font-bold whitespace-nowrap">
               {CTA_TEXT}
             </span>
           </p>

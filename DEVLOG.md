@@ -92,6 +92,8 @@ endpoint 也有被打到，但那一場**寫 0 篇** —— `DAILY_PER_CATEGORY 
 - 膜拜確認框：括號拿掉、「，每日限一次」拿掉，改成兩行。原本的 `\n` 本來就沒作用 ——
   AlertDialog 的訊息區沒有 `whitespace-pre-line`，換行字元會被摺掉
 - 後台登入頁移除副標「線上抽獎平台」
+- 警語列的「查看說明」摻一點白（`.notice-cta` 的 `color-mix`，68% 主題色 + 白）——
+  純 `--primary-light` 壓在深灰底上太燙。摻白而不是寫死淺紅，換主題色時才跟著走
 
 ---
 
