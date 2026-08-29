@@ -28,6 +28,7 @@ import { createClient } from '@/lib/supabase/client';
 import SoundToggle from '@/components/ui/SoundToggle';
 import { swoosh, unlockPackAudio } from '@/lib/packSfx';
 import { asset } from '@/lib/asset';
+import { PACK_RATIO } from './packSpec';
 
 export type PackShowcase3DHandle = {
   goToNext: () => void;
@@ -65,12 +66,12 @@ const DEFAULTS: Params = {
 };
 
 // ── 以下常數與函式全部照原型 ────────────────────────────────────
-// 實體卡包比例（窄高版）62 × 116 mm，等比縮放進 3D 世界
-const PACK_MM_W = 62, PACK_MM_H = 116;
-const PACK_W = 1.75, PACK_H = PACK_W * (PACK_MM_H / PACK_MM_W);
+// 實體卡包比例，等比縮放進 3D 世界。比例本身在 packSpec —— 撕開封口的演出
+// 吃的是同一份，不要在這裡改數字（見 packSpec 的說明）
+const PACK_W = 1.75, PACK_H = PACK_W * PACK_RATIO;
 const BULGE = 0.1;
 const CRIMP = 0.1;
-const TEX_W = 640, TEX_H = Math.round(TEX_W * (PACK_MM_H / PACK_MM_W)), TEX_R = 14;
+const TEX_W = 640, TEX_H = Math.round(TEX_W * PACK_RATIO), TEX_R = 14;
 const CAM_Z = 9, FOV = 36;
 const BASE_Y = 0.35 + PACK_H / 2;
 

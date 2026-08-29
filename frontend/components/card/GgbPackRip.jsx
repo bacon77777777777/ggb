@@ -18,6 +18,7 @@ import useSoundMuted from "@/hooks/useSoundMuted";
 import { createClient } from "@/lib/supabase/client";
 import { hapticLight, hapticMedium } from '@/lib/haptics';
 import StarWarpField from '@/components/card/StarWarpField';
+import { PACK_RATIO } from '@/components/card/packSpec';
 
 /* 後台「抽獎模組設定 → 卡包模式 → 撕開封口」可調的參數，
    讀不到就用這組預設（跟 backend/app/settings/modules/machineParams.ts 的 default 一致） */
@@ -310,8 +311,22 @@ export default function GGBPackRip({
   const [dims, setDims] = useState({ w: 300, h: 510 });
 
   useEffect(() => {
-    const w = Math.min(300, window.innerWidth * 0.72);
-    setDims({ w, h: w * 1.7 });
+    /*
+     * 卡包尺寸（老闆 2026-08-29 指定跟輪播統一比例）
+     *
+     * 原本是寫死的 `h = w * 1.7`，跟輪播的 62×116（1:1.871）對不起來 ——
+     * 同一張圖在輪播被裁切、在這裡被縱向拉伸，兩邊長得不一樣。改吃 packSpec。
+     *
+     * 第三個上限是這次一起加的：比例從 1.7 換成 1.871，同樣寬度下卡包**高了 10%**
+     * （300 寬時 510 → 561）。高螢幕吃不到這條，矮螢幕才會生效，
+     * 免得卡包把底下那行「左右滑動撕開」擠出畫面。
+     */
+    const w = Math.min(
+      300,
+      window.innerWidth * 0.72,
+      (window.innerHeight * 0.70) / PACK_RATIO,
+    );
+    setDims({ w, h: w * PACK_RATIO });
   }, []);
 
   /* 火花粒子 */

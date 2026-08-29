@@ -37,10 +37,12 @@ export const MACHINE_PARAM_SPECS: Record<string, ParamSpec[]> = {
    * 兩種模式共用同一組，因為那本來就是同一個元件。
    */
   card_showcase: [
+    /* 尺寸只寫在這裡一次。比例的唯一來源是前台的 components/card/packSpec.ts
+       （PACK_MM_W/H = 62×116），輪播與撕開封口共用同一份 —— 改比例要改那裡。 */
     { key: 'frontImage', label: '卡包正面', group: '卡包外觀', type: 'image', default: '',
-      hint: '直式卡包，建議 62 × 116 比例（實體卡包尺寸）。留空用內建卡包圖。' },
+      hint: '直式卡包，比例 62 : 116（實體卡包尺寸，1 : 1.871）。建議出 1280 × 2394（2x）或 1920 × 3591（3x）。⚠️ 上緣 7%（2394px 時約 168px）在開包演出裡是會被撕走的封條，logo 與商品名不要壓進去。輪播另外會套 2.2% 的圓角、上下各切 0.75% 的鋸齒撕線。留空用內建卡包圖。' },
     { key: 'backImage',  label: '卡包背面', group: '卡包外觀', type: 'image', default: '',
-      hint: '玩家把卡包轉過去時看到的那面。留空用內建卡背。' },
+      hint: '玩家把卡包轉過去時看到的那面，尺寸同正面（1280 × 2394）。留空用內建卡背。' },
 
     { key: 'autoSpin',   label: '自動翻轉', group: '展示動態', type: 'toggle', default: true,
       hint: '玩家停手一段時間後，主卡包自己慢慢轉。' },
