@@ -688,15 +688,27 @@ const MIN_COVER_H = 270
 const MIN_COVER_COLORS = 300
 
 /*
- * 內文圖的尺寸下限。比封面寬鬆（內文圖本來就可能小一點），但小到這種程度的
- * 一定不是商品照 —— 實測 CardboardConnection 的內文圖抓到一張 **125×50** 的
- * 「Hobby Boxes best price」廣告橫幅。
+ * 內文圖的尺寸下限。
  *
- * 尺寸才是這類東西的破綻：那張的色彩數有 787，色彩檢查抓不到；
- * 檔名也沒有 logo／banner 字樣，`extractBodyImages` 的關鍵字黑名單同樣漏掉。
+ * 兩個理由疊在一起，所以門檻訂在「版面寬度」而不是「看起來不算太小」：
+ *
+ * 一、擋廣告橫幅與聯盟按鈕。實測 CardboardConnection 的內文抓到 **125×50** 的
+ *    「Hobby Boxes best price」與 eBay／Buy It Now 按鈕。尺寸才是這類東西的破綻：
+ *    那張的色彩數有 787，色彩檢查抓不到；檔名也沒有 logo／banner 字樣，
+ *    `extractBodyImages` 的關鍵字黑名單同樣漏掉。
+ *
+ * 二、**內文圖是滿寬顯示的**（老闆 2026-08-30 指定：滿寬 fit、高度 auto）。
+ *    `figureHtml` 的容器是 max-width 800px、圖 width:100%，所以小於 800 的圖
+ *    會被**放大**：實測 480 寬的放大 1.67 倍、536 寬的 1.49 倍，看起來就是糊的。
+ *    老闆回報「新的幾篇內文圖解析度都很低」，這是主因之一（另一個是上面那些廣告圖）。
+ *    既然顯示方式不改，就只能從來源端保證 —— 不夠寬的直接不收。
+ *
+ * 門檻取 700 不是 800：731×1024 這種只放大 1.09 倍，肉眼看不出來，
+ * 為了 9% 丟掉一張好圖不划算。低於 700 才是真的會糊。
+ * 高度 300 是用來擋「夠寬但很扁」的橫幅（728×90 那種），純商品照不會這麼扁。
  */
-const MIN_BODY_W = 300
-const MIN_BODY_H = 200
+const MIN_BODY_W = 700
+const MIN_BODY_H = 300
 
 /**
  * 封面**來源原圖**的雜湊 —— 用來擋「同商品不同通路」的重複文章
@@ -942,7 +954,10 @@ async function injectBodyImages(
   if (!content || !articleHtml) return content
 
   // 取圖也要縮到正文容器，否則抓到的是側欄「相關文章」的縮圖（見 articleScope）
-  const candidates = (pickImages ?? extractBodyImages)(articleScope(articleHtml), 6)
+  /* 候選從 6 張放寬到 12 張（2026-08-30）：尺寸下限從 300 拉到 700 之後，
+     只看前 6 張很容易兩張都不合格、整篇沒有內文圖。尺寸檢查已經提到視覺偵測
+     之前（見 downloadSmartToR2），放寬候選只多幾次抓圖，不會多花 Claude 呼叫。 */
+  const candidates = (pickImages ?? extractBodyImages)(articleScope(articleHtml), 12)
     .map(u => resolveImageUrl(u, pageUrl))
     .filter(u => u && u !== coverUrl)
   if (candidates.length === 0) return content
@@ -975,8 +990,14 @@ async function injectBodyImages(
 }
 
 function figureHtml(url: string): string {
-  // 來源圖多半只有 800px，讓它跟著容器寬度拉伸就會糊。
-  // max-width 讓它最多顯示到原始尺寸，容器再寬也不放大
+  /*
+   * 滿寬 fit、高度 auto（老闆 2026-08-30 指定）。
+   *
+   * ⚠️ 原本這裡的註解寫「max-width 讓它最多顯示到原始尺寸，容器再寬也不放大」——
+   * **那是錯的，CSS 沒有做到那件事**：max-width 掛在 <figure> 上，<img> 是
+   * width:100%，所以比 800 窄的圖照樣被拉滿、放大到糊。
+   * 顯示方式維持滿寬，不放大這件事改由來源端保證（見 MIN_BODY_W）。
+   */
   return `<figure style="margin:1.5rem auto;max-width:800px"><img src="${url}" alt="" loading="lazy" style="width:100%;height:auto;border-radius:8px" /></figure>`
 }
 
@@ -1037,11 +1058,20 @@ async function downloadSmartToR2(
     }
 
     /*
+     * 尺寸下限提到最前面（2026-08-30）。
+     *
+     * 原本兩個分支各檢查一次，而且都排在 `findWatermarkWithVision` **之後** ——
+     * 等於先花一次 Claude 視覺呼叫，才發現那是 125×50 的 eBay 按鈕。
+     * 尺寸是本機就能判的、零成本，該先擋。提前之後也才敢把候選圖放寬
+     * （見 injectBodyImages 的 limit），不然放寬候選 = 放大視覺呼叫的帳單。
+     */
+    if (role === 'body' && !(await bigEnoughForBody(buf))) return null
+
+    /*
      * 已知不壓站標的來源：不偵測、不蓋 logo，只縮圖 + 蓋自家網址就上傳。
      * 對這種來源跑偵測只會製造誤判（詳見 NO_SITE_WATERMARK_SOURCES）。
      */
     if (isCleanSource(sourceUrl, imgUrl)) {
-      if (role === 'body' && !(await bigEnoughForBody(buf))) return null
       const resized = await sharp(buf).resize(1600, null, { withoutEnlargement: true }).toBuffer()
       const webp = await sharp(await stampUrlWatermark(resized)).webp({ quality: 92 }).toBuffer()
       const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`
@@ -1056,8 +1086,6 @@ async function downloadSmartToR2(
 
     const alwaysWatermarked = isWatermarkedSource(sourceUrl, imgUrl)
     if (found === 'none') {
-      // 內文圖的尺寸下限：擋掉站方的小廣告橫幅（見 MIN_BODY_W 的說明）
-      if (role === 'body' && !(await bigEnoughForBody(buf))) return null
       // 已知一定會壓浮水印的站卻回報乾淨 → 是漏看，不是真的乾淨
       if (alwaysWatermarked) return null
       // 來源圖多半只有 800px 寬（電擊、PR TIMES 都是），quality 82 壓完
