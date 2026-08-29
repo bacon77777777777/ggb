@@ -789,35 +789,6 @@ function ProfileContent() {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [tempAvatar, setTempAvatar] = useState<string | null>(null);
 
-  /*
-   * 頭像格子只露 4.5 排（老闆 2026-08-29）
-   *
-   * 31 格（1 個上傳 + 30 款）在五欄版面是 7 排，全開彈窗會長到快滿版。
-   * 露 4.5 排的用意跟頁籤淡出一樣 —— **第五排被切一半，才看得出下面還有**。
-   * 剛好停在整排會被讀成「就這些」。
-   *
-   * 高度用量的不是寫死的：格子寬度隨彈窗寬度變，寫死 px 在小螢幕會切錯位置。
-   * 4.5 排 = 4.5 個格高 + 4 個間距（gap-3 = 12px）。
-   */
-  const avatarGridRef = useRef<HTMLDivElement>(null);
-  const [avatarGridMaxH, setAvatarGridMaxH] = useState<number | undefined>(undefined);
-  useEffect(() => {
-    if (!showAvatarPicker) return;
-    const el = avatarGridRef.current;
-    if (!el) return;
-    const sync = () => {
-      const first = el.firstElementChild as HTMLElement | null;
-      if (!first) return;
-      const cell = first.getBoundingClientRect().height;
-      if (!cell) return;
-      setAvatarGridMaxH(Math.round(cell * 4.5 + 12 * 4));
-    };
-    sync();
-    const ro = new ResizeObserver(sync);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [showAvatarPicker]);
-
   const openAvatarPicker = () => {
     setTempAvatar(null);
     setShowAvatarPicker(true);
@@ -7742,10 +7713,24 @@ function ProfileContent() {
         onClose={() => { setTempAvatar(null); setShowAvatarPicker(false); }}
         title="設定頭像"
       >
+        {/*
+          * 只露 4.5 排（老闆 2026-08-29）
+          *
+          * 高度**用 CSS 從自身寬度推導**，不用 JS 量：
+          * 五欄、間距 12px，格子邊長 = (W - 4×12) / 5，
+          * 4.5 排的高度 = 4×格子 + 4×間距 + 半格 ≈ 0.917W，也就是寬高比 12:11。
+          * 實測 288px 寬 → 264px 高，第 5 排剛好露一半。
+          *
+          * 第一版是用 ResizeObserver 量第一格再設 maxHeight —— 那要賭「量的時候
+          * 版面已經定案」，量到 0 或量早了就整個失效，而且很難重現。
+          * 改成純 CSS 之後沒有時序問題。
+          *
+          * `content-start`：grid 的 align-content 預設是 stretch，容器一旦有固定
+          * 高度就可能把每排撐開或壓扁；固定成 start，每排維持自然高度。
+          */}
+        <div className="aspect-[12/11] mb-4 overflow-y-auto overscroll-contain scrollbar-hide">
         <div
-          ref={avatarGridRef}
-          style={{ maxHeight: avatarGridMaxH }}
-          className="grid grid-cols-5 gap-3 mb-4 overflow-y-auto overscroll-contain scrollbar-hide"
+          className="grid grid-cols-5 gap-3 content-start"
         >
           {/* 上傳格：虛線外框 + 灰底 + 加號，點下去開原生的「照片／相機」選單 */}
           <button
@@ -7781,6 +7766,7 @@ function ProfileContent() {
               </button>
             );
           })}
+        </div>
         </div>
 
         <button

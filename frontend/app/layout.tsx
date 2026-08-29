@@ -15,6 +15,7 @@ import { PromotionsProvider } from '@/contexts/PromotionsContext';
 import PathnameKeyed from '@/components/PathnameKeyed';
 import PwaInputFocusFix from '@/components/PwaInputFocusFix';
 import PwaPullToRefresh from '@/components/PwaPullToRefresh';
+import StatusBarStyle from '@/components/native/StatusBarStyle';
 import AnalyticsTracker from '@/components/AnalyticsTracker';
 import { getSiteUrl } from '@/lib/site';
 import MaintenanceWatcher from '@/components/MaintenanceWatcher';
@@ -235,6 +236,7 @@ export default async function RootLayout({
                   <RouteTransitionProvider>
                   <PwaInputFocusFix />
                   <PwaPullToRefresh />
+                  <StatusBarStyle />
                   <AnalyticsTracker />
                   {/* 開屏廣告放在 <main> 外面：下拉更新會對 <main> 下 transform，
                       有 transform 的祖先會讓 position:fixed 失效，滿版就蓋不住整個畫面 */}
