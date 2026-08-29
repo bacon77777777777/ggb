@@ -177,11 +177,70 @@ psql <SUPABASE_DB_URL> -f backend/db/migrations/<n>_name.sql
 **news-agent 與前台情報頁是同一批資料**：agent 是唯一的內容產生者，
 前台 `/news` 與後台文章管理都只是讀 `news` 表，沒有其他來源。
 
-- **產出節奏**：每 6 小時一次、每次最多 3 篇 → 一天 12 篇
-- **來源**：RSS（電ホビ／PRTimes／Animate Times／巴哈 GNN）+ HTML 解析（玩具人 toy-people.com，站上宣告的 RSS 實際 404）+ Google News 查詢
+- **產出節奏**：每 6 小時一次、每次最多 3 篇 → 一天 12 篇。
+  同一分類一次最多 1 篇、單日最多 3 篇（`MAX_PER_CATEGORY` / `DAILY_PER_CATEGORY`），
+  來源組照「近 24 小時哪一類最少」重新排序 —— 不寫死輪值表，DB 就是進度表
 - **分類**：`figure` 公仔景品｜`gacha` 轉蛋｜`toy` 盒玩周邊｜`ichiban` 一番賞｜`tcg` 卡牌（分不出類時預設 `toy`；舊值 `general`/`blindbox` 已併入 `toy`）
-- **改寫規則**：標題與內文一律由 Claude 原創重寫，**繁中來源尤須重組句型**（照抄即侵權）；改寫前先用來源標題擋重複，避免重複文章浪費呼叫
-- **浮水印**：四角模板比對（`lib/dengekiWm.ts`），偵測到才在該角落蓋 GGB logo（`lib/newsBranding.ts`，agent 與回填腳本共用）。**不可用會退回固定角落的 `detectWatermarkCorner()`** —— 蓋錯角等於浮水印照樣露出
+
+#### 來源（2026-08-29 全面汰換過，這份表是現況）
+
+| 來源 | 取法 | 供得出的分類 |
+|------|------|------|
+| **oneone 宇宙** `universe.oneone.com.tw/feed` | 專屬 runner `runOneOne`（**同業**，規則見下） | ichiban／gacha／figure／toy |
+| **ホビーウォッチ**（Impress）`hbw/feed.rdf` | RSS 1.0／RDF | figure／ichiban／tcg／toy |
+| **PR TIMES** `prtimes.jp/index.rdf` | 全分類消防栓，`TOY_TOPIC_RE` 標題過濾 | figure |
+| **巴哈 GNN** `gnn.gamer.com.tw/rss.xml` | 同上過濾。它是遊戲新聞台，產出極少 | figure |
+| **玩具人** `toy-people.com` ×2 | 解析列表頁抓 `?p=` 連結（站上宣告的 RSS 實際 404） | toy／figure |
+
+**已移除，不要加回去：**
+- **電撃ホビー** —— 唯一會在圖上壓自己站標的來源（老闆 2026-08-29 指定拿掉）
+- **Google News 查詢** —— ① 抓到的是各家媒體轉載，站標風險不可控
+  ② `resolveGoogleLink` 靠 HTTP 轉址，但 Google 是 **JS 轉址**，網址原封不動 ——
+  等於一直在抓 Google 的中繼頁：內文圖 0 張、正文 0 字，產出的文章只有 420 字。
+  （解得開：用文章頁的 `data-n-a-id/-sg/-ts` 打 Google 自己的 `batchexecute`，
+  但那是內部 RPC、會壞的相依，也解決不了①）
+- **PRTimes `rss/category/17.rss`／AnimateTimes `rss.xml`** —— 兩條都 404 了
+
+> ⚠️ **`tcg` 目前沒有專屬來源**（原本靠 Google News）。要補得另找卡牌專門來源。
+> ⚠️ **`parseRss` 必須認 `<item rdf:about="…">`**：ホビーウォッチ 與 PRTimes 都是
+> RSS 1.0／RDF，舊的 `/<item>/` 正則一則都解不出來、而且不會報錯。RDF 的日期在 `<dc:date>`。
+
+#### oneone 是同業，有四條專屬規則
+
+老闆指定可用它的題材與圖（他們貼的是廠商官方原圖），但內文完全重寫。
+
+1. **內文的商城置入要整段清乾淨**（`oneOneBodyText`）：以 `<p>` 為單位過濾，
+   不是逐句 —— 業配句常常沒句號，逐句切會把它跟後面的真內容黏在一起。
+   改寫後再用 `ONEONE_AD_RE` 複驗一次，還留著就整篇不發
+2. **自家公告要擋掉**：標題含 oneone、或分類掛「線上抽／集團動態」
+3. **圖走白名單，不走黑名單**（廣告圖檔名是雜湊，字面看不出是 logo）：
+   `upload/featured/` 封面 ✅｜`images/editor/日期/` 內文圖 ✅｜
+   `images/<雜湊>.png` **商城廣告版位（紅底 oneone logo）** ❌｜
+   `upload/author/` ❌｜`assets/images/` ❌。
+   封面只認 og:image 且必須在 `upload/featured/` 底下，**不退回掃 `<img>`**
+4. **列在 `NO_SITE_WATERMARK_SOURCES`**：跳過站標偵測與蓋 logo，只蓋自家網址
+
+#### 圖片處理：兩件不同的事，不要混
+
+| | 做什麼 | 何時 | 蓋哪裡 |
+|---|---|---|---|
+| **網址浮水印** `stampUrlWatermark()` | 蓋**我們自己**的 `www.ggb.com.tw` | **每張都蓋** | 滿版斜向重複 |
+| **白墊 + GGB logo** `brandCoverImage()` | 遮掉**別人**壓的站標 | 偵測到才蓋，且來源不在 `NO_SITE_WATERMARK_SOURCES` | 一個角 |
+
+- **浮水印文字是內嵌的 PNG 圖章**（`lib/newsWatermarkStamp.ts`），不是 SVG `<text>` ——
+  **Vercel 的 serverless 沒有系統字型，librsvg 找不到字會畫一片空白、不拋錯**，
+  第一版就這樣靜靜地什麼都沒蓋。執行期只做縮放→旋轉→補透明邊→`tile` 平鋪
+- 順序有兩個坑：**先縮到最終尺寸再蓋**（字級照圖寬算）、
+  **一定要在 `verifyBrandedClean()` 之後才蓋**（滿版文字會讓視覺複驗整張判成髒的）
+- **內文圖從來不蓋 logo**：偵測到站標就整張丟掉（老闆規則：難蓋的就捨棄，主圖顧好就行）
+- **站標偵測只認 `ANSWER=` 那一行**。舊版是「取全文最後一次出現的代碼」+ `max_tokens: 150`，
+  說明被截斷、結論沒寫出來，就從說明文字裡的「（BR区域）」把答案撿走 ——
+  **老闆回報的「浮水印在右下角卻蓋左下角」就是這樣來的**
+- **`RIGHTS_MARK_RE` 否決誤判**：模型會把廠商圓標與版權聲明當成站標
+  （實測 `©universe`／`※画像はイメージです…サンライズ`／`BANDAI 食玩`）。
+  只做否決、不要求「一定要含站名才算」—— 有些站的浮水印是沒有字的圖樣
+- **改寫規則**：標題與內文一律由 Claude 原創重寫，**繁中來源尤須重組句型**（照抄即侵權）；
+  改寫前先用來源標題擋重複，避免重複文章浪費呼叫
 - **資料表**：`news`（id, title, summary, content, image_url, source_url, category, tags, is_active, view_count）
 - **後台管理**：`backend/app/news/page.tsx` — 顯示全部文章（含 news-agent 自動生成），可批量上架/下架/刪除
 - **前台**：`frontend/app/news/` — 列表 + 內頁留言/讚
