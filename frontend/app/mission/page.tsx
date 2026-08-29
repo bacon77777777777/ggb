@@ -11,9 +11,13 @@ import { useRouter } from 'next/navigation';
 import { useSwipeTabs } from '@/lib/useSwipeTabs';
 import { TopFadeBlur } from '@/components/ui/TopFadeBlur';
 import { asset } from '@/lib/asset';
+import { useStatusBarText } from '@/components/native/StatusBarStyle';
 
 export default function MissionPage() {
   const { user, refreshProfile, isLoading: authLoading } = useAuth();
+
+  /* 動態島文字：整頁底色是 #ff2d14 橘紅，白字。 */
+  useStatusBarText('white');
   const { showToast } = useToast();
   const router = useRouter();
   

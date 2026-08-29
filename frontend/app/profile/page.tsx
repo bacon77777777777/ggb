@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/Modal';
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
 import PageHeader from '@/components/ui/PageHeader';
 import { TopFadeBlur } from '@/components/ui/TopFadeBlur';
+import { useStatusBarText } from '@/components/native/StatusBarStyle';
 import PrizeShareCard from '@/components/warehouse/PrizeShareCard';
 import DeliverySteps from '@/components/warehouse/DeliverySteps';
 import { orderStatusConfig, matchesDeliveryTab, DELIVERY_TABS, type DeliveryTabId } from '@/lib/orderStatus';
@@ -619,6 +620,12 @@ function ProfileContent() {
   const [isRedeemingCoupon, setIsRedeemingCoupon] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
+
+  /* 動態島文字：手機端主畫面的頂部是橘紅色動態背景（.profile-bubbles，fixed 且
+     pointer-events-none），要白字；點進倉庫／出貨那些詳細分頁後頂部換成白色
+     sticky 標題列，就要黑字。判斷寫在這裡而不是量測，是因為那層橘底
+     pointer-events-none，任何靠命中測試的量測都看不到它。 */
+  useStatusBarText(isMobileDetailOpen ? 'black' : 'white');
 
   // UI States
   const [selectedForDelivery, setSelectedForDelivery] = useState<string[]>([]);

@@ -1,105 +1,98 @@
 'use client';
 
 /**
- * 依「動態島底下實際是什麼顏色」自動切換狀態列文字黑／白
+ * 動態島／狀態列文字黑白 —— 由頁面自己宣告
  *
- * ── 為什麼要自己做 ──
- * iOS **不會**看你的網頁內容決定狀態列文字顏色。它只認 app 給的
- * `UIStatusBarStyle`：`.lightContent`（白字）、`.darkContent`（黑字）、
- * 或 `.default`（跟隨**系統外觀**，淺色模式下永遠是黑字）。
- * `mobile/capacitor.config.ts` 設的就是 `DEFAULT`，所以不管頁面是紅底還是白底
- * 一律黑字 —— 首頁／排行榜／會員中心／簽到那種紅底、深底就幾乎看不見。
+ * ── Apple 不會幫你判斷 ──
+ * iOS 的狀態列文字顏色只認 app 給的 `UIStatusBarStyle`，它**完全不看 webview
+ * 裡畫了什麼**。網頁的 `<meta name="theme-color">` 只影響 Safari 的網址列底色，
+ * 對 Capacitor 的 WKWebView 狀態列沒有作用。所以一定得由我們決定。
+ * `mobile/capacitor.config.ts` 設的是 `DEFAULT` ＝「跟隨系統外觀」：淺色模式永遠
+ * 黑字、深色模式永遠白字，兩邊都跟頁面實際底色無關。
  *
- * ── 為什麼不用路由白名單 ──
- * 第一版寫死四個路徑，但站上頁面很多（公平性驗證、邀請好友、活動頁…），
- * 白名單一定會漏，而且之後新增頁面沒人會記得回來加。
- * 改成**量測**：抓動態島底下那塊實際算出來的背景色，算亮度決定黑白。
- * 新頁面不必登記，換配色也會自動跟上。
+ * ── 為什麼不自動量測 ──
+ * 前一版用 `document.elementFromPoint()` 取畫面最上緣的背景色來算亮度。想法對，
+ * 但在這個站上必然失準：`elementFromPoint` 走的是**命中測試**，
+ * 會直接跳過 `pointer-events:none` 的元素 —— 而本站的底色幾乎都是這種裝飾層畫的：
+ *   · 會員中心的紅底是 `.profile-bubbles`（fixed + pointer-events-none）→ 量不到，
+ *     取樣點穿過去打到 <main> 的白底 → 判成淺底 → 黑字（紅底黑字）
+ *   · 排行榜的深藍底是 InkFlowField（fixed inset-0 + pointer-events-none），
+ *     而且它是頂欄的**兄弟**不是祖先，往上走也走不到 → 要等捲動後頂欄自己
+ *     變成 `bg-[#1b2148]/80` 才第一次量到深色 → 「滑動才變白」
+ * 掃描整個頂部區域可以繞過命中測試，但 z-index／stacking context 的邊界情況照樣
+ * 會猜錯，而且每次換頁都要付一次掃描成本。
  *
- * ── 量測方式 ──
- * `overlaysWebView: true`，網頁內容本來就延伸到狀態列底下，
- * 所以直接在畫面最上緣取三個點（左中右），往上找第一個不透明的背景色。
- * 漸層（`background-image: linear-gradient(...)`）取第一個色停。
- * 遇到圖片背景就放棄該點 —— 圖片的平均色算不出來，寧可交給其他取樣點。
+ * ── 改成宣告式 ──
+ * 頁面自己說一句 `useStatusBarText('white')`，沒說的就是 `black`（站上多數頁面
+ * 的頂部是白色導航列，預設值對得起大部分頁面）。
+ * 宣告寫在頁面自己的檔案裡、不是集中式白名單 —— 改配色時同一個檔案就看得到，
+ * 而且可以跟著頁面狀態走（會員中心開詳細分頁時頂部變白底，就宣告 black）。
  *
- * ⚠️ Capacitor 的命名是反直覺的，很容易寫反：
+ * ⚠️ Capacitor 的 `Style` 命名是反直覺的，很容易寫反：
  *     Style.Dark  = 深色**底** → 白字
  *     Style.Light = 淺色**底** → 黑字
- * 名字講的是背景，不是文字。
+ * 名字講的是背景不是文字，所以這裡對外的 API 直接用文字顏色（black／white），
+ * 只在最後一步翻譯過去。
  */
 
-import { useCallback, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { native } from '@/lib/native/bridge';
 
-/** 0~255 的感知亮度；低於這個值就算深色底 */
-const DARK_THRESHOLD = 155;
+export type StatusBarText = 'black' | 'white';
 
-type Rgb = { r: number; g: number; b: number; a: number };
+/** 沒有頁面宣告時的預設：白底黑字 */
+const DEFAULT_TEXT: StatusBarText = 'black';
 
-function parseColor(v: string): Rgb | null {
-  const m = v.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,/\s]+([\d.]+))?/i);
-  if (!m) return null;
-  return { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] };
-}
+/**
+ * 宣告堆疊 —— 最後掛上的贏
+ *
+ * 換頁時 React 會先跑舊頁的 effect cleanup（pop）再跑新頁的 effect（push），
+ * 所以「堆疊最後一項」永遠是當前頁的宣告。用陣列而不是單一變數，是為了讓
+ * 巢狀情況（頁面 + 全螢幕彈窗各自宣告）也能在彈窗關掉時自動退回頁面的值。
+ */
+const stack: { key: object; text: StatusBarText }[] = [];
+const listeners = new Set<() => void>();
 
-/** 感知亮度（ITU-R BT.601）—— 綠色對人眼最亮，不能三色等權平均 */
-const brightness = (c: Rgb) => (c.r * 299 + c.g * 587 + c.b * 114) / 1000;
+const currentText = () => (stack.length ? stack[stack.length - 1].text : DEFAULT_TEXT);
+const emit = () => { for (const l of listeners) l(); };
+const subscribe = (l: () => void) => {
+  listeners.add(l);
+  return () => { listeners.delete(l); };
+};
 
-/** 從某個座標往上找第一個看得見的背景色 */
-function bgAt(x: number, y: number): Rgb | null {
-  let el = document.elementFromPoint(x, y) as HTMLElement | null;
-  while (el) {
-    const cs = getComputedStyle(el);
-    const bg = parseColor(cs.backgroundColor);
-    if (bg && bg.a > 0.5) return bg;
-    const img = cs.backgroundImage;
-    if (img && img !== 'none') {
-      if (/url\(/.test(img)) return null;          // 圖片背景：算不出代表色，放棄這一點
-      const stop = img.match(/rgba?\([^)]+\)/);     // 漸層：取第一個色停
-      if (stop) {
-        const c = parseColor(stop[0]);
-        if (c && c.a > 0.5) return c;
-      }
-    }
-    el = el.parentElement;
-  }
-  return null;
+/**
+ * 宣告這一頁（或這個彈窗）底下的狀態列要用什麼顏色的文字。
+ * 只在原生 App 生效；瀏覽器分頁呼叫它不會有任何副作用。
+ */
+export function useStatusBarText(text: StatusBarText) {
+  // 身分用一個穩定的空物件，不用 index —— 陣列會被別人 splice，index 會錯位
+  const keyRef = useRef<object | null>(null);
+  if (keyRef.current === null) keyRef.current = {};
+  const key = keyRef.current;
+
+  useEffect(() => {
+    stack.push({ key, text });
+    emit();
+    return () => {
+      const i = stack.findIndex(e => e.key === key);
+      if (i >= 0) stack.splice(i, 1);
+      emit();
+    };
+  }, [key, text]);
 }
 
 export default function StatusBarStyle() {
-  const pathname = usePathname();
-
-  const apply = useCallback(() => {
-    if (!native.isNativePlatform()) return;
-    const w = window.innerWidth;
-    // 最上緣三點取樣：頂欄常常左右有按鈕、中間有標題，單點容易踩到按鈕自己的底色
-    const samples = [w * 0.2, w * 0.5, w * 0.8]
-      .map(x => bgAt(x, 4))
-      .filter((c): c is Rgb => !!c);
-    if (samples.length === 0) return;               // 全部取不到就別亂改
-    const avg = samples.reduce((s, c) => s + brightness(c), 0) / samples.length;
-    void native.call('StatusBar', 'setStyle', { style: avg < DARK_THRESHOLD ? 'DARK' : 'LIGHT' });
-  }, []);
+  // SSR 沒有堆疊，server snapshot 固定回預設值（給常數，不能每次回新物件）
+  const text = useSyncExternalStore(subscribe, currentText, () => DEFAULT_TEXT);
+  const applied = useRef<StatusBarText | null>(null);
 
   useEffect(() => {
     if (!native.isNativePlatform()) return;
-    // 換頁後版面要一兩幀才定案；捲動時頂欄常常變色（毛玻璃、透明轉實色）也要跟著換
-    const raf = requestAnimationFrame(apply);
-    const t = setTimeout(apply, 350);
-    let ticking = false;
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => { ticking = false; apply(); });
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      cancelAnimationFrame(raf);
-      clearTimeout(t);
-      window.removeEventListener('scroll', onScroll);
-    };
-  }, [pathname, apply]);
+    // 值沒變就不送 —— 每次 setStyle 都是一趟 JS↔原生橋接往返
+    if (applied.current === text) return;
+    applied.current = text;
+    void native.call('StatusBar', 'setStyle', { style: text === 'white' ? 'DARK' : 'LIGHT' });
+  }, [text]);
 
   return null;
 }

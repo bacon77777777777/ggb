@@ -26,6 +26,7 @@ import NoticeBar from '@/components/promo/NoticeBar';
 import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
 import { useSwipeTabs } from '@/lib/useSwipeTabs';
 import { asset } from '@/lib/asset';
+import { useStatusBarText } from '@/components/native/StatusBarStyle';
 import { useQueryClient } from '@tanstack/react-query';
 import { swrLoad } from '@/lib/swr';
 import { HOME_KEY, fetchHomeCatalog } from '@/lib/queries/home';
@@ -52,6 +53,10 @@ const BUILT_IN_TAB_IDS = ['all', 'ichiban', 'blindbox', 'gacha', 'card', 'custom
 
 export default function Home() {
   const homeRestoreKey = 'gachago:home_restore';
+
+  /* 動態島文字：手機端首頁的導航列吃主題色（Navbar 的 surfaceClassName
+     `bg-primary`，不隨捲動改變），白字。桌機那條是白底，但 App 只有手機版。 */
+  useStatusBarText('white');
   const homeStateKey = 'gachago:home_state';
 
   const [allProducts, setAllProducts] = useState<ProductRow[]>([]);

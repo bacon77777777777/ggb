@@ -1246,6 +1246,8 @@ interface ArticleDraft {
   content:  string
   tags:     string[]
   category: string
+  /** 主題正規化鍵「作品／角色或型號／商品型態」，見 subjectKey() */
+  subject?: string
 }
 
 async function rewriteArticle(
@@ -1325,6 +1327,7 @@ Lakers→湖人、NBA／MLB 這種縮寫保留原文）。**產品線與商品�
   "summary": "一句話摘要，說明什麼商品、何時發售或上市（40字以內）",
   "content": "<h2>小標</h2><p>段落...</p><h2>小標</h2><p>段落...</p>（繁體中文，550-750字，4~5段並用 2~3 個 <h2> 分段，從玩家視角介紹：商品特色與造型細節、系列背景或角色亮點、發售與預購資訊、值得入手的理由；資訊不足處以既有內容延伸描述，不可捏造價格或日期）",
   "tags": ["品牌","系列名","類型"],
+  "subject": "這篇在講的『那一件商品』，用半形斜線寫成三段：作品或系列/角色或型號/商品型態。全部繁體中文，**不含**通路名、發售日、價格、尺寸、版本或宣傳詞 —— 同一件商品被不同媒體或不同通路報導時必須產生完全相同的字串。例：無職轉生/艾莉絲/景品公仔、寶可夢卡牌/30週年紀念/抽選、UNION ARENA/BLEACH/新彈、鋼彈/RX-78-2/轉蛋",
   "category": "ichiban|gacha|tcg|figure|toy（figure＝公仔/景品/模型/プライズ；toy＝盒玩/盲盒/食玩/周邊商品/軟膠/展會；分不出來就用 toy。標題或內文寫明「一番賞／一番くじ」一律 ichiban，寫明卡牌／新彈／TCG 一律 tcg —— 這兩類不可退回 figure 或 gacha）"
 }
 
@@ -1366,7 +1369,34 @@ function taiwanize(draft: ArticleDraft): ArticleDraft {
     summary: toTaiwanProse(draft.summary),
     content: toTaiwanProse(draft.content),
     tags:    (draft.tags ?? []).map(t => toTaiwanProse(t)),
+    // subject 是拿來當唯一鍵的，簡繁不統一會算成兩個不同的鍵、去重就失效
+    subject: draft.subject ? toTaiwanProse(draft.subject) : undefined,
   }
+}
+
+/**
+ * 主題正規化鍵 —— 標題相似度與封面雜湊都攔不到的那種重複，靠這個擋
+ *
+ * 老闆 2026-08-29 回報重複文章。實測那幾組的標題 Jaccard 是 0.29~0.40，
+ * 門檻 0.55 全漏；但**不能只把門檻調低** —— 真的不同商品的
+ * 「無職轉生/艾莉絲」vs「無職轉生/羅琪西亞」是 0.294，比真重複的
+ * 「阿卡納迪亞/巴尼爾」vs「亞爾卡那迪亞/蕾菲爾卡」0.286 還高。
+ * 字元 bigram 這個指標分不開「同一件商品」與「同一個系列」，設哪個門檻都會錯。
+ * 642 的 cover_hash 也攔不到：官方同一則發表會發多張不同角度的照片。
+ *
+ * 所以改成問 Claude 要一個結構化的鍵（同一次呼叫多要一個欄位，成本是零），
+ * 去掉標點與空白、轉小寫之後直接比對字串 —— 不是猜相似度，是比對同一件商品。
+ *
+ * 只有一段時回 null（例如模型只寫了「寶可夢」）：那太籠統，
+ * 拿它當唯一鍵會把整個系列的新聞全擋掉。寧可漏擋也不要誤殺。
+ */
+function subjectKey(draft: ArticleDraft): string | null {
+  const parts = (draft.subject ?? '')
+    .split('/')
+    .map(p => p.toLowerCase().replace(/[^0-9a-z\u3400-\u9fff\uf900-\ufaff\u3040-\u30ff]/g, ''))
+    .filter(Boolean)
+  if (parts.length < 2) return null
+  return parts.join('/')
 }
 
 // ─── 標題相似度去重 ──────────────────────────────────────────────────────────
@@ -1518,7 +1548,7 @@ export async function POST(req: NextRequest) {
   // 已寫入的 source_url 集合（防重複 URL）
   const { data: existingRows } = await supabase
     .from('news')
-    .select('source_url, title, created_at, image_url, category, cover_hash')
+    .select('source_url, title, created_at, image_url, category, cover_hash, subject_key')
     .not('source_url', 'is', null)
     .gte('created_at', new Date(Date.now() - 30 * 86400_000).toISOString())
   const existing      = new Set((existingRows ?? []).map((r: any) => r.source_url as string))
@@ -1528,6 +1558,19 @@ export async function POST(req: NextRequest) {
    */
   const usedCoverHashes = new Set(
     (existingRows ?? []).map((r: any) => r.cover_hash as string | null).filter(Boolean) as string[],
+  )
+  /**
+   * 近 14 天用過的主題鍵（migration 643）
+   *
+   * 標題相似度與封面雜湊都攔不到「同一件商品、不同媒體／不同角度照片」的重複，
+   * 見 subjectKey() 的說明。窗口比 cover_hash 的 30 天短 —— 同一件商品隔了兩週
+   * 再有新消息（開放預購、發售當天）是合理的續報，不該被自己的舊文擋掉。
+   */
+  const usedSubjectKeys = new Set(
+    (existingRows ?? [])
+      .filter((r: any) => new Date(r.created_at ?? 0).getTime() > Date.now() - 14 * 86400_000)
+      .map((r: any) => r.subject_key as string | null)
+      .filter(Boolean) as string[],
   )
   // 近 7 天標題的 token set，用於主題去重
   const recentTitles  = (existingRows ?? [])
@@ -1580,7 +1623,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const limitOverride: number | undefined = typeof body?.limit === 'number' ? body.limit : undefined
 
-  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0, catQuota: 0, selfPromo: 0, adLeak: 0, throttled: 0, brandMix: 0, coverDup: 0 } }
+  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0, catQuota: 0, selfPromo: 0, adLeak: 0, throttled: 0, brandMix: 0, coverDup: 0, subjectDup: 0 } }
   const DEADLINE     = Date.now() + 240_000  // 最多跑 4 分鐘
   /*
    * 每次全局上限（手動觸發可傳 limit 覆寫）
@@ -1637,12 +1680,30 @@ export async function POST(req: NextRequest) {
    * 都滿 3 篇被擋下，整場讓給 Google News 那組查詢（一番賞／卡牌／轉蛋都在那裡），
    * 一天收斂成 3/3/2/2/2。手動觸發（帶 limit）不套單日上限，否則測試時可能一篇都寫不出來。
    */
-  const DAILY_PER_CATEGORY = 3
-  const MAX_PER_CATEGORY = Math.max(1, Math.ceil(MAX_TOTAL / 3))
+  /**
+   * ⚠️ 這兩個常數在 2026-08-29 改過，改的理由要看懂再動：
+   *
+   * 老闆當天回報「最新幾篇公仔景品佔多數」。查 PROD 的實際產出，排程自己跑的
+   * 那四場（02/08/14/20）分類是有輪的；灌爆的是**手動觸發**的那幾場 ——
+   * 15:00 / 16:00 / 17:00 都不是排程時段，16:00 一場就寫了 11 篇 figure。
+   *
+   * 兩個原因疊在一起：
+   *   1. 單日上限原本寫 `limitOverride === undefined && ...`，
+   *      **手動帶 limit 時整條被跳過**（本意是「測試時不要一篇都寫不出來」）
+   *   2. 單次上限原本是 `ceil(MAX_TOTAL / 3)`，**會跟著 limit 一起放大** ——
+   *      limit 傳 18，figure 一場就能拿 6 篇
+   * 而 figure 的來源數（HobbyWatch／PRTimes／GNN-TW／ToyPeople 首頁…）本來就
+   * 遠多於其他四類，閘門一開就是它灌滿。
+   *
+   * 改法：手動觸發**放寬**成兩倍而不是解除（測試照樣寫得出東西，但不會灌爆），
+   * 單次上限鎖死 2 不跟 limit 走。
+   */
+  const DAILY_PER_CATEGORY = limitOverride === undefined ? 3 : 6
+  const MAX_PER_CATEGORY = 2
   const catWritten: Record<string, number> = {}
   const quotaFull = (c: string) =>
     (catWritten[c] ?? 0) >= MAX_PER_CATEGORY ||
-    (limitOverride === undefined && (last24h[c] ?? 0) + (catWritten[c] ?? 0) >= DAILY_PER_CATEGORY)
+    (last24h[c] ?? 0) + (catWritten[c] ?? 0) >= DAILY_PER_CATEGORY
 
   const runHtmlSources = async () => {
     for (const src of HTML_SOURCES) {
@@ -1699,20 +1760,28 @@ export async function POST(req: NextRequest) {
         // 玩具人是直接解析列表頁抓連結，沒有 RSS 可退，articleHtml 抓不到就沒有內文圖
         const contentWithImages = await injectBodyImages(draft.content, articleHtml, ogImage, realUrl, false, seenImages)
         const finalCategory = pickCategory(draft, [draft.title, title], src.category)
+        /* 改寫後才知道**真正**的分類與主題，這裡再擋一次：
+           · 分類：quotaFull() 前面是用來源提示與原標題「猜」的，改寫後 pickCategory
+             可能判成別的分類 —— 猜成 tcg 過關、寫出來卻是 figure，figure 的配額就漏了
+           · 主題：subjectKey 只有改寫後才拿得到（見它的說明）
+           兩個都是花完 Claude 呼叫之後才知道，但寧可丟掉一次呼叫也不要讓版面失衡或重複。 */
+        if (quotaFull(finalCategory)) {{ results.skipped++; results.skipReasons.catQuota++; continue }}
+        const subjKey = subjectKey(draft)
+        if (subjKey && usedSubjectKeys.has(subjKey)) {{ results.skipped++; results.skipReasons.subjectDup++; continue }}
 
         const id = Math.floor(10000000 + Math.random() * 90000000).toString()
         const { error } = await supabase.from('news').insert({
           id, title: draft.title, summary: draft.summary, content: contentWithImages,
           image_url: imageUrl, source_url: realUrl,
-          category: finalCategory, tags: draft.tags ?? [], is_active: !!imageUrl, cover_hash: coverHash,
+          category: finalCategory, tags: draft.tags ?? [], is_active: !!imageUrl, cover_hash: coverHash, subject_key: subjKey,
         })
         if (!error) {
           results.written++
           catWritten[finalCategory] = (catWritten[finalCategory] ?? 0) + 1
           results.articles.push(`[${src.label}] ${draft.title}`)
           existing.add(realUrl)
-        if (coverHash) usedCoverHashes.add(coverHash)
           if (coverHash) usedCoverHashes.add(coverHash)
+          if (subjKey) usedSubjectKeys.add(subjKey)
           sessionTitles.push(tokenize(draft.title))
           await generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, finalCategory)
           void supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).then(null, () => {})
@@ -1790,12 +1859,20 @@ export async function POST(req: NextRequest) {
         draft.content, articleHtml, ogImage, realUrl, false, seenImages, extractOneOneBodyImages,
       )
       const finalCategory = pickCategory(draft, [draft.title, item.title], srcCategory)
+      /* 改寫後才知道**真正**的分類與主題，這裡再擋一次：
+         · 分類：quotaFull() 前面是用來源提示與原標題「猜」的，改寫後 pickCategory
+           可能判成別的分類 —— 猜成 tcg 過關、寫出來卻是 figure，figure 的配額就漏了
+         · 主題：subjectKey 只有改寫後才拿得到（見它的說明）
+         兩個都是花完 Claude 呼叫之後才知道，但寧可丟掉一次呼叫也不要讓版面失衡或重複。 */
+      if (quotaFull(finalCategory)) {{ results.skipped++; results.skipReasons.catQuota++; continue }}
+      const subjKey = subjectKey(draft)
+      if (subjKey && usedSubjectKeys.has(subjKey)) {{ results.skipped++; results.skipReasons.subjectDup++; continue }}
 
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()
       const { error } = await supabase.from('news').insert({
         id, title: draft.title, summary: draft.summary, content: contentWithImages,
         image_url: hostedCover, source_url: realUrl,
-        category: finalCategory, tags: draft.tags ?? [], is_active: !!hostedCover, cover_hash: coverHash,
+        category: finalCategory, tags: draft.tags ?? [], is_active: !!hostedCover, cover_hash: coverHash, subject_key: subjKey,
       })
       if (!error) {
         results.written++
@@ -1803,6 +1880,7 @@ export async function POST(req: NextRequest) {
         results.articles.push(`[oneone] ${draft.title}`)
         existing.add(realUrl)
         if (coverHash) usedCoverHashes.add(coverHash)
+        if (subjKey) usedSubjectKeys.add(subjKey)
         sessionTitles.push(tokenize(draft.title))
         await generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, finalCategory)
         void supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).then(null, () => {})
@@ -1893,6 +1971,14 @@ export async function POST(req: NextRequest) {
         if (!hostedCover) { results.skipped++; results.skipReasons.wmUnsafe++; continue }
         const imageUrl = hostedCover
         const finalCategory = pickCategory(draft, [draft.title, item.title], feed.category)
+        /* 改寫後才知道**真正**的分類與主題，這裡再擋一次：
+           · 分類：quotaFull() 前面是用來源提示與原標題「猜」的，改寫後 pickCategory
+             可能判成別的分類 —— 猜成 tcg 過關、寫出來卻是 figure，figure 的配額就漏了
+           · 主題：subjectKey 只有改寫後才拿得到（見它的說明）
+           兩個都是花完 Claude 呼叫之後才知道，但寧可丟掉一次呼叫也不要讓版面失衡或重複。 */
+        if (quotaFull(finalCategory)) {{ results.skipped++; results.skipReasons.catQuota++; continue }}
+        const subjKey = subjectKey(draft)
+        if (subjKey && usedSubjectKeys.has(subjKey)) {{ results.skipped++; results.skipReasons.subjectDup++; continue }}
         const id = Math.floor(10000000 + Math.random() * 90000000).toString()
         // 內文配圖。這條路徑（DIRECT_FEEDS：電擊ホビー / PR TIMES / Animate Times）
         // 原本完全沒有這一步 —— 另外兩條有，只有這條漏了。
@@ -1906,7 +1992,7 @@ export async function POST(req: NextRequest) {
         const { error } = await supabase.from('news').insert({
           id, title: draft.title, summary: draft.summary, content: contentWithImages,
           image_url: imageUrl, source_url: realUrl,
-          category: finalCategory, tags: draft.tags ?? [], is_active: !!imageUrl, cover_hash: coverHash,
+          category: finalCategory, tags: draft.tags ?? [], is_active: !!imageUrl, cover_hash: coverHash, subject_key: subjKey,
         })
         if (!error) {
           results.written++
@@ -1919,7 +2005,10 @@ export async function POST(req: NextRequest) {
           } catch { /* 網址壞掉就算了，節流失效比整篇不發好 */ }
           results.articles.push(`[${feed.label}] ${draft.title}`)
           existing.add(realUrl); sessionTitles.push(tokenize(draft.title))
-          await generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, draft.category ?? feed.category)
+          // 這條路徑原本漏了下面兩行：同一場跑裡第二篇撞到同一張封面／同一個主題時擋不到
+          if (coverHash) usedCoverHashes.add(coverHash)
+          if (subjKey) usedSubjectKeys.add(subjKey)
+          await generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, finalCategory)
           void supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).then(null, () => {})
         } else if (error.code === '23505') {
           results.skipped++; results.skipReasons.duplicate++

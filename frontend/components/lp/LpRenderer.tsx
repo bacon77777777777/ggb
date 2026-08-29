@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import ProductCard from '@/components/ProductCard'
 import { scheduleState } from '@/lib/schedule'
 import { TopFadeBlur } from '@/components/ui/TopFadeBlur'
+import { useStatusBarText } from '@/components/native/StatusBarStyle'
 import { asset } from '@/lib/asset';
 
 const LP_LOADING_CHARS = [
@@ -1031,6 +1032,16 @@ export default function LpRenderer({ slug, preset }: { slug?: string; preset?: L
   const [showSticky, setShowSticky] = useState(false)
   const [relProducts, setRelProducts] = useState<RelProduct[]>([])
   const containerRef = useRef<HTMLDivElement>(null)
+
+  /* 動態島文字：動態島底下是首屏（.lpv-hero），它的深淺由 hero_mode 決定
+     （follow ＝ 跟著 theme_mode）。跟 css() 裡算 heroDark 是同一條規則 ——
+     那邊算的是 heroBg，這邊算的是狀態列，改配色時兩個要一起看。
+     還在載入時 data 是 null，LpLoadingScreen 的底也是深色，預設深色剛好對上。 */
+  const lpHeroMode = data?.event.hero_mode ?? 'dark'
+  const lpHeroDark = lpHeroMode === 'follow'
+    ? (data?.event.theme_mode ?? 'dark') === 'dark'
+    : lpHeroMode === 'dark'
+  useStatusBarText(lpHeroDark ? 'white' : 'black')
 
   useEffect(() => {
     if (preset || !slug) return

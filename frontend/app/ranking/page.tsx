@@ -21,6 +21,7 @@ import { ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSwipeTabs } from '@/lib/useSwipeTabs';
 import { asset } from '@/lib/asset';
+import { useStatusBarText } from '@/components/native/StatusBarStyle';
 import { useQueryClient } from '@tanstack/react-query';
 import { swrLoad } from '@/lib/swr';
 import { rankingKey, fetchRanking as fetchRankingRows } from '@/lib/queries/ranking';
@@ -43,6 +44,10 @@ const RANK_BG = 'linear-gradient(180deg, #1C1D22 0%, #2C2D33 100%)';
 
 export default function RankingPage() {
   const router = useRouter();
+
+  /* 動態島文字：整頁是深藍色流體背景（頂欄在頂端時是透明的，深色來自底下
+     那層 fixed 的 InkFlowField），一律白字。 */
+  useStatusBarText('white');
 
   useLayoutEffect(() => {
     if (window.innerWidth >= 768) router.replace('/');
