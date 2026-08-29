@@ -1056,7 +1056,10 @@ export default function GGBPackRip({
               position: "absolute", left: 0, top: stripH - 5, height: 10,
               width: Math.min(1, p * 1.12) * w,
               zIndex: 4, pointerEvents: "none",
-              background: "linear-gradient(90deg,#ffd54a22,#fff9,#ffffff)",
+              /* 亮黃光（老闆 2026-08-29）：原本右端是純白（#fff9 → #ffffff），
+                 撕到一半整條像日光燈管。改用模組本來就在用的金色系 ——
+                 #ffd54a 金、#ffe98a 淺金、#fff3b0 淡金，跟傳說光環、火花同一組色票。 */
+              background: "linear-gradient(90deg,#ffd54a22,#ffe98a,#fff3b0)",
               filter: "blur(3px)",
               opacity: glowOn ? Math.min(1, p * 2.2) : 0,
               transition: "opacity .15s",
@@ -1065,7 +1068,8 @@ export default function GGBPackRip({
               position: "absolute", top: stripH - 46, width: 110, height: 90,
               left: Math.min(0.95, Math.max(0.04, p * 1.12)) * w - 55,
               zIndex: 4, pointerEvents: "none", borderRadius: "50%",
-              background: "radial-gradient(circle,#ffffff,#ffd54a88 40%,#ffd54a00 70%)",
+              /* 光源核心同樣從純白換成淡金，不然光帶黃了、中間那球還是白的 */
+              background: "radial-gradient(circle,#fff3b0,#ffd54a88 40%,#ffd54a00 70%)",
               filter: "blur(4px)",
               transform: `scale(${0.7 + p * 0.5})`,
               opacity: glowOn ? Math.min(1, 0.35 + p * 1.6) : 0,
