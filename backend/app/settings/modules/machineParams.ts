@@ -78,6 +78,22 @@ export const MACHINE_PARAM_SPECS: Record<string, ParamSpec[]> = {
 
     { key: 'sfxVolume',   label: '音效音量', group: '音效', type: 'range', min: 0, max: 1, step: 0.05, default: 1,
       hint: '撕包／發牌／翻牌／中獎音的總音量。各支音效之間的相對大小是固定的，這裡只調整體。0 = 靜音（玩家自己的靜音鍵另外算）。' },
+
+    /* 背景流星（老闆 2026-08-29）。跟商品頁卡包輪播那四顆 CSS 流星是兩回事：
+       那組是遠方慢慢飄的，這組是從畫面中心往外衝的星流，要的是速度感。
+       顏色（白／紅／金）寫在前台 GgbPackRip 裡，不開成參數 —— 參數表只支援
+       數值、開關與圖片，沒有色票型別。 */
+    { key: 'starOn',         label: '背景流星', group: '背景流星', type: 'toggle', default: true,
+      hint: '關掉就只剩原本的暗紫漸層底。玩家系統開了「減少動態效果」時一律不畫，這裡設什麼都一樣。' },
+    { key: 'starCount',      label: '星點數量', group: '背景流星', type: 'range', min: 0, max: 800, step: 20, default: 500,
+      hint: '手機（寬度 480px 以下）會自動砍到六成 —— 每顆星每幀要畫一條拖尾線，撕包當下還有另一張粒子畫布在跑，掉幀會掉在最關鍵的那幾秒。' },
+    { key: 'starSpeed',      label: '衝出速度', group: '背景流星', type: 'range', min: 1, max: 10, step: 1, default: 5,
+      hint: '星點從中心往外衝的速度。' },
+    { key: 'starSize',       label: '星點大小', group: '背景流星', type: 'range', min: 0, max: 20, step: 1, default: 20 },
+    { key: 'starTrail',      label: '拖尾長度', group: '背景流星', type: 'range', min: 0, max: 100, step: 5, default: 100, unit: '%',
+      hint: '每一幀保留多少上一幀的殘影。100% 是最長的尾巴，0% 只剩點。' },
+    { key: 'starBrightness', label: '亮度',     group: '背景流星', type: 'range', min: 0, max: 100, step: 5, default: 100, unit: '%',
+      hint: '⚠️ 這頁的底色是刻意壓深的，為的是讓金／紫的光環、閃電、火花是畫面上最亮的東西。流星開太亮會跟它們搶。覺得卡片浮不出來就從這格往下調。' },
   ],
 
   blindbox_mode5: [

@@ -17,6 +17,7 @@ import { SoundToggle, RAISED_STYLE, RAISED_STYLE_GOLD } from "@/components/ui/So
 import useSoundMuted from "@/hooks/useSoundMuted";
 import { createClient } from "@/lib/supabase/client";
 import { hapticLight, hapticMedium } from '@/lib/haptics';
+import StarWarpField from '@/components/card/StarWarpField';
 
 /* 後台「抽獎模組設定 → 卡包模式 → 撕開封口」可調的參數，
    讀不到就用這組預設（跟 backend/app/settings/modules/machineParams.ts 的 default 一致） */
@@ -27,6 +28,8 @@ const PARAM_DEFAULTS = {
   dealStagger: 90, flipDelay: 500, skipFlyMs: 55,
   sfxVolume: 1,
   peelCurl: 45,
+  // 背景流星（老闆 2026-08-29）
+  starOn: true, starCount: 500, starSpeed: 5, starSize: 20, starTrail: 100, starBrightness: 100,
 };
 
 /* ============================================================
@@ -946,6 +949,23 @@ export default function GGBPackRip({
       onPointerUp={onStageUp} onPointerCancel={onStageUp}>
       <style>{CSS_KEYFRAMES}</style>
 
+      {/* 背景流星（老闆 2026-08-29）。z-0 壓在所有演出元素底下 —— 這頁的內容
+          最低是 z-2，所以它永遠在最後面；canvas 本身是透明的，S.stage 的暗紫
+          放射漸層照樣透出來。
+          **沒有動到原型的任何一行**：純粹在最底下多鋪一層，撕包、發牌、翻牌的
+          邏輯與版面都不知道它存在。
+          參數在後台「抽獎模組設定 → 撕開封口 → 背景流星」，跟這個模組其他
+          參數同一套。 */}
+      {cfg.starOn !== false && (
+        <StarWarpField
+          className="z-0"
+          particleCount={cfg.starCount}
+          speed={cfg.starSpeed}
+          starSize={cfg.starSize}
+          trailAmount={cfg.starTrail}
+          brightness={cfg.starBrightness}
+        />
+      )}
 
       <canvas ref={canvasRef} width={typeof window !== "undefined" ? window.innerWidth : 400}
         height={typeof window !== "undefined" ? window.innerHeight : 800} style={S.canvas} />
