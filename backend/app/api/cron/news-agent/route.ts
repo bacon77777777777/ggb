@@ -8,7 +8,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import Anthropic from '@anthropic-ai/sdk'
 import { r2Upload } from '@/lib/r2'
 import sharp from 'sharp'
-import { brandCoverImage, contentBox } from '@/lib/newsBranding'
+import { brandCoverImage, contentBox, stampUrlWatermark } from '@/lib/newsBranding'
 import type { WmCorner } from '@/lib/dengekiWm'
 import { createClaude } from '@/lib/aiUsage'
 import crypto from 'crypto'
@@ -693,7 +693,9 @@ async function downloadSmartToR2(
       // 來源圖多半只有 800px 寬（電擊、PR TIMES 都是），quality 82 壓完
       // 220KB → 44KB，放到內文的容器寬度就明顯糊掉。改成 92 並把上限拉到
       // 1600 —— withoutEnlargement 保證不會把小圖硬撐大，只是不再多壓一手
-      const webp = await sharp(buf).resize(1600, null, { withoutEnlargement: true }).webp({ quality: 92 }).toBuffer()
+      // 先縮到最終尺寸再蓋浮水印 —— 字級是照圖寬算的，順序反了字會跟著縮
+      const resized = await sharp(buf).resize(1600, null, { withoutEnlargement: true }).toBuffer()
+      const webp = await sharp(await stampUrlWatermark(resized)).webp({ quality: 92 }).toBuffer()
       const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`
       return await r2Upload(key, webp, 'image/webp')
     }
@@ -705,8 +707,10 @@ async function downloadSmartToR2(
     if (!branded) return null
     // 蓋完再驗一次：還看得到就是沒蓋乾淨（挑錯角、或浮水印比白墊大）
     if (!await verifyBrandedClean(branded, sourceUrl || imgUrl, box)) return null
+    // 複驗過了才蓋自家網址：滿版文字會讓那道視覺複驗整張判成髒的
+    const stamped = await sharp(await stampUrlWatermark(branded)).jpeg({ quality: 88 }).toBuffer()
     const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-gg.jpg`
-    return await r2Upload(key, branded, 'image/jpeg')
+    return await r2Upload(key, stamped, 'image/jpeg')
   } catch { return null }
 }
 
