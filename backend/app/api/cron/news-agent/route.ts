@@ -1671,14 +1671,14 @@ export async function POST(req: NextRequest) {
   )
 
   /**
-   * 兩層額度：
-   *   單次   —— 一次 3 篇，同分類最多 1 篇 → 一次跑出三個不同分類
-   *   單日   —— 一天 4 次共 12 篇要分給 5 類（12 ÷ 5 ≈ 2.4），任一類近 24 小時
-   *              滿 3 篇就讓位，把剩下的次數讓給還沒補到的分類
+   * 兩層額度（數字以下面的常數為準，這段只解釋為什麼）：
+   *   單次 —— 一場最多 MAX_TOTAL 篇，同一分類最多 MAX_PER_CATEGORY 篇
+   *           → 5 篇至少橫跨三個分類（2+2+1），figure 吃不完整場
+   *   單日 —— 任一分類近 24 小時滿 DAILY_PER_CATEGORY 篇就讓位，
+   *           把剩下的場次讓給還沒補到的分類
    *
-   * 走一天看得出效果：前三次各拿 toy／figure／一個稀缺分類，第四次 toy 與 figure
-   * 都滿 3 篇被擋下，整場讓給 Google News 那組查詢（一番賞／卡牌／轉蛋都在那裡），
-   * 一天收斂成 3/3/2/2/2。手動觸發（帶 limit）不套單日上限，否則測試時可能一篇都寫不出來。
+   * 真正的天花板是**單日那層**：5 分類 × 3 = 15 篇/天，不是 4 場 × 5 = 20 篇。
+   * 排程跑滿一天會收斂成各分類 3 篇上下（來源夠的話）。
    */
   /**
    * ⚠️ 這兩個常數在 2026-08-29 改過，改的理由要看懂再動：
@@ -1765,9 +1765,9 @@ export async function POST(req: NextRequest) {
              可能判成別的分類 —— 猜成 tcg 過關、寫出來卻是 figure，figure 的配額就漏了
            · 主題：subjectKey 只有改寫後才拿得到（見它的說明）
            兩個都是花完 Claude 呼叫之後才知道，但寧可丟掉一次呼叫也不要讓版面失衡或重複。 */
-        if (quotaFull(finalCategory)) {{ results.skipped++; results.skipReasons.catQuota++; continue }}
+        if (quotaFull(finalCategory)) { results.skipped++; results.skipReasons.catQuota++; continue }
         const subjKey = subjectKey(draft)
-        if (subjKey && usedSubjectKeys.has(subjKey)) {{ results.skipped++; results.skipReasons.subjectDup++; continue }}
+        if (subjKey && usedSubjectKeys.has(subjKey)) { results.skipped++; results.skipReasons.subjectDup++; continue }
 
         const id = Math.floor(10000000 + Math.random() * 90000000).toString()
         const { error } = await supabase.from('news').insert({
@@ -1864,9 +1864,9 @@ export async function POST(req: NextRequest) {
            可能判成別的分類 —— 猜成 tcg 過關、寫出來卻是 figure，figure 的配額就漏了
          · 主題：subjectKey 只有改寫後才拿得到（見它的說明）
          兩個都是花完 Claude 呼叫之後才知道，但寧可丟掉一次呼叫也不要讓版面失衡或重複。 */
-      if (quotaFull(finalCategory)) {{ results.skipped++; results.skipReasons.catQuota++; continue }}
+      if (quotaFull(finalCategory)) { results.skipped++; results.skipReasons.catQuota++; continue }
       const subjKey = subjectKey(draft)
-      if (subjKey && usedSubjectKeys.has(subjKey)) {{ results.skipped++; results.skipReasons.subjectDup++; continue }}
+      if (subjKey && usedSubjectKeys.has(subjKey)) { results.skipped++; results.skipReasons.subjectDup++; continue }
 
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()
       const { error } = await supabase.from('news').insert({
@@ -1976,9 +1976,9 @@ export async function POST(req: NextRequest) {
              可能判成別的分類 —— 猜成 tcg 過關、寫出來卻是 figure，figure 的配額就漏了
            · 主題：subjectKey 只有改寫後才拿得到（見它的說明）
            兩個都是花完 Claude 呼叫之後才知道，但寧可丟掉一次呼叫也不要讓版面失衡或重複。 */
-        if (quotaFull(finalCategory)) {{ results.skipped++; results.skipReasons.catQuota++; continue }}
+        if (quotaFull(finalCategory)) { results.skipped++; results.skipReasons.catQuota++; continue }
         const subjKey = subjectKey(draft)
-        if (subjKey && usedSubjectKeys.has(subjKey)) {{ results.skipped++; results.skipReasons.subjectDup++; continue }}
+        if (subjKey && usedSubjectKeys.has(subjKey)) { results.skipped++; results.skipReasons.subjectDup++; continue }
         const id = Math.floor(10000000 + Math.random() * 90000000).toString()
         // 內文配圖。這條路徑（DIRECT_FEEDS：電擊ホビー / PR TIMES / Animate Times）
         // 原本完全沒有這一步 —— 另外兩條有，只有這條漏了。
