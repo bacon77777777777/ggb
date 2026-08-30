@@ -7,7 +7,7 @@ import { Database } from '@/types/database.types';
 import { TicketSelector, Ticket } from '@/components/shop/TicketSelector';
 import { Button } from '@/components/ui';
 import { X } from 'lucide-react';
-import { IpLoader } from '@/components/ui/IpLoader';
+import { GachaLoader } from '@/components/ui/GachaLoader';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { PurchaseConfirmation } from '@/components/shop/PurchaseConfirmation';
@@ -21,6 +21,7 @@ import Image from 'next/image';
 import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
 import SoundToggle from '@/components/ui/SoundToggle';
 import { isSoundMuted } from '@/lib/soundPrefs';
+import { bigRip } from '@/lib/tearSfx';
 import { asset } from '@/lib/asset';
 
 const ITEM_DEFAULT_IMG = asset('/images/item_defaulet.webp');
@@ -102,31 +103,18 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
   const [supabase] = useState(() => createClient());
   const { user, refreshProfile } = useAuth();
   const { showToast } = useToast();
-  const tearSoundRef = useRef<HTMLAudioElement | null>(null);
   const resultSoundRef = useRef<HTMLAudioElement | null>(null);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const audio = new Audio(asset('/audio/tanweraman-paper-rip-fast-252617.mp3'));
-    audio.preload = 'auto';
-    tearSoundRef.current = audio;
-
-    return () => {
-      if (tearSoundRef.current) {
-        tearSoundRef.current.pause();
-        tearSoundRef.current.src = '';
-        tearSoundRef.current.load();
-      }
-    };
-  }, []);
-
+  /**
+   * 「全部開啟」的撕紙聲。
+   *
+   * 原本是 `new Audio('tanweraman-paper-rip-fast.mp3')` —— 手機上 play() 有
+   * 50~300ms 延遲、而且跟沉浸撕紙那邊的合成音是兩套質感。改用同一支合成引擎
+   * （lib/tearSfx 的 bigRip），籤格模式與沉浸模式聽起來才是同一台機器。
+   */
   const playTearSound = useCallback(() => {
-    // 這兩個音效是 new Audio()，不經過 lib/sfx，得自己看全站靜音偏好
     if (isSoundMuted()) return;
-    const audio = tearSoundRef.current;
-    if (!audio) return;
-    audio.currentTime = 0;
-    void audio.play().catch(() => undefined);
+    bigRip();
   }, []);
   
   const [product, setProduct] = useState<Database['public']['Tables']['products']['Row'] | null>(null);
@@ -912,7 +900,7 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
 
   if (isLoading || isTrialPreparing) return (
     <div className="fixed inset-0 z-[2000] bg-neutral-950/80 flex items-center justify-center backdrop-blur-sm">
-      <IpLoader dark />
+      <GachaLoader dark />
     </div>
   );
   if (!product) return <div className="min-h-[50vh] flex items-center justify-center">Product not found</div>;
@@ -923,7 +911,7 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
   if (isProductEnded && drawnResults.length === 0) {
     return (
       <div className="fixed inset-0 z-[2000] bg-neutral-950/80 flex items-center justify-center backdrop-blur-sm">
-        <IpLoader dark />
+        <GachaLoader dark />
       </div>
     );
   }

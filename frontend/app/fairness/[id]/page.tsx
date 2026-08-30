@@ -17,7 +17,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Copy, Check, ExternalLink } from 'lucide-react';
-import { IpLoader } from '@/components/ui/IpLoader';
+import { GachaLoader } from '@/components/ui/GachaLoader';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -166,7 +166,7 @@ export default function FairnessVerifyPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 flex items-center justify-center">
-        <IpLoader />
+        <GachaLoader />
       </div>
     );
   }

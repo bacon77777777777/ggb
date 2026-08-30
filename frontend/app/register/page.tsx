@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { IpLoader } from '@/components/ui/IpLoader';
+import { GachaLoader } from '@/components/ui/GachaLoader';
 
 function RegisterRedirect() {
   const router = useRouter();
@@ -17,7 +17,7 @@ function RegisterRedirect() {
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-white dark:bg-neutral-950">
-      <IpLoader />
+      <GachaLoader />
     </div>
   );
 }

@@ -10,31 +10,13 @@ import { scheduleState } from '@/lib/schedule'
 import { TopFadeBlur } from '@/components/ui/TopFadeBlur'
 import { useStatusBarText } from '@/components/native/StatusBarStyle'
 import { asset } from '@/lib/asset';
+import { BouncingCapsule } from '@/components/ui/BouncingCapsule'
 
-const LP_LOADING_CHARS = [
-  asset('/loading/1.webp'), asset('/loading/2.webp'), asset('/loading/3.webp'), asset('/loading/4.webp'),
-  asset('/loading/5.webp'), asset('/loading/6.webp'), asset('/loading/7.webp'), asset('/loading/8.webp'),
-]
-
+// 等待動畫：全站統一的彈跳轉蛋球（老闆 2026-08-30，原本是 IP 角色輪播）
 function LpLoadingScreen({ bg }: { bg?: string }) {
-  const [idx, setIdx] = useState(0)
-  useEffect(() => {
-    const t = setInterval(() => setIdx(i => (i + 1) % LP_LOADING_CHARS.length), 400)
-    return () => clearInterval(t)
-  }, [])
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: bg || '#0a0610', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-      <div style={{ width: 80, height: 90, position: 'relative' }}>
-        <AnimatePresence mode="wait">
-          <motion.div key={idx} style={{ position: 'absolute', inset: 0 }}
-            initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.7 }}
-            transition={{ duration: 0.1, ease: 'easeOut' }}>
-            <motion.img src={LP_LOADING_CHARS[idx]} width={80} height={90} alt=""
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-              animate={{ y: [0, -10, 0] }} transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }} />
-          </motion.div>
-        </AnimatePresence>
-      </div>
+      <BouncingCapsule size={40} />
       <motion.span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.15em', color: 'rgba(255,255,255,.4)' }}
         animate={{ y: [0, -6, 0] }} transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}>
         載入中

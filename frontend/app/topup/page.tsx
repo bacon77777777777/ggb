@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui';
-import { IpLoader } from '@/components/ui/IpLoader';
+import { GachaLoader } from '@/components/ui/GachaLoader';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -206,7 +206,7 @@ export default function TopupPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-950">
-        <IpLoader />
+        <GachaLoader />
       </div>
     );
   }

@@ -7,6 +7,11 @@ import type { Prize } from '@/components/GachaMachine';
 import BoosterPackOpenEffect from './BoosterPackOpenEffect';
 import SoundToggle from '@/components/ui/SoundToggle';
 import { asset } from '@/lib/asset';
+import { BouncingCapsule } from '@/components/ui/BouncingCapsule';
+import {
+  initCardPackAudio, disposeCardPackAudio, startPackMusic, setPackHype, setPackDucking,
+  sfxRevealTier, sfxCardSlide, sfxPackFinale, type CardTier,
+} from '@/lib/cardPackSfx';
 
 type CardDrawAnimationProps = {
   isOpen: boolean;
@@ -28,6 +33,15 @@ function getCardImage(prize: Prize) {
 }
 
 // 稀有度配色與 SSR 光效已移除 —— 卡片改成只顯示品項原圖，不加任何外框與疊層。
+
+/** 稀有度 → 揭曉音的級別。判斷順序與 getCardImage 一致（SSR 要先於 SR、SR 先於 R） */
+function tierOf(prize: Prize): CardTier {
+  const raw = (prize.grade || prize.rarity || '').toUpperCase();
+  if (raw.includes('SSR') || raw.includes('超稀有')) return 'ssr';
+  if (raw.includes('SR')) return 'sr';
+  if (raw.includes('R') || raw.includes('稀有')) return 'r';
+  return 'n';
+}
 
 // Scene design coords at DW=393 base (same scene as charge screen)
 const DW = 393;
@@ -182,32 +196,11 @@ function TopCard({ prize, current, onSwiped, s, fit }: TopCardProps) {
   );
 }
 
-// ── IP character cycling loader ───────────────────────────────────────────────
-const LOADER_CHARS = [
-  asset('/loading/1.webp'),asset('/loading/2.webp'),asset('/loading/3.webp'),asset('/loading/4.webp'),
-  asset('/loading/5.webp'),asset('/loading/6.webp'),asset('/loading/7.webp'),asset('/loading/8.webp'),
-];
+// ── 等待動畫：全站統一的彈跳轉蛋球（老闆 2026-08-30，原本是 IP 角色輪播）──
 function CardLoadingOverlay() {
-  const [idx, setIdx] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setIdx(i => (i + 1) % LOADER_CHARS.length), 400);
-    return () => clearInterval(t);
-  }, []);
   return (
     <div className="fixed inset-0 z-[1200] bg-black flex flex-col items-center justify-center gap-4">
-      <AnimatePresence mode="wait">
-        <motion.img
-          key={idx}
-          src={LOADER_CHARS[idx]}
-          width={80}
-          height={90}
-          alt=""
-          initial={{ opacity: 0, scale: 0.7 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.7 }}
-          transition={{ duration: 0.1, ease: 'easeOut' }}
-        />
-      </AnimatePresence>
+      <BouncingCapsule size={40} />
       <motion.p
         className="text-white/60 text-xs font-black tracking-widest"
         animate={{ y: [0, -6, 0] }}
@@ -272,9 +265,41 @@ export default function CardDrawAnimation({
     return () => clearTimeout(t);
   }, [isOpen]);
 
+  /*
+   * 音效（lib/cardPackSfx）：開包畫面全程鋪背景音樂；**多張才另外鋪醞釀底**——
+   * 單抽只有 700ms 的蓄力，鋪什麼 loop 都來不及成形（老闆 2026-08-30）。
+   */
+  useEffect(() => {
+    if (!isOpen) return;
+    initCardPackAudio();
+    startPackMusic();
+    return () => { disposeCardPackAudio(); };
+  }, [isOpen]);
+
+  useEffect(() => {
+    setPackHype(isOpen && phase === 'pack' && prizes.length > 1);
+  }, [isOpen, phase, prizes.length]);
+
+  // 每張卡輪到最上面就是它的「揭曉」時刻，依稀有度分四級
+  useEffect(() => {
+    if (!isOpen || phase !== 'swipe') return;
+    const prize = prizes[swipeIndex];
+    if (!prize) return;
+    const tier = tierOf(prize);
+    sfxRevealTier(tier);
+    // 高稀有的揭曉比較長，音樂讓開一下再回來
+    if (tier === 'sr' || tier === 'ssr') {
+      setPackDucking(true);
+      const t = setTimeout(() => setPackDucking(false), tier === 'ssr' ? 2400 : 1400);
+      return () => clearTimeout(t);
+    }
+  }, [isOpen, phase, swipeIndex, prizes]);
+
   const handleSwiped = useCallback(() => {
+    sfxCardSlide();
     const next = swipeIndex + 1;
     if (next >= prizes.length) {
+      sfxPackFinale();
       onGoToWarehouse();
     } else {
       setSwipeIndex(next);

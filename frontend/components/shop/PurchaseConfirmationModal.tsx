@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { X, Ticket, ChevronRight, ChevronLeft, Loader2, Check, Info } from 'lucide-react';
-import { IpLoader } from '@/components/ui/IpLoader';
+import { GachaLoader } from '@/components/ui/GachaLoader';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui';
@@ -537,7 +537,7 @@ export function PurchaseConfirmationModal({
                 <div className="p-4 space-y-3">
                   {loadingCoupons ? (
                     <div className="flex flex-col items-center justify-center py-8">
-                      <IpLoader />
+                      <GachaLoader />
                     </div>
                   ) : coupons.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-neutral-400">

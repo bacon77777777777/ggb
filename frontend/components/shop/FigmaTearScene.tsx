@@ -4,7 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import SoundToggle from '@/components/ui/SoundToggle';
-import { bigRip, crackle, flashPop, spawnConfetti, unlockTearAudio } from '@/lib/tearSfx';
+import {
+  bigRip, crackle, flashPop, spawnConfetti, unlockTearAudio,
+  sfxTicketDrop, sfxGrab, sfxTension, sfxFlutter, sfxBounceBack,
+  sfxRiser, sfxRevealCommon, sfxRevealGrand, sfxInterlude,
+  startTearMusic, stopTearMusic, setTearDucking,
+} from '@/lib/tearSfx';
 import { isSoundMuted } from '@/lib/soundPrefs';
 import { asset } from '@/lib/asset';
 
@@ -144,6 +149,34 @@ export default function FigmaTearScene({
    * 卻照樣觸發撕紙音效與撕開視覺 —— 老闆回報「紙還沒捏起來就有聲音」。
    */
   const inGrabZone = useRef(false);
+  /** 上一次 pointermove 的位置與時間 —— crackle 的強度吃「拖多快」而不只是「拖多遠」 */
+  const lastMove = useRef<{ x: number; t: number } | null>(null);
+  /** 這一次拖曳有沒有已經發過「拉緊」那一聲（只在剛開始拉的時候響一次） */
+  const tensionDone = useRef(false);
+  /** 演出用的計時器，卸載時要全部清掉 */
+  const sfxTimers = useRef<number[]>([]);
+  const later = (fn: () => void, ms: number) => {
+    sfxTimers.current.push(window.setTimeout(fn, ms));
+  };
+
+  /*
+   * 背景音樂（懸念感）與券落定的聲音。
+   *
+   * 每一張券都是重新掛載這個元件（父層用 key 換），所以音樂會跟著每張重新起頭 ——
+   * 中間有間奏聲蓋著，聽起來是「換一張、重新屏息」而不是斷掉。
+   */
+  useEffect(() => {
+    if (initialDone) return;
+    startTearMusic();
+    const t = window.setTimeout(() => sfxTicketDrop(), 260);
+    return () => {
+      clearTimeout(t);
+      sfxTimers.current.forEach(clearTimeout);
+      sfxTimers.current = [];
+      stopTearMusic();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 載入 jQuery + turn.js，初始化 flipbook
   useEffect(() => {
@@ -192,7 +225,12 @@ export default function FigmaTearScene({
       }
 
       // iOS 的 AudioContext 必須在使用者手勢裡建立，否則第一次撕會沒聲音
-      if (inGrabZone.current && !isSoundMuted()) unlockTearAudio();
+      if (inGrabZone.current && !isSoundMuted()) {
+        unlockTearAudio();
+        sfxGrab();                       // 捏到了 —— 沒有這一聲玩家不知道自己抓住了
+      }
+      lastMove.current = null;
+      tensionDone.current = false;
     };
 
     const onCapturePointerMove = (e: PointerEvent) => {
@@ -207,9 +245,22 @@ export default function FigmaTearScene({
         const pt = getPtEl();
         if (pt) pt.style.visibility = 'visible';
       }
-      // 虛線孔一格格裂開的細碎聲：跟著手指走，撕多少響多少
+      // 拉緊但還沒撕開：纖維被扯住的悶聲，整段拖曳只響一次
+      if (!isSoundMuted() && !tensionDone.current && dx > 6) {
+        tensionDone.current = true;
+        sfxTension();
+      }
+      /*
+       * 虛線孔一格格裂開的細碎聲：跟著手指走，撕多少響多少。
+       * 強度吃**拖曳速度**（px/ms）而不只是距離 —— 慢慢撕是細碎的啵啵，
+       * 一口氣扯就是連續的刷，沉浸感差別最大的就是這裡。
+       */
       if (!isSoundMuted() && dx - lastCrackle.current > 8) {
-        crackle(Math.min(1, dx / 150));
+        const now = performance.now();
+        const prev = lastMove.current;
+        const speed = prev ? Math.abs(e.clientX - prev.x) / Math.max(1, now - prev.t) : 0.3;
+        lastMove.current = { x: e.clientX, t: now };
+        crackle(Math.min(1, 0.25 + speed * 0.5));
         lastCrackle.current = dx;
       }
     };
@@ -276,7 +327,20 @@ export default function FigmaTearScene({
           turned: (_e: Event, page: number) => {
             if (page === 2) {
               tearCompleted.current = true;
-              if (!isSoundMuted()) bigRip();
+              if (!isSoundMuted()) {
+                /*
+                 * 張力曲線的後半段：撕開（爆）→ 紙片飄落 → **靜半拍** → 揭曉（亮）。
+                 * 那個「靜半拍」是刻意的 —— 撕完立刻上號角就不緊張了。
+                 * A賞與最後賞給長號角＋亮片，其餘統一清脆 ding（老闆 2026-08-30）。
+                 */
+                setTearDucking(true);
+                bigRip();
+                later(() => sfxFlutter(), 220);
+                later(() => sfxRiser(0.5), 320);
+                const grand = prizeTierLetter === 'LAST' || prizeTierLetter.toUpperCase().startsWith('A');
+                later(() => (grand ? sfxRevealGrand() : sfxRevealCommon()), 860);
+                later(() => setTearDucking(false), grand ? 2600 : 1600);
+              }
               const host = wrapperRef.current?.parentElement ?? wrapperRef.current;
               if (host) {
                 // 撕開的同時就撒，等 setDone 之後這個節點就不在了
@@ -286,6 +350,7 @@ export default function FigmaTearScene({
               }
               setTimeout(() => setDone(true), 300);
             } else if (page === 1) {
+              if (!isSoundMuted()) sfxBounceBack();
               // 彈回時清除拖曳狀態
               wrapperRef.current?.classList.remove('tearing');
               const pt = getPtEl();
@@ -442,7 +507,7 @@ export default function FigmaTearScene({
           <motion.button
             key="next-hint"
             type="button"
-            onClick={onNext ?? onDone}
+            onClick={() => { if (!isSoundMuted()) sfxInterlude(); (onNext ?? onDone)?.(); }}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{
               opacity: 1,

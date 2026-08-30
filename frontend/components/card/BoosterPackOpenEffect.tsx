@@ -4,6 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { hapticLight, hapticMedium } from '@/lib/haptics';
+import {
+  initCardPackAudio, sfxPackGrab, startCharge as startChargeSfx, updateCharge,
+  endChargeComplete, endChargeCancel, sfxChargeTick, sfxPackTear, sfxBurst, setPackDucking,
+} from '@/lib/cardPackSfx';
 import { asset } from '@/lib/asset';
 
 interface BoosterPackProps {
@@ -108,13 +112,22 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
     const progress = Math.min((now - startRef.current) / 700, 1);
     setCharge(progress * 100);
 
+    // 聲音掛在**同一組**震動節點上，手感與聽感才會完全同步（老闆 2026-08-30）
     while (hapticIdx.current < HAPTIC_STOPS.length && progress >= HAPTIC_STOPS[hapticIdx.current]) {
+      sfxChargeTick(hapticIdx.current, HAPTIC_STOPS.length);
       hapticIdx.current++;
       hapticLight();
     }
+    // 持續音的音高與濾波跟著 charge% 走 —— 這是「能量在累積」的來源
+    updateCharge(progress);
 
     if (progress >= 1) {
       hapticMedium();            // 蓄滿：明顯較重的一下，不用看畫面也知道
+      endChargeComplete();       // 直接收掉，尾巴會糊掉撕裂的瞬間
+      setPackDucking(true);      // 撕開這一下要乾淨，音樂讓開
+      sfxPackTear();
+      setTimeout(() => sfxBurst(), 120);
+      setTimeout(() => setPackDucking(false), 1200);
       setPhase('tearing');
       setTimeout(() => { setPhase('done'); onComplete?.(); }, 420);
     } else {
@@ -128,6 +141,11 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
   const triggerTear = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
     hapticMedium();              // 右滑直接撕開，跳過蓄力也要有回饋
+    endChargeComplete();
+    setPackDucking(true);
+    sfxPackTear();
+    setTimeout(() => sfxBurst(), 120);
+    setTimeout(() => setPackDucking(false), 1200);
     setCharge(100);
     setPhase('tearing');
     setTimeout(() => { setPhase('done'); onComplete?.(); }, 420);
@@ -143,6 +161,10 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
     setCharge(0);
     hapticIdx.current = 0;
     hapticLight();               // 按下去先給一下，讓玩家知道按到了
+    // iOS 的 AudioContext 必須在使用者手勢裡建立，所以在這裡才 init
+    initCardPackAudio();
+    sfxPackGrab();
+    startChargeSfx();
     startRef.current = performance.now();
     rafRef.current = requestAnimationFrame(tick);
   }, [phase, tick]);
@@ -158,6 +180,7 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
     }
     if (phase !== 'charging') return;
     cancelAnimationFrame(rafRef.current);
+    endChargeCancel();           // 沒蓄滿：能量往下滑掉
     hapticIdx.current = 0;
     setCharge(0);
     setPhase('idle');

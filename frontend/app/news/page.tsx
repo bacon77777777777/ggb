@@ -437,9 +437,11 @@ export default function NewsPage() {
         {/* 固定 Tab 欄 */}
         <div className="sticky top-0 z-20 bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800 px-2 pt-[env(safe-area-inset-top)]">
           <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="bg-transparent px-0">
+            {/* 六個分頁籤要塞進手機寬度：間距收緊（gap-2→0、px-3→px-2.5），
+                不然最後的「公仔景品」永遠露不出來（老闆 2026-08-30） */}
+            <TabsList className="bg-transparent px-0 gap-0">
               {CATEGORIES.map(cat => (
-                <TabsTrigger key={cat.key} value={cat.key}>{cat.label}</TabsTrigger>
+                <TabsTrigger key={cat.key} value={cat.key} className="px-2.5">{cat.label}</TabsTrigger>
               ))}
             </TabsList>
           </Tabs>
@@ -474,9 +476,11 @@ export default function NewsPage() {
         {/* 分類頁籤 */}
         <div className="border-b border-neutral-100 dark:border-neutral-800 mb-6">
           <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="bg-transparent px-0">
+            {/* 六個分頁籤要塞進手機寬度：間距收緊（gap-2→0、px-3→px-2.5），
+                不然最後的「公仔景品」永遠露不出來（老闆 2026-08-30） */}
+            <TabsList className="bg-transparent px-0 gap-0">
               {CATEGORIES.map(cat => (
-                <TabsTrigger key={cat.key} value={cat.key}>{cat.label}</TabsTrigger>
+                <TabsTrigger key={cat.key} value={cat.key} className="px-2.5">{cat.label}</TabsTrigger>
               ))}
             </TabsList>
           </Tabs>

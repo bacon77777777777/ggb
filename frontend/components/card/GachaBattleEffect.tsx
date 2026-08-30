@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import SoundToggle from '@/components/ui/SoundToggle';
 import { useSoundMuted } from '@/hooks/useSoundMuted';
 import { asset } from '@/lib/asset';
+import { BouncingCapsule } from '@/components/ui/BouncingCapsule';
 
 type Rarity = 'SSR' | 'SR' | 'R' | 'N';
 
@@ -31,31 +32,9 @@ function getCardBackImage(rarity: Rarity) {
   return asset('/images/card/cardback4.webp');
 }
 
-const LOADER_CHARS = [
-  asset('/loading/1.webp'),asset('/loading/2.webp'),asset('/loading/3.webp'),asset('/loading/4.webp'),
-  asset('/loading/5.webp'),asset('/loading/6.webp'),asset('/loading/7.webp'),asset('/loading/8.webp'),
-];
+// 等待動畫：全站統一的彈跳轉蛋球（老闆 2026-08-30，原本是 IP 角色輪播）
 function BattleLoadingChars() {
-  const [idx, setIdx] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setIdx(i => (i + 1) % LOADER_CHARS.length), 400);
-    return () => clearInterval(t);
-  }, []);
-  return (
-    <AnimatePresence mode="wait">
-      <motion.img
-        key={idx}
-        src={LOADER_CHARS[idx]}
-        width={80}
-        height={90}
-        alt=""
-        initial={{ opacity: 0, scale: 0.7 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.7 }}
-        transition={{ duration: 0.1, ease: 'easeOut' }}
-      />
-    </AnimatePresence>
-  );
+  return <BouncingCapsule size={40} />;
 }
 
 export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType }: GachaBattleEffectProps) {

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import { X } from 'lucide-react';
-import { IpLoader } from '@/components/ui/IpLoader';
+import { GachaLoader } from '@/components/ui/GachaLoader';
 import { hapticHeavy, hapticNotify } from '@/lib/haptics';
 
 export interface ResultPrize {
@@ -169,7 +169,7 @@ export const PrizeResultModal: React.FC<PrizeResultModalProps> = ({
             {/* Loading View */}
             {isLoading || !showContent ? (
                <div className="flex-1 flex flex-col items-center justify-center min-h-[400px]">
-                 <IpLoader />
+                 <GachaLoader />
                </div>
             ) : (
               /* Result View */

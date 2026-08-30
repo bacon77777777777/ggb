@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence, useAnimation, Variants } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { PrizeResultModal } from '@/components/shop/PrizeResultModal';
-import { IpLoader } from '@/components/ui/IpLoader';
+import { GachaLoader } from '@/components/ui/GachaLoader';
 import Image from 'next/image';
 import { asset } from '@/lib/asset';
 
@@ -369,7 +369,7 @@ export default function GachaMachine({ prizes, isOpen, onGoToWarehouse, onContin
               {isLoading && state === 'IDLE' ? (
                 /* Loading state */
                 <div className="flex items-center justify-center">
-                  <IpLoader size="sm" dark />
+                  <GachaLoader size="sm" dark />
                 </div>
               ) : (
                 /* Regular knob */
