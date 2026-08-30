@@ -48,11 +48,9 @@ const FAIRNESS: LpPreset = {
       content: {
         h2: '驗證碼是什麼',
         body:
-          '把整檔的開獎表想成一份名單，驗證碼就是這份名單的**指紋**（技術上叫 SHA-256 雜湊）。\n\n' +
-          '它有兩個特性：**同一份名單永遠算出同一組指紋**；**名單只要改動一個字，指紋就會完全不同**。\n\n' +
-          '所以我們在**開賣時就先把指紋公布出來**，等於當眾把名單封進保險箱。這一檔結束後名單公開，' +
-          '你可以**自己拿去算一次** —— 算出來的指紋必須跟開賣那天公布的一模一樣。對得上，代表中間沒被動過；' +
-          '**對不上，代表我們改過東西，而且賴不掉**。',
+          '開獎前，平台會先產生一組驗證碼。\n' +
+          '開獎後，你可以用開獎結果自己驗證。\n' +
+          '如果偷修改開獎結果，驗證就會不通過。',
       },
     },
     {
@@ -61,9 +59,18 @@ const FAIRNESS: LpPreset = {
       content: {
         h2: '怎麼運作',
         steps: [
-          { title: '開賣前先封存', description: '商品一上架，哪個號碼對到哪個獎就**全部排定**，同時公布驗證碼。' },
-          { title: '抽到的都有號碼', description: '每一件收進倉庫時都帶著它的號碼，**那就是你的收據**。' },
-          { title: '完抽後公開對照', description: '這一檔抽完，**開獎表整份公開**。用你的號碼去查，就知道當初排給你的是不是這件。' },
+          { title: '開獎前先公布驗證碼', description: '平台先產生驗證碼，並在開獎前公開。' },
+          { title: '正常抽獎', description: '你抽到的號碼，就是你的抽獎結果。' },
+          {
+            title: '開獎後自己驗證',
+            // 這三行要真的斷行：.lpv-fd 為此加了 white-space:pre-line
+            // 不用 🟢🔴：部分手機的字型沒有這兩個 emoji，會顯示成空白方塊
+            // （老闆截圖）。改用顏色強調：** ** 是主題綠、!! !! 是紅色
+            description:
+              '開獎完成後，公開完整結果。可自行驗證：\n' +
+              '**驗證通過** → 結果沒有被修改\n' +
+              '!!驗證不通過!! → 結果可能被修改',
+          },
         ],
       },
     },
@@ -77,7 +84,7 @@ const FAIRNESS: LpPreset = {
           { url: asset('/images/fairness/gallery-2.webp'), caption: '我的倉庫', media_type: 'image' },
           { url: asset('/images/fairness/gallery-3.webp'), caption: '驗算頁', media_type: 'image' },
         ],
-        callout: '販售中只看得到驗證碼，**完抽後同一個位置會變成完整的開獎表**。',
+        callout: '開獎前看驗證碼，開獎後看結果並驗證。',
       },
     },
     {
@@ -86,9 +93,10 @@ const FAIRNESS: LpPreset = {
       content: {
         h2: '哪些玩法適用',
         body:
-          '**一番賞、抽卡、自製賞**採用號碼封存，可以照上面的方式驗算。\n\n' +
-          '**轉蛋與盒玩沒有號碼** —— 它們每一抽都是當下獨立隨機，不存在「開賣前就排好」這回事，' +
-          '因此沒有可以事後比對的開獎表。',
+          '**一番賞、抽卡、自製賞**\n' +
+          '這些玩法都可以使用驗證碼進行驗證。\n\n' +
+          '**轉蛋、盒玩**\n' +
+          '每次抽獎都是獨立隨機，沒有固定的開獎結果，因此不適用。',
       },
     },
     {
@@ -105,5 +113,14 @@ const FAIRNESS: LpPreset = {
 }
 
 export default function FairnessContent() {
-  return <LpRenderer preset={FAIRNESS} />
+  /*
+   * lp-center：這一頁的內文、步驟、說明框全部置中（老闆 2026-08-30）。
+   * 樣式寫在 globals.css 並用這個外層 class 圈住 —— LpRenderer 的樣式是整包
+   * 注入的，直接改它會動到所有活動頁，那些是圖文並排的檔期版型，置中會壞掉。
+   */
+  return (
+    <div className="lp-center">
+      <LpRenderer preset={FAIRNESS} />
+    </div>
+  )
 }

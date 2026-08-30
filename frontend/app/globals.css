@@ -621,3 +621,42 @@ a, video, canvas {
   color: rgb(var(--primary-light));
   color: color-mix(in srgb, rgb(var(--primary-light)) 68%, #fff);
 }
+
+/*
+ * 公平性說明頁的文字置中（老闆 2026-08-30）
+ *
+ * 只作用在 .lp-center 底下 —— 活動頁模組（LpRenderer）是所有檔期頁共用的，
+ * 直接改它的樣式會把那些圖文並排的版型一起弄歪。
+ * 步驟卡是「編號 + 文字」的橫向排列，文字置中的是編號右邊那一塊。
+ */
+.lp-center .lpv-body,
+.lp-center .lpv-callout {
+  text-align: center;
+}
+/* 步驟卡維持靠左（老闆 2026-08-30）：它是「編號＋兩三行說明」的卡片，
+   置中之後每一行的起點都不同，比靠左更難讀 */
+/* 編號放大一倍並靠上：說明有兩三行時，垂直置中的編號會飄在中間、
+   跟標題對不齊（老闆 2026-08-30）。line-height 壓到 1 才會真的貼齊標題頂 */
+/* gap 收到 10px、編號寬度改 auto：模組預設是 30px 固定寬置中，
+   字放大到 44px 之後那個框留了一截空白，標題會被推得離編號很遠 */
+.lp-center .lpv-flowrow { align-items: flex-start; gap: 10px; }
+.lp-center .lpv-flowno {
+  font-size: 44px;
+  line-height: 1;
+  width: auto;
+  text-align: left;
+}
+/*
+ * 這頁的說明文字就是主角，不能用模組預設的「附註」字級（老闆 2026-08-30：
+ * 小灰字都好小）。步驟說明 11px→14px、透明度 .38→.72，標題 15→17px，
+ * 內文與說明框也各加一級。
+ */
+.lp-center .lpv-body { font-size: 16px; }
+.lp-center .lpv-ft { font-size: 17px; }
+.lp-center .lpv-fd {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.9;
+  margin-top: 6px;
+}
+.lp-center .lpv-callout { font-size: 14px; }

@@ -86,12 +86,22 @@ const bool = (v: unknown): boolean => !!(v)
  * 長段落全是同一種灰字時，玩家會整段跳過。與其把整段改亮（那等於沒有重點），
  * 不如讓後台在文案裡自己標 —— 標哪裡是文案的事，不該寫死在元件裡。
  */
+/**
+ * `**強調**` → 主題色（.lpv-em）；`!!警示!!` → 紅色（.lpv-warn）
+ *
+ * 兩種標記都只是「這幾個字要有顏色」，沒有其他語意。紅色那組是後來加的：
+ * 公平性頁要把「驗證不通過」標紅，主題色那組全部是同一個綠，分不出正反。
+ */
 function emphasize(text: string): React.ReactNode {
-  if (!text.includes('**')) return text
-  return text.split(/\*\*(.+?)\*\*/g).map((part, i) =>
-    // split 後奇數索引就是被 ** 包起來的內容
-    i % 2 === 1 ? <b key={i} className="lpv-em">{part}</b> : part,
-  )
+  if (!text.includes('**') && !text.includes('!!')) return text
+  return text.split(/\*\*(.+?)\*\*|!!(.+?)!!/g).map((part, i) => {
+    if (part === undefined) return null
+    // split 帶兩個捕獲組：每 3 個一組 → 0 是純文字、1 是 **、2 是 !!
+    const kind = i % 3
+    if (kind === 1) return <b key={i} className="lpv-em">{part}</b>
+    if (kind === 2) return <b key={i} className="lpv-warn">{part}</b>
+    return part
+  })
 }
 
 function hexRgb(hex: string): [number, number, number] {
@@ -320,6 +330,7 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light'; hero?
        深色底上原始色偏濁，淺一階才讀得出來。
        註：這段字串是 template literal，註解裡不能出現反引號或 ** 以外的跳脫字元 */
     .lpv-em{color:${accentLight};font-weight:900;}
+    .lpv-warn{color:#ff6b6b;font-weight:900;}
 
     /* ── STEPS ── */
     .lpv-flow{display:flex;flex-direction:column;gap:0;max-width:560px;margin:0 auto;}
@@ -329,7 +340,7 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light'; hero?
     .lpv-flowno{font-family:'Arial Black',sans-serif;font-weight:900;font-size:22px;
       color:${accentLight};width:30px;text-align:center;flex:none;}
     .lpv-ft{font-weight:900;font-size:15px;}
-    .lpv-fd{font-size:11px;color:${textFaint38};font-weight:600;margin-top:2px;line-height:1.5;}
+    .lpv-fd{font-size:11px;color:${textFaint38};font-weight:600;margin-top:2px;line-height:1.5;white-space:pre-line;}
     .lpv-flowarr{text-align:center;color:rgba(${a},0.35);font-size:14px;line-height:1.2;padding:3px 0;}
 
     /* ── CARDS ── */
