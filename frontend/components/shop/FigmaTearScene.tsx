@@ -51,6 +51,17 @@ export default function FigmaTearScene({
   const slideRight    = useRef(false);
   const hasMoved      = useRef(false);  // 任何 pointermove 觸發即為 true，比 slideRight 更早
 
+  /**
+   * 撕完一整張所需的拖曳距離，以場景寬度為單位。
+   * turn.js 過半就算撕開，所以真正的門檻是這個數字的一半 —— 393px 的手機約 82px，
+   * 摺紙點大致跟著手指 1:1 走（券本身就佔場景寬度的一半左右）。
+   */
+  const TEAR_SCREEN_RATIO = 0.42;
+  /** turn.js 的內部把手：拆掉它自己的 DOM listener 之後，改由我們手動餵事件 */
+  const turnApi = useRef<{ handlers: any; pages: any } | null>(null);
+  /** 這一次全螢幕拖曳的起始資料（摺紙原點、螢幕位移換算摺紙位移的倍率） */
+  const dragRef = useRef<{ active: boolean; cornerX: number; cornerY: number; gain: number; pageW: number } | null>(null);
+
   /*
    * 獎項文字要等蓋板圖真的載好才顯示。
    *
@@ -144,9 +155,11 @@ export default function FigmaTearScene({
   /** 這次真的撕開了。放手時用它決定要不要把紙彈回去 */
   const tearCompleted = useRef(false);
   /**
-   * 按下的位置是否落在左緣的撕取區。
-   * 只有這裡按下去 turn.js 才真的會撕；按券中間或右邊拖曳不會撕，
-   * 卻照樣觸發撕紙音效與撕開視覺 —— 老闆回報「紙還沒捏起來就有聲音」。
+   * 這一次按下有沒有真的接上 turn.js（＝正在撕）。
+   *
+   * 以前它的意思是「按的位置落在券左緣的撕取區」—— 因為 turn.js 只認那個角。
+   * 現在改成全螢幕任何地方按下都算（老闆 2026-08-31），所以它只剩下
+   * 「代理有沒有成功掛上」：turn.js 還沒初始化好時按下去，不出聲也不進撕開狀態。
    */
   const inGrabZone = useRef(false);
   /** 上一次 pointermove 的位置與時間 —— crackle 的強度吃「拖多快」而不只是「拖多遠」 */
@@ -200,45 +213,77 @@ export default function FigmaTearScene({
     const getPtEl = () =>
       flipbookRef.current?.querySelector('.p-temporal') as HTMLElement | null;
 
+    /*
+     * 餵給 turn.js 的假事件。
+     * 它內部有兩條路：觸控裝置讀 `originalEvent.touches[0]`，滑鼠讀事件本身，
+     * 兩邊都只取 pageX/pageY —— 所以同時備妥這兩種形狀就通吃。
+     */
+    const fakeEvt = (pageX: number, pageY: number): any => ({
+      pageX, pageY,
+      originalEvent: { touches: [{ pageX, pageY }] },
+      preventDefault() {}, stopPropagation() {},
+      isDefaultPrevented: () => false,
+    });
+
     const onCapturePointerDown = (e: PointerEvent) => {
+      if (tearCompleted.current) return;
+      // 按鈕不算撕紙：SKIP／下一張／聲音開關都掛 data-ui
+      if ((e.target as HTMLElement | null)?.closest?.('[data-ui]')) return;
+
       setTouched(true);
       pressStartX.current = e.clientX;
       slideRight.current = false;
       hasMoved.current = false;  // 每次按下重置
       lastCrackle.current = 0;
+      lastMove.current = null;
+      tensionDone.current = false;
 
-      // 左緣的撕取區＝ turn.js 的 tl/bl 角，寬度就是 cornerSize（見下方 cs）
+      /*
+       * 全螢幕拖曳代理：畫面上任何一點按下去，都當成「捏住券的左緣中點」。
+       *
+       * turn.js 規定 mousedown/touchstart 必須落在它自己的 tl/bl 角上才會開始摺紙，
+       * 而券只有 ~190px 寬，玩家得瞄準畫面裡一小塊地方才捏得到（老闆回報）。
+       * 這裡改成由我們手動呼叫 turn.js 的 handler，起點固定餵在券左緣中點 ——
+       * 摺紙曲線、陰影、過半才算撕開、沒過半就彈回，全部還是 turn.js 在做，沒有改。
+       *
+       * 起點的 y 用 offsetHeight/2（不是 bounding rect 的一半）：券是斜的，
+       * bounding rect 比實際高，取一半會掉出 tl 角的範圍變成 bl，摺法就不一樣了。
+       */
+      const api = turnApi.current;
       const fb = flipbookRef.current;
-      if (fb) {
-        const r = fb.getBoundingClientRect();
-        const grabW = Math.ceil(r.height / 2) + 4;   // 與 turn.js 的 cornerSize 同式
-        /*
-         * 要「落在券上」而且「靠左緣」兩個都成立。
-         * 先前只判斷 `clientX - left <= grabW`，按在券**左邊外側**的空白處時
-         * 這個差是負數、一樣成立，所以捏著手指那一塊拖曳也會出聲（老闆回報）。
-         */
-        const inX = e.clientX >= r.left && e.clientX - r.left <= grabW;
-        const inY = e.clientY >= r.top && e.clientY <= r.bottom;
-        inGrabZone.current = inX && inY;
-      } else {
-        inGrabZone.current = false;
-      }
+      const $ = window.jQuery;
+      if (!api || !fb || !$) { inGrabZone.current = false; return; }
+
+      const pos = $(fb).offset();
+      const cornerX = pos.left + 2;
+      const cornerY = pos.top + fb.offsetHeight / 2;
+      const pageW = fb.offsetWidth || 1;
+      // 撕完一整張要拖 TEAR_SCREEN_RATIO 個畫面寬；過半即撕開，所以實際門檻是一半
+      const need = Math.max(60, (containerRef.current?.clientWidth || window.innerWidth) * TEAR_SCREEN_RATIO);
+      dragRef.current = { active: true, cornerX, cornerY, gain: pageW / need, pageW };
+
+      api.handlers.touchStart(fakeEvt(cornerX, cornerY));
+      inGrabZone.current = true;
 
       // iOS 的 AudioContext 必須在使用者手勢裡建立，否則第一次撕會沒聲音
-      if (inGrabZone.current && !isSoundMuted()) {
+      if (!isSoundMuted()) {
         unlockTearAudio();
         sfxGrab();                       // 捏到了 —— 沒有這一聲玩家不知道自己抓住了
       }
-      lastMove.current = null;
-      tensionDone.current = false;
     };
 
     const onCapturePointerMove = (e: PointerEvent) => {
       if (pressStartX.current === null) return;
       hasMoved.current = true;  // 只要有任何移動就設 true（turning gate 用這個）
-      // 不是從左緣捏起來的，就不是在撕 —— 不出聲、也不要進入撕開的視覺狀態
-      if (!inGrabZone.current) return;
-      const dx = e.clientX - pressStartX.current;
+      const d = dragRef.current;
+      if (!d?.active || !inGrabZone.current) return;
+
+      // 左滑右滑都算（老闆指定）—— 撕開的程度只看離按下點多遠
+      const dx = Math.abs(e.clientX - pressStartX.current);
+      // 餵給 turn.js 的摺紙點：超過券寬就沒有意義了，夾住免得算出離譜的角度
+      const foldX = d.cornerX + Math.min(dx * d.gain, d.pageW * 1.15);
+      turnApi.current?.handlers.touchMove(fakeEvt(foldX, d.cornerY));
+
       if (dx > 3) {
         slideRight.current = true;
         wrapperRef.current?.classList.add('tearing');
@@ -268,6 +313,26 @@ export default function FigmaTearScene({
     const onPointerUp = () => {
       lastCrackle.current = 0;
       inGrabZone.current = false;
+
+      const d = dragRef.current;
+      if (d?.active) {
+        d.active = false;
+        const api = turnApi.current;
+        const $ = window.jQuery;
+        if (api && $) {
+          /*
+           * turn.js 還有一條捷徑：按下到放開不到 200ms 就直接翻頁（_eventReleased）。
+           * 以前那要按在角上才中得到，現在按哪裡都算，隨手點一下券就撕開了。
+           * 把每頁的 time 歸零關掉它 —— 撕不撕開純看拖了多遠，沒過半照樣彈回。
+           */
+          Object.keys(api.pages || {}).forEach((k) => {
+            const f = api.pages[k]?.data?.()?.f;
+            if (f) f.time = 0;
+          });
+          api.handlers.touchEnd(fakeEvt(d.cornerX, d.cornerY));
+        }
+      }
+
       /*
        * 沒撕完就要彈回去。
        * 原本只有「完全沒往右拖」才清掉 tearing —— 拖了一半放手的話，
@@ -307,6 +372,7 @@ export default function FigmaTearScene({
       document.addEventListener('pointerdown', onCapturePointerDown, true);  // capture
       document.addEventListener('pointermove', onCapturePointerMove, true);  // capture
       document.addEventListener('pointerup',   onPointerUp);
+      document.addEventListener('pointercancel', onPointerUp);
 
       // cornerSize 超過高度一半 → tl+bl 合起來覆蓋整個 Y 軸；X 軸觸發寬度 = cornerSize
       const fbH = flipbookRef.current.clientHeight || 100;
@@ -360,6 +426,22 @@ export default function FigmaTearScene({
         },
       });
 
+      /*
+       * 拆掉 turn.js 自己綁的三個 DOM listener，改由上面那組 pointer handler 手動餵。
+       *
+       * **不拆不行**：手指真的滑過畫面時，turn.js 綁在 document 上的 mousemove／touchmove
+       * 會用手指的真實座標去改摺紙點，跟我們餵進去的位置打架 —— 紙會抖。
+       * 拆掉之後 turn.js 只剩「怎麼摺、要不要翻」的邏輯，事件全由我們決定。
+       */
+      const tdata = $fb.data();
+      if (tdata?.eventHandlers) {
+        $fb.off('mousedown touchstart', tdata.eventHandlers.touchStart);
+        $(document)
+          .off('mousemove touchmove', tdata.eventHandlers.touchMove)
+          .off('mouseup touchend',    tdata.eventHandlers.touchEnd);
+        turnApi.current = { handlers: tdata.eventHandlers, pages: tdata.pages };
+      }
+
       $fbSaved = $fb;      // 儲存供 cleanup destroy 使用
       turnReady.current = true;
     })();
@@ -369,6 +451,9 @@ export default function FigmaTearScene({
       document.removeEventListener('pointerdown', onCapturePointerDown, true);
       document.removeEventListener('pointermove', onCapturePointerMove, true);
       document.removeEventListener('pointerup',   onPointerUp);
+      document.removeEventListener('pointercancel', onPointerUp);
+      turnApi.current = null;
+      dragRef.current = null;
       // 用 closure 儲存的 $fbSaved，避免 flipbookRef.current 已經被 React 設為 null
       if (turnReady.current && $fbSaved) {
         try { $fbSaved.turn('destroy'); } catch { /* ignore */ }
@@ -394,7 +479,9 @@ export default function FigmaTearScene({
       <Image src={asset("/images/ichiban-tear/bg.webp")} alt="" fill className="object-cover" unoptimized priority />
 
       {/* 聲音開關：撕紙聲跟中獎音效都在這個畫面響，位置與轉蛋機台同一套 */}
-      <SoundToggle safeTop className="absolute top-4 right-4 z-30" />
+      <div data-ui className="absolute top-4 right-4 z-30">
+        <SoundToggle safeTop />
+      </div>
 
       {/* 場景群組：手 + 票 */}
       <div
@@ -478,24 +565,38 @@ export default function FigmaTearScene({
                 </div>
               </div>
 
-              {/* 手指提示 */}
-              {!touched && (
-                <motion.div
-                  style={{
-                    position: 'absolute', left: '35%', top: '55%',
-                    width: 52 * s, height: 52 * s,
-                    pointerEvents: 'none', zIndex: 25,
-                  }}
-                  animate={{ x: [0, 72*s, 72*s], y: [-8.5*s, -8*s, -8*s], opacity: [0,1,1,0] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', times: [0, 0.5, 0.8, 1] }}
-                >
-                  <Image src={asset("/images/finger.png")} alt="" fill className="object-contain drop-shadow-md" unoptimized />
-                </motion.div>
-              )}
             </>
           )}
         </div>
       </div>
+
+      {/*
+        滑動提示。
+        撕紙改成「畫面上任何地方按著拖」之後，提示就不能再貼在券上比劃左緣 ——
+        那會繼續教玩家去捏那個小角落。改放在券下方的畫面中央，划一段夠長的距離。
+      */}
+      {!done && !touched && (
+        <motion.div
+          className="absolute left-1/2 z-20 flex flex-col items-center"
+          style={{ top: '72%', width: 160 * s, marginLeft: -80 * s, pointerEvents: 'none' }}
+          animate={{ opacity: [0.35, 1, 1, 0.35] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', times: [0, 0.25, 0.75, 1] }}
+        >
+          <motion.div
+            style={{ width: 52 * s, height: 52 * s, position: 'relative' }}
+            animate={{ x: [-46 * s, 46 * s, -46 * s] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <Image src={asset("/images/finger.png")} alt="" fill className="object-contain drop-shadow-md" unoptimized />
+          </motion.div>
+          <span
+            className="mt-1 whitespace-nowrap font-black text-white/90"
+            style={{ fontSize: 13 * s, letterSpacing: '0.1em', textShadow: '0 2px 6px rgba(0,0,0,0.7)' }}
+          >
+            左右滑動撕開
+          </span>
+        </motion.div>
+      )}
 
       {/*
         券右下方的「下一張 ›」提示。
@@ -506,6 +607,7 @@ export default function FigmaTearScene({
         {showButton && !isLast && (
           <motion.button
             key="next-hint"
+            data-ui
             type="button"
             onClick={() => { if (!isSoundMuted()) sfxInterlude(); (onNext ?? onDone)?.(); }}
             initial={{ opacity: 0, scale: 0.9 }}
@@ -550,6 +652,7 @@ export default function FigmaTearScene({
       */}
       <div className="absolute bottom-4 left-4 right-4 z-30 flex items-center justify-end gap-3">
         <button
+          data-ui
           onClick={() => {
             if (finishedRef.current) return;
             finishedRef.current = true;
