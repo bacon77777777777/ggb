@@ -20,6 +20,7 @@ import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { categoryState } from '@/lib/categoryFlags';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { filterBannersBySchedule } from '@/lib/schedule';
+import { isJustRefreshed } from '@/lib/contentRefresh';
 import { restoreScrollTo } from '@/lib/restoreScroll';
 import PromoPopup from '@/components/promo/PromoPopup';
 import FanMenu from '@/components/home/FanMenu';
@@ -60,13 +61,20 @@ const BUILT_IN_TAB_IDS = ['all', 'ichiban', 'blindbox', 'gacha', 'card', 'custom
  * 改成把算好的順序放模組層，返回沿用；**只有下拉刷新與整頁重載才重抽**
  *（下拉刷新是 PathnameKeyed 重掛，不是 reload，所以要自己聽事件清掉）。
  */
-let sessionFeedOrder: {
-  tab: string;
+type FrozenFeed = {
   order: Map<string, number>;
   meta: Map<string, { bucket: FeedBucket; position: number }>;
-} | null = null;
+};
+/**
+ * 每個主分類各凍結一份（老闆 2026-08-30）
+ *
+ * 只存一份的話，「綜合捲到一半 → 切去轉蛋 → 切回綜合」會把綜合那份蓋掉，
+ * 切回來就重排了 —— 但玩家並沒有下拉刷新，不該換。
+ */
+const sessionFeedOrders = new Map<string, FrozenFeed>();
 if (typeof window !== 'undefined') {
-  window.addEventListener('ggb:content-refresh', () => { sessionFeedOrder = null; });
+  // 下拉刷新＝每一個分類都重抽（玩家要的就是「換一批」）
+  window.addEventListener('ggb:content-refresh', () => { sessionFeedOrders.clear(); });
 }
 
 export default function Home() {
@@ -753,9 +761,15 @@ export default function Home() {
           const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
           return tb - ta;
         });
-      } else if (activeSecondaryTab === 'featured' && sessionFeedOrder?.tab === activePrimaryTab) {
-        // 這一趟已經抽過籤了（例如剛從商品頁返回）：沿用同一份順序，不重抽
-        const { order, meta } = sessionFeedOrder;
+      } else if (
+        activeSecondaryTab === 'featured' &&
+        sessionFeedOrders.has(activePrimaryTab) &&
+        // 下拉更新要換一輪。除了上面那個事件監聽，這裡再用 isJustRefreshed() 擋一次 ——
+        // 監聽器與 PathnameKeyed 的重掛誰先誰後不該由我們賭，這個旗標是重掛前就標好的
+        !isJustRefreshed()
+      ) {
+        // 這個分類這一趟已經抽過籤了（返回首頁、切回這一籤）：沿用同一份順序，不重抽
+        const { order, meta } = sessionFeedOrders.get(activePrimaryTab)!;
         feedMeta.current = meta;
         result = [...result].sort(
           // 這一輪之後才上架的商品沒有名次，排在最後面
@@ -791,11 +805,10 @@ export default function Home() {
           };
           result = items.map(i => i.product);
           feedFirstScreen.current = result.slice(0, 6).map(p => String(p.id));
-          sessionFeedOrder = {
-            tab: activePrimaryTab,
+          sessionFeedOrders.set(activePrimaryTab, {
             order: feedOrder.current.order,
             meta: feedMeta.current,
-          };
+          });
         }
       } else if (activeSecondaryTab === 'featured') {
         const prefMap = userSeriesPref.size > 0 ? userSeriesPref : globalSeriesPop;
@@ -853,12 +866,11 @@ export default function Home() {
           };
           tail.sort((a, b) => rankKey(b) - rankKey(a));
           result = [...head, ...tail];
-          // 這一輪的順序凍結起來，返回首頁時沿用（見檔案上方 sessionFeedOrder）
-          sessionFeedOrder = {
-            tab: activePrimaryTab,
+          // 這一輪的順序凍結起來，返回首頁時沿用（見檔案上方 sessionFeedOrders）
+          sessionFeedOrders.set(activePrimaryTab, {
             order: new Map(result.map((p, i) => [String(p.id), i])),
             meta: feedMeta.current,
-          };
+          });
           // 這一輪的前排記下來，下一輪降權（上限 24 筆，別把整站都標成看過）
           try {
             sessionStorage.setItem(

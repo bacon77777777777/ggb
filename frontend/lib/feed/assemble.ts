@@ -258,6 +258,15 @@ export function assembleFeed<P extends FeedProduct>(
         if (unseen.length) pool = unseen;
       }
       if (!pool.length) continue;
+      /*
+       * 這個桶只剩一支候選、而且上一輪首屏就是它 → 這一輪讓開，改走 hot／explore。
+       *
+       * 候選只有一支時「加權抽籤」等於沒抽，那支會被釘死在同一個格子上：
+       * STG 的「快完售」只有一件商品，每次刷新首屏第 5 格都是它
+       *（老闆 2026-08-30：左邊第三個永遠是 GGB 幻獸紀元）。
+       * 只在首屏讓開 —— 它仍然留在 remaining 裡，後面照樣會被排進來。
+       */
+      if (out.length < SCREEN && pool.length === 1 && lastFirst.has(String(pool[0].id))) continue;
       let cand: P | null = null;
       for (let tries = 0; tries < 6; tries++) {
         const c = weightedPick(pool, buckets[b].weight, rng);
