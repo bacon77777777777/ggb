@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { playSfx, SFX } from '@/lib/sfx';
+import { useKnobMachineSfx } from '@/lib/useKnobMachineSfx';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { asset } from '@/lib/asset';
@@ -99,6 +99,16 @@ export function GachaMachineMode5({
   const isDropping = state === 'dropping';
   const isWaiting = state === 'waiting';
 
+  /*
+   * 音效：整台機器的聲音都由這支編排（lib/useKnobMachineSfx）。
+   * 投幣、旋鈕棘輪、閘門、蛋碰撞、落地、取物提示、待機嗡鳴與背景音樂都在裡面，
+   * 三台旋鈕機（mode2／3／5）共用同一份 —— 不要再在這裡各自 playSfx。
+   * spins：推一下不轉整圈（只有一聲悶響），立即轉蛋／試試看才有棘輪。
+   */
+  const knobSfx = useKnobMachineSfx({ isShaking, isDropping, isWaiting, spins: shakeRepeats > 1 });
+  const collisionRef = useRef(knobSfx.collision);
+  collisionRef.current = knobSfx.collision;
+
   const stateRef = useRef({ isShaking });
   // Two separate prev refs — shared ref causes the second effect to always see updated value
   const prevIsShakingForSwitchRef = useRef(false);
@@ -134,9 +144,6 @@ export function GachaMachineMode5({
   useEffect(() => {
     const timeouts: number[] = [];
     if (isShaking && !prevIsShakingForImpulseRef.current && applyShakeImpulseRef.current) {
-      if (pushSoundMode === 'auto') {
-        playSfx(SFX.gachaAuto);
-      }
       const repeats = Math.max(1, Math.floor(shakeRepeats));
       const baseInterval = pushSoundMode === 'manual' ? 0 : 1000;
       for (let i = 0; i < repeats; i++) {
@@ -158,7 +165,6 @@ export function GachaMachineMode5({
         const pool = [EGG_IMAGES[0], EGG_IMAGES[2]];
         setDropEggSrc(pool[dropEggAltIndexRef.current++ % pool.length]);
       }
-      playSfx(SFX.eggDrop);
     }
     prevIsDroppingRef.current = isDropping;
   }, [isDropping, isSoldOut, hasHighTierPending]);
@@ -193,10 +199,11 @@ export function GachaMachineMode5({
           // Motion comes purely from applyShakeImpulse, no continuous turbulence here
           egg.vx *= friction; egg.vy *= friction; egg.angularVelocity *= angularFriction;
           egg.x += egg.vx * dt; egg.y += egg.vy * dt; egg.angle += egg.angularVelocity * dt;
-          if (egg.x - egg.radius < 0) { egg.x = egg.radius; egg.vx = -egg.vx * restitution; }
-          if (egg.x + egg.radius > 1) { egg.x = 1 - egg.radius; egg.vx = -egg.vx * restitution; }
-          if (egg.y + egg.radius > floorY) { egg.y = floorY - egg.radius; egg.vy = -egg.vy * restitution; }
-          if (egg.y - egg.radius < 0) { egg.y = egg.radius; egg.vy = -egg.vy * restitution; }
+          // 撞到艙壁／底板就出聲，力道換算成音量與音高（引擎那邊有節流與門檻）
+          if (egg.x - egg.radius < 0) { egg.x = egg.radius; collisionRef.current(Math.abs(egg.vx) / 18); egg.vx = -egg.vx * restitution; }
+          if (egg.x + egg.radius > 1) { egg.x = 1 - egg.radius; collisionRef.current(Math.abs(egg.vx) / 18); egg.vx = -egg.vx * restitution; }
+          if (egg.y + egg.radius > floorY) { egg.y = floorY - egg.radius; collisionRef.current(Math.abs(egg.vy) / 18); egg.vy = -egg.vy * restitution; }
+          if (egg.y - egg.radius < 0) { egg.y = egg.radius; collisionRef.current(Math.abs(egg.vy) / 22); egg.vy = -egg.vy * restitution; }
         }
 
         for (let i = 0; i < current.length; i++) {
@@ -210,6 +217,8 @@ export function GachaMachineMode5({
             const nx = dx / dist, ny = dy / dist;
             a.x -= nx * overlap * 0.5; a.y -= ny * overlap * 0.5;
             b.x += nx * overlap * 0.5; b.y += ny * overlap * 0.5;
+            // 蛋撞蛋：用相對速度當力道，輕輕靠上去不會出聲（引擎的門檻擋掉）
+            collisionRef.current(Math.hypot(a.vx - b.vx, a.vy - b.vy) / 22);
             const [avx, avy] = [a.vx, a.vy];
             a.vx = b.vx * restitution; a.vy = b.vy * restitution;
             b.vx = avx * restitution; b.vy = avy * restitution;
@@ -320,7 +329,7 @@ export function GachaMachineMode5({
               animate={{ scale: [1, 1.1, 1] }}
               transition={{ duration: 0.8, repeat: Infinity, repeatType: 'reverse' }}
               className="absolute inset-0 flex items-center justify-center cursor-pointer"
-              onClick={() => onHoleClick?.()}
+              onClick={() => { knobSfx.pickup(); onHoleClick?.(); }}
             >
               <div className="relative w-[77%] h-[77%]">
                 <Image src={dropEggSrc} alt="waiting capsule" fill className="object-contain brightness-110" unoptimized />

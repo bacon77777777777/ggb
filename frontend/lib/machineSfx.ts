@@ -172,6 +172,17 @@ export function initMachineAudio(masterVolume?: number) {
   if (ctx.state === 'suspended') void ctx.resume();
 }
 
+/**
+ * 讓其他機台音效模組共用同一個 AudioContext（目前是 lib/gachaKnobSfx）。
+ *
+ * 不各開一個的理由跟檔頭那段一樣：行動裝置同時開兩個 context 時，
+ * 常常有一個發不出聲；而且中獎號角的 ducking 也壓不到另一個 context 的音樂。
+ * 呼叫端要先 initMachineAudio() 確保 context 存在，再拿這裡的節點來接。
+ */
+export function getMachineAudio(): { ctx: AudioContext; master: GainNode; noise: AudioBuffer } | null {
+  return A ? { ctx: A.ctx, master: A.master, noise: A.noise } : null;
+}
+
 /** 使用者互動後把 suspended 的 context 叫醒，順便把音樂音量補上 */
 export function resumeMachineAudio() {
   if (!A) return;
