@@ -153,10 +153,11 @@ function CommentItem({
         <Avatar src={comment.user.avatar_url} name={comment.user.name} size={30} />
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-1.5">
-            <span className="text-[13px] font-black text-neutral-900 dark:text-white">{comment.user.name}</span>
+            {/* 暱稱只是標籤：字重降一階，讓底下的留言本文才是最顯眼的（老闆 2026-08-30） */}
+            <span className="text-[13px] font-bold text-neutral-900 dark:text-white">{comment.user.name}</span>
             <span className="text-[11px] text-neutral-400">{timeAgo(comment.created_at)}</span>
           </div>
-          <p className="text-[13px] text-neutral-700 dark:text-neutral-300 leading-[1.45] break-words mt-0.5">
+          <p className="text-[14px] text-neutral-800 dark:text-neutral-200 leading-[1.45] break-words mt-0.5">
             {comment.content}
           </p>
         </div>
@@ -177,10 +178,11 @@ function CommentItem({
 }
 
 // ─── 留言抽屜 ─────────────────────────────────────────────────────────────────
-function SendCircle() {
+/** 送出鈕：膠囊（老闆 2026-08-30 指定不用維持圓形），比原本的 26px 圓鈕好按 */
+function SendPill() {
   return (
-    <div className="w-[26px] h-[26px] rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-      <Send className="w-3 h-3 text-white" />
+    <div className="h-8 px-3.5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+      <Send className="w-3.5 h-3.5 text-white" />
     </div>
   );
 }
@@ -294,7 +296,7 @@ function CommentSheet({
               readOnly={!isLoggedIn}
               placeholder={isLoggedIn ? '說點什麼...' : '請先登入才能留言唷'}
               className={cn(
-                'w-full rounded-full pl-4 pr-10 py-2 text-[13px] placeholder-neutral-400 outline-none',
+                'w-full rounded-full pl-4 pr-14 py-2.5 text-[14px] placeholder-neutral-400 outline-none',
                 isLoggedIn
                   ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white'
                   : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 cursor-not-allowed'
@@ -305,7 +307,7 @@ function CommentSheet({
               disabled={!isLoggedIn || !text.trim() || submitting}
               className="absolute right-2 top-1/2 -translate-y-1/2 transition-opacity duration-150 disabled:opacity-25"
             >
-              <SendCircle />
+              <SendPill />
             </button>
           </div>
         </div>
@@ -411,7 +413,7 @@ function DesktopComments({
               <Avatar src={c.user.avatar_url} name={c.user.name} size={36} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[14px] font-black text-neutral-900 dark:text-white">{c.user.name}</span>
+                  <span className="text-[14px] font-bold text-neutral-900 dark:text-white">{c.user.name}</span>
                   <span className="text-[12px] text-neutral-400">{timeAgo(c.created_at)}</span>
                   {c.is_own && (
                     <button onClick={() => onDelete(c.id)}
@@ -420,7 +422,7 @@ function DesktopComments({
                     </button>
                   )}
                 </div>
-                <p className="text-[14px] text-neutral-700 dark:text-neutral-300 leading-relaxed break-words mt-1">{c.content}</p>
+                <p className="text-[15px] text-neutral-800 dark:text-neutral-200 leading-relaxed break-words mt-1">{c.content}</p>
               </div>
               <button onClick={() => onLike(c.id)}
                 className={cn('flex items-center gap-1 flex-shrink-0 self-center', c.is_liked ? 'text-primary' : 'text-neutral-400 hover:text-primary')}>
@@ -799,11 +801,11 @@ export default function NewsDetailPage() {
           onClick={() => setSheetOpen(true)}
           className="flex-1 relative flex items-center bg-neutral-100 dark:bg-neutral-800 rounded-full text-left"
         >
-          <span className="flex-1 text-[13px] text-neutral-400 px-4 py-2 pr-10">
+          <span className="flex-1 text-[14px] text-neutral-400 px-4 py-3 pr-14">
             {commentCount !== null ? `${commentCount} 則留言` : '則留言'}
           </span>
           <span className="absolute right-2 top-1/2 -translate-y-1/2">
-            <SendCircle />
+            <SendPill />
           </span>
         </button>
       </div>

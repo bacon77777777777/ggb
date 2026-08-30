@@ -52,6 +52,23 @@ type SortMode = 'latest' | 'hot' | 'price-asc' | 'price-desc' | 'sold-out';
  */
 const BUILT_IN_TAB_IDS = ['all', 'ichiban', 'blindbox', 'gacha', 'card', 'custom', 'sell'] as const;
 
+/*
+ * 推薦頁的排序凍結在「這一趟」（老闆 2026-08-30）
+ *
+ * 原本每次掛載都換一顆種子重抽一輪 —— 從商品頁返回時位置雖然還原了，
+ * 卡片卻已經整片換過，等於停在一堆沒看過的商品上，記憶位置就白記了。
+ * 改成把算好的順序放模組層，返回沿用；**只有下拉刷新與整頁重載才重抽**
+ *（下拉刷新是 PathnameKeyed 重掛，不是 reload，所以要自己聽事件清掉）。
+ */
+let sessionFeedOrder: {
+  tab: string;
+  order: Map<string, number>;
+  meta: Map<string, { bucket: FeedBucket; position: number }>;
+} | null = null;
+if (typeof window !== 'undefined') {
+  window.addEventListener('ggb:content-refresh', () => { sessionFeedOrder = null; });
+}
+
 export default function Home() {
   const homeRestoreKey = 'gachago:home_restore';
 
@@ -736,6 +753,14 @@ export default function Home() {
           const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
           return tb - ta;
         });
+      } else if (activeSecondaryTab === 'featured' && sessionFeedOrder?.tab === activePrimaryTab) {
+        // 這一趟已經抽過籤了（例如剛從商品頁返回）：沿用同一份順序，不重抽
+        const { order, meta } = sessionFeedOrder;
+        feedMeta.current = meta;
+        result = [...result].sort(
+          // 這一輪之後才上架的商品沒有名次，排在最後面
+          (a, b) => (order.get(String(a.id)) ?? 1e9) - (order.get(String(b.id)) ?? 1e9),
+        );
       } else if (activeSecondaryTab === 'featured' && feedVariant === 'v2') {
         /*
          * 新 feed（老闆 2026-08-22）：分桶配額＋加權抽籤＋Thompson 學習權重＋看過懲罰，
@@ -766,6 +791,11 @@ export default function Home() {
           };
           result = items.map(i => i.product);
           feedFirstScreen.current = result.slice(0, 6).map(p => String(p.id));
+          sessionFeedOrder = {
+            tab: activePrimaryTab,
+            order: feedOrder.current.order,
+            meta: feedMeta.current,
+          };
         }
       } else if (activeSecondaryTab === 'featured') {
         const prefMap = userSeriesPref.size > 0 ? userSeriesPref : globalSeriesPop;
@@ -823,6 +853,12 @@ export default function Home() {
           };
           tail.sort((a, b) => rankKey(b) - rankKey(a));
           result = [...head, ...tail];
+          // 這一輪的順序凍結起來，返回首頁時沿用（見檔案上方 sessionFeedOrder）
+          sessionFeedOrder = {
+            tab: activePrimaryTab,
+            order: new Map(result.map((p, i) => [String(p.id), i])),
+            meta: feedMeta.current,
+          };
           // 這一輪的前排記下來，下一輪降權（上限 24 筆，別把整站都標成看過）
           try {
             sessionStorage.setItem(

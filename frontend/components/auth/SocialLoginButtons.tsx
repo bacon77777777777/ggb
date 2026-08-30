@@ -10,6 +10,7 @@ import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { closeInAppBrowser, openPayment } from '@/lib/native/browser';
 import { LINE_ICON, GOOGLE_ICON, APPLE_ICON } from '@/lib/inlineIcons';
 import { cn } from '@/lib/utils';
+import { asset } from '@/lib/asset';
 
 /**
  * 登入頁按鈕的共用底樣式（Figma 480:3532：327×48、圓角 6、字 16px、圖標 24px）。
@@ -373,9 +374,20 @@ export function SocialLoginButtons() {
           <span className={LABEL_BOX}>LINE登入</span>
         </button>
         {/* 右上角的紅膠囊（老闆 2026-08-30）：貼在按鈕邊角外緣，
-            pointer-events-none 讓它不會擋到底下那顆按鈕的點擊區 */}
-        <span className="pointer-events-none absolute -right-1.5 -top-2 rounded-full bg-accent-red px-2 py-1 text-[11px] font-black leading-none text-white shadow-[0_2px_4px_rgba(0,0,0,0.15)]">
-          拿300積分
+            pointer-events-none 讓它不會擋到底下那顆按鈕的點擊區。
+            文字包 .cjk-optical-center（+0.13em）—— 中文在小膠囊裡靠字型的
+            行高置中會偏上，圖標本身不套，不然幣會掉到字下面 */}
+        <span className="pointer-events-none absolute -right-1.5 -top-2 inline-flex h-[24px] items-center gap-[3px] rounded-full bg-accent-red px-2 text-[13px] font-black leading-none text-white shadow-[0_2px_4px_rgba(0,0,0,0.15)]">
+          <span className="cjk-optical-center">拿</span>
+          <Image
+            src={asset('/images/coin.png')}
+            alt=""
+            width={15}
+            height={15}
+            unoptimized
+            className="h-[15px] w-[15px] shrink-0 object-contain"
+          />
+          <span className="cjk-optical-center">300積分</span>
         </span>
       </div>
       )}
