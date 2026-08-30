@@ -51,12 +51,32 @@ const BW = 100 * S, BH = 133 * S, BD = 78 * S;
 
 /** 依 bg 實測：隔板柱 x、層板面 y */
 const SLOT_XS = [122, 245, 370, 494, 613];
-/** 層板面前緣：取到「推出到底時含 yaw 的最前下角投影」還留 4px 餘裕 */
-const ROW_FLOOR = [390, 573];
-/** 依 front 實測：取物口黑色遮罩範圍 */
-const TRAY = { left: 108, right: 640, top: 640, bottom: 780, cx: 374, cy: 710 };
-/** 底部漏斗碰撞範圍 */
-const CHUTE = { topY: 596.765, floorY: 815.087, neckL: 109.933, neckR: 633.523 };
+/**
+ * 層板面前緣：取到「推出到底時含 yaw 的最前下角投影」還留 4px 餘裕。
+ *
+ * 2026-08-30 換新機台圖（SURPRISE BOX）後的校正過程：
+ *   舊圖的 [390, 573] → 盒子浮在層板上方（老闆回報下排明顯浮著）
+ *   照新圖量到的層板線 [413, 621] → 又壓過頭，盒底切到層板前緣
+ *   現值 [402, 606] → 取中間。量到的線是**層板板面**，但盒子有 yaw 與俯視角，
+ *   視覺上的接觸點比板面線再高一點，所以不能直接照量到的數字放。
+ */
+const ROW_FLOOR = [402, 606];
+/**
+ * 取物口：CTA「點擊取物」與遮罩的定位基準。
+ *
+ * 2026-08-30 往下 50px（老闆：「洞口也要往下」）—— 前板那個橢圓開口的實際範圍是
+ * y 695~825（中心 760），舊的 cy 710 讓「點擊取物」壓在開口上緣的機殼上。
+ */
+const TRAY = { left: 108, right: 640, top: 690, bottom: 830, cx: 374, cy: 760 };
+/**
+ * 底部漏斗碰撞範圍。`floorY` 是盒子落地的地板面。
+ *
+ * 2026-08-30 從 815.087 下修到 835（老闆：盒子落地後再往下一點）。
+ * **只動這個、不動 TRAY** —— 「點擊取物」那行字掛在 TRAY.cy 上，兩者各自獨立：
+ * 地板決定盒子停在哪、TRAY 決定字在哪。盒底比開口下緣（824）低一截是對的，
+ * 那一小段本來就該被前板的下唇擋住。
+ */
+const CHUTE = { topY: 596.765, floorY: 835, neckL: 109.933, neckR: 633.523 };
 const STEP = BD + 4, INCLINE = 18, PUSH_Z = 34, Z_EMPH = 1.2, TRAY_Z = 20, HANDOFF = 1.15;
 const ADV_TAIL = 260, ADV_SOLO = 460, FADE_MS = 380;
 
@@ -278,8 +298,9 @@ export function BlindboxMachineMode5({
      * 但格子邊界在 mipmap 取樣下會互相吃到對方的像素（texture bleeding），
      * 得再補間隙與半像素內縮。切片沒有這個問題，六張小貼圖的成本可以忽略。
      */
-    /** 五款盒子外觀，架上隨機擺。換一批（resetBoxes）會重抽 */
-    const DESIGNS = [1, 2, 3, 4, 5].map(n => `${ASSETS}/box${n}.webp`);
+    /** 六款盒子外觀，架上隨機擺。換一批（resetBoxes）會重抽
+     *  （2026-08-30 老闆全部換成 Wild Box 系列，並從五款加到六款） */
+    const DESIGNS = [1, 2, 3, 4, 5, 6].map(n => `${ASSETS}/box${n}.webp`);
 
     const loadAtlas = (src: string) => {
       const t6 = Array.from({ length: 6 }, () => {
@@ -426,13 +447,43 @@ export function BlindboxMachineMode5({
     const slotsRef: Box['slot'][] = [];
 
     /**
-     * 抽五欄的外觀，上下兩排共用同一款
+     * 抽十格的外觀 —— **洗牌發牌**，不是每格各自擲骰子（老闆 2026-08-30）
      *
-     * 老闆指定第二排要跟第一排一樣圖，所以隨機是「每欄一次」而不是「每格一次」——
-     * 畫面上橫看是五款隨機、直看上下成對。換一批會重抽，抽完自動補貨不會。
+     * 原本是「每欄抽一次、上下兩排共用同一款」（更早之前老闆要求兩排一樣），
+     * 而且每欄獨立亂數：5 款抽 5 欄，全不重複的機率只有 5!/5⁵ ≈ 3.8%，
+     * 所以「四個一樣一個不同」才是常態，不是壞掉。
+     *
+     * 改成從洗好的牌堆發：十格剛好等於「五款各兩張」，**每一款保證出現兩次**，
+     * 不可能再出現四連同款。發完再跑一次相鄰修正（同欄上下、同排左右不同款），
+     * 讓畫面上看起來更散。
      */
-    const rollColDesigns = () =>
-      Array.from({ length: SLOT_XS.length }, () => Math.floor(Math.random() * matsDimSets.length));
+    const rollSlotDesigns = () => {
+      const n = matsDimSets.length;
+      const deck: number[] = [];
+      while (deck.length < 10) {
+        const round = Array.from({ length: n }, (_, i) => i);
+        for (let i = round.length - 1; i > 0; i--) {          // Fisher-Yates
+          const j = Math.floor(Math.random() * (i + 1));
+          [round[i], round[j]] = [round[j], round[i]];
+        }
+        deck.push(...round);
+      }
+      const out = deck.slice(0, 10);
+      // 相鄰去重：i 的左邊（同排 i-1，跨排不算）與正上／正下（i±5）都不該同款
+      const clash = (arr: number[], i: number, v: number) =>
+        (i % 5 !== 0 && arr[i - 1] === v) || (i >= 5 && arr[i - 5] === v)
+        || (i < 5 && arr[i + 5] !== undefined && arr[i + 5] === v);
+      for (let i = 0; i < out.length; i++) {
+        if (!clash(out, i, out[i])) continue;
+        for (let j = i + 1; j < out.length; j++) {
+          if (!clash(out, i, out[j]) && !clash(out, j, out[i])) {
+            [out[i], out[j]] = [out[j], out[i]];
+            break;
+          }
+        }
+      }
+      return out;
+    };
 
     /** 擺盒：機台永遠擺滿十格（庫存展示用）。抽幾盒是掉的時候才決定 */
     const resetBoxes = () => {
@@ -444,12 +495,12 @@ export function BlindboxMachineMode5({
       const stock = paramsRef.current.stock;
       slotsRef.length = 0;
 
-      const colDesign = rollColDesigns();
+      const slotDesign = rollSlotDesigns();   // 十格各自一款
       for (let r = 0; r < 2; r++) {
         for (let c = 0; c < 5; c++) {
           slotsRef.push({
             x: SLOT_XS[c], y: ROW_FLOOR[r] - BH / 2 - 2, floorY: ROW_FLOOR[r],
-            row: r, col: c, design: colDesign[c],
+            row: r, col: c, design: slotDesign[r * 5 + c],
             z0: (Math.random() - 0.5) * 12, startAt: 0, pushMs: 400,
           });
         }
@@ -725,8 +776,8 @@ export function BlindboxMachineMode5({
     const refillSlots = (reshuffle = false) => {
       const stock = paramsRef.current.stock;
       if (reshuffle) {
-        const colDesign = rollColDesigns();
-        slotsRef.forEach(slot => { slot.design = colDesign[slot.col]; });
+        const slotDesign = rollSlotDesigns();
+        slotsRef.forEach((slot, i) => { slot.design = slotDesign[i]; });
       }
       const want = stock + 1;
       const bySlot = new Map<Box['slot'], Box[]>();
