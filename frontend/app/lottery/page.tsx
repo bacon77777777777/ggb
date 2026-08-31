@@ -27,7 +27,7 @@ import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { createClient } from '@/lib/supabase/client';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { asset } from '@/lib/asset';
-import { phaseOf, phaseMeta, countdownText, ctaText, type LotteryEventRow } from '@/lib/lottery';
+import { phaseOf, phaseMeta, countdownText, ctaText, phaseRank, isClosed, type LotteryEventRow } from '@/lib/lottery';
 
 /*
  * 分類頁籤照**品牌**分，不照檔期狀態（老闆 2026-08-31）。
@@ -39,7 +39,6 @@ import { phaseOf, phaseMeta, countdownText, ctaText, type LotteryEventRow } from
  * 頁籤清單由當前有的檔期算出來 —— 沒有那個品牌的檔期就不該有那個頁籤。
  */
 const ALL_TAB = 'all';
-const OTHER_BRAND = '其他';
 
 /*
  * 排序（老闆 2026-08-31，頁籤列最右邊的漏斗）。
@@ -52,13 +51,12 @@ const OTHER_BRAND = '其他';
  * 已經開完的檔期擋在前面等於把活的東西推到看不到的地方。
  */
 const SORTS = [
-  { key: 'latest', label: '最新' },
-  { key: 'hot',    label: '熱門' },
-  { key: 'ended',  label: '已結束' },
+  { key: 'latest', label: '最新',   hint: '新上架的在前' },
+  { key: 'hot',    label: '熱門',   hint: '登記人數多的在前' },
+  { key: 'ended',  label: '已結束', hint: '只看已開獎的' },
 ] as const;
 type SortKey = (typeof SORTS)[number]['key'];
 
-const isEnded = (p: ReturnType<typeof phaseOf>) => p === 'drawn' || p === 'cancelled';
 
 export default function LotteryListPage() {
   const router = useRouter();
@@ -125,13 +123,15 @@ export default function LotteryListPage() {
     })();
   }, [supabase]);
 
-  const brandOf = (e: LotteryEventRow) => (e.brand?.trim() || OTHER_BRAND);
+  const brandOf = (e: LotteryEventRow) => e.brand?.trim() || '';
 
-  /* 頁籤＝目前真的有檔期的品牌。「其他」永遠排最後 */
+  /*
+   * 頁籤＝目前真的有檔期的品牌。**沒有「其他」這一格**（老闆 2026-08-31）——
+   * 沒填品牌的檔期只出現在「全部」裡，不需要為了它多一個沒人會點的頁籤。
+   */
   const tabs = useMemo(() => {
-    const brands = [...new Set(events.map(brandOf))];
-    brands.sort((a, b) =>
-      a === OTHER_BRAND ? 1 : b === OTHER_BRAND ? -1 : a.localeCompare(b, 'zh-Hant'));
+    const brands = [...new Set(events.map(brandOf).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'zh-Hant'));
     return [ALL_TAB, ...brands];
   }, [events]);
 
@@ -141,18 +141,20 @@ export default function LotteryListPage() {
 
     if (sort === 'ended') {
       return byBrand
-        .filter(x => isEnded(x.phase))
+        .filter(x => isClosed(x.phase))
         .sort((a, b) => +new Date(b.e.drawn_at ?? b.e.draw_at) - +new Date(a.e.drawn_at ?? a.e.draw_at));
     }
 
     return [...byBrand].sort((a, b) => {
-      // 已結束一律沉到最後，不管是哪一種排序
-      const ea = isEnded(a.phase) ? 1 : 0;
-      const eb = isEnded(b.phase) ? 1 : 0;
-      if (ea !== eb) return ea - eb;
+      /*
+       * 先照階段排：還能登記的在最前、已截止的沉到最後。
+       * 不是只把「已開獎」丟到後面 —— 待開獎的玩家一樣什麼都做不了。
+       */
+      const d = phaseRank(a.phase) - phaseRank(b.phase);
+      if (d !== 0) return d;
       if (sort === 'hot') {
-        const d = (counts[b.e.id] ?? 0) - (counts[a.e.id] ?? 0);
-        if (d !== 0) return d;
+        const byHot = (counts[b.e.id] ?? 0) - (counts[a.e.id] ?? 0);
+        if (byHot !== 0) return byHot;
       }
       // 最新上架：新建立的在前。同時也是熱門模式下人數相同時的次要排序
       return +new Date(b.e.created_at) - +new Date(a.e.created_at);
@@ -202,62 +204,41 @@ export default function LotteryListPage() {
           ))}
           </div>
 
-          {/*
-            排序。圖示與下拉樣式沿用首頁那顆（app/page.tsx 的「排序方式」），不要自創 ——
-            同一件事在兩頁長不一樣，玩家要重新學一次（老闆 2026-08-31）。
-            這裡只留圖示不放字（老闆指定）：它跟品牌頁籤擠同一列，多兩個字就會把頁籤壓掉。
-            點外面關掉：手機沒有 hover，不關會一直卡在畫面上。
-          */}
-          <div className="relative flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => setSortOpen(o => !o)}
-              aria-label="排序方式"
-              className={`flex h-8 w-8 items-center justify-center rounded-xl border bg-white shadow-soft transition-all active:scale-95 dark:bg-neutral-900 ${
-                sortOpen
-                  ? 'border-primary text-primary'
-                  : 'border-neutral-100 text-neutral-600 hover:border-primary hover:text-primary dark:border-neutral-800 dark:text-neutral-400'
-              }`}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                className="h-4 w-4"
-                stroke="currentColor"
-                strokeWidth="2"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M4 4h16" />
-                <path d="M6 12h12" />
-                <path d="M10 20h4" />
-              </svg>
-            </button>
-            {sortOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setSortOpen(false)} />
-                <div className="absolute right-0 z-50 mt-2 w-44 rounded-lg border border-neutral-100 bg-white py-2 shadow-modal dark:border-neutral-800 dark:bg-neutral-900">
-                  {SORTS.map(o => (
-                    <button
-                      key={o.key}
-                      type="button"
-                      onClick={() => { setSort(o.key); setSortOpen(false); }}
-                      className={`w-full px-4 py-2.5 text-left text-[13px] font-black transition-colors ${
-                        sort === o.key
-                          ? 'bg-primary/5 text-primary'
-                          : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white'
-                      }`}
-                    >
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+          {/* 排序。整組（按鈕樣式、圖示、下拉版面）照抄挑戰機台頁 ——
+              那頁是同樣版型：頁籤列＋右側排序。不要自己加邊框白底陰影 */}
+          <button onClick={() => setSortOpen(v => !v)} aria-label="排序"
+            className={`ml-1 flex-shrink-0 rounded-full p-1.5 transition-all active:scale-95 ${
+              sort === 'latest'
+                ? 'text-neutral-500 hover:bg-primary/5 hover:text-primary'
+                : 'bg-primary/10 text-primary'
+            }`}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4"
+              stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 4h16" /><path d="M6 12h12" /><path d="M10 20h4" />
+            </svg>
+          </button>
         </div>
       </div>
+
+      {sortOpen && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setSortOpen(false)} />
+          <div className="relative z-50 mx-2 mt-1 overflow-hidden rounded-xl border border-neutral-100 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
+            {SORTS.map(o => (
+              <button key={o.key}
+                onClick={() => { setSort(o.key); setSortOpen(false); }}
+                className={`flex w-full items-center justify-between px-4 py-2.5 text-left transition-colors ${
+                  sort === o.key ? 'bg-primary/5' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800'
+                }`}>
+                <span className={`text-[13px] font-black ${
+                  sort === o.key ? 'text-primary' : 'text-neutral-700 dark:text-neutral-200'
+                }`}>{o.label}</span>
+                <span className="text-[11px] text-neutral-400">{o.hint}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       <div className="space-y-3 px-3 pt-3">
         {filtered.length === 0 && (

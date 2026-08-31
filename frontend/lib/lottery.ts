@@ -49,6 +49,28 @@ export function phaseOf(e: Pick<LotteryEventRow,
   return 'pending_draw';
 }
 
+/*
+ * 列表排序用的階段順序：**還能登記的排前面，不能動的沉到最後**（老闆 2026-08-31）。
+ *
+ * 「已截止」不是只有已開獎 —— 待開獎（登記已截止、等公布）玩家一樣什麼都做不了，
+ * 擋在前面等於把還能登記的推到看不到的地方。
+ */
+export function phaseRank(p: LotteryPhase): number {
+  switch (p) {
+    case 'registering':  return 0;   // 現在就能登記
+    case 'upcoming':     return 1;   // 等一下就能登記
+    case 'pending_draw': return 2;   // 登記已截止，等開獎
+    case 'drawn':        return 3;
+    case 'cancelled':    return 4;
+    default:             return 5;
+  }
+}
+
+/** 已經不能登記了（列表排序時一律沉底、「已結束」篩選也用這個） */
+export function isClosed(p: LotteryPhase): boolean {
+  return phaseRank(p) >= 2;
+}
+
 /** `urgent` 是給倒數文字上紅色用的：只有登記中才有「快沒時間了」可言 */
 export function phaseMeta(p: LotteryPhase): { label: string; cls: string; urgent: boolean } {
   switch (p) {
@@ -109,7 +131,9 @@ export function countdownText(
     new Date(iso).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   switch (p) {
-    case 'upcoming':     return `${at(e.register_start_at)} 開放登記`;
+    // 尚未開始也要倒數（老闆 2026-08-31）——「9/1 09:49 開放登記」看不出還有多久，
+    // 玩家沒有辦法判斷要不要現在收藏、還是等等再回來
+    case 'upcoming':     return `距開放登記 ${human(left(e.register_start_at))}`;
     case 'registering':  return `距登記截止 ${human(left(e.register_end_at))}`;
     case 'pending_draw': return `${at(e.draw_at)} 公布名單`;
     case 'drawn':        return `${at(e.drawn_at ?? e.draw_at)} 已公布名單`;
