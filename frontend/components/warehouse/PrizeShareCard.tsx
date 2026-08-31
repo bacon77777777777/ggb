@@ -30,111 +30,6 @@ function loadImage(src: string, cors = false): Promise<HTMLImageElement> {
   });
 }
 
-/*
- * 品項圖去背（老闆 2026-08-24）。成本 0：純 Canvas 像素運算，不呼叫任何服務
- * （CLAUDE.md 的取材成本原則）。之所以做得到，是因為外部圖本來就走同源代理 ——
- * 沒有那層，canvas 會被污染、getImageData 直接拋 SecurityError。
- *
- * 演算法是踩過兩個坑之後定下來的，改之前先看這段：
- *
- * ❌ **不能「把接近白的像素都挖掉」**：商品照裡白色不只在背景 —— 那隻公仔的靴子、
- *    圍巾、刀刃都是淺色，一律挖掉會在人物身上開洞。
- * ❌ **不能「跟四角平均色差太遠就留著」**：商品照的背景常常是漸層（實測那張是
- *    上緣 232、下緣 255），用固定參考色會把純白的下半部判成「不是背景」，
- *    結果留下一塊灰。
- * ❌ **不能沿著鄰居色差漫延**：能跟著漸層走，但淺色刀刃與背景之間是平滑過渡，
- *    會被一路吃掉。
- *
- * ✅ 現在的作法：用「亮度高且彩度低」算出背景分數，**只挖跟畫面邊緣連得起來的**
- *    （flood fill），所以人物內部的白留著；判定是二值的（不做半透明漸變），
- *    最後對 alpha 做一次 3×3 平均當 1px 柔邊，接住照片本身的抗鋸齒。
- */
-function removeBackdrop(img: HTMLImageElement): HTMLCanvasElement | HTMLImageElement {
-  const MAX = 900;
-  const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-  const w = Math.max(1, Math.round(img.width * scale));
-  const h = Math.max(1, Math.round(img.height * scale));
-
-  const c = document.createElement('canvas');
-  c.width = w; c.height = h;
-  const cx = c.getContext('2d', { willReadFrequently: true });
-  if (!cx) return img;
-  cx.drawImage(img, 0, 0, w, h);
-
-  let px: ImageData;
-  try { px = cx.getImageData(0, 0, w, h); } catch { return img; }
-  const d = px.data;
-
-  /*
-   * 已經去過背的圖就原樣回傳（老闆 2026-08-25）。
-   * ⚠️ 不可以只看左上角那一個像素（舊版 `d[3] === 0`）—— 去背圖的四角常常不是
-   * 全透明（帶陰影、有 1px 白邊、或物件本來就頂到角落），漏判就會再去一次背，
-   * 而背景既然已經透明，flood fill 只好從物件本身的淺色吃進去 —— 就是老闆看到的
-   * 「去到品項圖」。改成抽樣整張：只要有像樣比例的透明像素就代表本來就有 alpha。
-   */
-  let clear = 0, sampled = 0;
-  for (let p = 0; p < w * h; p += 7) { sampled++; if (d[p * 4 + 3] < 250) clear++; }
-  if (clear > sampled * 0.02) return c;
-
-  /** 背景分數：亮度 185→220、彩度 34→18 之間過渡，兩者取小 */
-  const score = (i: number) => {
-    const r = d[i], g = d[i + 1], b = d[i + 2];
-    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-    const sat = Math.max(r, g, b) - Math.min(r, g, b);
-    return Math.max(0, Math.min(1, Math.min((lum - 185) / 35, (34 - sat) / 16)));
-  };
-  const CUT = 0.8;
-
-  const seen = new Uint8Array(w * h);
-  const stack: number[] = [];
-  const push = (x: number, y: number) => {
-    if (x < 0 || y < 0 || x >= w || y >= h) return;
-    const p = y * w + x;
-    if (seen[p]) return;
-    if (score(p * 4) < CUT) return;
-    seen[p] = 1;
-    stack.push(x, y);
-  };
-  for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); }
-  for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
-
-  // 邊緣一圈都不像背景（深底、有花紋的照片）就別硬做
-  if (stack.length === 0) return img;
-
-  while (stack.length) {
-    const y = stack.pop()!;
-    const x = stack.pop()!;
-    push(x + 1, y); push(x - 1, y); push(x, y + 1); push(x, y - 1);
-  }
-
-  let removed = 0;
-  const alpha = new Uint8Array(w * h);
-  for (let p = 0; p < w * h; p++) {
-    if (seen[p]) removed++;
-    else alpha[p] = 255;
-  }
-  // 幾乎整張被吃掉＝判斷錯了（白底白物），退回原圖
-  if (removed > w * h * 0.97) return img;
-
-  // 3×3 平均當柔邊。讀 alpha[]、寫回 d[]，不會自我回饋
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      let sum = 0, n = 0;
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          const yy = y + dy, xx = x + dx;
-          if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
-          sum += alpha[yy * w + xx]; n++;
-        }
-      }
-      d[(y * w + x) * 4 + 3] = Math.round(sum / n);
-    }
-  }
-
-  cx.putImageData(px, 0, 0);
-  return c;
-}
-
 /** 依字數折行，最多 maxLines 行，超出的最後一行加省略號 */
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number): string[] {
   const lines: string[] = [];
@@ -184,13 +79,14 @@ export function PrizeShareCard({ data, onClose }: { data: PrizeShareData; onClos
             ? `/api/image-proxy?url=${encodeURIComponent(data.prizeImage)}`
             : data.prizeImage;
           const img = await loadImage(src, true);
-          // 白底商品照去背，讓品項直接站在底圖的紫色上（見 removeBackdrop）
-          const cut = removeBackdrop(img);
+          /* 品項圖原樣畫上去，**不做自動去背**（老闆 2026-08-31）。
+             舊版用 Canvas flood fill 挖白底，但商品照百百種，判錯就在品項身上開洞
+             或留一塊灰；要透明背景請在後台上傳已去背的圖。 */
           const box = L.prizeImage;
-          const scale = Math.min(box.w / cut.width, box.h / cut.height);
-          const w = cut.width * scale;
-          const h = cut.height * scale;
-          ctx.drawImage(cut, box.x + (box.w - w) / 2, box.y + (box.h - h) / 2, w, h);
+          const scale = Math.min(box.w / img.width, box.h / img.height);
+          const w = img.width * scale;
+          const h = img.height * scale;
+          ctx.drawImage(img, box.x + (box.w - w) / 2, box.y + (box.h - h) / 2, w, h);
         } catch {
           // 品項圖載不到（外站擋 CORS、圖被刪）就只留底圖，其餘照畫
         }

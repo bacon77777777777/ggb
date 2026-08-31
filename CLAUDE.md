@@ -123,13 +123,14 @@ psql <SUPABASE_DB_URL> -f backend/db/migrations/<n>_name.sql
 所有 AI 單位為 `backend/app/api/cron/` 下的 API routes，由 pg_cron 定時呼叫：
 
 > ⚠️ **排程以資料庫為準，不要照本表複誦**。本表為 2026-08-03 對 PROD `cron.job` 的核對結果；
-> 排程改過而文件沒跟上是常態（此表先前寫 news-agent「每 20 分鐘、12 篇/次」，實際是 6 小時 3 篇）。
+> 排程改過而文件沒跟上是常態（此表寫過 news-agent「每 20 分鐘、12 篇/次」、又寫過「3 篇/次」，
+> 實際都是 6 小時、5 篇/次 —— 已於 2026-08-31 對齊程式碼）。
 > 查詢：`SELECT jobname, schedule, active FROM cron.job ORDER BY jobname;`
 > pg_cron 存的是 **UTC**，下表已換算為台灣時間（+8）。
 
 | Agent（jobname） | 排程（台灣時間） | 職責 |
 |-------|----------------|------|
-| `news-agent-6h` | 02:00 / 08:00 / 14:00 / 20:00（每 6 小時） | 爬 RSS 與網頁 → Claude 改寫 → 寫入 `news` 表，**最多 3 篇/次**（一天 12 篇） |
+| `news-agent-6h` | 02:00 / 08:00 / 14:00 / 20:00（每 6 小時） | 爬 RSS 與網頁 → Claude 改寫 → 寫入 `news` 表，**最多 5 篇/次**（一天上限 20 篇） |
 | `daily-line-report` | 08:00 | 每日早報（待處理事項） |
 | `cfo-agent-daily` | 08:30 | 代幣對帳、收入趨勢、廠商月結 |
 | `cmo-agent-daily` | 09:00 | 行銷日報 + 跨部門行動建議 |
@@ -177,20 +178,36 @@ psql <SUPABASE_DB_URL> -f backend/db/migrations/<n>_name.sql
 **news-agent 與前台情報頁是同一批資料**：agent 是唯一的內容產生者，
 前台 `/news` 與後台文章管理都只是讀 `news` 表，沒有其他來源。
 
-- **產出節奏**：每 6 小時一次、每次最多 3 篇 → 一天 12 篇。
-  同一分類一次最多 1 篇、單日最多 3 篇（`MAX_PER_CATEGORY` / `DAILY_PER_CATEGORY`），
-  來源組照「近 24 小時哪一類最少」重新排序 —— 不寫死輪值表，DB 就是進度表
+- **產出節奏**：每 6 小時一次、每次最多 5 篇（`MAX_TOTAL`）→ 一天上限 20 篇。
+  同一分類一次最多 2 篇（`MAX_PER_CATEGORY`，鎖死不跟 limit 走）；
+  單日各分類配額（`DAILY_QUOTA`，老闆 2026-08-30 指定）figure 5｜ichiban 5｜gacha 4｜toy 4｜tcg 2，
+  合計 20，看的是**台灣日界線**不是滾動 24 小時。手動觸發標 `is_manual`，不佔配額。
+  來源組照「今天誰的配額用得最少」重新排序 —— 不寫死輪值表，DB 就是進度表
+- **實際產出遠低於上限是常態，不是壞掉**（2026-08-31 查證）：近六天每輪 0～4 篇，
+  瓶頸在素材不在配額 —— 五組來源每 6 小時本來就只更新個位數則，再扣掉重複網址／
+  沒有 og:image／封面雜湊撞號／站標偵測。**每輪都在 16～152 秒內收工**，
+  離 route 的 4 分鐘預算（`DEADLINE`）很遠，所以也不是跑不完。要提高產能只能加來源
 - **分類**：`figure` 公仔景品｜`gacha` 轉蛋｜`toy` 盒玩周邊｜`ichiban` 一番賞｜`tcg` 卡牌（分不出類時預設 `toy`；舊值 `general`/`blindbox` 已併入 `toy`）
 
-#### 來源（2026-08-29 全面汰換過，這份表是現況）
+#### 來源（2026-08-31 更新，這份表是現況）
 
 | 來源 | 取法 | 供得出的分類 |
 |------|------|------|
-| **oneone 宇宙** `universe.oneone.com.tw/feed` | 專屬 runner `runOneOne`（**同業**，規則見下） | ichiban／gacha／figure／toy |
+| **oneone 宇宙** `universe.oneone.com.tw/feed` | 專屬 runner `runOneOne`（**同業**，規則見下）。feed 一次給 100 則，掃前 `ONEONE_SCAN`=40 則 | ichiban／gacha／figure／toy |
+| **一番くじ倶楽部** `1kuji.com/products` | HTML 列表，**官方**（BANDAI SPIRITS）。og:title 空、og:image 是站台橫幅，兩個都要自訂取法；列表照發售日由舊到新排，程式自己倒序 | ichiban |
 | **ホビーウォッチ**（Impress）`hbw/feed.rdf` | RSS 1.0／RDF | figure／ichiban／tcg／toy |
-| **PR TIMES** `prtimes.jp/index.rdf` | 全分類消防栓，`TOY_TOPIC_RE` 標題過濾 | figure |
+| **inside-games** `rss/index.rdf` | 綜合遊戲媒體，`TCG_TOPIC_RE` 標題過濾，`tcg` 主力 | tcg |
+| **Union Arena** `unionarena-tcg.com/jp/news/` | HTML 列表，**官方**。og:image 是站台橫幅要自訂取圖；只收 14 天內（`UNION_ARENA_MAX_AGE_DAYS`） | tcg |
+| **CardboardConnection／CardLines** | 歐美球員卡，各自 60 小時節流（`minIntervalHours`） | tcg |
+| **PR TIMES** `prtimes.jp/index.rdf` | 全分類消防栓，`TOY_TOPIC_RE` 標題過濾。200 則約過 1 則 | figure |
+| **4Gamers** `4gamers.com.tw/rss/latest-news` | 繁中遊戲媒體但真的會報玩具商品，`TOY_TOPIC_RE` + `GAME_NEWS_SKIP_RE` | figure |
 | **巴哈 GNN** `gnn.gamer.com.tw/rss.xml` | 同上過濾。它是遊戲新聞台，產出極少 | figure |
 | **玩具人** `toy-people.com` ×2 | 解析列表頁抓 `?p=` 連結（站上宣告的 RSS 實際 404） | toy／figure |
+
+**⚠️ 掃描深度（`ONEONE_SCAN`、`runHtmlSources` 的 `.slice`）是產能天花板，不是效能參數。**
+2026-08-31 查：原本 oneone 只掃前 12 則，第 13 則之後躺著 18 則沒碰過的新文
+（一番賞咒術迴戰、三麗鷗賞布丁狗、寶可夢卡牌新彈…），而 ichiban／gacha 正好在缺。
+調小它等於直接砍產能。
 
 **已移除，不要加回去：**
 - **電撃ホビー** —— 唯一會在圖上壓自己站標的來源（老闆 2026-08-29 指定拿掉）
@@ -201,7 +218,17 @@ psql <SUPABASE_DB_URL> -f backend/db/migrations/<n>_name.sql
   但那是內部 RPC、會壞的相依，也解決不了①）
 - **PRTimes `rss/category/17.rss`／AnimateTimes `rss.xml`** —— 兩條都 404 了
 
-> ⚠️ **`tcg` 目前沒有專屬來源**（原本靠 Google News）。要補得另找卡牌專門來源。
+**評估過但沒收的繁中來源（2026-08-31）：**
+- **巴哈 GNN 的其他分類** —— 它的分類是遊戲平台（多平台／手機／PC／OLG／Switch），
+  不是題材分類。首頁 100 則裡「動漫」只有 13 則，全是動畫開播／劇場版／改編漫畫，
+  **玩具商品新聞 0 則**。RSS 也只有全站一條，`?category=` 之類的參數不會過濾。
+- **宅宅新聞** `news.gamme.com.tw/feed` —— 題材命中率是繁中裡最好的
+  （50 則有 5 則扭蛋／景品／一番賞），但它是**轉貼推特的 matome 站**：抽驗三篇，
+  封面有一半是推特網友自己拍的照片（那張玻璃杯就是），版權屬於個人不是廠商。
+  要收的話得先能分辨官方宣傳圖與網友照片。
+
+> ⚠️ **球員卡（中華職棒／歐美運動卡）在日系來源幾乎抓不到**，只有那兩家歐美站在報，
+> 而它們被 60 小時節流鎖著。日系卡牌（ポケカ／遊戲王／UA）由 inside-games 與官方站供稿。
 > ⚠️ **`parseRss` 必須認 `<item rdf:about="…">`**：ホビーウォッチ 與 PRTimes 都是
 > RSS 1.0／RDF，舊的 `/<item>/` 正則一則都解不出來、而且不會報錯。RDF 的日期在 `<dc:date>`。
 

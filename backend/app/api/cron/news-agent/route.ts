@@ -61,6 +61,12 @@ interface HtmlSource {
    * Union Arena 一定要給：它每篇的 og:image 都是站台通用橫幅（見下方說明）。
    */
   pickCover?: (html: string) => string
+  /**
+   * 文章頁 → 標題。不給就走 og:title，再退回 <title>。
+   * 一番くじ倶楽部一定要給：它的 og:title 是空字串（實測），
+   * 而 <title> 尾巴掛著「｜一番くじ倶楽部｜BANDAI SPIRITS公式…」要切掉。
+   */
+  pickTitle?: (html: string) => string
 }
 
 /** 從玩具人列表頁取出文章連結（?p=數字） */
@@ -126,11 +132,76 @@ function pickUnionArenaCover(html: string): string {
   return mv ? UNION_ARENA_ORIGIN + mv : ''
 }
 
+/**
+ * 一番くじ倶楽部（1kuji.com）—— BANDAI SPIRITS 官方，`ichiban` 的第二來源
+ * （2026-08-31 加入）
+ *
+ * **為什麼一定要加**：ichiban 每日配額 5 篇，卻只有 oneone 一家在供稿
+ * （近兩天 19 篇裡 oneone 只出了 2 篇一番賞）。它一沒發文那 5 格就整天開天窗，
+ * 而且它是同業 —— 把自家最大分類的唯一命脈押在對手的更新頻率上並不合理。
+ * 這家是官方發布端，所有一番くじ都會先出現在這裡。
+ *
+ * 跟 Union Arena 是同一種站型（商品頁當新聞），一樣有三個坑：
+ *
+ * ① **og:image 是站台通用橫幅 `ogp.jpg`**，每頁都一樣 —— 走預設取圖會被封面
+ *    體檢擋掉、一篇都產不出來。主視覺在 `<section class="mvCol">` 裡的
+ *    `assets.1kuji.com/uploads/product/top_banner/…`，是官方主視覺原圖、無站標。
+ * ② **og:title 是空字串**（實測三頁都空），要自己從 `<title>` 取，
+ *    並切掉「｜一番くじ倶楽部｜BANDAI SPIRITS公式 一番くじ情報サイト」那段站名。
+ * ③ **列表是照發售日「由舊到新」排**，且含未上市商品。直接取前 N 條會拿到
+ *    最舊的那幾檔，所以下面自己排序（新的在前）並用發售日開窗。
+ */
+const ICHIBAN_ORIGIN = 'https://1kuji.com'
+
+/**
+ * 發售日開窗：往回 21 天、往後 90 天
+ *
+ * 往後開很寬是因為這站的價值就在「還沒開賣的新賞」——「9/12 開抽」正是玩家要看的。
+ * 往回只留 21 天，才不會像 Union Arena 那樣一路往回把去年的商品當新聞發
+ * （見 UNION_ARENA_MAX_AGE_DAYS 的說明）。
+ */
+const ICHIBAN_PAST_DAYS   = 21
+const ICHIBAN_FUTURE_DAYS = 90
+
+function extractIchibanLinks(html: string): string[] {
+  const now = Date.now()
+  const from = now - ICHIBAN_PAST_DAYS * 86400_000
+  const to   = now + ICHIBAN_FUTURE_DAYS * 86400_000
+  const rows: { url: string; t: number }[] = []
+  // 同一張卡片內：商品連結 + 發售日（YYYY年MM月DD日）
+  const re = /href="(\/products\/[a-z0-9_-]+)"[\s\S]{0,600}?(\d{4})年(\d{2})月(\d{2})日/gi
+  for (const m of html.matchAll(re)) {
+    const t = Date.parse(`${m[2]}-${m[3]}-${m[4]}T00:00:00+09:00`)
+    if (isNaN(t) || t < from || t > to) continue
+    const url = ICHIBAN_ORIGIN + m[1]
+    if (!rows.some(r => r.url === url)) rows.push({ url, t })
+  }
+  // 發售日新的排前面（列表本身是由舊到新）
+  return rows.sort((a, b) => b.t - a.t).map(r => r.url)
+}
+
+/** 主視覺在 `<section class="mvCol">`；退回任何一張 product/top_banner 圖 */
+function pickIchibanCover(html: string): string {
+  const mv = html.match(/<section class="mvCol">[\s\S]{0,300}?<img[^>]+src="([^"]+)"/i)?.[1]
+  if (mv) return mv
+  return html.match(/src="(https:\/\/assets\.1kuji\.com\/uploads\/product\/top_banner\/[^"]+)"/i)?.[1] ?? ''
+}
+
+/** `<title>` 切掉站名尾巴；商品頁的 `<h2>` 也是同一個名字，拿它兜底 */
+function pickIchibanTitle(html: string): string {
+  const t = html.match(/<title>([\s\S]*?)<\/title>/i)?.[1]?.trim() ?? ''
+  const cut = t.split('｜')[0].trim()
+  if (cut) return cut
+  return html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i)?.[1]?.replace(/<[^>]+>/g, '').trim() ?? ''
+}
+
 const HTML_SOURCES: HtmlSource[] = [
   { url: 'https://www.toy-people.com/?cat=8', category: 'toy',    label: 'ToyPeople-新聞', extract: extractToyPeopleLinks },
   { url: 'https://www.toy-people.com/',       category: 'figure', label: 'ToyPeople-首頁', extract: extractToyPeopleLinks },
   { url: `${UNION_ARENA_ORIGIN}/jp/news/`,    category: 'tcg',    label: 'UnionArena',
     extract: extractUnionArenaLinks, pickCover: pickUnionArenaCover },
+  { url: `${ICHIBAN_ORIGIN}/products`,        category: 'ichiban', label: '一番くじ倶楽部',
+    extract: extractIchibanLinks, pickCover: pickIchibanCover, pickTitle: pickIchibanTitle },
 ]
 
 /**
@@ -164,8 +235,20 @@ const HTML_SOURCES: HtmlSource[] = [
  */
 const ONEONE_FEED = 'https://universe.oneone.com.tw/feed'
 const ONEONE_CDN  = 'd89889xojlqhy.cloudfront.net'
-/** 一次最多看幾則；真正寫幾篇仍受 MAX_TOTAL 與分類配額管 */
-const ONEONE_SCAN = 12
+/**
+ * 一次最多看幾則；真正寫幾篇仍受 MAX_TOTAL 與分類配額管
+ *
+ * ⚠️ 這個數字就是產能天花板，不是效能參數（2026-08-31 量測）。
+ * 原本是 12，而 oneone 的 feed 一次給 100 則、**整份都是 12 小時內的新文**。
+ * 實測前 12 則裡沒寫過的只剩 6 則，第 13 則以後還躺著 18 則沒碰過的，
+ * 而且正好是我們最缺的分類 —— 一番賞《咒術迴戰》、三麗鷗賞布丁狗、
+ * 寶可夢卡牌新彈、TOMICA 聯名。ichiban 與 gacha 幾乎只有 oneone 一家供稿，
+ * 窗開太小等於那兩類天天開天窗，而不是「沒素材」。
+ *
+ * 40 則是拿時間預算換算的：最壞情況每則一次文章抓取（約 1 秒），
+ * 40 則約 40 秒，離 DEADLINE 的 240 秒還很寬；配額或 MAX_TOTAL 一滿就提早收工。
+ */
+const ONEONE_SCAN = 40
 
 const isOneOneCoverUrl = (u: string) => !!u && u.includes(`${ONEONE_CDN}/upload/featured/`)
 const isOneOneBodyUrl  = (u: string) => !!u && u.includes(`${ONEONE_CDN}/images/editor/`)
@@ -258,6 +341,12 @@ const TOY_TOPIC_RE = /フィギュア|一番くじ|ガシャポン|ガチャ|カ
  * 比 TOY_TOPIC_RE 專一：那支是玩具通用詞（フィギュア／一番くじ／ガシャポン…），
  * 用在遊戲媒體上會把大量電玩新聞放進來。
  */
+/**
+ * 遊戲新聞排除詞 —— 給巴哈 GNN 這種「遊戲媒體兼報玩具」的來源用
+ * 標題只要在講遊戲本身（上市、改版、活動、序號）就不是我們要的玩具情報。
+ */
+const GAME_NEWS_SKIP_RE = /Steam|Switch|PS5|PS4|Xbox|手遊|手機遊戲|線上遊戲|頁面公開|搶先體驗|公測|改版|更新內容|序號|贈獎|直播|電競|賽事|封測|預註冊|營運|停止服務/i
+
 const TCG_TOPIC_RE = /ポケカ|ポケモンカード|遊戯王|デュエル・?マスターズ|デュエマ|ヴァイスシュヴァルツ|ワンピースカード|ユニオンアリーナ|トレカ|トレーディングカード|カードゲーム|TCG|新弾|拡張パック|ブースターパック/
 
 /**
@@ -364,10 +453,30 @@ const DIRECT_FEEDS: Array<{
    */
   { url: 'https://prtimes.jp/index.rdf', category: 'figure', label: 'PRTimes', titleFilter: TOY_TOPIC_RE },
   /*
+   * 4Gamers（繁中）—— 2026-08-31 加入，補繁中來源
+   *
+   * 為什麼是它而不是巴哈：兩家都是遊戲媒體，但 4Gamers 真的會報玩具商品
+   * （實測 50 則有 3 則：吉伊卡哇特展周邊、EVA 明日香／零 1/4 人形開放預購），
+   * 巴哈 GNN 首頁 100 則裡屬於「動漫」的只有 13 則，而且全是動畫開播／劇場版／
+   * 改編漫畫，玩具商品新聞 **0 則**（2026-08-31 實測）。
+   *
+   * 圖：og:image 是 1600×900 的自家攝影或廠商圖，**沒有站標**（抽驗過）。
+   * 它同樣是遊戲媒體，所以跟 GNN 一樣要擋純遊戲新聞
+   * （實測誤判：「Steam 紳士養成《盒中少女》開賣」——「開賣」中了 TOY_TOPIC_RE）。
+   */
+  { url: 'https://www.4gamers.com.tw/rss/latest-news', category: 'figure', label: '4Gamers',
+    titleFilter: TOY_TOPIC_RE, titleSkip: GAME_NEWS_SKIP_RE },
+  /*
    * 巴哈姆特 GNN（繁中）—— 遊戲新聞台，玩具題材是少數
    * 近 30 天實際產出 0 篇。留著但加關鍵字過濾，不再為了它燒 Claude 額度。
+   *
+   * ⚠️ TOY_TOPIC_RE 對這家會誤判：它有「卡牌」「模型」「周邊」「開賣」「發售」，
+   * 而遊戲新聞天天在講這些字。2026-08-31 實測 30 則只過 1 則，那 1 則是
+   * 《三國葉子戲》Steam 頁面公開 —— 純遊戲新聞，跟玩具無關。
+   * 掃描窗開大之後這種誤判會真的被寫成文章，所以補一條遊戲新聞的排除詞。
    */
-  { url: 'https://gnn.gamer.com.tw/rss.xml', category: 'figure', label: 'GNN-TW', titleFilter: TOY_TOPIC_RE },
+  { url: 'https://gnn.gamer.com.tw/rss.xml', category: 'figure', label: 'GNN-TW',
+    titleFilter: TOY_TOPIC_RE, titleSkip: GAME_NEWS_SKIP_RE },
 ]
 
 /*
@@ -1667,8 +1776,8 @@ export async function POST(req: NextRequest) {
   /*
    * 每次全局上限（手動觸發可傳 limit 覆寫）
    *
-   * 排程一天四場（02/08/14/20）× 5 篇 = 20 篇/天的上限。實際天花板是下面的
-   * DAILY_QUOTA 合計 19 篇 —— 老闆 2026-08-30 指定的各分類數字加起來就是 19。
+   * 排程一天四場（02/08/14/20）× 5 篇 = 20 篇/天的上限，與下面 DAILY_QUOTA 的
+   * 合計相同（5+5+4+4+2 = 20）。舊註解在這裡寫 19，是把配額加錯了（2026-08-31 更正）。
    * 實測成本每篇約 US$0.026 → 滿產約 US$15/月。
    */
   const MAX_TOTAL    = limitOverride ?? 5
@@ -1765,7 +1874,10 @@ export async function POST(req: NextRequest) {
       const listHtml = await fetchText(src.url, 10_000)
       if (!listHtml) { results.errors++; continue }
 
-      for (const realUrl of src.extract(listHtml).slice(0, 8)) {
+      /* 每個列表看幾條 —— 同 ONEONE_SCAN，這是產能天花板不是效能參數。
+         原本 8 條：玩具人首頁 13 條裡前 8 條只剩 7 條沒寫過，開到 25 拿得到 12 條。
+         Union Arena 一頁只有 7 則商品情報，開大也不會多抓，純粹是不擋到它 */
+      for (const realUrl of src.extract(listHtml).slice(0, 25)) {
         if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
         if (existing.has(realUrl)) { results.skipped++; results.skipReasons.duplicate++; continue }
 
@@ -1787,7 +1899,12 @@ export async function POST(req: NextRequest) {
           results.skipped++; results.skipReasons.coverDup++; continue
         }
 
-        const title = extractMeta(articleHtml, 'og:title') || ''
+        /* og:title 不是每家都有（一番くじ倶楽部就是空的），依序試三種。
+           標題空字串會讓 Claude 拿不到題目，改寫出來的東西完全走樣 */
+        const title = (src.pickTitle?.(articleHtml) || '')
+          || extractMeta(articleHtml, 'og:title')
+          || (articleHtml.match(/<title>([\s\S]*?)<\/title>/i)?.[1]?.split('｜')[0].trim() ?? '')
+        if (!title) { results.skipped++; results.skipReasons.noHtml++; continue }
         const desc  = extractMeta(articleHtml, 'og:description') || ''
         const bodyText = extractArticleText(articleHtml)
 
@@ -1873,6 +1990,10 @@ export async function POST(req: NextRequest) {
       // 他們自家平台的公告（「oneone LITE 快抽選開幕」那種）從標題就擋掉，省一趟 fetch
       if (ONEONE_AD_RE.test(item.title)) { results.skipped++; results.skipReasons.selfPromo++; continue }
       if (isDuplicateSource(item.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+      /* 標題就分得出類別的，配額滿了直接跳過，不必付一趟文章抓取
+         （同 runDirectFeeds 的作法）。掃描窗開到 40 之後這一層才有意義 */
+      const titleCat = classifyByTitle(item.title)
+      if (titleCat && quotaFull(titleCat)) { results.skipped++; results.skipReasons.catQuota++; continue }
 
       const articleHtml = await fetchText(realUrl, 12_000)
       if (!articleHtml) { results.skipped++; results.skipReasons.noHtml++; continue }
@@ -1890,7 +2011,7 @@ export async function POST(req: NextRequest) {
       }
 
       const srcCategory = oneOneCategory(articleHtml, 'toy')
-      if (quotaFull(classifyByTitle(item.title) ?? srcCategory)) { results.skipped++; results.skipReasons.catQuota++; continue }
+      if (quotaFull(titleCat ?? srcCategory)) { results.skipped++; results.skipReasons.catQuota++; continue }
 
       const bodyText = oneOneBodyText(articleHtml)
       let draft = await rewriteArticle(claude, item.title, item.description, bodyText, realUrl, srcCategory)
@@ -2090,8 +2211,8 @@ export async function POST(req: NextRequest) {
   const groups = [
     // oneone 供得出一番賞／扭蛋／公仔／盒玩四類
     { cats: ['ichiban', 'gacha', 'figure', 'toy'],       run: runOneOne      },
-    // 玩具人（繁中）＋ Union Arena（官方卡牌）
-    { cats: ['toy', 'figure', 'tcg'],                    run: runHtmlSources },
+    // 玩具人（繁中）＋ Union Arena（官方卡牌）＋ 一番くじ倶楽部（官方一番賞）
+    { cats: ['toy', 'figure', 'tcg', 'ichiban'],         run: runHtmlSources },
     // ホビーウォッチ（figure/ichiban/tcg/toy）＋ inside-games（tcg）＋ PRTimes／GNN
     { cats: ['figure', 'ichiban', 'tcg', 'toy'],         run: runDirectFeeds },
   ]
