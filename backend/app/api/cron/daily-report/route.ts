@@ -52,8 +52,20 @@ export async function POST(req: NextRequest) {
       supabase.from('users').select('id', { count: 'exact', head: true })
         .or('is_bot.eq.false,is_bot.is.null')
         .gte('created_at', yestStart.toISOString()).lt('created_at', yestEnd.toISOString()),
+      /*
+       * 本月累計要切在**昨天結束**，跟上面的「昨日數據」同一個切點（老闆 2026-08-31 回報）。
+       *
+       * 原本是 `>= 月初` 但沒有上界 —— 等於算到「發報當下」。凌晨進來的儲值
+       * 當天早上就被算進月累計，但它屬於今天、要隔天才會出現在「昨日儲值」，
+       * 於是看起來像「昨天多了十萬，月累計卻沒動」。
+       * 實例：08-30 00:11 的 100,000 在 8/30 的報表裡已經計入月累計 617,600，
+       * 而 8/31 的報表才把它列進昨日儲值。
+       *
+       * 對齊之後這條式子才成立：本月累計 = 這個月每天「昨日儲值」的總和。
+       */
       excBot(supabase.from('recharge_records').select('amount, payment_method').eq('status', 'success'))
-        .gte('created_at', monthStart.toISOString()),
+        .gte('created_at', monthStart.toISOString())
+        .lt('created_at', yestEnd.toISOString()),
       supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'submitted'),
       supabase.from('products').select('id', { count: 'exact', head: true }).gt('total_count', 0).lte('remaining', 3).neq('status', 'archived'),
       supabase.from('refund_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),

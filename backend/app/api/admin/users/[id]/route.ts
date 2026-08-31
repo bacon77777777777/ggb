@@ -29,16 +29,23 @@ export async function GET(
     {
       const { data, error } = await supabaseAdmin
         .from('orders')
+        /*
+         * 品項讀 `draw_records`，不是 `order_items`。
+         *
+         * `order_items` 那張表**全站是空的**（沒有任何程式在寫它），所以會員詳情的
+         * 配送紀錄每一單都顯示「0 件商品」。真正的關聯是 draw_records.order_id ——
+         * 配送管理那頁讀的就是這個（老闆 2026-08-31 回報）。
+         */
         .select(
           `
             *,
-            items:order_items (
+            items:draw_records (
               id,
-              price,
-              product_id,
-              product_prize_id,
-              product:products ( name ),
-              prize:product_prizes ( name, level )
+              prize_name,
+              prize_level,
+              ticket_number,
+              product:products ( name, image_url, type ),
+              prize:product_prizes ( name, level, image_url )
             )
           `
         )
@@ -52,6 +59,23 @@ export async function GET(
         if (!isMissingTable) throw error
       } else {
         orders = data ?? []
+        /*
+         * 已取消的單：取消時把 draw_records.order_id 解開（品項退回倉庫），
+         * 所以 items 撈不到東西。改讀取消當下拍的快照（migration 659）。
+         * 跟配送管理列表同一套處理。
+         */
+        for (const o of orders) {
+          if (o.status === 'cancelled' && (!o.items || o.items.length === 0) && Array.isArray(o.cancelled_items)) {
+            o.items = o.cancelled_items.map((it: any) => ({
+              id: it.id,
+              prize_name: it.prize_name,
+              prize_level: it.prize_level,
+              ticket_number: it.ticket_number,
+              product: { name: it.product_name, image_url: it.image_url, type: it.product_type },
+              prize: { name: it.prize_name, level: it.prize_level, image_url: it.image_url },
+            }))
+          }
+        }
       }
     }
 
@@ -135,15 +159,31 @@ export async function PUT(
     const hasStatus = body.status !== undefined
     const shouldGeneratePassword = body.generatePassword === true
     const hasPassword = body.password !== undefined || shouldGeneratePassword
+    /*
+     * `points` 刻意**不在**這份白名單裡。
+     *
+     * 積分自 migration 646~650 起有帳本（point_ledger），對帳的不變式是
+     * `users.points = SUM(point_ledger.delta)`。直接 UPDATE 這個欄位會當場破壞它，
+     * 而且事後查不出是誰改的、改了什麼 —— 積分能折抵代幣、代幣是真錢買的，
+     * 等於帳上憑空多出一筆準現金。改積分一律走下面的 apply_points_delta。
+     *
+     * （代幣是另一套：它直改之後補一筆 token_adjustments，見下方。歷史包袱，
+     *   不在這次的範圍內；新東西不要再照抄那個做法。）
+     */
     const PROFILE_FIELDS = ['name', 'email', 'avatar_url', 'gender', 'birthday', 'phone_number', 'phone',
-      'recipient_name', 'recipient_phone', 'address', 'tokens', 'points']
+      'recipient_name', 'recipient_phone', 'address', 'tokens']
     const profileUpdates: Record<string, any> = {}
     for (const f of PROFILE_FIELDS) {
       if (body[f] !== undefined) profileUpdates[f] = body[f] === '' ? null : body[f]
     }
     const hasProfile = Object.keys(profileUpdates).length > 0
+    // points 走帳本、不進 profileUpdates，所以要單獨算進「有沒有東西要改」，
+    // 不然只調積分會被下面這行擋成「缺少更新欄位」
+    const hasPoints = body.points !== undefined && body.points !== ''
 
-    if (!hasStatus && !hasPassword && !hasProfile) return NextResponse.json({ error: '缺少更新欄位' }, { status: 400 })
+    if (!hasStatus && !hasPassword && !hasProfile && !hasPoints) {
+      return NextResponse.json({ error: '缺少更新欄位' }, { status: 400 })
+    }
 
     let updatedUser: any = null
     let tempPassword: string | null = null
@@ -160,6 +200,37 @@ export async function PUT(
       tokensBefore = Number(prev?.tokens ?? 0)
     }
 
+    /*
+     * 積分：走帳本的原子調整，不進 profileUpdates。
+     * 前端送的是「調整後的餘額」（跟代幣同一個輸入框的語意），這裡換算成差額。
+     * 差額 0 不寫，免得留一堆 delta=0 的雜訊。
+     */
+    let pointsBefore: number | null = null
+    let pointsDelta = 0
+    if (hasPoints) {
+      const { data: prev } = await supabaseAdmin.from('users').select('points').eq('id', id).single()
+      pointsBefore = Number(prev?.points ?? 0)
+      pointsDelta = Number(body.points) - pointsBefore
+      if (!Number.isFinite(pointsDelta)) {
+        return NextResponse.json({ error: '積分必須是數字' }, { status: 400 })
+      }
+      if (pointsDelta !== 0) {
+        const { error: pErr } = await supabaseAdmin.rpc('apply_points_delta', {
+          p_user_id: id,
+          p_delta: pointsDelta,
+          // 直接改數字本質上是修帳，不是行銷贈點
+          p_type: 'correction',
+          p_reason: String(body.points_reason ?? '').trim() || '後台編輯會員直接調整積分',
+          p_ref_table: 'users',
+          p_ref_id: id,
+          p_idem: null,
+          p_admin: String(session.adminId ?? 'admin'),
+        })
+        // 扣到負的會被 DB 擋下（'積分不足'），要讓管理員看到而不是靜默失敗
+        if (pErr) return NextResponse.json({ error: `積分調整失敗：${pErr.message}` }, { status: 400 })
+      }
+    }
+
     if (hasProfile || hasStatus) {
       const fieldsToUpdate: Record<string, any> = { ...profileUpdates }
       if (hasStatus) fieldsToUpdate.status = body.status
@@ -167,6 +238,16 @@ export async function PUT(
         .from('users').update(fieldsToUpdate).eq('id', id).select('*').single()
       if (error) throw error
       updatedUser = data
+    }
+
+    /*
+     * 積分是 RPC 改的，上面那個 update 不會帶到它。
+     * 只調積分時 updatedUser 還是 null，補讀一次；有 update 過的則把新餘額補上，
+     * 否則畫面會顯示舊的積分（管理員以為沒改成功，再按一次就變兩倍）。
+     */
+    if (pointsDelta !== 0) {
+      const { data: after } = await supabaseAdmin.from('users').select('*').eq('id', id).single()
+      if (after) updatedUser = after
     }
 
     // 代幣有變動就補分類帳。差額為 0（送了同樣的數字）不寫，免得留下一堆 delta=0 的雜訊
@@ -203,6 +284,22 @@ export async function PUT(
           + `${Number(profileUpdates.tokens ?? 0) - Number(tokensBefore ?? 0)} G）`
         )
       }
+    }
+
+    // 積分也是敏感操作：它能折抵代幣，等於準現金
+    if (pointsDelta !== 0) {
+      await logAdminAction({
+        adminId: session.adminId,
+        action: '手動調整積分',
+        targetType: 'user',
+        targetId: id,
+        detail: { before: pointsBefore, after: body.points, delta: pointsDelta },
+        ip: getClientIp(request),
+      })
+      pushSensitiveAlert(
+        `🔧 管理員敏感操作\n操作：手動調整積分\n管理員ID：${session.adminId}\n用戶ID：${id}\n`
+        + `原餘額：${pointsBefore} P → 新餘額：${body.points} P（${pointsDelta >= 0 ? '+' : ''}${pointsDelta} P）`
+      )
     }
 
 

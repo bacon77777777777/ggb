@@ -23,7 +23,7 @@ import AppVersionPanel from './AppVersionPanel'
 
 // `sell_escrow`（商城平台代收，接藍新 MPL）已於 2026-08-13 移除：
 // 玩家商城定調雙方自理，平台不碰錢，這個旗標永遠是關的。
-type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'exchange' | 'market' | 'recharge' | 'register' | 'phone_verify'
+type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'lottery' | 'exchange' | 'market' | 'recharge' | 'register' | 'phone_verify'
 
 type LinePushKey =
   | 'line_push_daily' | 'line_push_cfo' | 'line_push_cmo' | 'line_push_supply'
@@ -66,7 +66,7 @@ const DEFAULT_PUSH_FLAGS = LINE_PUSH_ITEMS.reduce((acc, { key }) => {
  * 「關閉」跟「維護中」是兩件事：關閉是平台不做這個類別了，該完全消失；
  * 維護中是暫時停一下，該讓玩家看得到、知道會回來。用一個布林表達不出來。
  *
- * 只有 CATEGORY_KEYS 那六個吃三態 —— 玩家交易與 GB哥推播沒有「維護中」
+ * 只有 CATEGORY_ITEMS 那幾個吃三態 —— 玩家交易與 GB哥推播沒有「維護中」
  * 這個中間狀態可講，維持開/關就好。
  */
 type FlagState = 'on' | 'maintenance' | 'off'
@@ -96,6 +96,12 @@ const CATEGORY_ITEMS: { key: FeatureKey; label: string; desc?: string }[] = [
   { key: 'card',     label: '抽卡' },
   { key: 'custom',   label: '自製賞' },
   { key: 'slot',     label: '機台',   desc: '絕頂RUSH 這類的老虎機台。關閉後挑戰入口與機台頁都會消失。' },
+  {
+    key: 'lottery', label: '抽籤販售',
+    desc: '限量商品的登記制抽籤：玩家花積分登記，到時間統一開獎公布名單，中籤才付 G 幣。'
+        + '維護中＝列表照常看得到、但登記按鈕停用；關閉＝首頁入口與列表頁一起消失。'
+        + '檔期在「抽籤販售 → 抽籤販售管理」建立。',
+  },
   // 前面五個看名字就知道是什麼，商城不是 —— 它賣的是玩家的東西，不是平台的
   { key: 'sell',     label: '商城', desc: '像露天拍賣：玩家自己上架商品掛賣，收的是真錢。付款由買賣雙方自行完成，平台不經手款項。誰能上架、開放哪些類別、交易期限與免責聲明都在「商城 → 商城設定」。' },
 ]
@@ -124,6 +130,8 @@ const DEFAULT_FLAGS: Record<FeatureKey, boolean> = {
   card: true,
   custom: true,
   slot: true,
+  // 還沒有檔期時開著只會給玩家一個空列表，預設關；建好第一檔再開
+  lottery: false,
   exchange: true,
   market: false,
   // 沒接簡訊供應商之前開了也只會壞，預設關

@@ -110,6 +110,15 @@ export async function GET() {
       drawCountMap.set(row.user_id, prev + 1)
     }
 
+    // 停用操作者的顯示名。admins 很少，一次撈完比逐列查快得多
+    const { data: adminRows } = await supabaseAdmin.from('admins').select('id, username')
+    const adminNameById = new Map((adminRows ?? []).map((a: any) => [String(a.id), a.username as string]))
+    const adminNameOf = (v: string | null | undefined) => {
+      if (!v) return null
+      const m = /^admin#(.+)$/.exec(v)
+      return m ? (adminNameById.get(m[1]) ?? v) : v
+    }
+
     const result = (users ?? []).map((u: any) => ({
       id: u.id,
       userId: u.id,
@@ -124,7 +133,25 @@ export async function GET() {
       registerDate: u.created_at,
       lastLoginDate: u.last_login_at || authLastSignInAtById.get(u.id) || '',
       lastLoginIp: authLastSignInIpById.get(u.id) || lastLoginIpById.get(u.id) || '',
+      /*
+       * 凍結已於 2026-08-31 併進停用（migration 660），帳號狀態只剩兩態。
+       * `status` 給篩選與排序用；`accountStatus` 是同一件事，留著是因為
+       * 列表的列樣式與標記都吃它，改名要動一整片。
+       */
       status: u.status === 'inactive' ? 'inactive' : 'active',
+      // 凍結已併進停用（migration 660），只剩兩態
+      accountStatus: u.status === 'inactive' ? 'inactive' : 'active',
+      isSuspicious: u.is_suspicious === true,
+      // 原因掛在列表的標記上（滑過去看），不然標了之後沒人記得為什麼
+      suspiciousReason: u.suspicious_reason ?? null,
+      disabledReason: u.disabled_reason ?? null,
+      // 操作者：`admin#<id>` 或 GB哥。列表的標記懸停時要顯示「誰做的」
+      /*
+       * 操作者。DB 存的是 `admin#<id>`（或 'GB哥'），列表要顯示的是人看得懂的名字，
+       * 所以在這裡換成帳號名 —— 不在寫入端換是因為 id 才是穩定的：
+       * 管理員改名之後，歷史紀錄指向的仍然是同一個人。
+       */
+      disabledBy: adminNameOf(u.disabled_by),
       isBot: u.is_bot === true,
       totalOrders: orderCountMap.get(u.id) ?? 0,
       totalSpent: Number(u.total_spent ?? 0),

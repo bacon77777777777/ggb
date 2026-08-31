@@ -9,7 +9,12 @@ import { useLog } from '@/contexts/LogContext'
 import { useProduct } from '@/contexts/ProductContext'
 
 interface Breadcrumb {
-  label: string
+  /*
+   * ReactNode 而不是 string：會員詳情要在名字前面掛一個「停用」徽章
+   * （老闆 2026-08-31）—— 一進頁面就看得到這個帳號現在是什麼狀態，
+   * 不用先捲到安全設置。
+   */
+  label: React.ReactNode
   href?: string
 }
 
@@ -590,6 +595,8 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     // 抽獎管理
     '/products': 'products',
     // 挑戰機台
+    '/lottery': 'lottery',
+    '/lottery/settings': 'lottery_settings',
     '/slot': 'slot',
     '/slot/reports': 'slot_reports',
     '/slot/[id]': 'slot',
@@ -776,6 +783,19 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         items: [
           { name: '客服工單', path: '/cs-management/tickets', icon: IconChat },
           { name: '操作手冊', path: '/cs-management/sop', icon: IconBook },
+        ],
+      },
+      {
+        /*
+         * id 不能用 'lottery' —— 上面的「抽獎管理」分組早就佔走了那個 id
+         * （抽獎的英文也是 lottery）。撞號會讓 React 的 key 重複，兩個分組
+         * 的收合狀態也會互相連動。
+         */
+        id: 'lottery_sale',
+        title: '抽籤販售',
+        items: [
+          { name: '抽籤販售管理', path: '/lottery', icon: IconBolt },
+          { name: '抽籤販售設定', path: '/lottery/settings', icon: IconBolt },
         ],
       },
       {

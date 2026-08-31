@@ -1,0 +1,95 @@
+/**
+ * 抽籤販售的共用型別與階段判斷。
+ *
+ * 階段一律由時間現算，前後端各算各的但用同一套規則（後端在
+ * `backend/app/api/admin/lottery/route.ts` 的 phaseOf，DB 在 lottery_phase()）。
+ * 三份必須一致，改規則要三邊一起改 —— 存成資料庫欄位就不用同步了，
+ * 但那樣 cron 漏跑一次狀態就跟時鐘對不上，兩害相權取這個。
+ */
+
+export interface LotteryEventRow {
+  id: number;
+  product_id: number;
+  title: string | null;
+  subtitle: string | null;
+  cover_image_url: string | null;
+  content: unknown;
+  entry_points: number;
+  per_user_entries: number;
+  winners_count: number;
+  backup_count: number;
+  price_tokens: number;
+  pay_deadline_hours: number;
+  register_start_at: string;
+  register_end_at: string;
+  draw_at: string;
+  drawn_at: string | null;
+  commitment: string | null;
+  seed: string | null;
+  show_entry_count: boolean;
+  status: string;
+  product: { id: number; name: string; image_url: string | null; type: string; price: number } | null;
+}
+
+export type LotteryPhase =
+  | 'draft' | 'upcoming' | 'registering' | 'pending_draw' | 'drawn' | 'cancelled';
+
+export function phaseOf(e: Pick<LotteryEventRow,
+  'status' | 'drawn_at' | 'register_start_at' | 'register_end_at'>): LotteryPhase {
+  if (e.status === 'cancelled') return 'cancelled';
+  if (e.status !== 'published') return 'draft';
+  if (e.drawn_at) return 'drawn';
+  const now = Date.now();
+  if (now < new Date(e.register_start_at).getTime()) return 'upcoming';
+  if (now < new Date(e.register_end_at).getTime()) return 'registering';
+  return 'pending_draw';
+}
+
+/** `urgent` 是給倒數文字上紅色用的：只有登記中才有「快沒時間了」可言 */
+export function phaseMeta(p: LotteryPhase): { label: string; cls: string; urgent: boolean } {
+  switch (p) {
+    case 'registering':  return { label: '登記中',   cls: 'bg-accent-red', urgent: true };
+    case 'upcoming':     return { label: '即將開始', cls: 'bg-blue-500',   urgent: false };
+    case 'pending_draw': return { label: '待開獎',   cls: 'bg-amber-500',  urgent: false };
+    case 'drawn':        return { label: '已開獎',   cls: 'bg-neutral-500', urgent: false };
+    case 'cancelled':    return { label: '已取消',   cls: 'bg-neutral-400', urgent: false };
+    default:             return { label: '準備中',   cls: 'bg-neutral-400', urgent: false };
+  }
+}
+
+/**
+ * 卡片上那一行倒數。
+ *
+ * 每個階段要回答的問題不一樣：登記中問「還剩多久可以登記」、即將開始問
+ * 「什麼時候開放」、待開獎問「什麼時候公布」。全部寫成同一句「剩 X」的話，
+ * 待開獎的卡片會變成「剩 0 天」，看起來像壞掉。
+ */
+export function countdownText(
+  e: Pick<LotteryEventRow, 'register_start_at' | 'register_end_at' | 'draw_at' | 'drawn_at'>,
+  p: LotteryPhase,
+): string {
+  const now = Date.now();
+  const left = (iso: string) => new Date(iso).getTime() - now;
+  const human = (ms: number) => {
+    if (ms <= 0) return '即將';
+    const d = Math.floor(ms / 86400000);
+    const h = Math.floor((ms % 86400000) / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    if (d > 0) return `${d} 天 ${h} 小時`;
+    if (h > 0) return `${h} 小時 ${m} 分`;
+    // 最後一小時才給到秒 —— 平常顯示秒會讓整頁每秒都在動，很吵
+    return `${m} 分 ${s} 秒`;
+  };
+  const at = (iso: string) =>
+    new Date(iso).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+  switch (p) {
+    case 'upcoming':     return `${at(e.register_start_at)} 開放登記`;
+    case 'registering':  return `距登記截止 ${human(left(e.register_end_at))}`;
+    case 'pending_draw': return `${at(e.draw_at)} 公布名單`;
+    case 'drawn':        return `${at(e.drawn_at ?? e.draw_at)} 已公布名單`;
+    case 'cancelled':    return '此檔期已取消';
+    default:             return '';
+  }
+}

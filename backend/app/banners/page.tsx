@@ -48,6 +48,7 @@ function linkModeOf(banner: { link_url?: string | null; event_id?: string | null
 const PAGE_TABS = [
   { value: 'home', label: '首頁輪播圖' },
   { value: 'challenge', label: '挑戰頁輪播圖' },
+  { value: 'lottery', label: '抽籤販售輪播圖' },
   /*
    * App 開屏：玩家一打開 App 看到的那張滿版圖（前台 components/native/AppSplashAd.tsx）。
    * 只在原生殼裡出現，網頁版與 PWA 完全看不到 —— 網頁沒有「啟動」這件事，
@@ -81,7 +82,7 @@ export default function BannersPage() {
   const savingLock = useRef(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
-  const [activeTab, setActiveTab] = useState<'home' | 'challenge' | 'app_splash' | 'popup'>('home')
+  const [activeTab, setActiveTab] = useState<'home' | 'challenge' | 'lottery' | 'app_splash' | 'popup'>('home')
   const [linkMode, setLinkMode] = useState<LinkMode>('url')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -91,7 +92,7 @@ export default function BannersPage() {
     link_url: '',
     sort_order: 0,
     is_active: true,
-    page: 'home' as 'home' | 'challenge' | 'app_splash',
+    page: 'home' as 'home' | 'challenge' | 'lottery' | 'app_splash',
     start_at: null as string | null,
     end_at: null as string | null,
     event_id: null as string | null,
@@ -149,7 +150,7 @@ export default function BannersPage() {
       event_id: banner.event_id ?? null,
       sort_order: banner.sort_order,
       is_active: banner.is_active,
-      page: (banner.page as 'home' | 'challenge' | 'app_splash') || 'home',
+      page: (banner.page as 'home' | 'challenge' | 'lottery' | 'app_splash') || 'home',
       imageFile: null,
       imagePreview: banner.image_url
     })
@@ -438,7 +439,9 @@ export default function BannersPage() {
         <Modal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          title={editingBanner ? '編輯輪播圖' : '新增輪播圖'}
+          title={`${editingBanner ? '編輯' : '新增'}輪播圖 — ${
+            PAGE_TABS.find(t => t.value === formData.page)?.label ?? '首頁輪播圖'
+          }`}
         >
           <div className="space-y-4">
             <div>
@@ -601,25 +604,18 @@ export default function BannersPage() {
               onChange={patch => setFormData(prev => ({ ...prev, ...patch }))}
             />
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">顯示頁面 <span className="text-red-500">*</span></label>
-              <div className="flex gap-2">
-                {PAGE_TABS.filter(t => t.value !== 'popup').map(tab => (
-                  <button
-                    key={tab.value}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, page: tab.value as 'home' | 'challenge' | 'app_splash' })}
-                    className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                      formData.page === tab.value
-                        ? 'bg-primary text-white border-primary'
-                        : 'border-neutral-300 text-neutral-600 hover:border-neutral-400'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-              {formData.page === 'app_splash' && (
+            {/*
+              「顯示頁面」的選擇器已移除（老闆 2026-08-31）：新增時就是**當下這個分頁籤**
+              （handleAdd 帶 activeTab），編輯時維持原本的頁面。
+
+              選擇器存在時等於同一件事有兩個入口 —— 在「首頁輪播圖」分頁按新增、
+              卻在彈窗裡選了「挑戰頁」，存完那張圖會從眼前的清單消失，
+              然後開始找它跑去哪了。分頁籤本身就是答案，彈窗標題也標出來了。
+
+              App 開屏的規格說明留著，那不是選項是注意事項。
+            */}
+            {formData.page === 'app_splash' && (
+              <div>
                 <p className="mt-1 text-xs text-neutral-400">
                   玩家開 App 時蓋滿整個畫面、停留 3 秒（右上角有倒數可跳過）。
                   圖請用直式（建議 1179×2556），寬度會滿版、垂直置中，太高的上下會被裁掉；
@@ -627,8 +623,8 @@ export default function BannersPage() {
                   換圖後玩家要下次開 App 才會看到新的（開屏圖會先存在手機裡，
                   才能一開 App 就秀出來不用等網路）。
                 </p>
-              )}
-            </div>
+              </div>
+            )}
 
             <div className="flex justify-end gap-3 pt-4 border-t mt-6">
               <button

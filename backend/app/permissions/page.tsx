@@ -50,6 +50,13 @@ const PERMISSION_GROUPS = [
     ],
   },
   {
+    title: '抽籤販售',
+    items: [
+      { id: 'lottery',          label: '抽籤販售管理' },
+      { id: 'lottery_settings', label: '抽籤販售設定' },
+    ],
+  },
+  {
     title: '抽獎管理',
     items: [
       { id: 'products',          label: '商品管理' },

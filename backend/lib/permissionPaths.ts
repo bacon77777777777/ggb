@@ -17,6 +17,8 @@ export const MENU_PATH_ORDER: Array<{ path: string; permission: string }> = [
   { path: '/reports/settlement', permission: 'reports_settlement' },
   { path: '/reports/accounting-guide', permission: 'reports_accounting_guide' },
   { path: '/reports/feed',       permission: 'reports_feed' },
+  { path: '/lottery',            permission: 'lottery' },
+  { path: '/lottery/settings',   permission: 'lottery_settings' },
   { path: '/products',           permission: 'products' },
   { path: '/draws',              permission: 'draws' },
   { path: '/orders',             permission: 'orders' },

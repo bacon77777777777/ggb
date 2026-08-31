@@ -54,21 +54,47 @@ export async function GET(req: NextRequest) {
    */
   const allRows = await fetchAllRows<any>(() => supabase
     .from('token_ledger')
-    .select('ref_id, delta, created_at')
+    .select('type, ref_id, delta, created_at')
     .eq('user_id', userId)
-    .order('created_at', { ascending: true }))
+    .order('created_at', { ascending: true })
+    .order('ref_id', { ascending: true }))
+
+  /*
+   * 對照鍵用 `type + ref_id`，**不能用 `ref_id + created_at`**。
+   *
+   * token_ledger 是五段 UNION（recharge_records ×1、draw_records ×3、
+   * token_adjustments ×1），不同來源表的主鍵各自從 1 開始，撞號是常態。
+   * PROD 實測：5,434 列裡 `(ref_id, created_at)` 只有 3,516 個相異值 ——
+   * **1,918 列（35%）的餘額被同鍵的另一列蓋掉**，而畫面照樣顯示一個看起來合理的數字。
+   * `(type, ref_id)` 在 PROD 是 5,434/5,434 完全唯一。
+   *
+   * 排序補上 ref_id：同一秒內的多筆若順序不定，累加出來的中間餘額會跳來跳去。
+   */
+  const key = (r: { type?: string; ref_id?: unknown }) => `${r.type}:${r.ref_id}`
 
   const balanceMap: Record<string, number> = {}
   let running = 0
   for (const r of allRows) {
-    running += Number(r.delta)
-    balanceMap[`${r.ref_id}_${r.created_at}`] = running
+    // 未成功的儲值在 VIEW 裡 delta 是 NULL（Number(null) === 0，不會污染累加）
+    running += Number(r.delta) || 0
+    balanceMap[key(r)] = running
   }
 
   const ledger = (rows ?? []).map(r => ({
     ...r,
-    balance_after: balanceMap[`${r.ref_id}_${r.created_at}`] ?? null,
+    // VIEW 沒有主鍵，補一個穩定的 id 給表格當 key（原本 keyField="id" 拿到的是 undefined）
+    id: key(r),
+    balance_after: balanceMap[key(r)] ?? null,
   }))
+
+  /*
+   * 對帳健檢，跟積分帳本同一套：加總對不上 users.tokens 就代表有人繞過
+   * token_adjustments 直接改了欄位（實際發生過：一個帳號被塞 100 萬，
+   * 對帳短少 100 萬，2026-08-13 查出）。要看得到，不要等有人想到跑 SQL。
+   *
+   * running 累加完正好就是帳本加總，不用再查一次。
+   */
+  const balance = Number(user.tokens ?? 0)
 
   return NextResponse.json({
     user,
@@ -76,5 +102,8 @@ export async function GET(req: NextRequest) {
     total: count ?? 0,
     page,
     pages: Math.ceil((count ?? 0) / limit),
+    balance,
+    ledgerSum: running,
+    reconciled: running === balance,
   })
 }

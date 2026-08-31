@@ -1329,7 +1329,16 @@ export default function ProductsPage() {
                                 return (
                                   <div key={idx}>
                                     <div
-                                      className={`flex items-center gap-3 text-sm rounded px-2 py-1 -mx-2 cursor-pointer select-none transition-colors ${isExpanded ? 'bg-primary' : 'hover:bg-neutral-100'}`}
+                                      /*
+                                       * 展開時原本是 `bg-primary`（實心主題藍）——
+                                       * 底色一整條蓋上去，白字以外的內容（品項名、數量、機率）
+                                       * 全部貼在深藍上讀不出來（老闆 2026-08-31）。
+                                       * 改成淡藍底 + 左邊一條主題色線：一樣看得出哪一列展開著，
+                                       * 但文字維持原本的顏色不用改。
+                                       */
+                                      className={`flex items-center gap-3 text-sm rounded px-2 py-1 -mx-2 cursor-pointer select-none transition-colors ${
+                                        isExpanded ? 'bg-primary/5 border-l-2 border-l-primary' : 'hover:bg-neutral-100'
+                                      }`}
                                       onClick={() => prize.id && togglePrize(prize.id, drawn)}
                                     >
                                       <span className="text-neutral-400 w-3 text-xs">{isExpanded ? '▾' : '▸'}</span>

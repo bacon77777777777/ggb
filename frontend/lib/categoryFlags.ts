@@ -8,9 +8,27 @@ import type { FeatureKey, FeatureStates, FlagState } from '@/contexts/FeatureFla
  *
  * 機台（slot）原本刻意不受開關管轄，migration 496 起也納入 —— 其他五個都能
  * 開放／維護／關閉，只有機台不行的話，後台看起來像漏了一個。
+ *
+ * ⚠️ `lottery`（抽籤販售，migration 656）**不是** products.type ——
+ * 抽籤商品沿用既有的 type（一番賞、抽卡…），檔期掛在 lottery_events。
+ * 它進這份清單純粹是為了共用「開放／維護／關閉」那套 UI 與判斷函數，
+ * 判斷時要自己傳 'lottery' 進來，不會有商品的 type 是它。
  */
-const CATEGORY_KEYS = ['ichiban', 'blindbox', 'gacha', 'card', 'custom', 'slot'] as const;
+/*
+ * 兩份清單刻意分開：
+ *
+ *   PRODUCT_CATEGORY_KEYS  真的會出現在 products.type 上的值。
+ *                          `categoryFlagKey()` 只認這一份 —— 它是拿商品的 type
+ *                          去查開關，回傳值會被當成商品標籤（ProductBadge）用。
+ *   CATEGORY_KEYS          功能開關頁上「類別」那一區要列出來的東西，多一個 lottery。
+ *
+ * 合成一份的話，`categoryFlagKey()` 的回傳型別就會包含 'lottery'，而任何商品都不可能
+ * 是那個值 —— 於是每個把它拿去當商品標籤的地方都要多寫一次不可能發生的判斷。
+ */
+const PRODUCT_CATEGORY_KEYS = ['ichiban', 'blindbox', 'gacha', 'card', 'custom', 'slot'] as const;
+const CATEGORY_KEYS = [...PRODUCT_CATEGORY_KEYS, 'lottery'] as const;
 
+export type ProductCategoryKey = (typeof PRODUCT_CATEGORY_KEYS)[number];
 export type CategoryKey = (typeof CATEGORY_KEYS)[number];
 
 export const CATEGORY_LABELS: Record<CategoryKey, string> = {
@@ -20,11 +38,14 @@ export const CATEGORY_LABELS: Record<CategoryKey, string> = {
   card: '抽卡',
   custom: '自製賞',
   slot: '機台',
+  lottery: '抽籤販售',
 };
 
 /** 這個商品類別對應到哪個開關；沒有對應就回 null */
-export function categoryFlagKey(type?: string | null): CategoryKey | null {
-  return CATEGORY_KEYS.includes(type as CategoryKey) ? (type as CategoryKey) : null;
+export function categoryFlagKey(type?: string | null): ProductCategoryKey | null {
+  return PRODUCT_CATEGORY_KEYS.includes(type as ProductCategoryKey)
+    ? (type as ProductCategoryKey)
+    : null;
 }
 
 /**

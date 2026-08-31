@@ -1760,6 +1760,19 @@ export default function OrdersPage() {
                             <div className="pl-8">
                               {/* 逐件明細：#序號｜品項圖（點開大圖）｜賞等｜品項名稱｜商品名稱｜類別。
                                   出貨人員要的是「拿哪一件」，品項擺前面、商品當輔助資訊 */}
+                              {/*
+                                已取消的舊單看不到品項是正常的：取消時把 draw_records.order_id
+                                解開（品項退回倉庫），關聯就斷了。migration 659 起會在解開前
+                                拍快照，之後的取消單看得到；在那之前取消的救不回來，
+                                講清楚比留一片空白好 —— 空白會讓人以為是頁面壞了。
+                              */}
+                              {shipment.items.length === 0 && (
+                                <p className="text-sm text-neutral-400">
+                                  {shipment.status === 'cancelled'
+                                    ? '這張單取消時品項已退回倉庫，當時的品項紀錄不可考（2026-08-31 之後取消的單才會保留快照）'
+                                    : '這張單沒有品項'}
+                                </p>
+                              )}
                               <div className="space-y-2">
                                 {shipment.items.map((item, idx) => {
                                   const typeLabel = ({

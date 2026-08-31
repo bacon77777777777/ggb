@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useNativeAppState } from '@/lib/useIsNativeApp';
 import { createClient } from '@/lib/supabase/client';
 
-export type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'exchange' | 'market' | 'recharge' | 'register' | 'phone_verify';
+export type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'lottery' | 'exchange' | 'market' | 'recharge' | 'register' | 'phone_verify';
 
 export type FeatureFlags = Record<FeatureKey, boolean>;
 
@@ -28,6 +28,8 @@ const DEFAULT_FLAGS: FeatureFlags = {
   // 而且真的斷線時整站都不能儲值。後端另有把關（/api/payment/ecpay），
   // 這裡放寬不會造成漏洞。
   recharge: true,
+  // 抽籤販售（migration 656）：跟其他玩法一樣「開了才顯示」，預設關
+  lottery: false,
   // 同 recharge 的邏輯：註冊是「關了才擋」，預設 true 才不會在旗標載入完成前
   // 把新玩家的第一次登入擋掉
   register: true,

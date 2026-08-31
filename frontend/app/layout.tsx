@@ -22,6 +22,7 @@ import MaintenanceWatcher from '@/components/MaintenanceWatcher';
 import { getThemeCss } from '@/lib/serverTheme';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import NativeAppBootstrap from '@/components/native/NativeAppBootstrap';
+import ColdStartOnResume from '@/components/native/ColdStartOnResume';
 import ExternalLinkHandler from '@/components/native/ExternalLinkHandler';
 import AppSplashAd from '@/components/native/AppSplashAd';
 import AppUpdateGate from '@/components/native/AppUpdateGate';
@@ -241,6 +242,7 @@ export default async function RootLayout({
                   {/* 開屏廣告放在 <main> 外面：下拉更新會對 <main> 下 transform，
                       有 transform 的祖先會讓 position:fixed 失效，滿版就蓋不住整個畫面 */}
                   <AppSplashAd />
+                  <ColdStartOnResume />
                   <Navbar />
                   <main className="flex-grow">
                     <ServiceWorkerRegistrar />

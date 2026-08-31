@@ -5,7 +5,15 @@ import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
 
 export const runtime = 'nodejs'
 
-type RiskAction = 'freeze' | 'unfreeze' | 'flag' | 'unflag'
+/*
+ * 凍結已於 2026-08-31 併進停用（migration 660）。
+ *
+ * 兩者對玩家完全一樣（`AuthContext` 只看 `status !== 'active'`），差別只在凍結
+ * 多了原因／推播／待處理儲值提醒 —— 那三樣搬進 disable 之後，凍結就沒有存在意義。
+ * `freeze`／`unfreeze` 仍然收，當成 disable／enable 的別名：GB哥 的工具與
+ * 舊的整合可能還在送舊名字，直接拒收會讓那些呼叫靜默失敗。
+ */
+type RiskAction = 'disable' | 'enable' | 'flag' | 'unflag' | 'freeze' | 'unfreeze'
 
 async function pushLine(text: string) {
   const token = process.env.LINE_CHANNEL_ACCESS_TOKEN
@@ -29,9 +37,11 @@ export async function POST(
   const body: { action: RiskAction; reason?: string } = await request.json().catch(() => ({}))
   const { action, reason } = body
 
-  if (!['freeze', 'unfreeze', 'flag', 'unflag'].includes(action)) {
+  if (!['disable', 'enable', 'flag', 'unflag', 'freeze', 'unfreeze'].includes(action)) {
     return NextResponse.json({ error: '無效的操作' }, { status: 400 })
   }
+  // 舊名字正規化，底下只處理兩種
+  const act = action === 'freeze' ? 'disable' : action === 'unfreeze' ? 'enable' : action
 
   const supabase = getSupabaseAdmin()
 
@@ -46,24 +56,24 @@ export async function POST(
   let update: Record<string, any> = {}
   let label = ''
 
-  switch (action) {
-    case 'freeze':
+  switch (act) {
+    case 'disable':
       update = {
-        status:        'frozen',
-        frozen_at:     new Date().toISOString(),
-        frozen_by:     `admin#${session.adminId}`,
-        frozen_reason: reason ?? '後台操作',
+        status:          'inactive',
+        disabled_at:     new Date().toISOString(),
+        disabled_by:     `admin#${session.adminId}`,
+        disabled_reason: reason ?? '後台操作',
       }
-      label = '凍結帳號'
+      label = '停用會員'
       break
-    case 'unfreeze':
+    case 'enable':
       update = {
-        status:        'active',
-        frozen_at:     null,
-        frozen_by:     null,
-        frozen_reason: null,
+        status:          'active',
+        disabled_at:     null,
+        disabled_by:     null,
+        disabled_reason: null,
       }
-      label = '解除凍結'
+      label = '啟用會員'
       break
     case 'flag':
       update = {
@@ -96,7 +106,7 @@ export async function POST(
 
   await supabase.from('user_event_logs').insert({
     user_id:    id,
-    event_type: action,
+    event_type: act,
     detail:     { action, reason, by: String(session.adminId) },
   })
 
@@ -121,16 +131,18 @@ export async function POST(
           user_name:     user.name ?? user.email ?? id,
           pending_count: pendingRR.length,
           total_amount:  totalAmt,
-          frozen_reason: reason ?? '後台操作',
-          frozen_by:     `admin#${session.adminId}`,
+          disabled_reason: reason ?? '後台操作',
+          disabled_by:     `admin#${session.adminId}`,
+          // 舊事件用的是 frozen_reason，後台面板兩個 key 都認（見 agent-events/Panel）
+          frozen_reason:   reason ?? '後台操作',
         },
       })
     }
   }
 
-  const emoji = action === 'freeze' ? '🔒' : action === 'unfreeze' ? '🔓' : action === 'flag' ? '🚩' : '✅'
+  const emoji = act === 'disable' ? '🔒' : act === 'enable' ? '🔓' : act === 'flag' ? '🚩' : '✅'
   const notifyText = `${emoji} 風控操作：${label}\n用戶：${user.name ?? user.email ?? id}${reason ? `\n原因：${reason}` : ''}\n操作者：admin#${session.adminId}${pendingNote}`
   await pushLine(notifyText)
 
-  return NextResponse.json({ ok: true, action, userId: id })
+  return NextResponse.json({ ok: true, action: act, userId: id })
 }

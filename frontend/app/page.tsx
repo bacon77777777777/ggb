@@ -2109,12 +2109,12 @@ export default function Home() {
       {/*
         首頁右下角的扇形懸浮選單。
 
-        四個入口寫死（老闆指定：目前就這四個功能，不做上傳圖與自訂路徑），
+        入口寫死（老闆指定：不做上傳圖與自訂路徑），
         各自吃「類別」那一區原本的旗標 —— 不另外做一套開關，
         兩邊各管一半只會互相蓋來蓋去。
 
-        **整顆按鈕沒有自己的開關**（老闆指定）：四個入口只要還有一個不是「關閉」
-        就顯示，四個全關就整顆不出現 —— 它存在的意義就是通往這四個地方。
+        **整顆按鈕沒有自己的開關**（老闆指定）：只要還有一個入口不是「關閉」
+        就顯示，全關就整顆不出現 —— 它存在的意義就是通往這幾個地方。
         後台「類別」最下面那一列只是把這個結果顯示出來，不是開關。
 
         入口在功能關閉時不出現（不該留一個點進去看到「商品關閉中」的入口）；
@@ -2126,6 +2126,9 @@ export default function Home() {
       */}
       {!isFlagsLoading && (() => {
         const entries = [
+          /* 抽籤販售（老闆 2026-08-31 指定放這裡）。暫時沿用機台那張圖 ——
+             等老闆給專屬去背圖再換 `/images/menu/5.webp` */
+          { feature: 'lottery',  icon: asset('/images/menu/4.webp'),   label: '抽籤販售', href: '/lottery' },
           { feature: 'slot',     icon: asset('/images/menu/4.webp'),   label: '機台',     href: '/challenge' },
           // nudgeY: 店鋪那張圖的主體偏上，跟鄰居擺同一格會看起來高一截，往下推 4px
           { feature: 'sell',     icon: asset('/images/menu/2.webp'),   label: '商城',     href: '/sell', nudgeY: 4 },
@@ -2149,7 +2152,7 @@ export default function Home() {
             // 這個 map 是逐欄挑的，漏掉就等於改了沒效果
             nudgeY: (e as { nudgeY?: number }).nudgeY,
           }));
-        // 四個入口都關掉時整組不出現 —— 點開空空如也比沒有還怪
+        // 全部關掉時整組不出現 —— 點開空空如也比沒有還怪
         if (items.length === 0) return null;
         return <FanMenu mainIcon={asset("/images/btn.webp")} mainIconOpen={asset("/images/btn_close.webp")} items={items} />;
       })()}

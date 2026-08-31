@@ -1,6 +1,7 @@
 'use client'
 
 import { native } from './bridge'
+import { markHandoffBusy, clearHandoffBusy } from '@/lib/coldStart'
 
 /**
  * Capacitor 的 Browser.open 只吃**絕對網址**，給相對路徑會直接失敗。
@@ -60,19 +61,30 @@ export async function openPayment(url: string, onClosed: () => void): Promise<bo
 
     const handle = add('browserFinished', () => {
       handle.remove?.()
+      clearHandoffBusy()
       onClosed()
     })
+
+    /*
+     * 標記「交接中」，讓 ColdStartOnResume 這段期間不要重啟 App。
+     * 付款要跳綠界、3D 驗證再跳各家銀行 App，玩家可能在外面待很久
+     * （輸卡號、等 OTP 簡訊）—— 那期間 App 是背景狀態，重啟等於把人
+     * 丟回首頁，付款結果頁就再也回不去了。
+     */
+    markHandoffBusy()
 
     // popover（iOS 的 pageSheet）：付款頁像一張卡從底部滑上來、App 還看得到
     // 在後面，頂上有「完成」隨時關得掉 —— 老闆要的「彈窗方式」（2026-08-20）
     const opened = await native.call('Browser', 'open', { url: toAbsolute(url), presentationStyle: 'popover' })
     if (opened === null) {
       handle.remove?.()
+      clearHandoffBusy()
       return false
     }
     return true
   } catch (err) {
     console.warn('[payment] in-app browser 開啟失敗', err)
+    clearHandoffBusy()
     return false
   }
 }
@@ -87,6 +99,7 @@ export async function openPayment(url: string, onClosed: () => void): Promise<bo
  */
 export async function closeInAppBrowser(): Promise<void> {
   if (!native.isNativePlatform()) return
+  clearHandoffBusy()
   await native.call('Browser', 'close')
 }
 
@@ -98,6 +111,9 @@ export async function closeInAppBrowser(): Promise<void> {
  */
 export async function openInAppBrowser(url: string): Promise<boolean> {
   if (!native.isNativePlatform()) return false
+  // 同 openPayment：LINE 授權也是「開出去再回來」，交接期間不要冷啟動
+  markHandoffBusy()
   const r = await native.call('Browser', 'open', { url: toAbsolute(url), presentationStyle: 'popover' })
+  if (r === null) clearHandoffBusy()
   return r !== null
 }

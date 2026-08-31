@@ -69,7 +69,7 @@ function eventDetail(ev: AgentEvent): string {
     case 'restock_needed':
       return `《${p.product_name}》${p.issue ?? '庫存不足'}\n廠商：${p.supplier_name ?? '未分配'}`
     case 'freeze_pending_payment':
-      return `用戶：${p.user_name}\n有 ${p.pending_count} 筆 pending 儲值，共 NT$ ${Number(p.total_amount ?? 0).toLocaleString()}\n凍結原因：${p.frozen_reason}`
+      return `用戶：${p.user_name}\n有 ${p.pending_count} 筆 pending 儲值，共 NT$ ${Number(p.total_amount ?? 0).toLocaleString()}\n停用原因：${p.disabled_reason ?? p.frozen_reason}`
     case 'competitor_trending':
       return `競品：${p.competitor ?? ''}\n${p.summary ?? p.content ?? ''}`
     case 'revenue_anomaly':

@@ -946,7 +946,7 @@ async function updateContentDraft(ids: string[], status: string, actorId?: strin
 
 async function riskAction(
   userId: string,
-  action: 'freeze' | 'unfreeze' | 'flag' | 'unflag',
+  action: 'disable' | 'enable' | 'flag' | 'unflag',
   reason?: string,
   actorId?: string
 ) {
@@ -964,12 +964,13 @@ async function riskAction(
   let label = ''
 
   switch (action) {
-    case 'freeze':
-      update = { status: 'frozen', frozen_at: new Date().toISOString(), frozen_by: 'GB哥', frozen_reason: reason ?? '老闆指令' }
+    // 凍結已於 2026-08-31 併進停用（migration 660）—— 只剩一種「擋人」的狀態
+    case 'disable':
+      update = { status: 'inactive', disabled_at: new Date().toISOString(), disabled_by: 'GB哥', disabled_reason: reason ?? '老闆指令' }
       label = '凍結'
       break
-    case 'unfreeze':
-      update = { status: 'active', frozen_at: null, frozen_by: null, frozen_reason: null }
+    case 'enable':
+      update = { status: 'active', disabled_at: null, disabled_by: null, disabled_reason: null }
       label = '解除凍結'
       break
     case 'flag':
@@ -1039,9 +1040,9 @@ async function executeTool(name: string, input: Record<string, any>, actorId?: s
       case 'run_sql':
         return JSON.stringify(await runSql(input.query))
       case 'freeze_user':
-        return JSON.stringify(await riskAction(input.user_id, 'freeze', input.reason, actorId))
+        return JSON.stringify(await riskAction(input.user_id, 'disable', input.reason, actorId))
       case 'unfreeze_user':
-        return JSON.stringify(await riskAction(input.user_id, 'unfreeze', undefined, actorId))
+        return JSON.stringify(await riskAction(input.user_id, 'enable', undefined, actorId))
       case 'flag_user':
         return JSON.stringify(await riskAction(input.user_id, 'flag', input.reason, actorId))
       case 'unflag_user':

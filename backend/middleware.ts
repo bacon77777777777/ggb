@@ -183,6 +183,9 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string | string[] }>
   { prefix: '/recycle-inventory',      permission: 'recycle_pool' },
   { prefix: '/reports/points',         permission: 'reports_overview' },
   { prefix: '/leaderboard-bots',       permission: 'users' },
+  // 設定頁要排在 /lottery 前面：前綴比對是由上往下，先中 '/lottery' 就輪不到它
+  { prefix: '/lottery/settings',       permission: ['lottery_settings'] },
+  { prefix: '/lottery',                permission: ['lottery'] },
   { prefix: '/slot/reports',           permission: ['slot_reports', 'slot', 'products'] },
   { prefix: '/slot',                   permission: ['slot', 'products'] },
   { prefix: '/small-items',            permission: 'small_items' },

@@ -44,7 +44,7 @@ const HISTORY_LIMIT = 200;
  * 固定 40 會讓那頁幾乎沒得挑。
  */
 const poolRelated = (limit: number) => Math.max(60, limit * 4);
-const poolFallback = (limit: number) => Math.max(40, limit * 3);
+const poolFallback = (limit: number) => Math.max(80, limit * 3);
 /** 上架幾天內算新品 */
 const NEW_WINDOW_MS = 7 * 24 * 3600 * 1000;
 
@@ -136,8 +136,16 @@ export async function fetchRecommendations(
     }
 
     /*
-     * 相關的那一批：跟眼前這件同系列／同廠商／同分類／同類型。
-     * 這裡才是主力 —— 保底那批只是怕新站或冷門分類撈不滿。
+     * 剩下兩批一起發（Promise.all），不要一條等完再發下一條 ——
+     * 這是商品頁最下面的區塊，多一個來回就是多一次「捲到底還在轉」。
+     *
+     *   相關的：跟眼前這件同系列／同廠商／同分類／同類型
+     *   跨類的：全站最新的一批，不帶任何條件
+     *
+     * **跨類的那批現在是無條件發，不再是「相關的不夠才補」。**
+     * 類型配額（見下）要有別的類型可挑才成立，而相關查詢的條件裡就有
+     * `type` 與 `category`，靠它撈不出別的類型 —— 只有 supplier 那條會漏進來，
+     * 而那要看商品剛好屬於哪個廠商，不能當保證。
      */
     const ors: string[] = [];
     const series = seriesVals;
@@ -148,29 +156,20 @@ export async function fetchRecommendations(
     if (types.length) ors.push(`type.in.(${types.map(v => `"${v}"`).join(',')})`);
     if (current.supplier_id != null) ors.push(`supplier_id.in.(${current.supplier_id})`);
 
-    if (ors.length) {
-      const { data } = await supabase
-        .from('products')
-        .select(PRODUCT_PUBLIC_COLUMNS)
-        .eq('status', 'active')
-        .neq('type', 'slot')
-        .or(ors.join(','))
-        .order('created_at', { ascending: false })
-        .limit(poolRelated(limit));
-      addAll(data);
-    }
+    const base = () => supabase
+      .from('products')
+      .select(PRODUCT_PUBLIC_COLUMNS)
+      .eq('status', 'active')
+      .neq('type', 'slot');
 
-    // 保底：任意上架商品。相關的那批已經夠多就不用再打一次
-    if (pool.size < limit * 3) {
-      const { data } = await supabase
-        .from('products')
-        .select(PRODUCT_PUBLIC_COLUMNS)
-        .eq('status', 'active')
-        .neq('type', 'slot')
-        .order('created_at', { ascending: false })
-        .limit(poolFallback(limit));
-      addAll(data);
-    }
+    const [related, broad] = await Promise.all([
+      ors.length
+        ? base().or(ors.join(',')).order('created_at', { ascending: false }).limit(poolRelated(limit))
+        : Promise.resolve({ data: null }),
+      base().order('created_at', { ascending: false }).limit(poolFallback(limit)),
+    ]);
+    addAll(related.data);
+    addAll(broad.data);
 
     /* ---------- 3. 評分 ---------- */
     const curPrice = Number(current.price) || 0;
@@ -179,7 +178,9 @@ export async function fetchRecommendations(
 
       // (1) 跟眼前這件像不像
       if (current.series && p.series && p.series === current.series) s += 60;
-      if (current.supplier_id != null && String(p.supplier_id) === String(current.supplier_id)) s += 30;
+      // 站上只有兩個廠商（PROD 2026-08-31：85 / 33 件），同廠商對多數配對是常數，
+      // 給高分只會淹掉價位／熱門／新品那些真的有資訊量的訊號
+      if (current.supplier_id != null && String(p.supplier_id) === String(current.supplier_id)) s += 10;
       if (current.category && p.category === current.category) s += 20;
       if (current.type && p.type === current.type) s += 12;
       if (curPrice > 0 && Number(p.price) > 0 && Math.abs(Number(p.price) - curPrice) / curPrice <= 0.3) s += 8;
@@ -207,11 +208,43 @@ export async function fetchRecommendations(
      * 裡面有 Math.random()，每比一次就換一個分數 —— 比較函式自相矛盾，
      * 排出來的順序是壞的（V8 甚至可能因此丟例外）。
      */
-    return [...pool.values()]
+    const ranked = [...pool.values()]
       .map(p => ({ p, s: score(p) }))
-      .sort((a, b) => b.s - a.s)
-      .slice(0, limit)
-      .map(x => x.p);
+      .sort((a, b) => b.s - a.s);
+
+    /*
+     * 類型配額（老闆 2026-08-31：「都是推同類別商品，全類別都可以推」）。
+     *
+     * **不能只調權重**：相關性本來就該讓同類型排前面，把它壓到跨類型能翻過去，
+     * 等於推薦變隨機，同系列那種真正相關的也會被洗掉。改成分數照排，挑的時候限額。
+     *
+     * 四格 → 同類型最多 2、其他每種類型最多 1，所以一定至少有兩個別的類別。
+     * 搜尋頁的瀏覽模式沒有「眼前這件」，同類型上限用不到，每種類型上限跟著 limit 放大。
+     */
+    const sameTypeCap = Math.max(1, Math.round(limit * 0.5));
+    const otherTypeCap = Math.max(1, Math.round(limit * 0.25));
+    const used = new Map<string, number>();
+    const picked: any[] = [];
+    const leftover: any[] = [];
+
+    for (const { p } of ranked) {
+      if (picked.length >= limit) break;
+      const t = String(p.type ?? '');
+      const cap = current.type && t === String(current.type) ? sameTypeCap : otherTypeCap;
+      const n = used.get(t) ?? 0;
+      if (n >= cap) { leftover.push(p); continue; }
+      used.set(t, n + 1);
+      picked.push(p);
+    }
+
+    // 池子湊不滿配額時（冷門站台、類型數少於格數）用被限額擋下的補回來，
+    // 寧可四格同類也不要開天窗
+    for (const p of leftover) {
+      if (picked.length >= limit) break;
+      picked.push(p);
+    }
+
+    return picked;
   } catch {
     // 推薦區塊掛掉不該影響商品頁本身，靜默收掉
     return [];
