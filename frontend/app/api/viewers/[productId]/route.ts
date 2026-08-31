@@ -27,8 +27,8 @@ import { Redis } from '@upstash/redis'
  * ## 省指令
  *
  * 每次心跳只發 2 個指令（ZADD + ZCOUNT）。清掉過期成員與續期是
- * 每 10 次才做一次 —— 過期成員不影響 ZCOUNT 的正確性（它只數窗口內的），
- * 只是佔一點記憶體，不必每次都清。
+ * 抽樣才做 —— 過期成員不影響 ZCOUNT 的正確性（它只數窗口內的），
+ * 只是佔一點記憶體，不必每次都清。（例外見下方 count <= 2 的說明）
  *
  * ## 沒有 Redis 時
  *
@@ -42,6 +42,19 @@ const hasRedis = !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_RE
 const WINDOW_MS = 45_000
 /** 幾次心跳做一次清理 */
 const SWEEP_EVERY = 10
+
+/**
+ * 鍵的環境前綴。
+ *
+ * 正式站、STG（staging.ggb.com.tw 是同一個 Vercel 專案的 dev 分支）與本機開發
+ * **共用同一顆 Upstash**（env 的 target 就是 preview+production 同一組值，
+ * 本機 .env.local 也指向它）。不分前綴的話三邊數的是同一個桶子 ——
+ * 玩家在正式站看到的人數會把「我們自己開著測試站或 localhost」的人算進去。
+ * 活動當天我們一定會開著盯場，那幾個人就會混進玩家看到的數字裡。
+ *
+ * 分前綴不增加任何 Redis 指令，純粹是鍵名不同。
+ */
+const NS = process.env.VERCEL_ENV === 'production' ? 'p' : process.env.VERCEL_ENV || 'dev'
 
 let redis: Redis | null = null
 function client() {
@@ -68,7 +81,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pro
   const sid = String(body?.sid ?? '').slice(0, 64)
   if (!sid) return NextResponse.json({ error: 'bad session' }, { status: 400 })
 
-  const key = `viewers:${pid}`
+  const key = `viewers:${NS}:${pid}`
   const now = Date.now()
 
   try {
@@ -81,8 +94,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pro
     await r.zadd(key, { score: now, member: sid })
     const count = await r.zcount(key, now - WINDOW_MS, '+inf')
 
-    // 抽樣清理：過期成員不影響 ZCOUNT，只是佔記憶體
-    if (Math.random() < 1 / SWEEP_EVERY) {
+    /*
+     * 清理時機。過期成員不影響 ZCOUNT（它只數窗口內的），所以熱門商品抽樣清就夠。
+     *
+     * 但 TTL 是跟著清理一起設的，只靠 1/10 抽樣，**只被看過一兩次的冷門商品
+     * 有九成機率永遠拿不到 TTL**，那個鍵就會一直留著（線上實測 viewers:773
+     * 的 TTL 就是 -1）。所以人數少的時候一律清一次 —— 冷門商品本來就沒幾個
+     * 請求，多這兩個指令不痛不癢；熱門商品幾乎不會走到這條。
+     */
+    if (count <= 2 || Math.random() < 1 / SWEEP_EVERY) {
       void Promise.all([
         r.zremrangebyscore(key, 0, now - WINDOW_MS),
         // 整檔沒人之後自己消失，不留垃圾鍵

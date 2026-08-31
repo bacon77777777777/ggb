@@ -4,6 +4,50 @@
 
 ---
 
+## v2026.08.31e｜2026-08-31｜「N 人正在看」的計數桶三個環境共用，玩家會數到我們自己
+
+### 一、正式站、STG、本機共用同一顆 Redis，人數會互相混到
+
+上一版（v2026.08.31d）把「N 人正在看」改成 Redis 心跳計數之後，**驗證環境變數時發現**
+鍵名沒有分環境。
+
+Vercel 上 `UPSTASH_REDIS_REST_URL` / `_TOKEN` 的 target 是 `preview,production`
+**同一組值**，`staging.ggb.com.tw` 又是同一個 Vercel 專案的 `dev` 分支（preview），
+本機 `.env.local` 也指向同一顆。三邊寫的是同一個 `viewers:<商品id>`。
+
+實測證明：從 `www.ggb.com.tw` 打進去的探測鍵，用**本機**憑證讀得到。
+
+後果是玩家在正式站看到的人數，會把「此刻在 staging 或某台 localhost 開著同一件
+商品」的人算進去。平常大概就 ±1，但活動當天我們自己一定會開著盯場，那幾個人
+會直接混進玩家看到的數字裡。
+
+**修法**：鍵名帶環境前綴。不增加任何 Redis 指令，純粹是鍵名不同。
+
+```ts
+const NS = process.env.VERCEL_ENV === 'production' ? 'p' : process.env.VERCEL_ENV || 'dev'
+const key = `viewers:${NS}:${pid}`
+```
+
+→ PROD `viewers:p:708`｜STG `viewers:preview:708`｜本機 `viewers:dev:708`
+
+### 二、冷門商品的鍵永遠拿不到 TTL
+
+TTL 是跟著抽樣清理（1/10）一起設的。所以**只被看過一兩次的商品有九成機率
+永遠不會設到 TTL**，那個鍵就一直留在 Redis 裡（線上實測 `viewers:773` 的
+TTL 就是 -1）。
+
+清理條件改成 `count <= 2 || Math.random() < 1/10`：人少的時候一律清一次。
+冷門商品本來就沒幾個請求，多那兩個指令不痛不癢；熱門商品幾乎不會走到這條。
+
+### 三、順帶記錄：上一版的部署驗證
+
+- 兩個專案的 `UPSTASH_*` 在 production／preview 都有設 ✅
+- 線上實測心跳端點：三個分頁依序 ping 回 1 → 2 → 3，同一個分頁重複 ping 維持 3 ✅
+  （確認走的是 Redis，不是退回 presence）
+- 清掉測試殘留鍵 `viewers:999999999`、`viewers:999001`
+
+---
+
 ## v2026.08.31d｜2026-08-31｜「N 人正在看」改成模擬訪客進出＋Redis 心跳計數；功能開關漏 key
 
 ### 一、「N 人正在看」整個重做
