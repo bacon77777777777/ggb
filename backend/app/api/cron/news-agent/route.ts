@@ -1771,7 +1771,7 @@ export async function POST(req: NextRequest) {
    */
   const isManual = limitOverride !== undefined || body?.manual === true
 
-  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0, catQuota: 0, selfPromo: 0, adLeak: 0, throttled: 0, brandMix: 0, coverDup: 0, subjectDup: 0 } }
+  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0, catQuota: 0, selfPromo: 0, adLeak: 0, throttled: 0, brandMix: 0, coverDup: 0, subjectDup: 0 }, relaxedPass: false }
   const DEADLINE     = Date.now() + 240_000  // 最多跑 4 分鐘
   /*
    * 每次全局上限（手動觸發可傳 limit 覆寫）
@@ -1780,7 +1780,16 @@ export async function POST(req: NextRequest) {
    * 合計相同（5+5+4+4+2 = 20）。舊註解在這裡寫 19，是把配額加錯了（2026-08-31 更正）。
    * 實測成本每篇約 US$0.026 → 滿產約 US$15/月。
    */
-  const MAX_TOTAL    = limitOverride ?? 5
+  /**
+   * 單場的安全上限 —— 真正的 MAX_TOTAL 在下面依「當日還缺幾篇」算
+   *
+   * 為什麼不是固定 5：排程一天四場、每場封頂 5 篇的話，**早上少寫的永遠補不回來**
+   * （4×5 剛好等於 20，沒有任何餘裕）。實際上早場常常因為來源沒更新只寫 2～3 篇，
+   * 一天就註定到不了 20。改成「這場最多寫 min(8, 20 − 今天已寫)」，
+   * 晚場才追得回來。8 是拿時間預算抓的：實測每篇約 20 秒，8 篇約 160 秒，
+   * 仍在 DEADLINE 的 240 秒內。
+   */
+  const ROUND_CEILING = 8
   const MAX_PER_QUERY = limitOverride === 1 ? 1 : 2
 
   /**
@@ -1835,6 +1844,17 @@ export async function POST(req: NextRequest) {
     const c = String(r.category ?? 'toy')
     todayCount[c] = (todayCount[c] ?? 0) + 1
   }
+  /** 今天（台灣日）排程已寫的總篇數 —— 手動觸發不計 */
+  const todayTotal = CATEGORIES.reduce((n, c) => n + (todayCount[c] ?? 0), 0)
+  /** 每日總量 = 五類配額加總（5+5+4+4+2 = 20，老闆 2026-08-30 指定的數字） */
+  const DAILY_TOTAL = CATEGORIES.reduce((n, c) => n + quotaOf(c), 0)
+  /**
+   * 這一場最多寫幾篇 = 當日還缺幾篇（封頂 ROUND_CEILING）
+   * 手動觸發不吃當日進度，維持原本的 5 篇，只是拿來測試
+   */
+  const MAX_TOTAL = limitOverride
+    ?? (isManual ? 5 : Math.max(0, Math.min(ROUND_CEILING, DAILY_TOTAL - todayTotal)))
+
   const last7d = countSince(7 * 86400_000)
 
   /*
@@ -1862,10 +1882,56 @@ export async function POST(req: NextRequest) {
    */
   const MAX_PER_CATEGORY = 2
   const catWritten: Record<string, number> = {}
-  const quotaFull = (c: string) =>
-    (catWritten[c] ?? 0) >= MAX_PER_CATEGORY ||
+
+  /**
+   * 寬鬆模式 —— 「某一類真的找不到素材時，讓其他類補上」（老闆 2026-08-31）
+   *
+   * 目標是**一天 20 篇**，分類配額只是分配理想值，不該讓它變成產能天花板：
+   * ichiban 沒素材的那天，那 5 格空著、其他類明明還有東西可寫也不准寫，
+   * 結果就是一天只有 13 篇。
+   *
+   * ⚠️ 但這是**最後手段**，不能一開場就放行 —— figure 的來源數遠多於其他四類
+   * （HobbyWatch／PRTimes／GNN／4Gamers／玩具人首頁），閘門一開就是它灌滿版面，
+   * 那正是當初設分類配額要解決的問題。
+   *
+   * 所以分兩輪跑（見檔案最下面的 groups 迴圈）：
+   *   第一輪 照分類配額，每一組來源都跑到自己的候選清單見底
+   *          —— 跑完還沒寫滿，就代表缺的那幾類**確實沒有素材**，不是還沒輪到
+   *   第二輪 relaxed = true，放掉單日分類配額，只留
+   *          「當日總量 20」與「單場單類 RELAXED_PER_CATEGORY 篇」
+   */
+  let relaxed = false
+  const RELAXED_PER_CATEGORY = 4
+
+  const catWrittenFull = (c: string) =>
+    (catWritten[c] ?? 0) >= (relaxed ? RELAXED_PER_CATEGORY : MAX_PER_CATEGORY)
+
+  const quotaFull = (c: string) => {
     // 手動觸發是測試：不佔配額，也不被配額擋，只留單次的分類上限防灌爆
-    (!isManual && (todayCount[c] ?? 0) + (catWritten[c] ?? 0) >= quotaOf(c))
+    if (isManual) return catWrittenFull(c)
+    if (catWrittenFull(c)) return true
+    // 當日總量是硬上限，寬鬆模式也不放行
+    if (todayTotal + results.written >= DAILY_TOTAL) return true
+    return relaxed ? false : (todayCount[c] ?? 0) + (catWritten[c] ?? 0) >= quotaOf(c)
+  }
+
+  /**
+   * 這一輪已經評估過、確定不用的文章網址
+   *
+   * 第二輪會把同一批來源再走一次，沒有這層的話會重跑封面體檢（Claude vision）
+   * 與封面雜湊（要下載原圖）—— 兩個都是花錢又花時間的動作。
+   * **配額擋下的不算在內**：那正是第二輪要重新考慮的東西。
+   */
+  const attempted = new Set<string>()
+  /** 文章 HTML 快取，讓第二輪不必重抓同一頁 */
+  const htmlCache = new Map<string, string>()
+  const fetchArticle = async (url: string, timeout: number) => {
+    const hit = htmlCache.get(url)
+    if (hit !== undefined) return hit
+    const html = (await fetchText(url, timeout)) || ''
+    htmlCache.set(url, html)
+    return html
+  }
 
   const runHtmlSources = async () => {
     for (const src of HTML_SOURCES) {
@@ -1880,9 +1946,23 @@ export async function POST(req: NextRequest) {
       for (const realUrl of src.extract(listHtml).slice(0, 25)) {
         if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
         if (existing.has(realUrl)) { results.skipped++; results.skipReasons.duplicate++; continue }
+        if (attempted.has(realUrl)) { results.skipped++; continue }
 
-        const articleHtml = await fetchText(realUrl, 10_000)
-        if (!articleHtml) { results.skipped++; results.skipReasons.noHtml++; continue }
+        const articleHtml = await fetchArticle(realUrl, 10_000)
+        if (!articleHtml) { attempted.add(realUrl); results.skipped++; results.skipReasons.noHtml++; continue }
+
+        /* og:title 不是每家都有（一番くじ倶楽部就是空的），依序試三種。
+           標題空字串會讓 Claude 拿不到題目，改寫出來的東西完全走樣 */
+        const title = (src.pickTitle?.(articleHtml) || '')
+          || extractMeta(articleHtml, 'og:title')
+          || (articleHtml.match(/<title>([\s\S]*?)<\/title>/i)?.[1]?.split('｜')[0].trim() ?? '')
+        if (!title) { attempted.add(realUrl); results.skipped++; results.skipReasons.noHtml++; continue }
+
+        if (isDuplicateSource(title)) { attempted.add(realUrl); results.skipped++; results.skipReasons.titleDup++; continue }
+        /* 配額檢查排在封面體檢之前（同 runOneOne）：體檢要打 Claude vision、
+           雜湊要下載原圖。擋在這裡的不進 attempted，第二輪才能重新考慮 */
+        if (quotaFull(classifyByTitle(title) ?? src.category)) { results.skipped++; results.skipReasons.catQuota++; continue }
+        attempted.add(realUrl)
 
         // 來源有自訂取圖規則就只認它（Union Arena 的 og:image 是站台通用橫幅，
         // 退回預設等於拿站標當封面）
@@ -1899,17 +1979,8 @@ export async function POST(req: NextRequest) {
           results.skipped++; results.skipReasons.coverDup++; continue
         }
 
-        /* og:title 不是每家都有（一番くじ倶楽部就是空的），依序試三種。
-           標題空字串會讓 Claude 拿不到題目，改寫出來的東西完全走樣 */
-        const title = (src.pickTitle?.(articleHtml) || '')
-          || extractMeta(articleHtml, 'og:title')
-          || (articleHtml.match(/<title>([\s\S]*?)<\/title>/i)?.[1]?.split('｜')[0].trim() ?? '')
-        if (!title) { results.skipped++; results.skipReasons.noHtml++; continue }
         const desc  = extractMeta(articleHtml, 'og:description') || ''
         const bodyText = extractArticleText(articleHtml)
-
-        if (isDuplicateSource(title)) { results.skipped++; results.skipReasons.titleDup++; continue }
-        if (quotaFull(classifyByTitle(title) ?? src.category)) { results.skipped++; results.skipReasons.catQuota++; continue }
 
         let draft = await rewriteArticle(claude, title, desc, bodyText, realUrl, src.category)
         if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
@@ -1994,12 +2065,20 @@ export async function POST(req: NextRequest) {
          （同 runDirectFeeds 的作法）。掃描窗開到 40 之後這一層才有意義 */
       const titleCat = classifyByTitle(item.title)
       if (titleCat && quotaFull(titleCat)) { results.skipped++; results.skipReasons.catQuota++; continue }
+      if (attempted.has(realUrl)) { results.skipped++; continue }
 
-      const articleHtml = await fetchText(realUrl, 12_000)
-      if (!articleHtml) { results.skipped++; results.skipReasons.noHtml++; continue }
+      const articleHtml = await fetchArticle(realUrl, 12_000)
+      if (!articleHtml) { attempted.add(realUrl); results.skipped++; results.skipReasons.noHtml++; continue }
       if (oneOneCategoryIds(articleHtml).some(id => ONEONE_SKIP_CATEGORY.has(id))) {
-        results.skipped++; results.skipReasons.selfPromo++; continue
+        attempted.add(realUrl); results.skipped++; results.skipReasons.selfPromo++; continue
       }
+
+      /* 配額檢查排在封面體檢之前：體檢要打 Claude vision、雜湊要下載原圖，
+         額度已經滿的文章不必付這兩筆。也因為擋在這裡的都還沒進 attempted，
+         第二輪（寬鬆模式）才有機會重新考慮它們 */
+      const srcCategory = oneOneCategory(articleHtml, 'toy')
+      if (quotaFull(titleCat ?? srcCategory)) { results.skipped++; results.skipReasons.catQuota++; continue }
+      attempted.add(realUrl)
 
       const ogImage = extractOgImage(articleHtml)
       if (!isOneOneCoverUrl(ogImage)) { results.skipped++; results.skipReasons.noImage++; continue }
@@ -2009,9 +2088,6 @@ export async function POST(req: NextRequest) {
       if (coverHash && usedCoverHashes.has(coverHash)) {
         results.skipped++; results.skipReasons.coverDup++; continue
       }
-
-      const srcCategory = oneOneCategory(articleHtml, 'toy')
-      if (quotaFull(titleCat ?? srcCategory)) { results.skipped++; results.skipReasons.catQuota++; continue }
 
       const bodyText = oneOneBodyText(articleHtml)
       let draft = await rewriteArticle(claude, item.title, item.description, bodyText, realUrl, srcCategory)
@@ -2102,8 +2178,10 @@ export async function POST(req: NextRequest) {
         if (!realUrl || existing.has(realUrl)) { results.skipped++; results.skipReasons.duplicate++; continue }
         // 配額檢查放在抓文章之前 —— RSS 標題就足夠判斷，額度滿了不必付一趟 fetch
         if (quotaFull(classifyByTitle(item.title) ?? feed.category)) { results.skipped++; results.skipReasons.catQuota++; continue }
+        if (attempted.has(realUrl)) { results.skipped++; continue }
+        attempted.add(realUrl)
 
-        const articleHtml = await fetchText(realUrl, 15_000)
+        const articleHtml = await fetchArticle(realUrl, 15_000)
         let ogImage = articleHtml
           ? (resolveImageUrl(extractOgImage(articleHtml), realUrl) || resolveImageUrl(extractBodyImage(articleHtml), realUrl))
           : resolveImageUrl(item.rssImage, realUrl)
@@ -2220,11 +2298,45 @@ export async function POST(req: NextRequest) {
     const open = g.cats.filter(c => !quotaFull(c)).map(c => categoryRank.get(c) ?? 99)
     return open.length ? Math.min(...open) : 99   // 全滿的組排最後
   }
-  while (groups.length > 0 && results.written < MAX_TOTAL && Date.now() < DEADLINE) {
-    groups.sort((a, b) => groupRank(a) - groupRank(b))
-    await groups.shift()!.run()
+  /**
+   * 一輪 = 每一組來源都跑到自己的候選清單見底（照「哪一類最缺」排順序）
+   *
+   * 每組只 shift 一次是刻意的：runner 本來就會走完整份清單，
+   * 同一輪再跑第二次不會有新東西。
+   */
+  const runPass = async () => {
+    const queue = [...groups]
+    while (queue.length > 0 && results.written < MAX_TOTAL && Date.now() < DEADLINE) {
+      queue.sort((a, b) => groupRank(a) - groupRank(b))
+      await queue.shift()!.run()
+    }
+  }
+
+  await runPass()
+
+  /*
+   * 第二輪：某些分類真的找不到素材，就讓其他分類補上（老闆 2026-08-31）
+   *
+   * 走到這裡代表**每一組來源都已經翻到見底**，還是湊不滿這場該寫的篇數
+   * —— 也就是缺的那幾類確實沒東西可寫，不是還沒輪到它們。
+   * 這時才放掉單日分類配額（當日總量 20 與單場單類上限仍在），
+   * 把剩下的篇數讓給有素材的分類。
+   *
+   * attempted／htmlCache 讓第二輪不會重抓同一頁、也不會重跑封面體檢，
+   * 被配額擋下的那些則會重新被考慮 —— 那正是這一輪要撿回來的東西。
+   */
+  if (!isManual && results.written < MAX_TOTAL && Date.now() < DEADLINE) {
+    relaxed = true
+    results.relaxedPass = true
+    await runPass()
   }
 
 
-  return NextResponse.json({ ok: true, ...results, manual: isManual, byCategory: catWritten, todayCount, quota: DAILY_QUOTA })
+  return NextResponse.json({
+    ok: true, ...results, manual: isManual,
+    byCategory: catWritten, todayCount, quota: DAILY_QUOTA,
+    // 這場的上限與當日進度，出問題時一眼看得出是配額擋的還是沒素材
+    roundCap: MAX_TOTAL, dailyTotal: DAILY_TOTAL, todayBefore: todayTotal,
+    todayAfter: todayTotal + results.written,
+  })
 }
