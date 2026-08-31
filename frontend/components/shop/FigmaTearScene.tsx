@@ -613,8 +613,10 @@ export default function FigmaTearScene({
         撕完的下一秒玩家的視線還黏在券上，還要先找到、再瞄準一顆按鈕。
         撕紙本身已經改成「畫面任一處按著拖」，換張也就沒有理由再要求瞄準。
 
-        提示改放畫面中央下方（跟「左右滑動撕開」同一個位置）：兩段提示落在同一處，
-        眼睛不用重新找。它是 pointer-events-none 的裝飾，整層才是那顆按鈕。
+        提示**跟「左右滑動撕開」完全同一個位置、同一個樣式**（老闆 2026-08-31）：
+        兩段提示落在同一處、長得一樣，眼睛不用重新找、也不用重新認。
+        所以這裡不畫膠囊，就是一行帶陰影的白字。
+        它是 pointer-events-none 的裝飾，整層才是那顆按鈕。
 
         z-20：SKIP 與聲音開關是 z-30，疊在這層上面，照樣點得到。
       */}
@@ -634,18 +636,24 @@ export default function FigmaTearScene({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="absolute inset-0 z-20 flex items-start justify-center"
-            style={{ paddingTop: '72%' }}
+            className="absolute inset-0 z-20"
           >
             <motion.span
-              className="pointer-events-none flex items-center gap-1 rounded-full border border-white/30
-                         bg-black/60 px-5 h-10 text-sm font-black tracking-[0.25em] text-white
-                         shadow-lg backdrop-blur-sm"
-              animate={{ opacity: [0.4, 1, 1, 0.4] }}
+              className="pointer-events-none absolute left-1/2 whitespace-nowrap font-black text-white/90"
+              style={{
+                top: '72%',
+                /* 「左右滑動撕開」那行字上面還有一張 52*s 的手指圖示（外加 mt-1），
+                   要對齊的是**文字**不是容器，所以往下推同樣的距離 */
+                marginTop: 52 * s + 4,
+                transform: 'translateX(-50%)',
+                fontSize: 13 * s,
+                letterSpacing: '0.1em',
+                textShadow: '0 2px 6px rgba(0,0,0,0.7)',
+              }}
+              animate={{ opacity: [0.35, 1, 1, 0.35] }}
               transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', times: [0, 0.25, 0.75, 1] }}
             >
-              點任一處　下一張
-              <span aria-hidden className="text-base leading-none">›</span>
+              點擊換張
             </motion.span>
           </motion.button>
         )}
