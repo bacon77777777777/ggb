@@ -45,17 +45,51 @@ interface DrawTx {
   statuses: string[]
 }
 
-// 原始狀態碼不給管理員看（跟前台不給玩家看技術術語同一個道理）
+/*
+ * 原始狀態碼不給管理員看（跟前台不給玩家看技術術語同一個道理）。
+ *
+ * ⚠️ 這張表要蓋滿 draw_records_status_check 的每一個值。少一個就會 fallback 成
+ * 原始代碼直接印在畫面上 —— 老闆 2026-08-31 截圖到的「coin_return」就是漏了機台
+ * 那兩個狀態（那批是老虎機的紀錄，商品不在 products 表裡，之前沒人注意到）。
+ */
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   in_warehouse:     { label: '倉庫中',   className: 'bg-neutral-100 text-neutral-600' },
   pending_delivery: { label: '待出貨',   className: 'bg-blue-50 text-blue-700' },
   shipped:          { label: '已出貨',   className: 'bg-green-50 text-green-700' },
   dismantled:       { label: '已回收',   className: 'bg-amber-50 text-amber-700' },
   exchanged:        { label: '已兌換',   className: 'bg-purple-50 text-purple-700' },
+  listing:          { label: '上架中',   className: 'bg-indigo-50 text-indigo-700' },
+  // 挑戰機台（老虎機）專用。機台一定會中，結果只有兩種：退幣或實體獎品，
+  // 實體那種就是 in_warehouse。消費紀錄裡機台與一番賞混在一起，
+  // 標籤要帶「機台」兩個字，不然看不出這筆是哪來的
+  coin_return:      { label: '機台退幣', className: 'bg-cyan-50 text-cyan-700' },
+  // 抽籤販售專用（migration 444）。落選要留紀錄（查得到誰抽過幾次），但不進倉庫
+  lost:             { label: '未中獎',   className: 'bg-neutral-100 text-neutral-500' },
+  // 同為抽籤販售：中籤後逾期沒申請寄出
+  expired:          { label: '逾期未領', className: 'bg-amber-50 text-amber-700' },
+  cancelled:        { label: '已取消',   className: 'bg-red-50 text-red-600' },
   success:          { label: '成功',     className: 'bg-green-50 text-green-700' },
   failed:           { label: '失敗',     className: 'bg-red-50 text-red-600' },
 }
 const statusInfo = (s: string) => STATUS_LABELS[s] ?? { label: s, className: 'bg-neutral-100 text-neutral-600' }
+
+/*
+ * 篩選下拉直接從 STATUS_LABELS 產生，不要再抄一份 —— 原本那份寫死 5 個，
+ * 少了退幣（459 筆）與未中獎（182 筆），那兩種紀錄篩不出來。
+ * success／failed 不列：draw_records 沒有在用（是 CHECK 裡的歷史殘留）。
+ */
+const STATUS_FILTER_OPTIONS = [
+  { value: 'all', label: '全部狀態' },
+  ...Object.entries(STATUS_LABELS)
+    .filter(([v]) => v !== 'success' && v !== 'failed')
+    .map(([value, { label }]) => ({ value, label })),
+]
+
+/*
+ * 賞等徽章。機台的退幣品項 prize_level 直接存 'coin_return'，抽籤落選存「未中獎」——
+ * 那兩個不是賞等，印在賞等徽章上只會讓人看不懂（老闆截圖到的黃色 coin_return 標籤）。
+ */
+const NON_LEVEL_VALUES = new Set(['coin_return', '未中獎', '普通', '普通款', 'Normal / Common'])
 
 // 老虎機 spin 流水（migration 390 之後才有；舊紀錄無法回溯）
 const slotLogOf = (r: DrawRecord) => r.slot_log?.[0] ?? null
@@ -331,14 +365,16 @@ export default function DrawsPage() {
             // 等級統一「一般版」（migration 514），空值/舊髒值一律顯示一般版
             const prizeName = r.prize_name || r.prize?.name || '—'
             const rawLevel = (r.prize_level || r.prize?.level || '').trim()
-            const level = (!rawLevel || rawLevel === prizeName || ['普通', '普通款', 'Normal / Common'].includes(rawLevel))
-              ? '一般版' : rawLevel
+            // 機台的退幣／未中獎沒有賞等可言，整顆徽章不要畫
+            const level = NON_LEVEL_VALUES.has(rawLevel) || !rawLevel || rawLevel === prizeName
+              ? (rawLevel === 'coin_return' || rawLevel === '未中獎' ? null : '一般版')
+              : rawLevel
             return (
               <tr key={r.id} className="border-t border-neutral-200/70">
                 <td className="py-1.5 pr-4 font-mono text-neutral-600">{r.ticket_number}</td>
                 <td className="py-1.5 pr-4">
                   <div className="flex items-center gap-1.5">
-                    <Badge variant="warning" size="sm">{level}</Badge>
+                    {level && <Badge variant="warning" size="sm">{level}</Badge>}
                     <span className="text-neutral-700">{prizeName}</span>
                   </div>
                 </td>
@@ -412,14 +448,7 @@ export default function DrawsPage() {
                 type: 'select',
                 value: selectedStatus,
                 onChange: setSelectedStatus,
-                options: [
-                  { value: 'all', label: '全部狀態' },
-                  { value: 'in_warehouse', label: '倉庫中' },
-                  { value: 'pending_delivery', label: '待出貨' },
-                  { value: 'shipped', label: '已出貨' },
-                  { value: 'dismantled', label: '已回收' },
-                  { value: 'exchanged', label: '已兌換' }
-                ]
+                options: STATUS_FILTER_OPTIONS
               },
               {
                 key: 'prize_level',

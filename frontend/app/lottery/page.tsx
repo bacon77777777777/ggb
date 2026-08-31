@@ -27,15 +27,38 @@ import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { createClient } from '@/lib/supabase/client';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { asset } from '@/lib/asset';
-import { phaseOf, phaseMeta, countdownText, type LotteryEventRow } from '@/lib/lottery';
+import { phaseOf, phaseMeta, countdownText, ctaText, type LotteryEventRow } from '@/lib/lottery';
 
-const TABS = [
-  { key: 'all',          label: '全部' },
-  { key: 'registering',  label: '登記中' },
-  { key: 'upcoming',     label: '即將開始' },
-  { key: 'pending_draw', label: '待開獎' },
-  { key: 'drawn',        label: '已開獎' },
+/*
+ * 分類頁籤照**品牌**分，不照檔期狀態（老闆 2026-08-31）。
+ *
+ * 狀態不適合當頁籤：玩家逛的時候想的是「有沒有寶可夢的」，不是「有沒有待開獎的」；
+ * 而且狀態會自己隨時間變，同一檔今天在這個頁籤、明天跳到另一個，逛到一半東西就不見了。
+ *
+ * 品牌是 lottery_events.brand（migration 665），後台新建檔期時從既有的挑或直接輸入。
+ * 頁籤清單由當前有的檔期算出來 —— 沒有那個品牌的檔期就不該有那個頁籤。
+ */
+const ALL_TAB = 'all';
+const OTHER_BRAND = '其他';
+
+/*
+ * 排序（老闆 2026-08-31，頁籤列最右邊的漏斗）。
+ *
+ *   latest  最新上架 ← 預設
+ *   hot     熱門（登記人數多的在前）
+ *   ended   只看已結束（已開獎／已取消）
+ *
+ * 前兩個模式**已結束的一律沉到最後** —— 玩家滾列表是想找還能登記的，
+ * 已經開完的檔期擋在前面等於把活的東西推到看不到的地方。
+ */
+const SORTS = [
+  { key: 'latest', label: '最新' },
+  { key: 'hot',    label: '熱門' },
+  { key: 'ended',  label: '已結束' },
 ] as const;
+type SortKey = (typeof SORTS)[number]['key'];
+
+const isEnded = (p: ReturnType<typeof phaseOf>) => p === 'drawn' || p === 'cancelled';
 
 export default function LotteryListPage() {
   const router = useRouter();
@@ -45,7 +68,9 @@ export default function LotteryListPage() {
   const [events, setEvents] = useState<LotteryEventRow[]>([]);
   const [banners, setBanners] = useState<{ id: string; image: string; link: string }[]>([]);
   const [counts, setCounts] = useState<Record<number, number>>({});
-  const [tab, setTab] = useState<(typeof TABS)[number]['key']>('all');
+  const [tab, setTab] = useState<string>(ALL_TAB);
+  const [sort, setSort] = useState<SortKey>('latest');
+  const [sortOpen, setSortOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   /* 每秒重畫一次倒數。放 state 而不是各卡片自己開 timer —— 一頁十張卡就十個 timer */
   const [, setTick] = useState(0);
@@ -100,10 +125,39 @@ export default function LotteryListPage() {
     })();
   }, [supabase]);
 
+  const brandOf = (e: LotteryEventRow) => (e.brand?.trim() || OTHER_BRAND);
+
+  /* 頁籤＝目前真的有檔期的品牌。「其他」永遠排最後 */
+  const tabs = useMemo(() => {
+    const brands = [...new Set(events.map(brandOf))];
+    brands.sort((a, b) =>
+      a === OTHER_BRAND ? 1 : b === OTHER_BRAND ? -1 : a.localeCompare(b, 'zh-Hant'));
+    return [ALL_TAB, ...brands];
+  }, [events]);
+
   const filtered = useMemo(() => {
     const withPhase = events.map(e => ({ e, phase: phaseOf(e) }));
-    return tab === 'all' ? withPhase : withPhase.filter(x => x.phase === tab);
-  }, [events, tab]);
+    const byBrand = tab === ALL_TAB ? withPhase : withPhase.filter(x => brandOf(x.e) === tab);
+
+    if (sort === 'ended') {
+      return byBrand
+        .filter(x => isEnded(x.phase))
+        .sort((a, b) => +new Date(b.e.drawn_at ?? b.e.draw_at) - +new Date(a.e.drawn_at ?? a.e.draw_at));
+    }
+
+    return [...byBrand].sort((a, b) => {
+      // 已結束一律沉到最後，不管是哪一種排序
+      const ea = isEnded(a.phase) ? 1 : 0;
+      const eb = isEnded(b.phase) ? 1 : 0;
+      if (ea !== eb) return ea - eb;
+      if (sort === 'hot') {
+        const d = (counts[b.e.id] ?? 0) - (counts[a.e.id] ?? 0);
+        if (d !== 0) return d;
+      }
+      // 最新上架：新建立的在前。同時也是熱門模式下人數相同時的次要排序
+      return +new Date(b.e.created_at) - +new Date(a.e.created_at);
+    });
+  }, [events, tab, sort, counts]);
 
   // 關閉：整頁不存在（不該留一個點進去看到「已關閉」的入口）
   if (!isFlagsLoading && flag === 'off') {
@@ -114,10 +168,12 @@ export default function LotteryListPage() {
   if (isLoading || isFlagsLoading) return <ProductLoadingScreen />;
 
   return (
-    <div className="min-h-screen bg-neutral-50 pb-24 dark:bg-neutral-950"
-         style={{ paddingTop: 'calc(3.5rem + env(safe-area-inset-top))' }}>
+    <div className="min-h-screen bg-neutral-50 pb-24 dark:bg-neutral-950">
 
-      {banners.length > 0 && (
+      {/* HeroBanner 自己在沒有資料時會顯示預設圖（components/HeroBanner.tsx 的
+          DEFAULT_BANNER），所以這裡**不要**再加 banners.length > 0 的守衛 ——
+          加了就變成後台還沒上輪播圖時整塊留白（老闆 2026-08-31 回報） */}
+      {(
         <section><HeroBanner banners={banners} /></section>
       )}
 
@@ -129,32 +185,92 @@ export default function LotteryListPage() {
       )}
 
       <div className="sticky top-[calc(57px+env(safe-area-inset-top))] z-30 border-b border-neutral-100 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="flex gap-1 overflow-x-auto px-3 py-2">
-          {TABS.map(t => (
+        <div className="flex items-center gap-1 px-3 py-2">
+          <div className="flex flex-1 gap-1 overflow-x-auto">
+          {tabs.map(t => (
             <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
+              key={t}
+              onClick={() => setTab(t)}
               className={`shrink-0 rounded-full px-4 py-1.5 text-[13px] font-black transition-colors ${
-                tab === t.key
+                tab === t
                   ? 'bg-primary text-white'
                   : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'
               }`}
             >
-              {t.label}
+              {t === ALL_TAB ? '全部' : t}
             </button>
           ))}
+          </div>
+
+          {/*
+            排序。圖示與下拉樣式沿用首頁那顆（app/page.tsx 的「排序方式」），不要自創 ——
+            同一件事在兩頁長不一樣，玩家要重新學一次（老闆 2026-08-31）。
+            這裡只留圖示不放字（老闆指定）：它跟品牌頁籤擠同一列，多兩個字就會把頁籤壓掉。
+            點外面關掉：手機沒有 hover，不關會一直卡在畫面上。
+          */}
+          <div className="relative flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setSortOpen(o => !o)}
+              aria-label="排序方式"
+              className={`flex h-8 w-8 items-center justify-center rounded-xl border bg-white shadow-soft transition-all active:scale-95 dark:bg-neutral-900 ${
+                sortOpen
+                  ? 'border-primary text-primary'
+                  : 'border-neutral-100 text-neutral-600 hover:border-primary hover:text-primary dark:border-neutral-800 dark:text-neutral-400'
+              }`}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M4 4h16" />
+                <path d="M6 12h12" />
+                <path d="M10 20h4" />
+              </svg>
+            </button>
+            {sortOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setSortOpen(false)} />
+                <div className="absolute right-0 z-50 mt-2 w-44 rounded-lg border border-neutral-100 bg-white py-2 shadow-modal dark:border-neutral-800 dark:bg-neutral-900">
+                  {SORTS.map(o => (
+                    <button
+                      key={o.key}
+                      type="button"
+                      onClick={() => { setSort(o.key); setSortOpen(false); }}
+                      className={`w-full px-4 py-2.5 text-left text-[13px] font-black transition-colors ${
+                        sort === o.key
+                          ? 'bg-primary/5 text-primary'
+                          : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white'
+                      }`}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="space-y-3 px-3 pt-3">
         {filtered.length === 0 && (
           <div className="py-20 text-center text-[13px] font-bold text-neutral-400">
-            {tab === 'all' ? '目前沒有進行中的抽籤' : '這個階段沒有檔期'}
+            {sort === 'ended' ? '沒有已結束的檔期'
+              : tab === ALL_TAB ? '目前沒有進行中的抽籤' : `目前沒有${tab}的檔期`}
           </div>
         )}
 
         {filtered.map(({ e, phase }) => {
           const meta = phaseMeta(phase);
+          // 已開獎在內頁是「停用的說明字」，在列表則是邀請你點進去看名單
+          const cta = phase === 'drawn' ? { text: '查看中獎名單', disabled: false } : ctaText(phase);
           const img = e.cover_image_url || e.product?.image_url || asset('/images/banner_defaulet.png');
           const entries = counts[e.id] ?? 0;
           return (
@@ -193,6 +309,29 @@ export default function LotteryListPage() {
                 <div className={`text-[12px] font-black ${meta.urgent ? 'text-accent-red' : 'text-neutral-400'}`}>
                   {countdownText(e, phase)}
                 </div>
+
+                {/*
+                  卡片底部的登記鈕（老闆 2026-08-31）。
+                  ⚠️ 整張卡本身就是 <Link>，這裡**不能**再放 <button> 或 <a> ——
+                  互動元素巢狀在 <a> 裡是無效 HTML，行動裝置上點擊行為也不一致。
+                  畫成 <span>，點它等於點到整張卡，去向本來就一樣。
+                */}
+                <span
+                  className={`mt-1 flex h-11 w-full items-center justify-center gap-1.5 rounded-xl text-[15px] font-black transition-colors ${
+                    cta.disabled
+                      ? 'bg-neutral-100 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500'
+                      : 'bg-accent-red text-white shadow-lg shadow-accent-red/30'
+                  }`}
+                >
+                  {cta.text}
+                  {phase === 'registering' && (
+                    <>
+                      <Image src={asset('/images/coin.png')} alt="積分" width={16} height={16}
+                             className="inline-block h-4 w-4" unoptimized />
+                      {e.entry_points}
+                    </>
+                  )}
+                </span>
               </div>
             </Link>
           );

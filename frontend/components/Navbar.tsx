@@ -586,6 +586,16 @@ function NavbarInner() {
       router.push('/challenge');
       return;
     }
+    /*
+     * 抽籤販售內頁（/lottery/<檔期 id>）一律回檔期列表。
+     * 跟公平性驗證頁同一個坑：不寫在這裡就會落到下面第 3 步的 referrer 判斷，
+     * 而 App Router 的軟導航不會更新 document.referrer —— 玩家從首頁懸浮選單、
+     * LINE 或重新整理進來時它是空的，會被當成外部來源彈回首頁（老闆 2026-08-31）。
+     */
+    if (/^\/lottery\/[^/]+$/.test(pathname)) {
+      router.push('/lottery');
+      return;
+    }
     if (pathname === '/topup/success') {
       router.replace('/profile?tab=topup-history');
       return;

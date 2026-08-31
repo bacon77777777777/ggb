@@ -44,7 +44,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   if (!rows?.length) return NextResponse.json({ error: '選取的商品找不到' }, { status: 404 })
 
-  // 轉呼叫既有的批量上架。帶著原本的 cookie，權限與廠商範圍照舊生效
+  // 轉呼叫既有的批量新增。帶著原本的 cookie，權限與廠商範圍照舊生效
   const origin = new URL(request.url).origin
   const res = await fetch(`${origin}/api/admin/products/import/commit`, {
     method: 'POST',

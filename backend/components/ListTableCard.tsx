@@ -61,7 +61,7 @@ interface ListTableCardProps<T> {
   addButtonText?: string
   onAddClick?: () => void
   filters?: FilterSelect[]
-  /** 額外的工具列按鈕（批量上架那類），放在新增鈕右側 */
+  /** 額外的工具列按鈕（批量新增那類），放在新增鈕右側 */
   toolbarChildren?: ReactNode
   /** 匯出 CSV（報表頁用） */
   onExportCSV?: () => void

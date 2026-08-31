@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import BulkActionBar, { BulkButton } from './ui/BulkActionBar'
 
 interface FilterOption {
   key: string
@@ -331,34 +332,33 @@ export default function SearchToolbar({
       </div>
 
       {/* 批量操作 */}
-      {selectedCount > 0 && (
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-neutral-500">已選 {selectedCount} 項：</span>
-          {batchActions.map((action, index) => {
-            const variantClasses = {
-              primary: 'bg-primary text-white hover:bg-primary-dark',
-              danger: 'bg-red-600 text-white hover:bg-red-700',
-              secondary: 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300'
-            }
-            return (
-              <button
-                key={index}
-                onClick={action.onClick}
-                className={`h-9 px-3 rounded-lg transition-colors text-sm ${variantClasses[action.variant || 'primary']}`}
-              >
-                {action.label} {action.count !== undefined && `(${action.count})`}
-              </button>
-            )
-          })}
-          {onClearSelection && (
-            <button
-              onClick={onClearSelection}
-              className="h-9 px-3 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors text-sm"
+      {/*
+        批次操作一律走底部浮出的 BulkActionBar（老闆 2026-08-31：「怎麼批量的交互 UI 都不同」）。
+
+        原本這裡是把「已選 N 項：批量上架 批量下架 清除選擇」直接塞在工具列上，
+        跟配送管理、回收品項管理的浮出列是兩套不同的東西。工具列那套還有個實際問題：
+        它擠在搜尋框旁邊，項目一多就把搜尋框壓到只剩一小截，而且捲到表格下半部之後
+        按鈕就跟著捲出畫面 —— 勾完一頁的東西還要滑回最上面才按得到。
+
+        改成同一支元件之後，所有用 selectedCount / batchActions 的頁面
+        （商品管理、會員管理、商品補齊、情報管理…）自動統一，不用逐頁改。
+
+        ⚠️ batchActions 是空陣列時什麼都不畫 —— 配送管理自己已經渲染了一個
+        BulkActionBar，它把 batchActions 傳成空陣列，這裡再畫一個會疊在同一個位置。
+      */}
+      {selectedCount > 0 && batchActions.length > 0 && (
+        <BulkActionBar count={selectedCount} onClear={onClearSelection ?? (() => {})} noun="項">
+          {batchActions.map((action, index) => (
+            <BulkButton
+              key={index}
+              primary={(action.variant ?? 'primary') === 'primary'}
+              danger={action.variant === 'danger'}
+              onClick={action.onClick}
             >
-              清除選擇
-            </button>
-          )}
-        </div>
+              {action.label}{action.count !== undefined ? ` (${action.count})` : ''}
+            </BulkButton>
+          ))}
+        </BulkActionBar>
       )}
 
       {/* 自定義內容 */}

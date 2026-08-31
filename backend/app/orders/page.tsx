@@ -1310,11 +1310,6 @@ export default function OrdersPage() {
               { key: 'shippedAt', label: '出貨時間', visible: visibleColumns.shippedAt }
             ]}
             onColumnToggle={(key, visible) => setVisibleColumns(prev => ({ ...prev, [key]: visible }))}
-            selectedCount={selectedOrders.size}
-            batchActions={[
-              // 批次操作全部改由勾選後浮出的 BulkActionBar 提供 —— 同一件事不要兩個入口
-            ]}
-            onClearSelection={() => setSelectedOrders(new Set())}
           />
 
           {/* 篩選條件 Tags */}

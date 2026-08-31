@@ -1640,9 +1640,12 @@ function ProfileContent() {
             const isPreorder = false;
             const preorderAvailableAt = null;
 
-            // 抽籤販售：中籤品項在申請寄出時才付價金，且有保留期限
-            const salePrice = item.products?.sale_mode === 'lottery'
-              ? (item.product_prizes?.sale_price ?? 0) : 0;
+            /*
+             * 舊的抽籤販售模式（sale_mode='lottery'）已移除（老闆 2026-08-31），
+             * 全站沒有任何 lottery 商品，這個判斷永遠是 0 —— 直接寫死。
+             * 新的登記制抽籤販售不進倉庫（走 lottery_entries），不影響這裡。
+             */
+            const salePrice = 0;
             const expiresAt = (item as any).expires_at ?? null;
 
             const rawGrade = item.product_prizes?.level || item.prize_level || '一般版';

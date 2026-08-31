@@ -61,6 +61,8 @@ export async function POST(request: Request) {
   const { data, error } = await supabase.from('lottery_events').insert({
     product_id: body.product_id,
     title: body.title || null,
+    // 品牌／IP（migration 665）。前台列表的分類頁籤照這欄分組
+    brand: body.brand?.trim() || null,
     subtitle: body.subtitle || null,
     cover_image_url: body.cover_image_url || null,
     entry_points: Number(body.entry_points),

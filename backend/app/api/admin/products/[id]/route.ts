@@ -26,7 +26,10 @@ export async function GET(
 
     const { data, error } = await getSupabaseAdmin()
       .from('products')
-      .select('*, product_prizes(*)')
+      // 標籤一起帶回來。編輯頁原本自己用瀏覽器的 supabase client 查
+      // product_tag_links，但那張表 RLS 開著又一條 policy 都沒有 —— 回的是空陣列、
+      // 不報錯，存檔時就把既有標籤整組刪掉（PUT 收到空的 tagIds 會 DELETE 後不插回）
+      .select('*, product_prizes(*), product_tag_links(tag_id)')
       .eq('id', productId)
       .single()
 

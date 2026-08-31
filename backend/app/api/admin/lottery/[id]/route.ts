@@ -32,7 +32,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .from('lottery_entries').select('id', { count: 'exact', head: true }).eq('event_id', id)
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
-  const ALLOWED = ['title', 'subtitle', 'cover_image_url', 'content', 'entry_points',
+  const ALLOWED = ['title', 'subtitle', 'brand', 'cover_image_url', 'content', 'entry_points',
     'per_user_entries', 'winners_count', 'backup_count', 'price_tokens', 'pay_deadline_hours',
     'register_start_at', 'register_end_at', 'draw_at', 'show_entry_count', 'status', 'sort_order']
   for (const k of ALLOWED) if (body[k] !== undefined) patch[k] = body[k]

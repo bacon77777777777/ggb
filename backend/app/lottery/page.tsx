@@ -33,6 +33,7 @@ interface LotteryEvent {
   id: number
   product_id: number
   title: string | null
+  brand: string | null
   entry_points: number
   per_user_entries: number
   winners_count: number
@@ -66,6 +67,7 @@ const fmt = (v: string | null) => (v ? new Date(v).toLocaleString('sv-SE').repla
 const EMPTY_FORM = {
   product_id: '',
   title: '',
+  brand: '',
   entry_points: '20',
   per_user_entries: '1',
   winners_count: '10',
@@ -124,6 +126,7 @@ export default function LotteryPage() {
     setForm({
       product_id: String(e.product_id),
       title: e.title ?? '',
+      brand: e.brand ?? '',
       entry_points: String(e.entry_points),
       per_user_entries: String(e.per_user_entries),
       winners_count: String(e.winners_count),
@@ -209,6 +212,9 @@ export default function LotteryPage() {
     const data = await res.json()
     setEntries(data.entries ?? [])
   }
+
+  /* 已經打過的品牌，給表單的 datalist 用 —— 不另外開一張品牌表 */
+  const knownBrands = [...new Set(events.map(e => e.brand).filter((b): b is string => !!b))].sort()
 
   const filtered = events.filter(e => {
     if (phaseFilter !== 'all' && e.phase !== phaseFilter) return false
@@ -350,6 +356,28 @@ export default function LotteryPage() {
             value={form.title}
             onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
           />
+
+          {/*
+            品牌（migration 665）。前台列表的分類頁籤照這欄分組。
+            用 <datalist> 而不是下拉：既有的品牌可以點選，也能直接打新的 ——
+            開一張品牌維護表為了一個字串太重，而每次都要重打又容易打成
+            「寶可夢」「寶可夢 」「Pokemon」三種。
+          */}
+          <div>
+            <Input
+              label="品牌 / IP"
+              list="lottery-brands"
+              placeholder="寶可夢、遊戲王、NBA…（可挑既有的或直接輸入新的）"
+              value={form.brand}
+              onChange={e => setForm(p => ({ ...p, brand: e.target.value }))}
+            />
+            <datalist id="lottery-brands">
+              {knownBrands.map(b => <option key={b} value={b} />)}
+            </datalist>
+            <p className="mt-1 text-xs text-neutral-400">
+              前台列表照這欄分頁籤；留空的檔期會歸在「其他」。
+            </p>
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <Input label="入場積分 *" type="number" value={form.entry_points}

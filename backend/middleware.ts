@@ -81,6 +81,10 @@ const SUPPLIER_API_ALLOW: string[] = [
   // 配送申請（老闆 2026-08-09）：route 內依 supplier_id 限縮＋玩家個資遮罩，
   // 出貨/改單（PUT、batch）在 route 內對廠商回 403 —— 這裡只放行「看」
   '/api/admin/orders',
+  // 回收品項管理（老闆 2026-08-31）：route 內依 supplier_id 收斂，寫入前驗貨主。
+  // ⚠️ 不能改放 '/api/admin/dismantled' —— 那支底下的「回收紀錄」帶玩家暱稱與 UUID，
+  //    盤點的 API 因此才拆成獨立一支。
+  '/api/admin/recycle-inventory',
 ]
 
 /**
@@ -101,6 +105,9 @@ const SUPPLIER_API_DENY: string[] = [
   // 批量匯入本來就是平台人員拿廠商給的 list 來做的。
   '/api/admin/products/import',
   '/api/admin/products/upload-images',
+  // 批量新增走的是這支（彈窗裡的兩個框最後都打到它）。沒列的話廠商呼叫得到，
+  // 只是內部轉呼叫 import/commit 時才被上面那條擋掉 —— 那會回一個看不懂的錯誤
+  '/api/admin/products/bulk-import',
 ]
 const SUPPLIER_API_DENY_SUFFIX: string[] = ['/seal', '/seal-now', '/close-out', '/verify']
 
@@ -180,7 +187,7 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string | string[] }>
   // 規則排序是「前綴最長者優先」，所以 /reports 這種父層放最後當保底。
   { prefix: '/token-ledger',           permission: 'recharges' },
   { prefix: '/dismantled',             permission: 'recycle_pool' },
-  { prefix: '/recycle-inventory',      permission: 'recycle_pool' },
+  { prefix: '/recycle-inventory',      permission: 'recycle_inventory' },
   { prefix: '/reports/points',         permission: 'reports_overview' },
   { prefix: '/leaderboard-bots',       permission: 'users' },
   // 設定頁要排在 /lottery 前面：前綴比對是由上往下，先中 '/lottery' 就輪不到它

@@ -1,6 +1,12 @@
 'use client'
 
-import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard } from '@/components'
+import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, Modal } from '@/components'
+import Input from '@/components/ui/Input'
+import SelectField from '@/components/ui/SelectField'
+import FileInput from '@/components/ui/FileInput'
+import Textarea from '@/components/ui/Textarea'
+import Button from '@/components/ui/Button'
+import { useToast } from '@/contexts/ToastContext'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { formatDateTime } from '@/utils/dateFormat'
@@ -10,11 +16,9 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { SmallItem } from '@/types/product'
 import { useLog } from '@/contexts/LogContext'
-import { useRouter } from 'next/navigation'
 
 export default function SmallItemsPage() {
   const { confirm, dialogProps } = useConfirmDialog()
-  const router = useRouter()
   const { addLog } = useLog()
   const [smallItems, setSmallItems] = useState<SmallItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,6 +27,84 @@ export default function SmallItemsPage() {
   const [sortField, setSortField] = useState<string>('createdAt')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const { tableDensity, setTableDensity } = useTablePrefs('small-items', 'compact', {})
+  const { toast } = useToast()
+
+  /*
+   * 新增改成彈窗（老闆 2026-08-31，跟輪播圖新增一樣）。
+   * 原本是獨立一頁 /small-items/new —— 一個四欄的表單開一整頁、還要按返回才回得來，
+   * 而且新增完 router.push 回列表等於整頁重載。
+   */
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [form, setForm] = useState({ name: '', category: '雜貨', description: '' })
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState('')
+
+  const CATEGORIES = ['吊飾', '雜貨', '貼紙', '徽章', '文具', '卡片']
+
+  const openCreate = () => {
+    setForm({ name: '', category: '雜貨', description: '' })
+    setImageFile(null)
+    setImagePreview('')
+    setIsModalOpen(true)
+  }
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
+  const handleCreate = async () => {
+    if (!form.name.trim()) { toast('請輸入小物名稱', 'error'); return }
+    if (!imageFile) { toast('請選擇圖片', 'error'); return }
+
+    setIsSaving(true)
+    try {
+      // 圖走後台的上傳 API（service role），不從瀏覽器直接打 storage
+      const fd = new FormData()
+      fd.append('file', imageFile)
+      fd.append('bucket', 'products')
+      fd.append('path', `small-item-${Date.now()}.${imageFile.name.split('.').pop()}`)
+      const up = await fetch('/api/admin/upload', { method: 'POST', body: fd })
+      if (!up.ok) throw new Error((await up.json().catch(() => null))?.error || '圖片上傳失敗')
+      const { publicUrl } = await up.json() as { publicUrl: string }
+
+      const res = await fetch('/api/admin/small-items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          category: form.category,
+          description: form.description,
+          image_url: publicUrl,
+          level: 'E',
+        }),
+      })
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || '新增失敗')
+      // POST 回的是 { item: row }，不是 row 本身
+      const created = (await res.json().catch(() => null))?.item
+
+      addLog('新增小物', '小物資源庫', `新增小物「${form.name}」`, 'success')
+      toast('已新增小物')
+      setIsModalOpen(false)
+      // 彈窗不換頁，所以自己把新的那筆補進列表，不要整頁重載
+      setSmallItems(prev => [{
+        id: created?.id ?? `tmp-${Date.now()}`,
+        name: form.name.trim(),
+        imageUrl: publicUrl,
+        category: form.category,
+        level: 'E',
+        description: form.description,
+        createdAt: created?.created_at ?? new Date().toISOString(),
+      } as SmallItem, ...prev])
+    } catch (err: any) {
+      toast(`新增失敗：${err?.message || '請稍後再試'}`, 'error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   // Fetch data from Supabase
   useEffect(() => {
@@ -181,7 +263,7 @@ export default function SmallItemsPage() {
             onSearchChange={setSearchQuery}
             showAddButton={true}
             addButtonText="+ 新增小物"
-            onAddClick={() => router.push('/small-items/new')}
+            onAddClick={openCreate}
             showDensity={true}
             density={tableDensity}
             onDensityChange={setTableDensity}
@@ -276,6 +358,60 @@ export default function SmallItemsPage() {
           </div>
         </PageCard>
         </div>
+
+        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="新增小物">
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-neutral-700">
+                小物名稱 <span className="text-red-500">*</span>
+              </label>
+              <Input
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                placeholder="請輸入小物名稱"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-neutral-700">
+                分類 <span className="text-red-500">*</span>
+              </label>
+              <SelectField value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </SelectField>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-neutral-700">
+                圖片 <span className="text-red-500">*</span>
+              </label>
+              <div className="space-y-3">
+                {imagePreview && (
+                  <div className="relative h-28 w-28 overflow-hidden rounded-lg border-2 border-neutral-200 bg-neutral-100">
+                    {/* 本機 blob 預覽，next/image 吃不了 blob: 網址 */}
+                    <img src={imagePreview} alt="預覽" className="h-full w-full object-cover" />
+                  </div>
+                )}
+                <FileInput accept="image/*" onChange={handleImageChange} />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-neutral-700">描述</label>
+              <Textarea
+                value={form.description}
+                onChange={e => setForm({ ...form, description: e.target.value })}
+                placeholder="請輸入小物描述（選填）"
+                rows={3}
+              />
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3 border-t pt-4">
+              <Button variant="secondary" onClick={() => setIsModalOpen(false)} disabled={isSaving}>取消</Button>
+              <Button variant="primary" onClick={handleCreate} isLoading={isSaving}>新增小物</Button>
+            </div>
+          </div>
+        </Modal>
       </div>
           {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>

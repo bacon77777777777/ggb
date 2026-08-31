@@ -612,7 +612,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/suppliers/settings': 'suppliers_settings',
     '/small-items': 'small_items',
     '/dismantled': 'recycle_pool',
-    '/recycle-inventory': 'recycle_pool',
+    '/recycle-inventory': 'recycle_inventory',
     '/banners': 'banners',
     '/announcements': 'announcements',
     '/events': 'events',
@@ -721,7 +721,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         title: '回收管理',
         items: [
           { name: '回收紀錄', path: '/dismantled', icon: IconScissors },
-          { name: '回收商品管理', path: '/recycle-inventory', icon: IconProducts },
+          { name: '回收品項管理', path: '/recycle-inventory', icon: IconProducts },
           { name: '回收價格設定', path: '/settings/recycle', icon: IconRefund },
         ],
       },
@@ -849,8 +849,8 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/settings/recycle': '設定五類商品的回收比例，基準為商品單抽價 —— 品項編輯頁不再有回收價欄位。轉蛋與盒玩各一個比例，一番賞／抽卡／自製賞另分大賞與一般賞（大賞由系統依品項總數自動判定）。每個比例旁邊的「最低」是保底值：單抽價乘完不足這個數字時至少給這麼多，避免低單價商品算出 0。回收在廠商結算怎麼拆帳（結算方式、差額分潤、廠商個別設定）在「廠商管理 → 廠商設定」。',
     '/suppliers/settings': '結算費率與回收結算的全站預設（分潤比、代扣稅率、積分模式、綠界手續費估算、回收結算方式、差額分潤）。每家廠商可在編輯視窗覆蓋，留空就跟著這裡走。異動寫進操作記錄。',
     '/small-items': '機台獎池用的小物品項庫，不上架、不售價，供機台出獎與直衝定價使用。',
-    '/dismantled': '玩家回收的逐筆紀錄：誰、什麼時候、回收了什麼、退了多少代幣，可批次標記已再利用／已報廢。',
-    '/recycle-inventory': '回收品的實體盤點，按廠商→商品→品項統計還有幾件卡在那裡，可匯出給廠商重組成自製賞。實體一律在廠商倉庫，轉蛋／盒玩回收後會回到原商品，預設不列入。',
+    '/dismantled': '玩家回收的逐筆流水帳：誰、什麼時候、回收了什麼、退了多少代幣。每一筆都是完成式（代幣當下就退進玩家帳戶），所以沒有狀態欄位；實體那件貨的去向在「回收品項管理」。',
+    '/recycle-inventory': '回收品的實體盤點：一列一個品項，勾選可批次標記，也可匯出給廠商重組成自製賞。處置是「誰的貨誰處理」—— 吉吉比的貨平台處理，第三方廠商的貨廠商自己標（廠商帳號只看得到也只標得動自己那家）。左上角廠商下拉預設吉吉比。轉蛋／盒玩回收後已還回原商品庫存，不列入。',
     '/reports/adjustments': '所有非儲值、非抽獎的代幣增減（GB哥補幣、帳務更正、出貨運費扣款、商城／交易所／機台）依會計分類列出，淨額即對帳公式的 manual_total，可匯出 CSV。',
     '/reports/settlement': '依廠商統計銷售金額，計算應付款項與平台毛利，作為廠商請款依據。',
   }

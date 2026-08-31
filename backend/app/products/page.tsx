@@ -31,11 +31,9 @@ export default function ProductsPage() {
   // 只用來決定介面上要不要顯示刪除／驗證按鈕。
   // 資料範圍的過濾在 GET /api/admin/products 的伺服器端做，不在這裡。
   const isSupplier = adminUser?.role === 'supplier'
-  // 批量上架彈窗。吃標準格式的檔案，廠商在彈窗裡選
+  // 批量新增彈窗（一次建立多筆商品）。吃標準格式的檔案，廠商在彈窗裡選。
+  // 跟勾選後那顆「批量上架」是兩回事 —— 那顆是把已存在的商品切成上架狀態
   const [isBulkOpen, setIsBulkOpen] = useState(false)
-  const [zipUploading, setZipUploading] = useState(false)
-  const [zipResult, setZipResult] = useState<{ uploaded: number; failed: number } | null>(null)
-  const zipRef = useRef<HTMLInputElement>(null)
 
   const getDisplayCode = (product: Product): string => {
     return product.productCode || ''
@@ -129,28 +127,34 @@ export default function ProductsPage() {
     }
     fetchProducts()
     
-    // Fetch small items count
+    /*
+     * 這兩張小卡原本是前端用瀏覽器的 supabase client 直接 count，
+     * 兩個都永遠是 0（老闆 2026-08-31 的截圖：小物數量 0、回收數 0，
+     * 但小物管理有 1 筆、回收品項管理有 830 件）。
+     *
+     * 原因是後台**不使用 Supabase Auth**（走自製的 admin_session cookie），
+     * 瀏覽器那個 client 永遠是 anon：
+     *   small_items  policy 只放行 authenticated
+     *   draw_records policy 是 auth.uid() = user_id，anon 的 auth.uid() 是 NULL
+     * 兩者都**不報錯、只回 0 筆**，所以壞了一年也沒人發現。一律改走後台 API。
+     */
     const fetchSmallItemsCount = async () => {
-      const { count, error } = await supabase
-        .from('small_items')
-        .select('*', { count: 'exact', head: true })
-      
-      if (!error && count !== null) {
-        setSmallItemsCount(count)
-      }
+      try {
+        const res = await fetch('/api/admin/small-items')
+        if (!res.ok) return
+        const data = await res.json() as any[]
+        setSmallItemsCount(Array.isArray(data) ? data.length : 0)
+      } catch { /* 統計卡壞掉不該擋住整頁 */ }
     }
     fetchSmallItemsCount()
 
-    // Fetch dismantled items count
     const fetchDismantledCount = async () => {
-      const { count, error } = await supabase
-        .from('draw_records')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'dismantled')
-      
-      if (!error && count !== null) {
-        setDismantledCount(count)
-      }
+      try {
+        const res = await fetch('/api/admin/dismantled?view=count')
+        if (!res.ok) return
+        const { count } = await res.json()
+        setDismantledCount(Number(count) || 0)
+      } catch { /* 同上 */ }
     }
     fetchDismantledCount()
   }, [])
@@ -363,25 +367,6 @@ export default function ProductsPage() {
   }
 
   // 圖片壓縮檔批量上傳
-  const handleZipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    e.target.value = ''
-    setZipUploading(true)
-    setZipResult(null)
-    try {
-      const fd = new FormData()
-      fd.append('zip', file)
-      const res = await fetch('/api/admin/products/upload-images', { method: 'POST', body: fd })
-      const json = await res.json()
-      setZipResult({ uploaded: json.uploaded ?? 0, failed: json.failed ?? 0 })
-    } catch {
-      setZipResult({ uploaded: 0, failed: 1 })
-    } finally {
-      setZipUploading(false)
-    }
-  }
-
   // 確認 Modal 狀態
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean
@@ -789,29 +774,15 @@ export default function ProductsPage() {
             onAddClick={() => window.location.href = '/products/new'}
             children={
               <>
-                {/* 廠商只能看與編輯自己的商品 —— 新增、批量上架與上傳圖片都是平台的事。
+                {/* 廠商只能看與編輯自己的商品 —— 新增與批量新增都是平台的事。
                     這顆吃的是「已經是標準格式」的檔案。廠商給的原始清單要先走
                     「商品補齊」那頁轉格式並補資料，補完下載的 CSV 再丟回這裡 */}
                 {!isSupplier && <button
                   onClick={() => setIsBulkOpen(true)}
                   className="h-9 whitespace-nowrap rounded-lg bg-violet-600 px-4 text-sm font-medium text-white transition-colors hover:bg-violet-700"
                 >
-                  批量上架
+                  批量新增
                 </button>}
-                {!isSupplier && <button
-                  onClick={() => zipRef.current?.click()}
-                  disabled={zipUploading}
-                  className="h-9 px-4 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-60 transition-colors text-sm font-medium whitespace-nowrap"
-                  title="上傳 .zip 壓縮檔，批量將圖片放入 Storage"
-                >
-                  {zipUploading ? '上傳中...' : '上傳圖片'}
-                </button>}
-                <input ref={zipRef} type="file" accept=".zip" className="hidden" onChange={handleZipUpload} />
-                {zipResult && (
-                  <span className={`text-xs font-medium px-2 py-1 rounded ${zipResult.failed > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                    ✓ 已上傳 {zipResult.uploaded} 張{zipResult.failed > 0 ? `，失敗 ${zipResult.failed}` : ''}
-                  </span>
-                )}
               </>
             }
             showDensity={true}

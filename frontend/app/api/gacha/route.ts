@@ -50,29 +50,28 @@ export async function POST(request: NextRequest) {
     //   抽卡/自製賞 → 賞等票號引擎（票號後端自動配，前台維持選數量購買）
     const { data: productRow } = await userSupabase
       .from('products')
-      .select('type, sale_mode')
+      .select('type')
       .eq('id', productId)
       .single()
 
-    // 抽籤販售自己一條路：0 元、不吃優惠券、有每人次數上限，
-    // 硬要塞進 play_ichiban_auto_locked 會變成一堆 if
-    const isLottery = productRow?.sale_mode === 'lottery'
+    /*
+     * 舊的「抽籤販售」販售模式（sale_mode='lottery' → play_lottery）已移除
+     * （老闆 2026-08-31）。那是掛在一番賞／抽卡／自製賞底下的 0 元抽、中籤才付款，
+     * 已由獨立的登記制「抽籤販售」取代（lottery_events / lottery_entries，
+     * 前台走 /api/lottery，不經過這裡）。
+     *
+     * play_lottery 那支 RPC 留在 DB 沒刪，但這裡不再呼叫它 ——
+     * 後台也不再產生 sale_mode='lottery' 的商品，兩邊都關上了。
+     */
     const isTicketBased = productRow?.type === 'card' || productRow?.type === 'custom'
-    const rpcName = isLottery
-      ? 'play_lottery'
-      : isTicketBased ? 'play_ichiban_auto_locked' : 'play_gacha_locked'
+    const rpcName = isTicketBased ? 'play_ichiban_auto_locked' : 'play_gacha_locked'
 
-    const { data, error } = await userSupabase.rpc(
-      rpcName,
-      isLottery
-        ? { p_product_id: productId, p_count: count }
-        : {
-            p_product_id: productId,
-            p_count: count,
-            p_use_points: usePoints ?? false,
-            p_coupon_id: couponId ?? null,
-          },
-    )
+    const { data, error } = await userSupabase.rpc(rpcName, {
+      p_product_id: productId,
+      p_count: count,
+      p_use_points: usePoints ?? false,
+      p_coupon_id: couponId ?? null,
+    })
 
     if (error) throw error
 

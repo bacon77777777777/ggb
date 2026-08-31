@@ -347,22 +347,30 @@ export default function EditProductPage() {
   useEffect(() => {
     if (showSmallItemLibrary && libraryItems.length === 0) {
       const fetchLibraryItems = async () => {
-        const { data, error } = await supabase
-          .from('small_items')
-          .select('*')
-          .order('created_at', { ascending: false })
-
-        if (data) {
-          const mappedItems: SmallItem[] = data.map(item => ({
+        /*
+         * ⚠️ 一定要走 /api/admin/small-items，不要用瀏覽器的 supabase client。
+         *
+         * small_items 開了 RLS，policy 只放行 `authenticated`；而後台**不使用
+         * Supabase Auth**（走自製的 admin_session cookie），所以瀏覽器那個 client
+         * 永遠是 anon —— 查詢不會報錯，只是靜靜回一個空陣列。
+         * 症狀就是資源庫彈窗顯示「找不到符合條件的小物」，但小物管理明明有資料
+         * （老闆 2026-08-31 回報）。小物管理那頁沒事，因為它本來就走這支 API。
+         */
+        try {
+          const res = await fetch('/api/admin/small-items')
+          if (!res.ok) throw new Error('載入失敗')
+          const data = await res.json() as any[]
+          setLibraryItems((data ?? []).map(item => ({
             id: item.id,
             name: item.name,
             imageUrl: item.image_url,
             category: item.category,
             level: item.level,
             description: item.description,
-            createdAt: item.created_at
-          }))
-          setLibraryItems(mappedItems)
+            createdAt: item.created_at,
+          })))
+        } catch {
+          toast('小物資源庫載入失敗', 'error')
         }
       }
       fetchLibraryItems()
@@ -457,12 +465,11 @@ export default function EditProductPage() {
           const defaultYear = product.release_year || now.getFullYear().toString()
           const defaultMonth = product.release_month || (now.getMonth() + 1).toString().padStart(2, '0')
 
-          // Fetch existing tags
-          const { data: tags } = await supabase
-            .from('product_tag_links')
-            .select('tag_id')
-            .eq('product_id', productId)
-          const tagIds = tags ? tags.map((t: any) => t.tag_id) : []
+          // 標籤跟著商品一起回來（見 GET /api/admin/products/[id]）。
+          // 不要在這裡用瀏覽器的 supabase client 查 product_tag_links ——
+          // 那張表 RLS 開著卻沒有任何 policy，anon 讀回空陣列且不報錯，
+          // 存檔時 tagIds 送空的過去，API 會把既有標籤整組刪掉
+          const tagIds = (product.product_tag_links ?? []).map((t: any) => t.tag_id)
 
           // Fetch existing category memberships (分類清單)
           const catRes = await fetch(`/api/admin/products/${productId}/categories`)
@@ -676,16 +683,15 @@ export default function EditProductPage() {
         name: formData.name,
         category: formData.category,
         type: formData.type,
-        // 只有抽卡能開抽籤販售；其他類別一律寫回 normal，
-        // 免得改過類別的商品留著一組永遠不會生效的設定
-        sale_mode: isLottery ? 'lottery' : 'normal',
+        // 販售模式原樣寫回。舊的抽籤販售模式已移除、後台不再產生新的 lottery 商品，
+        // 但萬一還有歷史商品掛著，存檔不該把它默默改掉。
+        // lottery_total_draws / lottery_per_user_draws 乾脆不送 —— 沒送就不會被動到
+        sale_mode: formData.saleMode || 'normal',
         // 整包模式只有抽卡有意義；填 1 或空白一律寫回 null（＝單張模式），
         // 免得改過類別的商品留著一個永遠不生效的張數
         cards_per_pack: formData.type === 'card' && Number(formData.cardsPerPack) > 1
           ? Number(formData.cardsPerPack)
           : null,
-        lottery_total_draws:    isLottery ? Number(formData.lotteryTotalDraws)    || null : null,
-        lottery_per_user_draws: isLottery ? Number(formData.lotteryPerUserDraws) || null : null,
         price: parseInt(formData.price) || 0,
         cost: formData.cost ? parseFloat(formData.cost) : null,
         remaining: calculatedRemaining,
@@ -831,22 +837,17 @@ export default function EditProductPage() {
   ]
   // 一番賞/抽卡/自製賞：可驗證，數量+剩餘鎖定，不可新增/刪除品項
   const isVerifiable = ['ichiban', 'card', 'custom'].includes(formData.type)
-  // 抽籤販售給走封存排籤的三種：它們共用同一套引擎，邏輯完全相同
-  const canLottery = ['ichiban', 'card', 'custom'].includes(formData.type)
-  const isLottery  = canLottery && formData.saleMode === 'lottery'
-  // 落選張數即時算：設錯要當場看得到，不是存檔被 DB 擋才知道
-  // 「未中獎」是封存時系統自動補的，不是管理員設的賞項，不能算進加總
-  const lotteryWins = prizes
-    .filter(p => p.level !== '未中獎')
-    .reduce((sum, p) => sum + (Number(p.total) || 0), 0)
-  const lotteryBlanks = isLottery && formData.lotteryTotalDraws
-    ? Number(formData.lotteryTotalDraws) - lotteryWins
-    : null
-  // 抽籤販售的分母是「總抽獎次數」，不是各賞項加總 —— 落選籤也在池子裡，
-  // 用賞項加總會把 2/40 顯示成 10%，管理員照這個數字定價就虧了
-  const probabilityBase = isLottery && Number(formData.lotteryTotalDraws) > 0
-    ? Number(formData.lotteryTotalDraws)
-    : calculatedTotalCount
+  /*
+   * 舊的「抽籤販售」販售模式已移除（老闆 2026-08-31）。
+   *
+   * 那是掛在一番賞／抽卡／自製賞底下的 sale_mode='lottery'：0 元抽、中籤後才付款。
+   * 已改由獨立的「抽籤販售」功能取代（登記制，資料在 lottery_events /
+   * lottery_entries，migration 652 起）。
+   *
+   * sale_mode 欄位與 play_lottery RPC 都保留不動 —— 歷史資料還指著它們，
+   * 只是前後台都不再產生新的 lottery 商品。
+   */
+  const probabilityBase = calculatedTotalCount
   // 轉蛋/盒玩：機率制，等級預設鎖「一般版」，數量可疊加
   const isGachaType = ['gacha', 'blindbox'].includes(formData.type)
   const defaultLevel = '一般版'
@@ -1172,18 +1173,11 @@ export default function EditProductPage() {
                   placeholder="選擇時間" />
               </div>
               <div>
-                {/* 抽籤販售是 0 元抽，售價不適用。原本 required min=1 會讓
-                    抽籤販售的商品完全存不了檔，而瀏覽器原生驗證的訊息是
-                    「Value must be greater than or equal to 1」，看不出跟售價有關 */}
                 <label className="block text-xs font-medium text-neutral-500 mb-1">
-                  售價 (G) {!isLottery && <span className="text-red-500">*</span>}
+                  售價 (G) <span className="text-red-500">*</span>
                 </label>
                 <Input type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  placeholder="0" required={!isLottery} min={isLottery ? 0 : 1}
-                  disabled={isLottery} />
-                {isLottery && (
-                  <p className="mt-1 text-xs text-neutral-400">抽籤販售免費抽，價金設在各品項的「寄出應付」</p>
-                )}
+                  placeholder="0" required min={1} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-500 mb-1">成本</label>
@@ -1200,61 +1194,8 @@ export default function EditProductPage() {
                   <option value="5">5★</option>
                 </SelectField>
               </div>
-              {canLottery && (
-                <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">販售模式</label>
-                  <SelectField
-                    value={formData.saleMode}
-                    onChange={(e) => setFormData({ ...formData, saleMode: e.target.value })}
-                  >
-                    <option value="normal">一般販售</option>
-                    <option value="lottery">抽籤販售（0 元抽，中籤才付款）</option>
-                  </SelectField>
-                </div>
-              )}
             </div>
 
-            {/* 抽籤販售：兩個上限都必須設，少一個等於沒有上限，DB 也會擋 */}
-            {isLottery && (
-              <div className="mt-3 p-3 bg-primary/5 border border-primary/10 rounded-lg">
-                <p className="text-xs text-neutral-600 mb-3 leading-relaxed">
-                  玩家免費抽，抽中才有資格買。中籤品項在申請寄出時支付下方各品項的「寄出應付」金額，
-                  不可回收，30 天內未申請寄送就失效。上方的「售價」對這個模式不生效。
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-500 mb-1">
-                      整檔總抽獎次數 <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      type="number" min="1" placeholder="例如 500"
-                      value={formData.lotteryTotalDraws}
-                      onChange={(e) => setFormData({ ...formData, lotteryTotalDraws: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-500 mb-1">
-                      每人可抽次數 <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      type="number" min="1" placeholder="例如 5"
-                      value={formData.lotteryPerUserDraws}
-                      onChange={(e) => setFormData({ ...formData, lotteryPerUserDraws: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <p className="mt-2 text-xs text-neutral-500">
-                  總次數扣掉下方各品項數量加總，剩下的自動成為「未中獎」的籤
-                  {lotteryBlanks !== null && (
-                    <span className={lotteryBlanks < 0 ? 'text-red-500 font-medium' : 'text-neutral-700 font-medium'}>
-                      {lotteryBlanks < 0
-                        ? ` ・ 品項共 ${lotteryWins} 個，超過總次數 ${formData.lotteryTotalDraws}`
-                        : ` ・ 目前為 ${lotteryBlanks} 張`}
-                    </span>
-                  )}
-                </p>
-              </div>
-            )}
             {/* 完抽時間 / Seed（條件顯示） */}
             {formData.status === 'ended' && (
               <div className="grid grid-cols-2 gap-3 mt-3">
@@ -1506,23 +1447,6 @@ export default function EditProductPage() {
                               onChange={(e) => {
                                 const updated = [...prizes]
                                 updated[index].recycleValue = e.target.value === '' ? 0 : parseInt(e.target.value) || 0
-                                setPrizes(updated)
-                              }} className="font-mono text-center"
-                              min="0"
-                              placeholder="0"
-                            />
-                          </div>
-                        )}
-                        {/* 抽籤販售才有：中籤後申請寄出要付的金額 */}
-                        {isLottery && (
-                          <div>
-                            <label className="block text-xs font-medium text-neutral-500 mb-1">寄出應付 (G)</label>
-                            <Input
-                              type="number"
-                              value={prize.salePrice === 0 ? '' : prize.salePrice}
-                              onChange={(e) => {
-                                const updated = [...prizes]
-                                updated[index].salePrice = e.target.value === '' ? 0 : parseInt(e.target.value) || 0
                                 setPrizes(updated)
                               }} className="font-mono text-center"
                               min="0"

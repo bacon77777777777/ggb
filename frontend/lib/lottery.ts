@@ -12,6 +12,8 @@ export interface LotteryEventRow {
   product_id: number;
   title: string | null;
   subtitle: string | null;
+  /** 品牌／IP（migration 665）。前台列表的分類頁籤照這欄分組；空值歸「其他」 */
+  brand: string | null;
   cover_image_url: string | null;
   content: unknown;
   entry_points: number;
@@ -24,6 +26,8 @@ export interface LotteryEventRow {
   register_end_at: string;
   draw_at: string;
   drawn_at: string | null;
+  /** 列表「最新」排序用 */
+  created_at: string;
   commitment: string | null;
   seed: string | null;
   show_entry_count: boolean;
@@ -54,6 +58,26 @@ export function phaseMeta(p: LotteryPhase): { label: string; cls: string; urgent
     case 'drawn':        return { label: '已開獎',   cls: 'bg-neutral-500', urgent: false };
     case 'cancelled':    return { label: '已取消',   cls: 'bg-neutral-400', urgent: false };
     default:             return { label: '準備中',   cls: 'bg-neutral-400', urgent: false };
+  }
+}
+
+/**
+ * 卡片底部那顆按鈕的字。
+ *
+ * 列表卡片與內頁底部操作欄用同一套文案，不要各寫一份 —— 兩邊講不一樣的話，
+ * 玩家在列表看到「立即登記」點進去卻是「尚未開放登記」。
+ * 內頁還會另外疊上「維護中」與「已達個人上限」兩種狀態（那兩個要拿到玩家資料才知道）。
+ */
+export function ctaText(p: LotteryPhase): { text: string; disabled: boolean } {
+  switch (p) {
+    case 'registering':  return { text: '立即登記',             disabled: false };
+    case 'upcoming':     return { text: '尚未開放登記',         disabled: true  };
+    case 'pending_draw': return { text: '登記已截止，等待開獎', disabled: true  };
+    /* 內頁的中獎名單就在同一頁上，所以這裡是停用的說明字，不是可按的動作。
+       列表卡片會自己把字換成「查看中獎名單」—— 那張卡整片都是連結，點得進來 */
+    case 'drawn':        return { text: '已開獎',                 disabled: true  };
+    case 'cancelled':    return { text: '此檔期已取消',         disabled: true  };
+    default:             return { text: '準備中',               disabled: true  };
   }
 }
 

@@ -24,7 +24,7 @@ import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { useToast } from '@/components/ui/Toast';
 import { hapticLight, hapticNotify } from '@/lib/haptics';
 import { asset } from '@/lib/asset';
-import { phaseOf, phaseMeta, countdownText, type LotteryEventRow } from '@/lib/lottery';
+import { phaseOf, phaseMeta, countdownText, type LotteryEventRow, ctaText } from '@/lib/lottery';
 
 interface Winner {
   rank: number; entry_no: number; nickname: string; avatar_url: string | null; status: string;
@@ -130,18 +130,19 @@ export default function LotteryDetailPage() {
   const cover = ev.cover_image_url || ev.product?.image_url || asset('/images/banner_defaulet.png');
   /* 維護中照樣看得到內容，只有按鈕停用 —— 藏掉會讓玩家以為活動被取消了 */
   const blocked = flag === 'maintenance';
+  /*
+   * 基本文案跟列表卡片共用 `ctaText`（lib/lottery.ts）—— 兩邊各寫一份的話，
+   * 玩家會在列表看到「立即登記」、點進來卻是別的字。
+   * 這裡再疊兩個只有內頁知道的狀態：維護中、以及這個人已達個人上限。
+   */
   const buttonState =
     blocked ? { text: '維護中，暫停登記', disabled: true }
-    : phase === 'upcoming' ? { text: '尚未開放登記', disabled: true }
-    : phase === 'registering' && !canEnterMore ? { text: `已登記（上限 ${ev.per_user_entries} 次）`, disabled: true }
-    : phase === 'registering' ? { text: '立即登記', disabled: false }
-    : phase === 'pending_draw' ? { text: '登記已截止，等待開獎', disabled: true }
-    : phase === 'drawn' ? { text: '已開獎', disabled: true }
-    : { text: '此檔期已取消', disabled: true };
+    : phase === 'registering' && !canEnterMore
+      ? { text: `已登記（上限 ${ev.per_user_entries} 次）`, disabled: true }
+      : ctaText(phase);
 
   return (
-    <div className="min-h-screen bg-neutral-50 pb-32 dark:bg-neutral-950"
-         style={{ paddingTop: 'calc(3.5rem + env(safe-area-inset-top))' }}>
+    <div className="min-h-screen bg-neutral-50 pb-32 dark:bg-neutral-950">
 
       {/* 主視覺 */}
       <div className="relative aspect-[4/3] bg-neutral-100 dark:bg-neutral-800">

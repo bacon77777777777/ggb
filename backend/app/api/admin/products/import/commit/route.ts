@@ -10,7 +10,7 @@ export const runtime = 'nodejs'
 export const maxDuration = 300
 
 /**
- * 批量上架
+ * 批量新增（一次建立多筆商品）
  *
  * 前端把 parse 的結果原樣送回來，這裡一筆一筆寫進資料表。
  * 刻意不做「全有全無」的交易：一百筆裡有三筆壞掉，
@@ -162,7 +162,7 @@ export async function POST(request: Request) {
 
     await logAdminAction({
       adminId: session.adminId,
-      action: '批量上架商品',
+      action: '批量新增商品',
       targetType: 'product',
       targetId: String(ok),
       detail: {

@@ -67,7 +67,8 @@ const PERMISSION_GROUPS = [
       { id: 'coupons',           label: '折價券管理' },
       { id: 'settings_shipping', label: '運費設定' },
       { id: 'small_items',       label: '小物管理' },
-      { id: 'recycle_pool',      label: '回收紀錄／回收商品管理' },
+      { id: 'recycle_pool',      label: '回收紀錄' },
+      { id: 'recycle_inventory', label: '回收品項管理' },
       { id: 'settings_recycle',  label: '回收價格設定' },
     ],
   },
@@ -142,11 +143,11 @@ const ROLE_PRESETS: { label: string; permissions: string[] }[] = [
   },
   {
     label: '財務人員',
-    permissions: ['dashboard', 'recharges', 'reports_logistics', 'reports_products', 'reports_dismantled', 'recycle_pool', 'reports_adjustments', 'reports_settlement', 'logs'],
+    permissions: ['dashboard', 'recharges', 'reports_logistics', 'reports_products', 'reports_dismantled', 'recycle_pool', 'recycle_inventory', 'reports_adjustments', 'reports_settlement', 'logs'],
   },
   {
     label: '商品管理員',
-    permissions: ['dashboard', 'products', 'small_items', 'suppliers', 'categories', 'draws', 'orders', 'settings', 'settings_modules', 'settings_recycle', 'recycle_pool'],
+    permissions: ['dashboard', 'products', 'small_items', 'suppliers', 'categories', 'draws', 'orders', 'settings', 'settings_modules', 'settings_recycle', 'recycle_pool', 'recycle_inventory'],
   },
   {
     label: '行銷人員',
@@ -154,7 +155,7 @@ const ROLE_PRESETS: { label: string; permissions: string[] }[] = [
   },
   {
     label: '一般管理員',
-    permissions: ['dashboard', 'analytics_overview', 'recharges', 'reports_logistics', 'reports_products', 'products', 'small_items', 'suppliers', 'categories', 'draws', 'orders', 'users', 'banners', 'news', 'coupons', 'recycle_pool', 'settings_recycle', 'logs'],
+    permissions: ['dashboard', 'analytics_overview', 'recharges', 'reports_logistics', 'reports_products', 'products', 'small_items', 'suppliers', 'categories', 'draws', 'orders', 'users', 'banners', 'news', 'coupons', 'recycle_pool', 'recycle_inventory', 'settings_recycle', 'logs'],
   },
 ]
 
