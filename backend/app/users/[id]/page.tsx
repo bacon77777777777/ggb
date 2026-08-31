@@ -1171,7 +1171,15 @@ export default function UserDetailPage() {
                 <div className="lg:w-64 lg:shrink-0">
                   <div className="mb-3 text-sm text-neutral-500">頭像</div>
                   <div className="flex flex-col items-center gap-4">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {/*
+                      用原生 <img> 不用 next/image：頭像可能是 blob:（剛選好還沒上傳的預覽）
+                      或前台網域的靜態檔，next/image 兩種都要另外設定 remotePatterns。
+
+                      ⚠️ 這裡**不要**寫 `eslint-disable-next-line @next/next/no-img-element`
+                      —— 後台的 ESLint 沒有載 Next.js plugin，停用一條不存在的規則會直接
+                      讓 production build 失敗（「Definition for rule ... was not found」），
+                      而本機 `tsc --noEmit` 完全看不出來。
+                    */}
                     <img
                       src={avatarPreview || avatarSrc(form.avatar_url)}
                       alt=""
