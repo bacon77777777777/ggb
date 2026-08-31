@@ -343,7 +343,7 @@ export default function SearchPage() {
     if (trimmedQuery) { setRecommendedIds([]); return; }
     let alive = true;
     (async () => {
-      const rows = await fetchRecommendations(supabase, -1, null, RECO_POOL);
+      const rows = await fetchRecommendations(supabase, { id: -1 }, RECO_POOL);
       if (!alive) return;
       const ids = rows.map(r => Number(r.id));
       // 名次分（越前面越高）× 隨機權重，看過的打折

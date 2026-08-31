@@ -31,6 +31,7 @@ import type { Prize as GachaPrize } from '@/components/GachaMachine';
 import { useToast } from '@/components/ui/Toast';
 import { PRODUCT_PUBLIC_COLUMNS, PRIZE_PUBLIC_COLUMNS } from '@/lib/productColumns'
 import { asset } from '@/lib/asset';
+import ViewerPill, { viewerHeat } from '@/components/product/ViewerPill';
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 type PrizeRow = Database['public']['Tables']['product_prizes']['Row'];
@@ -915,6 +916,16 @@ export default function BlindboxDetailPage() {
             onClose={handlePrizeClose}
             results={blindboxResults}
             hideTicketNumber
+          />
+        )}
+
+        {/* 「N 人正在看」（老闆 2026-08-31：轉蛋與盒玩也要）。
+            只有 blindbox_mode5 有底部操作欄，其他主題的按鈕畫在機台上，
+            那時膠囊會自己改貼畫面底 */}
+        {product && (
+          <ViewerPill
+            productId={product.id}
+            heat={viewerHeat((product as any).total_count, product.remaining)}
           />
         )}
       </div>

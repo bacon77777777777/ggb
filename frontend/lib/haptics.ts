@@ -66,6 +66,28 @@ export function hapticNotify(type: 'SUCCESS' | 'WARNING' | 'ERROR' = 'SUCCESS') 
   return impact('HEAVY', type === 'SUCCESS' ? [12, 40, 18] : [40, 60, 40]);
 }
 
+/**
+ * 一格一格的連續回饋（撕紙的虛線孔、滾輪選擇）。
+ *
+ * 跟 `hapticSelection` 的差別只有一個：**網頁端會退回**。
+ * 那支刻意不退回是怕變成一直嗡嗡叫；撕紙要的正是「撕過一格就頓一下」的顆粒感，
+ * 沒有它 Android 網頁版整段撕紙是完全沒感覺的。
+ * 節流由呼叫端負責（撕紙是每 8px 一次，見 FigmaTearScene 的 crackle 門檻）。
+ */
+export function hapticTick() {
+  const h = capacitorHaptics();
+  if (h?.selectionChanged) {
+    void h.selectionChanged().catch(() => {});
+    return true;
+  }
+  if (typeof navigator === 'undefined' || !('vibrate' in navigator)) return false;
+  try {
+    return navigator.vibrate(6);
+  } catch {
+    return false;
+  }
+}
+
 /** 連續選擇時的細微回饋（轉盤、滑動選籤）。網頁端不退回，避免變成一直嗡嗡叫 */
 export function hapticSelection() {
   const h = capacitorHaptics();

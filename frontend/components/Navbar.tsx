@@ -17,6 +17,10 @@ import { countUnread } from '@/lib/announcementRead';
 import { startKeyboardRelay } from '@/lib/keyboardRelay';
 import { asset } from '@/lib/asset';
 import { cameFromAnnouncementsList } from '@/lib/announcementsView';
+import { makeListViewMemory } from '@/lib/listViewMemory';
+
+/* 個人中心「抽獎紀錄」那份瀏覽記憶 —— key 要跟 app/profile/page.tsx 的 drawView 一致 */
+const drawHistoryView = makeListViewMemory('ggb:profile:draws');
 
 export default function Navbar() {
   return (
@@ -609,6 +613,27 @@ function NavbarInner() {
         router.back();
       } else {
         router.push('/announcements');
+      }
+      return;
+    }
+
+    /*
+     * 公平性驗證頁（/fairness/<商品 id>）：返回一律回那一件商品的商品頁。
+     *
+     * 先前它落到下面第 3 步的 referrer 判斷，而 **App Router 的軟導航不會更新
+     * `document.referrer`** —— 它停在這一趟最初載入那一頁的來源。玩家直接開網址、
+     * 從 LINE 或搜尋引擎進站時它是空的或外部網域，就被當成「外部來源」彈回首頁
+     * （老闆 2026-08-31：看驗證說明／看完整對照表 返回都跑到首頁）。
+     *
+     * 例外是從「個人中心 → 抽獎紀錄」按驗證進來的：那裡用 listViewMemory 記了
+     * 捲動位置與展開篇數，要 back() 才接得回去，push 回商品頁反而把人帶走。
+     */
+    const fairnessMatch = pathname.match(/^\/fairness\/([^/]+)$/);
+    if (fairnessMatch) {
+      if (drawHistoryView.cameFromList(pathname) && window.history.length > 1) {
+        router.back();
+      } else {
+        router.push(`/item/${fairnessMatch[1]}`);
       }
       return;
     }

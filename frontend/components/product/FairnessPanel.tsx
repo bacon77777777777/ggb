@@ -28,20 +28,23 @@ export default function FairnessPanel({ productId, commitment, isSealed, isSoldO
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-3 sm:space-y-6">
       <div className="flex items-center gap-3 sm:gap-4 border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
-        {/* 與底部警語列（NoticeBar）同一顆圖標，玩家兩處看到的是同一個東西 */}
+        {/* 這顆圖標是整套公平性說法的識別，玩家在活動頁與這裡看到的是同一個 */}
         <Image
           src={asset("/images/ic.png")} alt="" width={48} height={48}
           className="w-8 h-8 sm:w-12 sm:h-12 flex-shrink-0"
           unoptimized
         />
-        <div>
-          <h2 className="text-base sm:text-xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">
-            公平性驗證
-          </h2>
-          <p className="text-[13px] sm:text-sm text-neutral-400 dark:text-neutral-500 font-black uppercase tracking-widest mt-0.5">
-            確保抽獎過程的透明與公正
-          </p>
-        </div>
+        <h2 className="flex-1 text-base sm:text-xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">
+          公平性驗證
+        </h2>
+        {/* 通往公平性活動說明頁。底下那顆主按鈕是「這一檔」的對照表，
+            這顆是「整套機制怎麼運作」，兩件事所以做成弱一階的文字按鈕 */}
+        <Link
+          href="/events/fairness"
+          className="flex-shrink-0 -mr-1 px-2 py-1 text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 transition-colors"
+        >
+          說明
+        </Link>
       </div>
 
       <div className="bg-primary/5 border border-primary/10 rounded-2xl p-3 sm:p-5 space-y-3 sm:space-y-4">

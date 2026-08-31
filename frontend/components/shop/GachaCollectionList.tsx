@@ -77,13 +77,15 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
     })();
   }, [(product as any).supplier_id, supabase]);
 
-  // 猜你喜歡：照玩家自己的抽獎紀錄推薦（見 lib/recommendations）
+  // 猜你喜歡：先看「跟眼前這件像不像」，再看玩家口味（見 lib/recommendations）
   useEffect(() => {
     (async () => {
-      const rows = await fetchRecommendations(supabase, productId, (product as any).type);
+      const rows = await fetchRecommendations(supabase, { ...(product as any), id: productId });
       setRecommendations(rows);
     })();
-  }, [productId, (product as any).type, supabase]);
+    // product 整包當相依會每次 render 都重跑（父層每次給新物件），只認會影響推薦的那幾欄
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId, (product as any).type, (product as any).category, (product as any).series, (product as any).supplier_id, supabase]);
 
   const displayPrizes = prizes.filter(
     p => p.level !== 'Last One' && p.level !== 'LAST ONE' && !p.level?.includes('最後賞')

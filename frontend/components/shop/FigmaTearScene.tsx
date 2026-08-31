@@ -11,6 +11,7 @@ import {
   startTearMusic, stopTearMusic, setTearDucking,
 } from '@/lib/tearSfx';
 import { isSoundMuted } from '@/lib/soundPrefs';
+import { hapticHeavy, hapticLight, hapticTick } from '@/lib/haptics';
 import { asset } from '@/lib/asset';
 
 declare global {
@@ -270,6 +271,8 @@ export default function FigmaTearScene({
         unlockTearAudio();
         sfxGrab();                       // 捏到了 —— 沒有這一聲玩家不知道自己抓住了
       }
+      /* 震動不看靜音開關：靜音是為了不吵到別人，震動本來就是靜的（其他頁也是這樣） */
+      hapticLight();                     // 捏到了的手感，跟 sfxGrab 同一刻
     };
 
     const onCapturePointerMove = (e: PointerEvent) => {
@@ -300,12 +303,15 @@ export default function FigmaTearScene({
        * 強度吃**拖曳速度**（px/ms）而不只是距離 —— 慢慢撕是細碎的啵啵，
        * 一口氣扯就是連續的刷，沉浸感差別最大的就是這裡。
        */
-      if (!isSoundMuted() && dx - lastCrackle.current > 8) {
+      if (dx - lastCrackle.current > 8) {
         const now = performance.now();
         const prev = lastMove.current;
         const speed = prev ? Math.abs(e.clientX - prev.x) / Math.max(1, now - prev.t) : 0.3;
         lastMove.current = { x: e.clientX, t: now };
-        crackle(Math.min(1, 0.25 + speed * 0.5));
+        if (!isSoundMuted()) crackle(Math.min(1, 0.25 + speed * 0.5));
+        /* 每一格都頓一下 —— 這一下才是「紙在我手上裂開」的來源，
+           節流跟聲音共用同一個 8px 門檻，快撕就密、慢撕就疏 */
+        hapticTick();
         lastCrackle.current = dx;
       }
     };
@@ -393,6 +399,7 @@ export default function FigmaTearScene({
           turned: (_e: Event, page: number) => {
             if (page === 2) {
               tearCompleted.current = true;
+              hapticHeavy();          // 撕開的那一下，跟 bigRip 同一刻
               if (!isSoundMuted()) {
                 /*
                  * 張力曲線的後半段：撕開（爆）→ 紙片飄落 → **靜半拍** → 揭曉（亮）。
@@ -416,6 +423,7 @@ export default function FigmaTearScene({
               }
               setTimeout(() => setDone(true), 300);
             } else if (page === 1) {
+              hapticLight();          // 沒撕開、彈回去了，手上也要知道
               if (!isSoundMuted()) sfxBounceBack();
               // 彈回時清除拖曳狀態
               wrapperRef.current?.classList.remove('tearing');
@@ -599,56 +607,52 @@ export default function FigmaTearScene({
       )}
 
       {/*
-        券右下方的「下一張 ›」提示。
-        底部那顆按鈕位置太低、玩家的視線還停在券上，容易沒看到（老闆回報），
-        所以在券旁邊再放一個會晃的提示；點它跟點底部按鈕是同一件事。
+        「下一張」＝**整個畫面都可以點**（老闆 2026-08-31）。
+
+        先前是券右下角那顆會晃的按鈕；再之前是底部按鈕。兩版的問題是同一個：
+        撕完的下一秒玩家的視線還黏在券上，還要先找到、再瞄準一顆按鈕。
+        撕紙本身已經改成「畫面任一處按著拖」，換張也就沒有理由再要求瞄準。
+
+        提示改放畫面中央下方（跟「左右滑動撕開」同一個位置）：兩段提示落在同一處，
+        眼睛不用重新找。它是 pointer-events-none 的裝飾，整層才是那顆按鈕。
+
+        z-20：SKIP 與聲音開關是 z-30，疊在這層上面，照樣點得到。
       */}
       <AnimatePresence>
         {showButton && !isLast && (
           <motion.button
-            key="next-hint"
+            key="next-tap"
             data-ui
             type="button"
-            onClick={() => { if (!isSoundMuted()) sfxInterlude(); (onNext ?? onDone)?.(); }}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{
-              opacity: 1,
-              scale: 1,
-              // 左右輕晃：純位移不改大小，才不會跟旁邊的券搶注意力
-              x: [0, 4, -3, 3, -2, 0],
+            aria-label="下一張"
+            onClick={() => {
+              if (!isSoundMuted()) sfxInterlude();
+              hapticLight();
+              (onNext ?? onDone)?.();
             }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{
-              opacity: { duration: 0.25 },
-              scale: { duration: 0.25 },
-              x: { duration: 1.1, repeat: Infinity, repeatDelay: 1.1, ease: 'easeInOut' },
-            }}
-            className="absolute z-30 flex items-center gap-1 overflow-hidden rounded-full
-                       bg-black/60 px-5 h-10 border border-white/30 backdrop-blur-sm shadow-lg
-                       text-white text-sm font-black tracking-[0.25em] active:scale-95"
-            style={{ top: '56%', right: '6%' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="absolute inset-0 z-20 flex items-start justify-center"
+            style={{ paddingTop: '72%' }}
           >
-            下一張
-            <span aria-hidden className="text-base leading-none">›</span>
-            {/* 光劃過特效：沿用原本底部按鈕的做法，參數也一樣 */}
             <motion.span
-              aria-hidden
-              className="pointer-events-none absolute inset-y-0 w-1/2"
-              style={{
-                background:
-                  'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)',
-              }}
-              initial={{ left: '-50%' }}
-              animate={{ left: '150%' }}
-              transition={{ duration: 0.8, repeat: Infinity, repeatDelay: 1.6, ease: 'easeInOut' }}
-            />
+              className="pointer-events-none flex items-center gap-1 rounded-full border border-white/30
+                         bg-black/60 px-5 h-10 text-sm font-black tracking-[0.25em] text-white
+                         shadow-lg backdrop-blur-sm"
+              animate={{ opacity: [0.4, 1, 1, 0.4] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', times: [0, 0.25, 0.75, 1] }}
+            >
+              點任一處　下一張
+              <span aria-hidden className="text-base leading-none">›</span>
+            </motion.span>
           </motion.button>
         )}
       </AnimatePresence>
 
       {/*
-        底部只留 SKIP。「下一張」改用券旁邊那顆會晃的提示（老闆指定）——
-        底部那顆位置太低，玩家視線還停在券上時容易沒看到，兩顆並存也只是重複。
+        底部只留 SKIP。「下一張」不再是一顆按鈕，改成整個畫面都能點（見上）。
       */}
       <div className="absolute bottom-4 left-4 right-4 z-30 flex items-center justify-end gap-3">
         <button

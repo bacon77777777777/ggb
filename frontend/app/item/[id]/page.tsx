@@ -66,7 +66,7 @@ import { MissionService } from '@/services/mission';
 import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
 import PinchZoomImage from '@/components/ui/PinchZoomImage';
 import FairnessPanel from '@/components/product/FairnessPanel';
-import NoticeBar from '@/components/promo/NoticeBar';
+import ViewerPill, { viewerHeat } from '@/components/product/ViewerPill';
 import { fetchRecommendations } from '@/lib/recommendations';
 import { PRODUCT_PUBLIC_COLUMNS, PRIZE_PUBLIC_COLUMNS } from '@/lib/productColumns'
 import { useQueryClient } from '@tanstack/react-query';
@@ -82,8 +82,11 @@ import { asset } from '@/lib/asset';
 
 /**
  * 走 commit-reveal 抽獎引擎的三種商品（migration 405 的 play_ichiban_auto）。
- * 這三種才有籤號、才有「種子事前封存、完抽後公開」可驗算，
- * 轉蛋與盒玩走 play_gacha、沒有籤號，掛公平性警語會是錯的宣稱。
+ * 這三種才有籤號、才有「種子事前封存、完抽後公開」可驗算。
+ *
+ * 底部操作欄上緣原本掛的是公平性警語列，老闆 2026-08-31 指定改成
+ * 「N 人正在看」膠囊（ViewerPill）—— 公平性沒有拿掉，頁內的
+ * 「公平性驗證」區塊（FairnessPanel）還在，這個常數兩者共用。
  */
 const FAIR_ENGINE_TYPES = ['ichiban', 'card', 'custom'];
 
@@ -1311,8 +1314,8 @@ export default function ProductDetailPage() {
         return;
       }
 
-      // 猜你喜歡：照玩家自己的抽獎紀錄推薦（見 lib/recommendations）
-      fetchRecommendations(supabase, productId, data.product.type).then(setRecommendations);
+      // 猜你喜歡：先看「跟眼前這件像不像」，再看玩家口味（見 lib/recommendations）
+      fetchRecommendations(supabase, data.product).then(setRecommendations);
 
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -1536,6 +1539,9 @@ export default function ProductDetailPage() {
       : (prizes.length > 0
           ? validPrizes.reduce((acc, prize) => acc + (prize.total || 0), 0)
           : 0);
+
+  /* 「N 人正在看」的熱度：已抽比例（算法在 ViewerPill） */
+  const heat = viewerHeat(totalItems, totalRemaining);
 
   // 驗證頁不擋未登入。對外宣稱「公開可驗證」，卻要先註冊才看得到對照表，
   // 那就不是公開的了。登入只影響「你抽到的」那一段能不能顯示。
@@ -2215,15 +2221,15 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar />}
+        {FAIR_ENGINE_TYPES.includes(product.type) && (
+          <ViewerPill productId={product.id} heat={heat} />
+        )}
       </div>
       </>
     );
   }
 
   return (
-    // pt 加上警語列高度（--promo-notice-h 由 NoticeBar 量測後掛上）：
-    // 警語列是 fixed，不留這段內容會被它蓋住
     <div
       className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32"
       style={{ paddingTop: 'calc(3.5rem + env(safe-area-inset-top))' }}
@@ -2818,7 +2824,9 @@ export default function ProductDetailPage() {
           </div>
         )}
       </div>
-      {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar />}
+      {FAIR_ENGINE_TYPES.includes(product.type) && (
+          <ViewerPill productId={product.id} heat={heat} />
+        )}
     </div>
   );
 }

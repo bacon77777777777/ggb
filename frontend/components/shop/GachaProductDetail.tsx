@@ -23,6 +23,7 @@ import { trackEvent } from '@/lib/trackEvent';
 import ProductBadge from '@/components/ui/ProductBadge';
 import { hapticHeavy, hapticLight, hapticMedium, hapticNotify } from '@/lib/haptics';
 import { asset } from '@/lib/asset';
+import ViewerPill, { viewerHeat } from '@/components/product/ViewerPill';
 
 interface GachaProductDetailProps {
   product: Database['public']['Tables']['products']['Row'];
@@ -594,6 +595,14 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
           </div>
         </div>
       )}
+
+      {/* 「N 人正在看」（老闆 2026-08-31：轉蛋與盒玩也要）。
+          放在 BUTTONLESS_THEMES 的條件外面 —— 只有 mode5 有底部操作欄，
+          其他主題的按鈕畫在機台上，那時膠囊會自己改貼畫面底 */}
+      <ViewerPill
+        productId={product.id}
+        heat={viewerHeat((product as any).total_count, product.remaining)}
+      />
 
       <GachaResultModal isOpen={showResultModal} onClose={handleResultClose} results={wonPrizes} hideTicketNumber />
       <PurchaseConfirmationModal
