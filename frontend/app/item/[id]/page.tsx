@@ -66,7 +66,7 @@ import { MissionService } from '@/services/mission';
 import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
 import PinchZoomImage from '@/components/ui/PinchZoomImage';
 import FairnessPanel from '@/components/product/FairnessPanel';
-import ViewerPill, { viewerHeat } from '@/components/product/ViewerPill';
+import ViewerPill from '@/components/product/ViewerPill';
 import { fetchRecommendations } from '@/lib/recommendations';
 import { PRODUCT_PUBLIC_COLUMNS, PRIZE_PUBLIC_COLUMNS } from '@/lib/productColumns'
 import { useQueryClient } from '@tanstack/react-query';
@@ -1540,8 +1540,6 @@ export default function ProductDetailPage() {
           ? validPrizes.reduce((acc, prize) => acc + (prize.total || 0), 0)
           : 0);
 
-  /* 「N 人正在看」的熱度：已抽比例（算法在 ViewerPill） */
-  const heat = viewerHeat(totalItems, totalRemaining);
 
   // 驗證頁不擋未登入。對外宣稱「公開可驗證」，卻要先註冊才看得到對照表，
   // 那就不是公開的了。登入只影響「你抽到的」那一段能不能顯示。
@@ -2222,7 +2220,7 @@ export default function ProductDetailPage() {
         </div>
 
         {FAIR_ENGINE_TYPES.includes(product.type) && (
-          <ViewerPill productId={product.id} heat={heat} />
+          <ViewerPill productId={product.id} />
         )}
       </div>
       </>
@@ -2825,7 +2823,7 @@ export default function ProductDetailPage() {
         )}
       </div>
       {FAIR_ENGINE_TYPES.includes(product.type) && (
-          <ViewerPill productId={product.id} heat={heat} />
+          <ViewerPill productId={product.id} />
         )}
     </div>
   );

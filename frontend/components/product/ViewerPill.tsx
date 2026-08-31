@@ -30,8 +30,63 @@ import { createPortal } from 'react-dom';
 import { createClient } from '@/lib/supabase/client';
 import { useBottomBar } from '@/lib/useBottomBar';
 
-/** 底數換一次的間隔。太短會像跑馬燈，太長玩家停留期間看不到它動 */
-const BUCKET_MS = 45_000;
+/** 數字重算一次的間隔（老闆 2026-08-31 指定 5 秒） */
+const TICK_MS = 5_000;
+
+/**
+ * 最冷門的商品，平均多久有一位虛擬訪客進來（老闆 2026-08-31 指定 30 秒）。
+ * 熱門商品會照熱度縮短這個間隔。
+ */
+const ARRIVAL_MS = 30_000;
+
+/** 一位訪客停留多久（毫秒，隨機落在這個區間）。平均 30 秒 */
+const DWELL_MIN = 15_000;
+const DWELL_MAX = 45_000;
+
+/**
+ * 熱度對到訪率的放大倍數。
+ * 佔比 100% 的商品到訪率是冷門商品的 (1 + HOT_MULT) 倍。
+ *
+ * 它**不再乘上在線人數的倍率** —— 那是舊版的算法，會讓冷門商品的到訪率
+ * 完全不受站上人數影響（佔比 0 → 加成項 0 → 只剩常數）。站上一百個人在逛，
+ * 一個沒人抽過的商品卻還是每 30 秒才一位訪客，不合理。
+ */
+const HOT_MULT = 4;
+
+/** 站上真的一個人都沒有時，至少當作這麼多人在逛 */
+const MIN_ASSUMED_ONLINE = 3;
+
+/** 一格最多生幾位訪客。純粹防呆，避免在線人數異常時跑一個超大迴圈 */
+const MAX_PER_SLOT = 40;
+
+/** 心跳間隔。伺服器端的窗口是 45 秒，留兩倍餘裕給網路抖動 */
+const HEARTBEAT_MS = 20_000;
+
+/**
+ * presence 的人數上限。超過就退訂，改用心跳回來的數字。
+ *
+ * presence 每有人進出就把**整份名單**廣播給頻道上每個人，成本立方成長 ——
+ * 實測 40 人：sync 428 次、0.41 MB；外推 500 人光進場潮就約 840 MB。
+ * 60 人時每次進出的廣播量約 72 KB，還可以；再上去就會開始拖慢手機端。
+ *
+ * 小房間留著 presence 是因為它**即時**（有人開分頁當下就 +1），
+ * 大房間本來就看不出 20 秒的差別。
+ */
+const PRESENCE_MAX = 60;
+
+/**
+ * 站台活躍度：在線人數換算成「到訪率的基礎倍率」。
+ *
+ * 用平方根而不是線性：線性的話一萬人在線會讓數字變成幾千，畫面直接爆掉；
+ * 用對數又長得太慢（100 人跟 10000 人差不到一倍）。平方根介於兩者之間，
+ * 每一個量級都看得出差別，數字也還在人看得懂的範圍。
+ *
+ * 下限 1：試營運期間站上就是沒人，這時維持「冷門 30 秒一位」的手感，
+ * 不要比現在更冷。
+ */
+function siteActivity(online: number) {
+  return Math.max(1, 0.5 + 0.5 * Math.sqrt(Math.max(MIN_ASSUMED_ONLINE, online) / 10));
+}
 
 /** FNV-1a：只要「同樣的輸入給同樣的輸出」，不需要密碼學強度 */
 function hash32(s: string) {
@@ -51,36 +106,88 @@ function hourFactor(hour: number) {
   return 1;                                   // 18:00–02:00 晚間高峰
 }
 
-/**
- * @param heat 0–1 的熱度（已抽比例）。算不出來時傳 undefined，當 0.35 中庸值處理，
- *             不要當 0 —— 剛上架、一張都還沒抽的新商品不該被判成冷門。
- */
-function baseline(productId: string, heat: number | undefined, now: number) {
-  const core = 4 + (hash32(`ggb-viewers:${productId}`) % 11);       // 4–14 每件商品自己的底
-  const hot = Math.round(core * (heat === undefined ? 0.35 : heat)); // 熱門再加一截
-  const bucket = Math.floor(now / BUCKET_MS);
-  const wobble = (hash32(`${productId}:${bucket}`) % 7) - 3;         // −3 … +3
-  const f = hourFactor(new Date(now).getHours());
-  return Math.max(2, Math.round((core + hot + wobble) * f));
+export interface ViewerContext {
+  /** 這件商品近 24 小時的真人抽數 */
+  product_draws_24h: number;
+  /** 全站近 24 小時的真人抽數（分母） */
+  total_draws_24h: number;
+  /** 站上近 15 分鐘在線的真人數（跟後台 header 同一個定義） */
+  online_now: number;
 }
 
 /**
- * 已抽比例，給 `heat` 用。算不出來回 undefined（膠囊自己會套中庸值）——
- * 回 0 會讓每件商品在籤數還沒載到的那一瞬間都被當成冷門。
+ * 虛擬訪客數：模擬「有人進來、看一會、走掉」，不是模擬一個數字。
+ *
+ * ## 為什麼改成這樣
+ *
+ * 上一版是對一個數字做平滑抖動（3→4→4→3）。那讀起來像計數器在晃，
+ * 不像有人來有人走 —— 而且冷門商品的底數是 0，數字**完全靜止**在 1，
+ * 一個永遠不動的數字比沒有這個標籤還糟，它明擺著說「這裡沒人」。
+ *
+ * 現在改成模擬訪客本身：每位訪客有進場時間與停留時長，當下時間落在誰的
+ * 區間內就 +1。數字的變化因此是離散的 +1／−1 並且會停留一段時間 ——
+ * 那才是「有人進來看了一下又走了」（老闆 2026-08-31：要像直播那樣）。
+ *
+ * ## 到訪率
+ *
+ * 冷門商品平均 30 秒一位；熱門商品照「近 24h 抽數佔比 × 站上在線人數」
+ * 縮短間隔，最熱可以到每 5 秒一位。凌晨整體再放慢（hourFactor）。
+ *
+ * ## 仍然是純函數
+ *
+ * 進場與停留都由 `hash(商品 id, 時間格)` 決定 —— 所有人同一時間看到同一個
+ * 數字，兩支手機擺一起比對不會穿幫。
+ *
+ * 只往回看 DWELL_MAX 那麼長的時間（9 格），更早進場的訪客一定已經走了。
  */
-export function viewerHeat(total?: number | null, remaining?: number | null) {
-  const t = Number(total), r = Number(remaining);
-  if (!Number.isFinite(t) || !Number.isFinite(r) || t <= 0) return undefined;
-  return Math.min(1, Math.max(0, (t - r) / t));
+function virtualViewers(productId: string, ctx: ViewerContext | null, now: number) {
+  const share = ctx && ctx.total_draws_24h > 0
+    ? ctx.product_draws_24h / ctx.total_draws_24h
+    : 0;
+
+  /*
+   * 到訪率 ＝ 站台活躍度（跟在線人數走）×（1＋熱度加成）× 時段。
+   *
+   * 關鍵是**站台活躍度是乘在最外面的**，所以連佔比 0 的冷門商品也會跟著
+   * 站上的人數變熱。舊版把在線人數只乘在熱度加成裡，冷門商品那一項是 0，
+   * 於是在線 0 人跟 100 人時逐格一模一樣。
+   */
+  const rate = siteActivity(ctx?.online_now ?? 0)
+    * (1 + share * HOT_MULT)
+    * hourFactor(new Date(now).getHours());
+
+  /*
+   * 每一格「期望來幾位」。可以大於 1 —— 站真的爆量時一格來好幾位是正常的，
+   * 夾在 1 以內的話人數會頂在 DWELL_MAX/TICK_MS = 9 動不了
+   * （舊版就是這樣，在線 30 人跟 10000 人的數字一模一樣）。
+   *
+   * 整數部分一定來，小數部分擲一次骰。
+   */
+  const expected = Math.min(MAX_PER_SLOT, (TICK_MS / ARRIVAL_MS) * rate);
+  const whole = Math.floor(expected);
+  const frac = expected - whole;
+
+  const slots = Math.ceil(DWELL_MAX / TICK_MS);
+  const cur = Math.floor(now / TICK_MS);
+  let alive = 0;
+  for (let i = 0; i < slots; i++) {
+    const slot = cur - i;
+    let n = whole;
+    if ((hash32(`${productId}:a:${slot}`) % 10000) < frac * 10000) n++;
+    for (let k = 0; k < n; k++) {
+      // 同一格的每一位各自有停留時長，不然他們會整批同進同出
+      const dwell = DWELL_MIN + (hash32(`${productId}:d:${slot}:${k}`) % (DWELL_MAX - DWELL_MIN));
+      if (now < slot * TICK_MS + dwell) alive++;
+    }
+  }
+  return alive;
 }
 
 interface Props {
   productId: string | number;
-  /** 已抽數 / 總籤數。傳不出來就別傳 */
-  heat?: number;
 }
 
-export default function ViewerPill({ productId, heat }: Props) {
+export default function ViewerPill({ productId }: Props) {
   const pid = String(productId);
   /*
    * real 初值 0 而不是 1：presence 還沒接上時不要先猜。
@@ -89,15 +196,74 @@ export default function ViewerPill({ productId, heat }: Props) {
   const [real, setReal] = useState(0);
   /* null＝還沒在瀏覽器算過。SSR 不輸出任何東西，才不會 hydration 對不上 */
   const [base, setBase] = useState<number | null>(null);
+  const [ctx, setCtx] = useState<ViewerContext | null>(null);
+  /** 心跳回來的真人數。null＝沒有 Redis 或它掛了，這時退回 presence */
+  const [counted, setCounted] = useState<number | null>(null);
+  const tooBig = (counted ?? 0) > PRESENCE_MAX;
+
+  /*
+   * 熱度與在線人數：進頁面抓一次，之後每 3 分鐘更新。
+   * 不跟著 5 秒的重算一起打 —— 那是一分鐘 12 次查詢，而這兩個數字
+   * 本來就是 24 小時／15 分鐘的窗口，抓那麼勤沒有意義。
+   */
+  useEffect(() => {
+    const supabase = createClient();
+    let alive = true;
+    const load = async () => {
+      const { data } = await supabase.rpc('get_viewer_context', { p_product_id: Number(pid) });
+      const row = (data as ViewerContext[] | null)?.[0];
+      if (alive && row) setCtx(row);
+    };
+    load();
+    const t = setInterval(load, 180_000);
+    return () => { alive = false; clearInterval(t); };
+  }, [pid]);
 
   useEffect(() => {
-    const tick = () => setBase(baseline(pid, heat, Date.now()));
+    const tick = () => setBase(virtualViewers(pid, ctx, Date.now()));
     tick();
-    const timer = setInterval(tick, BUCKET_MS);
+    const timer = setInterval(tick, TICK_MS);
     return () => clearInterval(timer);
-  }, [pid, heat]);
+  }, [pid, ctx]);
+
+  /*
+   * 心跳計數（權威來源）。
+   *
+   * 每 20 秒 ping 一次，伺服器回「最近 45 秒內有心跳的分頁數」。
+   * 成本是線性的 —— 500 人就是 500 個小請求回一個整數，
+   * 而 presence 在那個規模是每次進出 5 MB 的廣播。
+   *
+   * 沒設 Redis（本機開發）或 Redis 掛掉時回 null，這時完全靠 presence，
+   * 跟原本的行為一樣。
+   */
+  useEffect(() => {
+    let alive = true;
+    /* 這個分頁的識別。不用 crypto.randomUUID()：手機連本機 dev 不是 secure context */
+    const sid = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    const beat = async () => {
+      try {
+        const res = await fetch(`/api/viewers/${pid}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sid }),
+        });
+        const j = await res.json();
+        if (alive) setCounted(typeof j?.viewers === 'number' ? j.viewers : null);
+      } catch {
+        if (alive) setCounted(null);
+      }
+    };
+    beat();
+    const t = setInterval(beat, HEARTBEAT_MS);
+    return () => { alive = false; clearInterval(t); };
+  }, [pid]);
 
   useEffect(() => {
+    /*
+     * 人數超過上限就不要再開 presence —— 那是爆紅檔期會出事的地方。
+     * 已經開著的會在 counted 超標時被這個 effect 收掉（依賴帶了 tooBig）。
+     */
+    if (tooBig) return;
     const supabase = createClient();
     /*
      * presence key 用「這個分頁」的隨機字串，不用 user id：
@@ -119,12 +285,23 @@ export default function ViewerPill({ productId, heat }: Props) {
       });
 
     return () => { supabase.removeChannel(channel); };
-  }, [pid]);
+  }, [pid, tooBig]);
 
   const bar = useBottomBar(base !== null);
   if (base === null) return null;
 
-  const count = base + Math.max(real, 1);
+  /*
+   * 真人（至少 1，你人就在這一頁）＋ 虛擬訪客。
+   *
+   * 不再有「冷門就固定顯示 1」那條規則 —— 那讓 99% 的商品掛著一個永遠不動的
+   * 數字。改成連冷門商品也有訪客進出（只是稀疏），數字才會活（老闆 2026-08-31）。
+   */
+  /*
+   * 真人數：優先用心跳（權威、可擴展），沒有才退回 presence。
+   * 兩者都至少 1 —— 你人就在這一頁。
+   */
+  const realCount = Math.max(counted ?? real, 1);
+  const count = realCount + base;
 
   /*
    * 膠囊本體。下面兩條 return 都用它，不要各寫一份（改了樣式只改到一邊）。

@@ -77,12 +77,12 @@ const STATE_OPTIONS: { v: FlagState; label: string }[] = [
   { v: 'off',         label: '關閉' },
 ]
 
-type SectionKey = 'maintenance' | 'category' | 'commerce' | 'push' | 'theme' | 'appVersion'
+// 'commerce'（金流）已於 2026-08-31 併進 'maintenance' —— 那一區只有一列儲值
+type SectionKey = 'maintenance' | 'category' | 'push' | 'theme' | 'appVersion'
 
 const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: 'maintenance', label: '站台維護' },
   { key: 'category',    label: '類別' },
-  { key: 'commerce',    label: '金流' },
   { key: 'push',        label: 'GB哥通知' },
   // 原獨立頁 /settings/theme，老闆 2026-08-09 指定併入這裡
   { key: 'theme',       label: '主題色' },
@@ -108,14 +108,7 @@ const CATEGORY_ITEMS: { key: FeatureKey; label: string; desc?: string }[] = [
 
 const TRADE_ITEMS: { key: FeatureKey; label: string; desc: string }[] = [
   { key: 'exchange', label: '卡牌交換', desc: '玩家之間卡牌一對一交換。' },
-  { key: 'market',   label: '交易所', desc: '倉庫裡還沒配送、而且是大賞的品項可以上架，賣掉換成 G 幣。' },
-  {
-    key: 'phone_verify',
-    label: '手機驗證',
-    // 開之前一定要先在 Supabase 接好簡訊供應商，否則玩家按下去只會收到錯誤
-    desc: '會員中心的手機號碼驗證（簡訊驗證碼）。⚠️ 需先在 Supabase 接好簡訊供應商才能開，'
-        + '否則發送驗證碼一定失敗。關閉時前台不顯示這個入口，也不會催玩家去設定。',
-  },
+  { key: 'market',   label: '交易所', desc: '倉庫裡還沒配送、而且是大賞的品項可以上架，賣掉換成 G 幣。' }
 ]
 
 const DEFAULT_FLAGS: Record<FeatureKey, boolean> = {
@@ -610,6 +603,50 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                       </Row>
                     </div>
                   )}
+
+                  {/*
+                    金流與手機驗證搬到這一區（老闆 2026-08-31）。
+                    它們跟站台維護是同一類事情：「臨時停一下某個功能」，
+                    而不是「這個玩法要不要做」—— 後者是「類別」那一區。
+                    原本金流自己佔一個分區，裡面只有一列。
+                  */}
+                  <div className="mt-6 border-t border-neutral-100 pt-4">
+                    <div className="divide-y divide-neutral-100">
+                    <Row
+                      title="儲值"
+                      desc="跟站台維護無關，可以單獨停。維護時綠界建單直接斷開，玩家在儲值頁看到維護提示；已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。"
+                      state={states?.recharge === 'on' ? 'on' : 'maintenance'}
+                    >
+                      {/* 儲值沒有「關閉」—— 平台不可能不收錢，只會臨時停一下。
+                          多給一個永久關閉的選項只會讓人誤按 */}
+                      <Segmented
+                        value={states?.recharge === 'on' ? 'on' : 'maintenance'}
+                        disabled={!ready || isSaving}
+                        options={[
+                          { v: 'on', label: '開放', tone: 'on' },
+                          { v: 'maintenance', label: '維護', tone: 'warn' },
+                        ]}
+                        onChange={(v) => setState('recharge', v as FlagState, '儲值')}
+                      />
+                    </Row>
+                      <Row
+                        title="手機驗證"
+                        desc="會員中心的手機號碼驗證（簡訊驗證碼）。⚠️ 需先在 Supabase 接好簡訊供應商才能開，否則發送驗證碼一定失敗。關閉時前台不顯示這個入口，也不會催玩家去設定。"
+                        state={states?.phone_verify ?? 'off'}
+                      >
+                        <Segmented
+                          value={states?.phone_verify ?? 'off'}
+                          disabled={!ready || isSaving}
+                          options={[
+                            { v: 'on', label: '開放', tone: 'on' },
+                            { v: 'maintenance', label: '維護', tone: 'warn' },
+                            { v: 'off', label: '關閉', tone: 'off' },
+                          ]}
+                          onChange={(v) => setState('phone_verify', v as FlagState, '手機驗證')}
+                        />
+                      </Row>
+                    </div>
+                  </div>
                 </>
               )}
 
@@ -648,40 +685,6 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                         />
                       </Row>
                     ))}
-                  </div>
-                </>
-              )}
-
-              {section === 'commerce' && (
-                <>
-                  <SectionHead
-                    title="金流"
-                    info="錢怎麼走。已經完成的交易與已購買的代幣都不受這裡影響。"
-                  />
-                  <div className="divide-y divide-neutral-100">
-                    {/*
-                      這裡原本有一列「販售收款：平台代收／雙方自理」（flag `sell_escrow`，
-                      接的是藍新 MPL）。2026-08-13 老闆定調玩家商城一律**雙方自理** ——
-                      買家直接把錢匯給賣家，平台完全不碰錢，所以不再有可切換的選項，整列移除。
-                      商城的其他規則（誰能上架、類別、期限、免責）都在「商城 → 商城設定」。
-                    */}
-                    <Row
-                      title="儲值"
-                      desc="跟站台維護無關，可以單獨停。維護時綠界建單直接斷開，玩家在儲值頁看到維護提示；已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。"
-                      state={states?.recharge === 'on' ? 'on' : 'maintenance'}
-                    >
-                      {/* 儲值沒有「關閉」—— 平台不可能不收錢，只會臨時停一下。
-                          多給一個永久關閉的選項只會讓人誤按 */}
-                      <Segmented
-                        value={states?.recharge === 'on' ? 'on' : 'maintenance'}
-                        disabled={!ready || isSaving}
-                        options={[
-                          { v: 'on', label: '開放', tone: 'on' },
-                          { v: 'maintenance', label: '維護', tone: 'warn' },
-                        ]}
-                        onChange={(v) => setState('recharge', v as FlagState, '儲值')}
-                      />
-                    </Row>
                   </div>
                 </>
               )}

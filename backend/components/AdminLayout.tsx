@@ -1332,7 +1332,12 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                             </div>
                           )}
                         </div>
-                        {alerts.length > 0 && <div className="px-4 py-3 border-t border-neutral-200 bg-neutral-50"><button onClick={() => setIsAlertOpen(false)} className="w-full px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors">查看全部</button></div>}
+                        {/*
+                          原本這顆只有 `setIsAlertOpen(false)` —— 按下去只是把彈窗關掉，
+                          看起來就是「沒反應」（老闆 2026-08-31）。警示講的是商品的殺率與庫存，
+                          所以帶去商品管理，跟點單一則警示的去處一致。
+                        */}
+                        {alerts.length > 0 && <div className="px-4 py-3 border-t border-neutral-200 bg-neutral-50"><button onClick={() => { router.push('/products'); setIsAlertOpen(false) }} className="w-full px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors">前往商品管理</button></div>}
                       </div>
                     </>
                   )}

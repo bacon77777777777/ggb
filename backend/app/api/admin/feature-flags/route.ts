@@ -10,7 +10,9 @@ import path from 'path'
 // 新增開關時務必同步加進來
 // sell_escrow（商城平台代收）已於 2026-08-13 移除 —— 玩家商城一律雙方自理。
 // register 控制「登入即註冊」的自動開戶那一半：維護時既有帳號照常登入，新信箱進不來。
-const FEATURE_KEYS = ['sell', 'ichiban', 'blindbox', 'gacha', 'card', 'custom', 'slot', 'exchange', 'market', 'recharge', 'register'] as const
+// lottery（抽籤販售，migration 656）與 phone_verify 都曾經漏加 ——
+// 症狀就是上面講的那個：按了關閉又自己彈回開啟（2026-08-31 補上）。
+const FEATURE_KEYS = ['sell', 'ichiban', 'blindbox', 'gacha', 'card', 'custom', 'slot', 'lottery', 'exchange', 'market', 'recharge', 'register', 'phone_verify'] as const
 type FeatureKey = (typeof FEATURE_KEYS)[number]
 
 const normalizeBool = (v: unknown) => v === true || v === 'true' || v === 1 || v === '1'
