@@ -246,7 +246,7 @@ const ONEONE_CDN  = 'd89889xojlqhy.cloudfront.net'
  * 窗開太小等於那兩類天天開天窗，而不是「沒素材」。
  *
  * 40 則是拿時間預算換算的：最壞情況每則一次文章抓取（約 1 秒），
- * 40 則約 40 秒，離 DEADLINE 的 240 秒還很寬；配額或 MAX_TOTAL 一滿就提早收工。
+ * 40 則約 40 秒，離時間預算（DEADLINE 260 秒）還很寬；配額或 MAX_TOTAL 一滿就提早收工。
  */
 const ONEONE_SCAN = 40
 
@@ -1772,7 +1772,22 @@ export async function POST(req: NextRequest) {
   const isManual = limitOverride !== undefined || body?.manual === true
 
   const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0, catQuota: 0, selfPromo: 0, adLeak: 0, throttled: 0, brandMix: 0, coverDup: 0, subjectDup: 0 }, relaxedPass: false }
-  const DEADLINE     = Date.now() + 240_000  // 最多跑 4 分鐘
+  /**
+   * 時間預算（maxDuration 是 300 秒，留 40 秒給收尾與回應）
+   *
+   * ⚠️ **第一輪不能用完整個預算**，不然第二輪（寬鬆模式）永遠輪不到。
+   * 2026-09-01 的實例：02:00 那場寫了 5 篇（ichiban 2、figure 2、tcg 1）就停了，
+   * 但 1kuji 當下還有 14 檔沒寫過 —— 素材是有的，是第一輪把時間花在
+   * 「掃還沒滿的 gacha／toy，而那兩類當下根本沒東西」，掃完就超時，
+   * 第二輪一次都沒跑到。
+   *
+   * 所以第一輪只給到 STRICT_DEADLINE，剩下的 RELAX_RESERVE 秒保留給第二輪。
+   * 這樣切不會損失任何東西 —— **寬鬆模式本來就比嚴格模式更寬**，
+   * 嚴格模式寫得出來的，寬鬆模式一定也寫得出來，而且來源順序一樣。
+   */
+  const DEADLINE       = Date.now() + 260_000
+  const RELAX_RESERVE  = 70_000
+  const STRICT_DEADLINE = DEADLINE - RELAX_RESERVE
   /*
    * 每次全局上限（手動觸發可傳 limit 覆寫）
    *
@@ -1787,7 +1802,7 @@ export async function POST(req: NextRequest) {
    * （4×5 剛好等於 20，沒有任何餘裕）。實際上早場常常因為來源沒更新只寫 2～3 篇，
    * 一天就註定到不了 20。改成「這場最多寫 min(8, 20 − 今天已寫)」，
    * 晚場才追得回來。8 是拿時間預算抓的：實測每篇約 20 秒，8 篇約 160 秒，
-   * 仍在 DEADLINE 的 240 秒內。
+   * 仍在時間預算內（第一輪到 STRICT_DEADLINE = 190 秒，之後轉寬鬆模式繼續）。
    */
   const ROUND_CEILING = 8
   const MAX_PER_QUERY = limitOverride === 1 ? 1 : 2
@@ -1902,6 +1917,8 @@ export async function POST(req: NextRequest) {
    */
   let relaxed = false
   const RELAXED_PER_CATEGORY = 4
+  /** 第一輪看 STRICT_DEADLINE，第二輪才用完整預算 */
+  const outOfTime = () => Date.now() > (relaxed ? DEADLINE : STRICT_DEADLINE)
 
   const catWrittenFull = (c: string) =>
     (catWritten[c] ?? 0) >= (relaxed ? RELAXED_PER_CATEGORY : MAX_PER_CATEGORY)
@@ -1935,7 +1952,16 @@ export async function POST(req: NextRequest) {
 
   const runHtmlSources = async () => {
     for (const src of HTML_SOURCES) {
-      if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
+      if (outOfTime() || results.written >= MAX_TOTAL) break
+      /*
+       * 第一輪就先擋掉「分類已經滿了」的來源 —— 這裡跟 RSS 來源不一樣：
+       * RSS 的標題在 feed 裡就有，抓文章前就分得出類別；HTML 列表沒有標題，
+       * 要開頁才知道，等於**每一則都得先付一次網頁抓取**。
+       * 1kuji 一輪 25 檔全是一番賞，ichiban 滿了還照掃就是白花 25 次抓取
+       * （2026-09-01 就是這樣把第二輪的時間吃掉的）。
+       * 寬鬆模式不套這條，那時本來就要重新考慮它們。
+       */
+      if (!relaxed && quotaFull(src.category)) { results.skipped++; results.skipReasons.catQuota++; continue }
 
       const listHtml = await fetchText(src.url, 10_000)
       if (!listHtml) { results.errors++; continue }
@@ -1944,7 +1970,7 @@ export async function POST(req: NextRequest) {
          原本 8 條：玩具人首頁 13 條裡前 8 條只剩 7 條沒寫過，開到 25 拿得到 12 條。
          Union Arena 一頁只有 7 則商品情報，開大也不會多抓，純粹是不擋到它 */
       for (const realUrl of src.extract(listHtml).slice(0, 25)) {
-        if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
+        if (outOfTime() || results.written >= MAX_TOTAL) break
         if (existing.has(realUrl)) { results.skipped++; results.skipReasons.duplicate++; continue }
         if (attempted.has(realUrl)) { results.skipped++; continue }
 
@@ -2048,13 +2074,13 @@ export async function POST(req: NextRequest) {
    *   4. 改寫完再比對一次商城字樣，還留著就整篇不發
    */
   const runOneOne = async () => {
-    if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) return
+    if (outOfTime() || results.written >= MAX_TOTAL) return
 
     const xml = await fetchText(ONEONE_FEED, 12_000)
     if (!xml) { results.errors++; return }
 
     for (const item of parseRss(xml).slice(0, ONEONE_SCAN)) {
-      if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
+      if (outOfTime() || results.written >= MAX_TOTAL) break
 
       const realUrl = item.link
       if (!realUrl || existing.has(realUrl)) { results.skipped++; results.skipReasons.duplicate++; continue }
@@ -2146,7 +2172,7 @@ export async function POST(req: NextRequest) {
 
   const runDirectFeeds = async () => {
     for (const feed of DIRECT_FEEDS) {
-      if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
+      if (outOfTime() || results.written >= MAX_TOTAL) break
 
       // 節流的來源：距離上一篇還不夠久就整個跳過，連 feed 都不用抓
       if (feed.minIntervalHours) {
@@ -2172,7 +2198,7 @@ export async function POST(req: NextRequest) {
         return (trustedDomains.has(db) ? 1 : 0) - (trustedDomains.has(da) ? 1 : 0)
       })
       for (const item of items) {
-        if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
+        if (outOfTime() || results.written >= MAX_TOTAL) break
 
         const realUrl = item.link
         if (!realUrl || existing.has(realUrl)) { results.skipped++; results.skipReasons.duplicate++; continue }
@@ -2306,7 +2332,7 @@ export async function POST(req: NextRequest) {
    */
   const runPass = async () => {
     const queue = [...groups]
-    while (queue.length > 0 && results.written < MAX_TOTAL && Date.now() < DEADLINE) {
+    while (queue.length > 0 && results.written < MAX_TOTAL && !outOfTime()) {
       queue.sort((a, b) => groupRank(a) - groupRank(b))
       await queue.shift()!.run()
     }
