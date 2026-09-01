@@ -23,6 +23,7 @@ import { useRouteTransition } from '@/components/ui/RouteTransition';
 import { categoryFlagKey } from '@/lib/categoryFlags';
 import ProductBadge from '@/components/ui/ProductBadge';
 import { asset } from '@/lib/asset';
+import { DEFAULT_ITEM_IMAGE } from '@/lib/productImage';
 
 /** 卡片版的統一模板底圖（含外框、緞帶、喇叭與按鈕），版位百分比由此圖量測而來 */
 const TEMPLATE_BG = asset('/images/bg.webp');
@@ -55,6 +56,52 @@ const LOAD_MORE_THRESHOLD_PX = 48;
 const APPEAR_DELAY_MS = 700;   // 首則：等首頁載入動畫跑完
 const NEXT_DELAY_MS   = 260;   // 後續：讓上一則退場後再進場，不要疊在一起
 const EXIT_MS         = 220;   // 與退場動畫時間相當
+/**
+ * 底圖最多等多久。等不到就照樣開，寧可版面醜一下也不要整個彈窗永遠不出現
+ *（離線、CDN 掛掉、擋圖擴充套件都會走到這裡）。
+ */
+const BG_TIMEOUT_MS   = 5000;
+
+/**
+ * 這一則要等哪一張底圖？三種版型都有自己的底：
+ * 最新上架與卡片版是「底圖 + 內容疊上去」，純圖版整則就是那張圖。
+ * **三種都要等** —— 純圖版先開一個空的圓角框、圖再補上來，是同一個毛病。
+ */
+const bgSrcFor = (p: SitePromo | null) =>
+  !p ? null
+    : p.layout === 'new_arrival' ? NEW_ARRIVAL_BG
+      : (p.layout === 'image' && p.image_url) ? p.image_url
+        : TEMPLATE_BG;
+
+/**
+ * 商品縮圖：先鋪預設圖，真圖載完才蓋上去（老闆 2026-09-01）。
+ *
+ * 清單是先有資料才有圖，中間那段空窗期原本是一格空白 ——
+ * 十筆商品十個空格，看起來像壞掉。預設圖墊著至少版面是完整的。
+ *
+ * 拆成獨立元件是因為要用 useState：hook 不能寫在 .map() 的 callback 裡。
+ */
+function ProductThumb({ src, alt }: { src?: string | null; alt: string }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <span className="relative block h-9 w-9 shrink-0 overflow-hidden rounded-lg">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={DEFAULT_ITEM_IMAGE} alt="" aria-hidden
+        className="absolute inset-0 h-full w-full object-contain" />
+      {src && (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={src} alt={alt}
+          className="absolute inset-0 h-full w-full object-contain transition-opacity duration-200"
+          style={{ opacity: loaded ? 1 : 0 }}
+          onLoad={() => setLoaded(true)}
+          /* 載失敗就維持透明，底下的預設圖繼續露出來 */
+          onError={() => setLoaded(false)}
+        />
+      )}
+    </span>
+  );
+}
 
 export default function PromoPopup({ placement = 'home' }: { placement?: string }) {
   const { promos, isLoaded } = usePromos(placement);
@@ -87,8 +134,38 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
     const delay = shownOnceRef.current ? NEXT_DELAY_MS : APPEAR_DELAY_MS;
     setHideToday(false);
     setVisibleCount(NEW_ARRIVAL_PAGE);
-    const t = setTimeout(() => { shownOnceRef.current = true; setVisible(true); }, delay);
-    return () => clearTimeout(t);
+
+    /*
+     * **底圖先載完，彈窗才出現**（老闆 2026-09-01）。
+     *
+     * 先前是「彈窗立刻出現、內容等 bgReady 才淡入」，但那道閘門後面有一個
+     * 1.2 秒的保險 —— 4G 上 800×1189 的底圖根本來不及，時間一到文字就照樣
+     * 放行，於是看到的是「深色遮罩 + 一片空白 + 浮在上面的商品清單」。
+     *
+     * 改成在**顯示之前**先把底圖抓下來（跑完才 setVisible）。這樣不但順序對了，
+     * 等真的渲染 <Image> 時圖已經在 HTTP 快取裡，幾乎是同一幀就畫出來。
+     */
+    let cancelled = false;
+    let safety: ReturnType<typeof setTimeout> | undefined;
+    const show = () => {
+      if (cancelled) return;
+      shownOnceRef.current = true;
+      setBgReady(true);      // 底圖已備妥（或等逾時了），內容不用再等第二道閘
+      setVisible(true);
+    };
+
+    const t = setTimeout(() => {
+      const src = bgSrcFor(current);
+      if (!src) return show();
+      const img = new window.Image();
+      img.onload = show;
+      img.onerror = show;     // 404 也要放行，不然彈窗永遠不出現
+      img.src = src;
+      if (img.complete) show();          // 已經在快取裡
+      safety = setTimeout(show, BG_TIMEOUT_MS);
+    }, delay);
+
+    return () => { cancelled = true; clearTimeout(t); if (safety) clearTimeout(safety); };
   }, [current]);
 
   // 彈窗開著時鎖住背景捲動（同 components/ui/Modal.tsx 的作法）。
@@ -101,32 +178,17 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
   }, [visible]);
 
   /*
-   * 底圖先到、資料再淡入（老闆 2026-08-19）。
-   * 原本兩者同時渲染，商品列會先出現在一片空白上，底圖才「啪」地補上來。
+   * 內容的淡入閘門。真正的等待已經移到上面「顯示之前先載底圖」那段 ——
+   * 彈窗一出現時底圖就已經在快取裡，所以這裡是接著 setVisible 一起放行的。
+   * 留著它是因為 <Image> 自己的 onLoad 仍是最準的訊號（快取沒中時還能補救）。
    *
-   * ⚠ 一定要有逾時保險：底圖萬一載不出來（離線、CDN 掛掉、擋圖擴充套件），
-   * 沒有這道保險整個彈窗會永遠空著 —— 那比先看到資料還糟。
-   * onError 也要收，否則 404 時只會等到逾時才顯示。
-   *
-   * 必須放在下面那行提前 return 之前 —— hooks 不能條件式呼叫，
+   * ⚠ 必須放在下面那行提前 return 之前 —— hooks 不能條件式呼叫，
    * 放在 return 之後 lint 會直接報 rules-of-hooks（build 會失敗）。
    */
-  /*
-   * 只有「純圖」版型不需要等 —— 它整則就是一張圖，沒有要疊上去的東西。
-   * 最新上架與公告卡片版都是「底圖 + 文字疊上去」，兩個都要等底圖到位
-   * （老闆 2026-08-20：公告文字都出來了，底圖還沒出來）。
-   */
-  const wantsBg = !!current && !(current.layout === 'image' && !!current.image_url);
   const [bgReady, setBgReady] = useState(false);
 
-  // 換下一則時重新等一次 —— 兩種版型用的底圖不同，不能沿用上一則的狀態
+  // 換下一則時重新等一次 —— 每則用的底圖不同，不能沿用上一則的狀態
   useEffect(() => { setBgReady(false); }, [current?.id]);
-
-  useEffect(() => {
-    if (!wantsBg || bgReady) return;
-    const t = setTimeout(() => setBgReady(true), 1200);
-    return () => clearTimeout(t);
-  }, [wantsBg, bgReady]);
 
   const promo = current;
   if (!promo) return null;
@@ -224,14 +286,10 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                           onClick={go(productHref(p))}
                           className="flex w-full items-center gap-2.5 py-1.5 text-left transition-transform active:scale-[0.99]"
                         >
-                          {/* object-contain 不裁切：商品主圖直式橫式都有，cover 會把海報標題切掉 */}
-                          {/* 不加白底：外框上緣是粉紅漸層，白色方塊會浮出來
-                              （容器已經照老闆指定拿掉了，縮圖也不該自己帶一塊底） */}
-                          <span className="h-9 w-9 shrink-0 overflow-hidden rounded-lg">
-                            {p.image_url
-                              ? <img src={p.image_url} alt={p.name} className="h-full w-full object-contain" />
-                              : <span className="flex h-full w-full items-center justify-center text-[10px] text-neutral-400">無圖</span>}
-                          </span>
+                          {/* object-contain 不裁切：商品主圖直式橫式都有，cover 會把海報標題切掉。
+                              不加白底：外框上緣是粉紅漸層，白色方塊會浮出來。
+                              先鋪預設圖、真圖載完才蓋上去 —— 見 ProductThumb 的說明 */}
+                          <ProductThumb src={p.image_url} alt={p.name} />
                           <span className="min-w-0 flex-1">
                             {/* 類別膠囊擺在商品名上面、與名稱切齊左緣（老闆指定）。
                                 固定寬 46px：兩字（抽卡）與三字（自製賞）等寬，
