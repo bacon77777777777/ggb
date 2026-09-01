@@ -31,7 +31,7 @@ import { asset } from '@/lib/asset';
 import { PACK_RATIO } from './packSpec';
 import { createOceanSkyLayer } from './oceanSkyLayer';
 import {
-  nightAmount, parseSkyOverride, skyGradientCss, skyHorizonRgb, skyProgressAtHour,
+  parseSkyOverride, skyGradientCss, skyHorizonRgb, skyProgressAtHour,
   skyProgressNow, solarPhaseAtHour, solarPhaseNow,
 } from '@/lib/oceanSky';
 
@@ -230,24 +230,6 @@ function slotFor(d: number, aspect: number) {
  * 真的看得到再補一片不透明的芯，不要又把背景改回淺色。
  */
 const skyBackground = (s: number) => skyGradientCss(s);
-
-/**
- * 背景的流星。
- *
- * 刻意做成 CSS 圖層而不是丟進 3D 場景 —— 這樣完全不動原型的場景，
- * 也不用多算粒子；瀏覽器的 transform 動畫走合成執行緒，等於零成本。
- * 位置與時間錯開用固定值而不是 Math.random()：每次重繪都重骰的話，
- * 流星會在 React 重新渲染時整批跳位置。
- */
-const METEORS = [
-  // 只留三顆，而且刻意慢 —— 遠方的流星在視野裡移動得很慢，
-  // 之前六顆快速掠過像螢幕保護程式（老闆說「太假」）
-  { left: 22, delay: 0,   dur: 11, len: 58, op: 0.6 },
-  { left: 62, delay: 3.5, dur: 16, len: 44, op: 0.48 },
-  { left: 84, delay: 7,   dur: 13, len: 52, op: 0.55 },
-  // 最右邊再補一顆：流星是往左下飄的，只放三顆的話右半部常常整片空著（老闆回報）
-  { left: 96, delay: 1.5, dur: 18, len: 38, op: 0.46 },
-];
 
 const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
   ({ packStyles, onActiveStyleChange, height = 466, frontImage, backImage }, ref) => {
@@ -747,59 +729,13 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
     return (
       <div className="relative w-full overflow-hidden" style={{ height, background: skyBackground(skyS) }}>
         {/*
-          流星層。
-          **2026-09-01 從畫布底下搬到畫布之上**：背景換成 WebGL 海景之後畫布是
-          不透明的，夾在下面等於整層看不到。改疊在上面，並且只在夜裡浮出來 ——
-          白色流星配白天的藍天本來就看不見，亮著也只是浪費。
+          這裡以前有一層 CSS 流星（四顆、慢速、往左下飄，只在夜色浮出）。
+          老闆 2026-09-01 指定移除 —— 卡包本身已經有金屬反光與打光在動，
+          再加一層飄的東西反而讓視線散掉。要復原就翻這個 commit，
+          整層是自足的（一個 METEORS 常數 + 一個絕對定位的 div，沒有其他相依）。
+          注意別跟 `StarWarpField`（撕開封口的全畫面星流）搞混，那支還在用。
         */}
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{ zIndex: 2, opacity: nightAmount(skyS), transition: 'opacity 1s linear' }}
-          aria-hidden
-        >
-          <style>{`
-            @keyframes ggbMeteor {
-              0%   { transform: translate3d(0,0,0) rotate(22deg); opacity: 0; }
-              12%  { opacity: var(--op); }
-              70%  { opacity: var(--op); }
-              100% { transform: translate3d(-11vh, 32vh, 0) rotate(22deg); opacity: 0; }
-            }
-            .ggb-meteor {
-              position: absolute; top: -10%;
-              width: 2.5px; border-radius: 3px;
-              /* 白光暈：尾巴很淡，靠頭部那點亮光帶出來 */
-              background: linear-gradient(180deg,
-                rgba(255,255,255,0) 0%,
-                rgba(255,255,255,0.9) 70%,
-                rgba(255,255,255,0.35) 100%);
-              filter: drop-shadow(0 0 4px rgba(255,255,255,0.95))
-                      drop-shadow(0 0 9px rgba(190,210,255,0.6));
-              animation: ggbMeteor var(--dur) linear var(--delay) infinite;
-              will-change: transform, opacity;
-            }
-            /* 流星頭：很小一點光暈 —— 在遠方，不該有明顯的實體 */
-            .ggb-meteor::after {
-              content: ''; position: absolute; left: 50%; bottom: -2px;
-              width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%;
-              background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(215,230,255,0.6) 50%, rgba(215,230,255,0) 100%);
-            }
-            @media (prefers-reduced-motion: reduce) { .ggb-meteor { animation: none; opacity: 0; } }
-          `}</style>
-          {METEORS.map((m, i) => (
-            <span
-              key={i}
-              className="ggb-meteor"
-              style={{
-                left: `${m.left}%`,
-                height: m.len,
-                ['--dur' as string]: `${m.dur}s`,
-                ['--delay' as string]: `${m.delay}s`,
-                ['--op' as string]: m.op,
-              } as React.CSSProperties}
-            />
-          ))}
-        </div>
-        {/* 3D 畫布（海景 + 卡包都畫在這一張）。流星改疊在它上面，見上面的說明 */}
+        {/* 3D 畫布（海景 + 卡包都畫在這一張） */}
         <div ref={mountRef} className="absolute inset-0" style={{ zIndex: 1 }} />
 
         {/* 音效開關（右上角，同原型）。站上共用 SoundToggle，靜音偏好也共用一份 */}
