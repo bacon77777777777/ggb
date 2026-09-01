@@ -675,7 +675,14 @@ function ProfileContent() {
   const [shippingFeeHomeLarge, setShippingFeeHomeLarge] = useState(120);
   const [freeThresholdCvs, setFreeThresholdCvs] = useState(7);
   const [freeThresholdHome, setFreeThresholdHome] = useState(15);
-  const [freeShippingThreshold, setFreeShippingThreshold] = useState(7);
+
+  /*
+   * 伺服器擋下 FEE_MISMATCH 時回報的正確運費。有值就蓋過前台自己算的，
+   * 讓玩家「再按一次」就能出貨，而不是卡在一個永遠算不對的數字上。
+   * 任何會影響計價的輸入一變（勾選、物流方式、超商品牌）就清掉，
+   * 免得沿用到已經不適用的舊報價。
+   */
+  const [serverShippingFee, setServerShippingFee] = useState<number | null>(null);
 
   // Auto-scroll refs
   const warehouseSubTabsRef = useRef<HTMLDivElement>(null);
@@ -1152,7 +1159,7 @@ function ProfileContent() {
 
   // 必須與 DB 的 calc_delivery_fee() 完全一致 —— 兩邊算出來不同時，
   // create_delivery_order 會以 FEE_MISMATCH 擋下整筆出貨
-  const currentShippingFee = React.useMemo(() => {
+  const localShippingFee = React.useMemo(() => {
     // 含大件不適用免運，且走大件價（真實宅配成本遠高於一般件）
     if (hasLargePackage) return shippingFeeHomeLarge;
 
@@ -1172,6 +1179,23 @@ function ProfileContent() {
   }, [selectedForDelivery.length, hasLargePackage, shippingFeeHomeLarge, freeThresholdCvs, freeThresholdHome,
       logisticsType, logisticsSubType, shippingFeeHome, shippingFeeCvs, shippingFeeCvs711,
       shippingFeeCvsFamily, shippingFeeCvsHilife, shippingFeeCvsOk]);
+
+  React.useEffect(() => {
+    setServerShippingFee(null);
+  }, [selectedForDelivery, logisticsType, logisticsSubType]);
+
+  const currentShippingFee = serverShippingFee ?? localShippingFee;
+
+  /*
+   * 「再加 N 件可免運」用的門檻。原本寫的是舊的單一門檻 freeShippingThreshold（7），
+   * 但實際計價走的是分物流門檻（宅配 15、超商 7）—— 玩家在第 6 件看到「再加 1 件可免運」，
+   * 加到第 7 件卻照收 60。含大件時不適用免運，回 null 讓提示整行不出現。
+   */
+  const effectiveFreeThreshold = React.useMemo(() => {
+    if (hasLargePackage) return null;
+    const t = logisticsType === 'CVS' ? freeThresholdCvs : freeThresholdHome;
+    return Number.isFinite(t) ? t : null;
+  }, [hasLargePackage, logisticsType, freeThresholdCvs, freeThresholdHome]);
 
 
   const filteredDismantledItems = React.useMemo(() => {
@@ -1566,16 +1590,41 @@ function ProfileContent() {
       .then(({ data }) => {
         if (!data) return;
         const map = Object.fromEntries(data.map(r => [r.key, r.value]));
-        if (map.shipping_fee_home) setShippingFeeHome(Number(map.shipping_fee_home));
-        if (map.shipping_fee_cvs) setShippingFeeCvs(Number(map.shipping_fee_cvs));
-        if (map.shipping_fee_cvs_711) setShippingFeeCvs711(Number(map.shipping_fee_cvs_711));
-        if (map.shipping_fee_cvs_family) setShippingFeeCvsFamily(Number(map.shipping_fee_cvs_family));
-        if (map.shipping_fee_cvs_hilife) setShippingFeeCvsHilife(Number(map.shipping_fee_cvs_hilife));
-        if (map.shipping_fee_cvs_ok) setShippingFeeCvsOk(Number(map.shipping_fee_cvs_ok));
-        if (map.free_shipping_threshold) setFreeShippingThreshold(Number(map.free_shipping_threshold));
-        if (map.free_shipping_threshold_cvs) setFreeThresholdCvs(Number(map.free_shipping_threshold_cvs));
-        if (map.free_shipping_threshold_home) setFreeThresholdHome(Number(map.free_shipping_threshold_home));
-        if (map.shipping_fee_home_large) setShippingFeeHomeLarge(Number(map.shipping_fee_home_large));
+
+        /*
+         * **退位順序必須跟 DB 的 calc_delivery_fee() 一字不差。**
+         *
+         * 這裡原本是「讀不到就用寫死的預設值」，而那些常數跟 DB 的退位鏈不一樣：
+         * DB 查不到 free_shipping_threshold_home 會退回 free_shipping_threshold，
+         * 查不到 shipping_fee_home_large 會退回 shipping_fee_home，前台卻自顧自地
+         * 用 15 與 120。PROD 因為漏跑 migration 426 的 INSERT 剛好少了這兩列 ——
+         * 於是大件宅配每一次都是 DB 算 60、前台送 120，被 FEE_MISMATCH 擋死
+         *（老闆 2026-09-01 回報）。設定齊全時兩邊碰巧一致，所以 STG 測不出來。
+         *
+         * 用 `?? ` 而不是 `if (map.x)`：門檻或運費設成 "0"（全站免運）是合法設定，
+         * truthiness 會把它當成沒讀到而悄悄跳回 60。
+         */
+        const num = (...keys: string[]) => {
+          for (const k of keys) {
+            if (map[k] != null && map[k] !== '' && Number.isFinite(Number(map[k]))) return Number(map[k]);
+          }
+          return null;
+        };
+        // 運費：查不到指定的 key 就退 shipping_fee_home，再查不到退 60（DB 最後那行 COALESCE）
+        const fee = (key: string) => num(key, 'shipping_fee_home') ?? 60;
+        // 門檻：分物流查不到就退舊的單一門檻；兩個都沒有時 DB 是「不免運」，
+        // 用 Infinity 表示，任何件數都達不到
+        const thr = (key: string) => num(key, 'free_shipping_threshold') ?? Infinity;
+
+        setShippingFeeHome(fee('shipping_fee_home'));
+        setShippingFeeCvs(fee('shipping_fee_cvs'));
+        setShippingFeeCvs711(fee('shipping_fee_cvs_711'));
+        setShippingFeeCvsFamily(fee('shipping_fee_cvs_family'));
+        setShippingFeeCvsHilife(fee('shipping_fee_cvs_hilife'));
+        setShippingFeeCvsOk(fee('shipping_fee_cvs_ok'));
+        setShippingFeeHomeLarge(fee('shipping_fee_home_large'));
+        setFreeThresholdCvs(thr('free_shipping_threshold_cvs'));
+        setFreeThresholdHome(thr('free_shipping_threshold_home'));
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -2451,7 +2500,25 @@ function ProfileContent() {
       } else if (msg.includes('LARGE_ITEM_REQUIRES_HOME_DELIVERY')) {
         toast.error('內含大型獎品，請改用宅配');
       } else if (msg.includes('FEE_MISMATCH')) {
-        toast.error('運費已更新，請關閉視窗重新申請');
+        /*
+         * 這是「前台顯示的運費」與「伺服器實收的運費」對不上時的保險 —— 不靜默改價，
+         * 擋下來讓玩家重新確認金額。
+         *
+         * 但原本的文案是「請關閉視窗重新申請」，而重開視窗算出來的還是同一個數字：
+         * 只要兩邊的公式真的分岔（PROD 漏了 platform_settings 兩列，見 migration 668），
+         * 玩家就是永遠出不了貨（老闆 2026-09-01：「重新操作還是一樣」）。
+         *
+         * 伺服器的例外訊息本來就帶著正確答案（`FEE_MISMATCH: expected 60, got 120`），
+         * 把它讀出來直接更新畫面，玩家再按一次就成功。往後就算又有哪個設定沒同步，
+         * 最糟也只是多按一次，不會再卡死。
+         */
+        const expected = Number(msg.match(/expected\s+(-?\d+)/)?.[1]);
+        if (Number.isFinite(expected)) {
+          setServerShippingFee(expected);
+          toast.error(`運費已更新為 ${expected} 代幣，請再確認一次金額`);
+        } else {
+          toast.error('運費已更新，請關閉視窗重新申請');
+        }
       } else {
         toast.error(`申請失敗：${msg || '請稍後再試'}`);
       }
@@ -3847,9 +3914,10 @@ function ProfileContent() {
                             </div>
                           )}
                         </div>
-                        {currentShippingFee > 0 && (
+                        {currentShippingFee > 0 && effectiveFreeThreshold !== null
+                          && effectiveFreeThreshold > selectedForDelivery.length && (
                           <p className="text-[11px] text-neutral-400 dark:text-neutral-500 text-right">
-                            再加 {freeShippingThreshold - selectedForDelivery.length} 件可免運
+                            再加 {effectiveFreeThreshold - selectedForDelivery.length} 件可免運
                           </p>
                         )}
                         {lotteryPurchaseTotal > 0 && (
