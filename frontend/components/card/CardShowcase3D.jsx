@@ -289,16 +289,43 @@ export default function CardShowcase3D({ frontImage, backImage, height = 320, au
      */
     const CAM_TARGET = new THREE.Vector3(0, 1.9, 0);
     const CAM_DIR = camera.position.clone().sub(CAM_TARGET);   // 注視點 → 鏡頭
-    const ZOOM_MIN = 1, ZOOM_MAX = 3;
+    const ZOOM_MIN = 1, ZOOM_MAX = 4;
+    /**
+     * 收合時的畫布高度。**視覺大小的基準就是它**，見 applyZoom 的說明。
+     */
+    const BASE_H = Math.max(1, H);
+    /*
+     * 切全螢幕的門檻，帶遲滯（放大到 EXPAND 才展開、縮回 COLLAPSE 才收起）。
+     * 沒有遲滯的話在門檻附近手指抖一下就會全螢幕／收起來回跳。
+     */
+    const ZOOM_EXPAND = 1.25, ZOOM_COLLAPSE = 1.08;
     let zoom = 1;
+    let isBig = false;
     const clampZoom = (z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
+
     const applyZoom = () => {
-      camera.position.copy(CAM_TARGET).add(CAM_DIR.clone().multiplyScalar(1 / zoom));
+      /*
+       * **卡片的視覺大小只跟 zoom 走，不受容器高度影響。**
+       *
+       * 透視投影下，物體的螢幕像素大小正比於畫布高度。原本鏡頭距離只除以 zoom，
+       * 於是切全螢幕的那一刻畫布從 320px 變成整個螢幕（手機約 844），
+       * zoom 明明只從 1.00 走到 1.02，卡片卻瞬間放大兩倍多 ——
+       * 老闆 2026-09-01 回報的「稍微擴張一點點就跳超大」就是這個。
+       *
+       * 把 BASE_H / 現在的畫布高 乘進去之後，全螢幕只剩下它該做的事
+       *（不要被 320px 的框裁掉），不再自己造成視覺跳動。
+       */
+      const h = Math.max(1, renderer.domElement.clientHeight || BASE_H);
+      const eff = zoom * (BASE_H / h);
+      camera.position.copy(CAM_TARGET).add(CAM_DIR.clone().multiplyScalar(1 / eff));
       camera.lookAt(CAM_TARGET);
+
       // useState 的 setter 身分是穩定的，場景 effect 用 [] 相依也抓得到最新的它
-      const big = zoom > 1.02;
-      setExpanded(big);            // 放大就全螢幕，縮回原始大小自動收回
-      apiRef.current?.setStageWhite(!big);
+      const next = isBig ? zoom > ZOOM_COLLAPSE : zoom >= ZOOM_EXPAND;
+      if (next === isBig) return;
+      isBig = next;
+      setExpanded(isBig);          // 放大到一定程度才全螢幕，縮回去自動收回
+      apiRef.current?.setStageWhite(!isBig);
     };
 
     const pts = new Map();
@@ -391,6 +418,9 @@ export default function CardShowcase3D({ frontImage, backImage, height = 320, au
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
+      /* 畫布高度變了就要重算鏡頭距離 —— 視覺大小的補償吃的正是這個高度。
+         切全螢幕會走到這裡（ResizeObserver 有觀察容器本身） */
+      applyZoom();
     };
     window.addEventListener("resize", onResize);
     // 切換全螢幕時容器尺寸會變，但不會觸發 window resize，所以要觀察元素本身
