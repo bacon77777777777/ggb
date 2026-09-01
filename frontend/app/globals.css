@@ -355,8 +355,20 @@ a, video, canvas {
   background-position: center;
   background-size: 100% 100%;
 }
+/*
+ * 圖走 CSS 變數，由 FigmaTearScene 用 asset() 餵進來（`--tear-up1/up2/light`）。
+ *
+ * 為什麼不直接寫 url()：prod 的 asset() 會接內容雜湊（`?v=…`），
+ * 這裡寫裸路徑就變成**兩個不同的快取條目** —— 元件在顯示獎項前預載的是帶版本的那個，
+ * 蓋板實際抓的是沒版本的那個，等於防爆雷的 gate 等錯了對象（dev 不加版本才剛好一致，
+ * 所以本機測不出來）。
+ *
+ * 不改成 inline style 是因為 `.p-temporal` 與底下的漸層層都是 turn.js 執行期產生的，
+ * JSX 碰不到；變數掛在 .ichiban-flipbook 上會往下繼承，兩種元素都吃得到。
+ * 後面的 fallback 只是保險（變數沒掛上時還有圖），正常情況不會用到。
+ */
 .ichiban-flipbook .sheet.cover {
-  background-image: url('/images/ichiban-tear/up1.svg');
+  background-image: var(--tear-up1, url('/images/ichiban-tear/up1.svg'));
 }
 .ichiban-flipbook .sheet.blank {
   background: transparent;
@@ -364,7 +376,7 @@ a, video, canvas {
 /* 掀起時的背面（up2.svg）：平時隱藏，滑動觸發 turn.js turning 事件後才顯示 */
 .ichiban-flipbook .p-temporal {
   background-color: transparent !important;
-  background-image: url('/images/ichiban-tear/up2.svg') !important;
+  background-image: var(--tear-up2, url('/images/ichiban-tear/up2.svg')) !important;
   background-repeat: no-repeat !important;
   background-position: center !important;
   background-size: 100% 100% !important;
@@ -376,8 +388,8 @@ a, video, canvas {
 }
 /* 用 light.svg 遮罩讓摺痕光影限制在貼紙輪廓內 */
 .ichiban-flipbook div[style*="gradient"] {
-  -webkit-mask-image: url('/images/ichiban-tear/light.svg');
-          mask-image: url('/images/ichiban-tear/light.svg');
+  -webkit-mask-image: var(--tear-light, url('/images/ichiban-tear/light.svg'));
+          mask-image: var(--tear-light, url('/images/ichiban-tear/light.svg'));
   -webkit-mask-size: 100% 100%;    mask-size: 100% 100%;
   -webkit-mask-position: center;   mask-position: center;
   -webkit-mask-repeat: no-repeat;  mask-repeat: no-repeat;

@@ -49,6 +49,7 @@ export default function FigmaTearScene({
   const wrapperRef    = useRef<HTMLDivElement>(null);  // .ichiban-flipbook
   const turnReady     = useRef(false);
   const pressStartX   = useRef<number | null>(null);
+  const pressStartY   = useRef<number | null>(null);
   const slideRight    = useRef(false);
   const hasMoved      = useRef(false);  // 任何 pointermove 觸發即為 true，比 slideRight 更早
 
@@ -61,7 +62,7 @@ export default function FigmaTearScene({
   /** turn.js 的內部把手：拆掉它自己的 DOM listener 之後，改由我們手動餵事件 */
   const turnApi = useRef<{ handlers: any; pages: any } | null>(null);
   /** 這一次全螢幕拖曳的起始資料（摺紙原點、螢幕位移換算摺紙位移的倍率） */
-  const dragRef = useRef<{ active: boolean; cornerX: number; cornerY: number; gain: number; pageW: number } | null>(null);
+  const dragRef = useRef<{ active: boolean; cornerX: number; cornerY: number; gain: number; pageW: number; pageH: number } | null>(null);
 
   /*
    * 獎項文字要等蓋板圖真的載好才顯示。
@@ -301,6 +302,7 @@ export default function FigmaTearScene({
 
       setTouched(true);
       pressStartX.current = e.clientX;
+      pressStartY.current = e.clientY;
       slideRight.current = false;
       hasMoved.current = false;  // 每次按下重置
       lastCrackle.current = 0;
@@ -308,15 +310,24 @@ export default function FigmaTearScene({
       tensionDone.current = false;
 
       /*
-       * 全螢幕拖曳代理：畫面上任何一點按下去，都當成「捏住券的左緣中點」。
+       * 全螢幕拖曳代理：畫面上任何一點按下去，都當成「捏住券的左緣」。
        *
        * turn.js 規定 mousedown/touchstart 必須落在它自己的 tl/bl 角上才會開始摺紙，
        * 而券只有 ~190px 寬，玩家得瞄準畫面裡一小塊地方才捏得到（老闆回報）。
-       * 這裡改成由我們手動呼叫 turn.js 的 handler，起點固定餵在券左緣中點 ——
+       * 這裡改成由我們手動呼叫 turn.js 的 handler，起點餵在券左緣 ——
        * 摺紙曲線、陰影、過半才算撕開、沒過半就彈回，全部還是 turn.js 在做，沒有改。
        *
-       * 起點的 y 用 offsetHeight/2（不是 bounding rect 的一半）：券是斜的，
-       * bounding rect 比實際高，取一半會掉出 tl 角的範圍變成 bl，摺法就不一樣了。
+       * 摺紙的**方向**則跟著手指走（老闆 2026-09-01 回報「以前可以上下拖曳」）：
+       *   ・按在券的上半 → 餵 tl 角，掀起來的是左上角
+       *   ・按在券的下半 → 餵 bl 角，掀起來的是左下角
+       *   ・拖曳過程再把手指的縱向位移 dy 一起餵進去（見 onCapturePointerMove），
+       *     所以往上拖紙就往上、往下拖就往下
+       * 這一段在改成全螢幕代理時被寫死成「左緣中點、y 永遠不動」，摺線因此只剩水平一種。
+       *
+       * y 的座標系：turn.js 是拿 `餵進來的 pageY − parent.offset().top` 去比
+       * 自己的 layout height，所以基準要用 offsetHeight（未經 transform 的版面高），
+       * 不能用 bounding rect —— 券是斜的，bounding rect 比實際高，換算會落到別的角。
+       * cornerSize = ceil(fbH/2)+4，故 y<cs 判成 t、y≥cs 判成 b，各留 2px 邊界餘裕。
        */
       const api = turnApi.current;
       const fb = flipbookRef.current;
@@ -324,12 +335,15 @@ export default function FigmaTearScene({
       if (!api || !fb || !$) { inGrabZone.current = false; return; }
 
       const pos = $(fb).offset();
+      const rect = fb.getBoundingClientRect();
+      const grabbedTop = e.clientY < rect.top + rect.height / 2;
       const cornerX = pos.left + 2;
-      const cornerY = pos.top + fb.offsetHeight / 2;
+      const cornerY = grabbedTop ? pos.top + 2 : pos.top + fb.offsetHeight - 2;
       const pageW = fb.offsetWidth || 1;
+      const pageH = fb.offsetHeight || 1;
       // 撕完一整張要拖 TEAR_SCREEN_RATIO 個畫面寬；過半即撕開，所以實際門檻是一半
       const need = Math.max(60, (containerRef.current?.clientWidth || window.innerWidth) * TEAR_SCREEN_RATIO);
-      dragRef.current = { active: true, cornerX, cornerY, gain: pageW / need, pageW };
+      dragRef.current = { active: true, cornerX, cornerY, gain: pageW / need, pageW, pageH };
       // 過半即撕開 → 手指真正要走的距離是 need 的一半，震動節拍就照這個算進度
       tearNeed.current = need / 2;
 
@@ -357,9 +371,15 @@ export default function FigmaTearScene({
       const dx = Math.abs(e.clientX - pressStartX.current);
       // 拉得越開節拍越急，跟蓄力的 charge% 是同一回事
       tearProgress.current = tearNeed.current > 0 ? Math.min(1, dx / tearNeed.current) : 0;
-      // 餵給 turn.js 的摺紙點：超過券寬就沒有意義了，夾住免得算出離譜的角度
+      /*
+       * 餵給 turn.js 的摺紙點。
+       * X 決定「撕多開」，Y 決定「往哪個方向摺」—— 兩軸都要餵，只餵 X 摺線永遠是水平的。
+       * 兩軸都夾住：超過券的尺寸再多也算不出有意義的角度，只會讓紙抖。
+       */
+      const dy = pressStartY.current === null ? 0 : e.clientY - pressStartY.current;
       const foldX = d.cornerX + Math.min(dx * d.gain, d.pageW * 1.15);
-      turnApi.current?.handlers.touchMove(fakeEvt(foldX, d.cornerY));
+      const foldY = d.cornerY + Math.max(-d.pageH, Math.min(dy * d.gain, d.pageH));
+      turnApi.current?.handlers.touchMove(fakeEvt(foldX, foldY));
 
       if (dx > 3) {
         slideRight.current = true;
@@ -426,6 +446,7 @@ export default function FigmaTearScene({
         if (pt) pt.style.visibility = '';
       }
       pressStartX.current = null;
+      pressStartY.current = null;
     };
 
     (async () => {
@@ -602,28 +623,53 @@ export default function FigmaTearScene({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={asset("/images/ichiban-tear/bg.svg")} alt=""
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+            {/*
+              賞等文字。
+
+              2026-09-01 換新券之後這一段整個改過：
+                ・**顏色**從淺灰 #D3D3D3 換成深色 —— 舊券的視窗是深藍底，
+                  新券是白底，淺灰字在白底上等於看不見（textShadow 也一起拿掉）
+                ・**位置**改成對準白色視窗的中心，不是整張券的中心：
+                  券的左邊有一條「往右滑動撕開」的撕開條，照整張置中會偏左
+                ・**字級**放大到視窗高度的量級（老闆 2026-09-01：「A 字太小了」，
+                  同日再加大一次到 0.52）
+
+              座標基準是 bg.svg 的 320×156。**要對準的是「空白處」不是整個白視窗** ——
+              白底的上緣被藍色標題列與那行小字佔掉、下緣接著藍色頁腳，
+              實際可寫的空白帶是 y 48–115（高 67）、x 37–313（左側 37 之前是撕開條）。
+              中心取 (175, 86) —— 縱向不取空白帶的正中心 81，刻意往下 4 單位，
+              因為 lineHeight:1 的行框底下留了降部空間、字看起來會偏高。
+              賞等字級 0.52×ticketH（字高約 0.72 倍，約 58 單位，
+              上下各留 4~5 單位）。換圖時重新量這條空白帶再調這三個數字即可。
+            */}
             <div
-              className="absolute inset-0 flex items-center justify-center"
+              className="absolute inset-0"
               style={{ opacity: showPrize ? 1 : 0, transition: 'opacity 0.4s' }}
             >
-              <div className="flex flex-col items-center w-full pl-[18%]">
-                <div className="flex items-baseline gap-1">
-                  <span style={{
-                    fontSize: prizeTierLetter === 'LAST' ? ticketH * 0.3 : ticketH * 0.5,
-                    fontWeight: 900,
-                    color: prizeTierLetter === 'LAST' ? '#FFC400' : '#D3D3D3',
-                    lineHeight: 1,
-                    textShadow: '0 2px 8px rgba(0,0,0,0.6)',
-                  }}>
-                    {prizeTierLetter === 'LAST' ? 'LAST' : prizeTierLetter}
-                  </span>
-                  <span style={{
-                    fontSize: ticketH * 0.22, fontWeight: 900,
-                    color: prizeTierLetter === 'LAST' ? '#FFC400' : '#D3D3D3',
-                  }}>
-                    {prizeTierLetter === 'LAST' ? 'ONE' : '賞'}
-                  </span>
-                </div>
+              <div style={{
+                position: 'absolute',
+                left: 175 / 320 * ticketW,
+                top:   86 / 156 * ticketH,
+                transform: 'translate(-50%, -50%)',
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: ticketH * 0.02,
+                whiteSpace: 'nowrap',
+                color: prizeTierLetter === 'LAST' ? '#E8A400' : '#1B1B1B',
+                lineHeight: 1,
+              }}>
+                <span style={{
+                  fontSize: ticketH * (prizeTierLetter === 'LAST' ? 0.32 : 0.52),
+                  fontWeight: 900,
+                }}>
+                  {prizeTierLetter === 'LAST' ? 'LAST' : prizeTierLetter}
+                </span>
+                <span style={{
+                  fontSize: ticketH * (prizeTierLetter === 'LAST' ? 0.20 : 0.22),
+                  fontWeight: 900,
+                }}>
+                  {prizeTierLetter === 'LAST' ? 'ONE' : '賞'}
+                </span>
               </div>
             </div>
           </div>
@@ -636,12 +682,30 @@ export default function FigmaTearScene({
                 className={`ichiban-flipbook${touched ? ' touched' : ''}`}
                 style={{
                   position: 'absolute',
-                  left:   53 / 320 * ticketW,
-                  top:    12 / 156 * ticketH,
-                  width:  242 / 320 * ticketW,
-                  height: 133 / 156 * ticketH,
+                  /*
+                   * 貼紙蓋板在 bg.svg（320×156）座標上的位置。
+                   * 2026-09-01 換新券：蓋板由 243×133 變成 280×137，
+                   * 量到的券身 bbox 是 left 36 / top 10 / 276×135（長寬比 2.044，
+                   * 跟蓋板的 280/137 完全一致 —— 兩張是同一個畫布尺度出的）。
+                   * 這裡各留 1px 出血蓋過去，不然兩張的鋸齒邊形狀不同，
+                   * 邊緣會露出一絲底下的藍色。
+                   */
+                  left:   33 / 320 * ticketW,
+                  top:     8 / 156 * ticketH,
+                  width:  282 / 320 * ticketW,
+                  height: 138 / 156 * ticketH,
                   overflow: 'visible',
-                }}
+                  /*
+                   * 貼紙的三張圖從這裡餵給 CSS（globals.css 的 .ichiban-flipbook 那段）。
+                   * 用變數而不是 inline background：`.p-temporal`（掀起的背面）與漸層層
+                   * 都是 turn.js 執行期塞的 DOM，JSX 碰不到，但變數會繼承下去。
+                   * 一定要走 asset()：prod 帶內容雜湊，跟上面 COVER_IMAGES 的預載
+                   * 必須是同一個網址，否則防爆雷的 gate 等的是另一個請求。
+                   */
+                  ['--tear-up1'  as string]: `url(${asset('/images/ichiban-tear/up1.svg')})`,
+                  ['--tear-up2'  as string]: `url(${asset('/images/ichiban-tear/up2.svg')})`,
+                  ['--tear-light' as string]: `url(${asset('/images/ichiban-tear/light.svg')})`,
+                } as React.CSSProperties}
               >
                 <div ref={flipbookRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
                   <div className="sheet cover" />  {/* 第 1 頁：up.svg 貼紙正面 */}
