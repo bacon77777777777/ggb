@@ -4,6 +4,50 @@
 
 ---
 
+## v2026.09.01r｜2026-09-01｜轉蛋／盒玩不再先閃錯的機台；倉庫圖長按不跳原生選單
+
+### 一、剛進轉蛋商品頁會先看到 `gacha/main.webp`
+
+老闆回報。原因是**全站模組設定是非同步查來的**：
+
+```
+const gachaMachineTheme = product.machine_theme || moduleSettings['gacha'] || 'gacha_classic'
+```
+
+`moduleSettings` 初值是 `{}`，所以第一輪 render 一定退到 `gacha_classic` ——
+先畫出那台的主圖（就是 `gacha/main.webp`），設定查回來之後才換成 `gacha_mode2`。
+
+**光把內容藏起來沒有用**：第一台的圖載完就會觸發 `onMachineReady`、
+把載入畫面收掉，然後換主題時第二台又要重載一次圖，會閃第二次。
+所以改成**主題沒定就根本不掛機台**（`themeResolved`），
+並在設定查回來（成功或失敗都算）之後才渲染。
+
+⚠️ 一定要有逾時保險（3 秒）：設定查不回來時要退回 fallback 照樣顯示，
+不然整頁會永遠停在載入動畫 —— 那比看到錯的機台更糟。
+
+實測（同一頁、同一支商品）：修正後**只載了 `gacha/mode2/main.webp`**，
+`gacha/main.webp` 完全沒有被要求過。
+
+### 二、盒玩頁是同一個毛病
+
+`effectiveTheme` 在 `defaultTheme` 查回來之前是 `null`，
+`isVendingTheme(null)` 為 false → 立刻 `setIsMachineReady(true)` 把載入畫面收掉、
+先渲染最後那條影片版；設定一到再換成販賣機。同樣改成主題沒定就不掛機台。
+
+### 三、倉庫的品項圖長按會跳出原生選單
+
+iOS 長按圖片會彈出「儲存影像／拷貝／分享」，還會帶出圖片網址。倉庫的品項圖是
+玩家的獎品，長按該做的是我們自己的操作。
+
+三件要一起做才擋得住：`WebkitTouchCallout: none`（iOS Safari／WKWebView 的長按
+選單吃這條）、`userSelect: none`（否則長按變成選取）、`onContextMenu` preventDefault
+（桌機右鍵與 Android 長按走這條）。另加 `draggable={false}` 擋掉桌機把圖拖出去。
+
+順手把品項詳情彈窗的圖從 `object-cover` 改成 `contain` —— 那是唯一還在裁切的
+品項圖，卡牌那種直式圖會被切掉字。
+
+---
+
 ## v2026.09.01q｜2026-09-01｜360 展示：兩指稍微撐開就跳超大
 
 老闆回報「360 展示可以兩指放大，但稍微擴張一點點後馬上跳超大」。

@@ -51,6 +51,15 @@ export default function BlindboxDetailPage() {
   const [prizes, setPrizes] = useState<PrizeRow[]>([]);
   // 全站模組預設：商品沒指定主題時要吃這個（同 item/[id] 的作法）
   const [defaultTheme, setDefaultTheme] = useState<string | null>(null);
+  /**
+   * 全站預設「查回來了沒」—— 成功或失敗都算查完。
+   *
+   * 商品沒有自訂主題時，主題要等這一包才知道。舊版在它到之前 `effectiveTheme`
+   * 是 null，於是先渲染最後那條影片版、`setIsMachineReady(true)` 又立刻把載入
+   * 畫面收掉；設定一到再換成販賣機 —— 玩家會看到閃一下
+   *（與轉蛋頁 2026-09-01 修的是同一個毛病）。
+   */
+  const [defaultThemeLoaded, setDefaultThemeLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isMachineReady, setIsMachineReady] = useState(false);
   /** 機台上的商品圖是否展開（預設收起，點膠囊打開，點圖或再點膠囊關） */
@@ -125,6 +134,8 @@ export default function BlindboxDetailPage() {
 
   // 實際生效的主題：商品自訂優先，沒設（null / 空字串）才用全站預設
   const effectiveTheme = ((product as any)?.machine_theme || defaultTheme) ?? null;
+  /** 主題定了沒。沒定之前不要渲染機台 —— 會先閃一台不對的 */
+  const themeResolved = !!(product as any)?.machine_theme || defaultThemeLoaded;
 
   // 全站模組預設（後台「模組設定」）。商品自己沒設主題時就吃這個 ——
   // 原本本頁只讀 product.machine_theme，導致後台改了全站預設前台完全沒反應。
@@ -135,7 +146,11 @@ export default function BlindboxDetailPage() {
         .select('product_type, machine_theme')
         .eq('product_type', 'blindbox')
         .maybeSingle()
-        .then(({ data }) => { if (data) setDefaultTheme((data as any).machine_theme ?? null); });
+        .then(({ data }) => {
+          if (data) setDefaultTheme((data as any).machine_theme ?? null);
+          // 查失敗也要放行，否則整頁會停在載入畫面
+          setDefaultThemeLoaded(true);
+        });
     };
     load();
     const channel = supabase
@@ -470,13 +485,23 @@ export default function BlindboxDetailPage() {
     }
   }, [isVideoOpen, videoMode]);
 
+  /* 非販賣機主題沒有 onLoaded 可以等，直接放行 ——
+     但**要等主題定了**才算數，否則會拿還沒查到設定時的 null 當「非販賣機」 */
   useEffect(() => {
-    if (!isLoading && product) {
+    if (!isLoading && product && themeResolved) {
       if (!isVendingTheme(effectiveTheme)) {
         setIsMachineReady(true);
       }
     }
-  }, [isLoading, product]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, product, themeResolved, effectiveTheme]);
+
+  /* 設定查太久也要放行（離線、RLS 擋住、Supabase 慢），
+     不然商品頁會永遠停在載入動畫 */
+  useEffect(() => {
+    const t = setTimeout(() => setDefaultThemeLoaded(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !isMachineReady) {
@@ -532,8 +557,12 @@ export default function BlindboxDetailPage() {
       className="relative"
       style={{ width: 375, transform: `scale(${scale})`, transformOrigin: 'top center' }}
     >
+      {/* 主題沒定就先不要掛任何一台 —— 掛錯的那一台不只會閃，
+          它載完圖還會觸發 onLoaded 把載入畫面收掉 */}
       <div className="bg-neutral-950 shadow-card border border-neutral-900 overflow-hidden">
-        {effectiveTheme === 'blindbox_mode2' ? (
+        {!themeResolved ? (
+          <div className="relative w-full" style={{ aspectRatio: '750/932' }} />
+        ) : effectiveTheme === 'blindbox_mode2' ? (
           <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
             <BlindboxMachineMode2
               machineState={mode2State}
@@ -766,10 +795,12 @@ export default function BlindboxDetailPage() {
         </div>
       )}
 
-      {!isMachineReady && <ProductLoadingScreen />}
+      {/* 主題還沒定就一起擋著：先渲染的會是錯的那一台，而它載完圖又會把
+          載入畫面收掉 —— 光藏內容沒有用（見 themeResolved 的說明） */}
+      {!(isMachineReady && themeResolved) && <ProductLoadingScreen />}
       <div
         className="min-h-screen bg-neutral-50 dark:bg-neutral-950"
-        style={!isMachineReady ? { visibility: 'hidden', position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' } : undefined}
+        style={!(isMachineReady && themeResolved) ? { visibility: 'hidden', position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' } : undefined}
       >
         {/* Mobile < 1024px */}
         <div className="block lg:hidden overflow-x-hidden pb-32 pt-[calc(3.5rem+env(safe-area-inset-top))]">

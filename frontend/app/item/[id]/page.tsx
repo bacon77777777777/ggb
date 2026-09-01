@@ -457,6 +457,15 @@ export default function ProductDetailPage() {
   const [isMachineReady, setIsMachineReady] = useState(false);
 
   const [moduleSettings, setModuleSettings] = useState<Record<string, MachineTheme>>({});
+  /**
+   * 全站模組設定「查回來了沒」—— 成功或失敗都算查完。
+   *
+   * 商品沒有自訂主題時，主題要等這一包才知道。在它到之前就先渲染機台的話，
+   * 渲染出來的是 fallback（`gacha_classic`）的機台圖，等設定到了再整個換掉
+   * —— 老闆 2026-09-01 回報「剛進轉蛋商品頁會先看到 gacha/main.webp，
+   * 然後才馬上變成預設圖」，就是這個。
+   */
+  const [moduleSettingsLoaded, setModuleSettingsLoaded] = useState(false);
 
   /*
    * 抽卡的首屏素材預載（老闆回報：進去先看到一張全白卡包）。
@@ -1327,6 +1336,13 @@ export default function ProductDetailPage() {
     }
   }, [isLoading, product]);
 
+  /* 設定查太久也要放行（離線、RLS 擋住、Supabase 慢）。
+     沒有這道保險，商品頁會永遠停在載入動畫 */
+  useEffect(() => {
+    const t = setTimeout(() => setModuleSettingsLoaded(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
+
   // 3s fallback in case machine image never fires onLoaded
   useEffect(() => {
     if (!isLoading && !isMachineReady) {
@@ -1338,10 +1354,13 @@ export default function ProductDetailPage() {
   useEffect(() => {
     const loadModuleSettings = () => {
       supabase.from('module_settings').select('product_type, machine_theme').then(({ data }) => {
-        if (!data) return;
-        const map: Record<string, MachineTheme> = {};
-        for (const row of data) map[row.product_type] = row.machine_theme as MachineTheme;
-        setModuleSettings(map);
+        if (data) {
+          const map: Record<string, MachineTheme> = {};
+          for (const row of data) map[row.product_type] = row.machine_theme as MachineTheme;
+          setModuleSettings(map);
+        }
+        // 查失敗也要放行，否則整頁會停在載入畫面 —— 那比看到 fallback 機台更糟
+        setModuleSettingsLoaded(true);
       });
     };
     loadModuleSettings();
@@ -1547,12 +1566,25 @@ export default function ProductDetailPage() {
     (typeof totalRemaining === 'number' && totalRemaining <= 0) || product.status === 'ended';
 
   if (product.type === 'gacha') {
+    /*
+     * ⚠️ **主題還沒定就不要渲染機台**（老闆 2026-09-01）。
+     *
+     * 商品自己沒設主題時，主題要等 module_settings 查回來。舊版直接退回
+     * `gacha_classic` 先畫，於是玩家會先看到那台的主圖（`gacha/main.webp`），
+     * 設定一到又整個換掉。而且第一台的圖載完就會觸發 onMachineReady、
+     * 把載入畫面收掉 —— 光把內容藏起來沒有用，得根本不要掛它，
+     * 否則換主題時第二台又要重載一次圖，會閃第二次。
+     */
+    const themeResolved = !!(product as any).machine_theme || moduleSettingsLoaded;
     const gachaMachineTheme = (product as any).machine_theme || moduleSettings['gacha'] || 'gacha_classic'
+    const gachaReady = themeResolved && isMachineReady;
     return (
       <>
-        {!isMachineReady && <ProductLoadingScreen />}
-        <div style={!isMachineReady ? { visibility: 'hidden', position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' } : undefined}>
-          <GachaProductDetail product={product} prizes={prizes} machineTheme={gachaMachineTheme} onMachineReady={() => setIsMachineReady(true)} />
+        {!gachaReady && <ProductLoadingScreen />}
+        <div style={!gachaReady ? { visibility: 'hidden', position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' } : undefined}>
+          {themeResolved && (
+            <GachaProductDetail product={product} prizes={prizes} machineTheme={gachaMachineTheme} onMachineReady={() => setIsMachineReady(true)} />
+          )}
         </div>
       </>
     );

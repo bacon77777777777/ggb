@@ -34,13 +34,20 @@ export function WarehouseItemDetailModal({ item, isOpen, onClose }: WarehouseIte
     >
       <div className="space-y-6">
         {/* Image Section */}
-        <div className="relative aspect-square w-full bg-white rounded-2xl overflow-hidden shadow-inner">
+        {/* 長按不跳原生選單，理由見 WarehouseGridCell */}
+        <div
+          className="relative aspect-square w-full bg-white rounded-2xl overflow-hidden shadow-inner"
+          style={{ WebkitTouchCallout: 'none', userSelect: 'none', WebkitUserSelect: 'none' } as React.CSSProperties}
+          onContextMenu={e => e.preventDefault()}
+        >
           <Image 
             src={item.image || asset('/images/item_defaulet.webp')} 
             alt={item.name} 
             fill
-            className="object-cover"
+            /* 品項圖一律 contain 不裁切（同倉庫格子）—— cover 會把卡面的字切掉 */
+            className="object-contain"
             unoptimized
+            draggable={false}
           />
           <div className="absolute top-3 left-3">
              <span className="px-3 py-1 bg-neutral-900 text-white text-sm font-black rounded-lg shadow-sm border border-white/10 uppercase tracking-wider">

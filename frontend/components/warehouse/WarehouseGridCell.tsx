@@ -66,7 +66,22 @@ export default function WarehouseGridCell({
       {/* 白底不是 bg-item-bg（#28324E 深藍灰）：品項圖走 contain 會留白邊，
           深底會在每張圖周圍框一圈深藍灰，卡牌那種滿版直式圖尤其明顯（老闆 2026-08-25）。
           商品照本來就多半是白背景，白底接得起來 */}
-      <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-white">
+      {/*
+        * 長按不要跳出 iOS 的原生選單（「儲存影像」「拷貝」「分享」，還會帶出圖片網址）。
+        * 倉庫的品項圖是玩家的獎品，長按要能做的是我們自己的操作，不是把圖存下來
+        *（老闆 2026-09-01）。
+        *
+        * 三件要一起做才擋得住：
+        *   ・`WebkitTouchCallout: none` —— iOS Safari／WKWebView 的長按選單就吃這一條
+        *   ・`userSelect: none` —— 不然長按會變成選取文字／圖片
+        *   ・`onContextMenu` preventDefault —— 桌機右鍵與 Android 長按走這條
+        * `draggable={false}` 另外擋掉桌機把圖拖出去。
+        */}
+      <div
+        className="relative aspect-square w-full overflow-hidden rounded-lg bg-white"
+        style={{ WebkitTouchCallout: 'none', userSelect: 'none', WebkitUserSelect: 'none' } as React.CSSProperties}
+        onContextMenu={e => e.preventDefault()}
+      >
         {showFallback && (
           <Image
             src={fallback}
@@ -75,6 +90,7 @@ export default function WarehouseGridCell({
             sizes="33vw"
             className="object-contain"
             unoptimized
+            draggable={false}
             aria-hidden
           />
         )}
@@ -87,6 +103,7 @@ export default function WarehouseGridCell({
              的字跟公仔的頭切掉（老闆 2026-08-24）。留白比切掉好認 */
           className={cn('object-contain transition-opacity', showFallback && 'opacity-0')}
           unoptimized
+          draggable={false}
           onLoad={() => setImageReady(true)}
           onError={() => { setImageFailed(true); setImageReady(true); }}
         />
