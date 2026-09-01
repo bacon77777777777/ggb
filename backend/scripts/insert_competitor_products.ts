@@ -13,8 +13,14 @@
  * （觸發式，不進輪盤）。products.total_count 不含最後賞。
  *
  * 用法：
- *   cd backend && npx tsx scripts/insert_competitor_products.ts <out.json> [--apply]
+ *   cd backend && npx tsx scripts/insert_competitor_products.ts <out.json> [--apply] [--only=STG]
  *   不加 --apply 只試算，不寫入。
+ *   `--only=STG`／`--only=PROD` 只寫其中一個環境（老闆說「先建在 stg」時用）。
+ *
+ * out.json 的每一件商品另外可以帶三個選填欄位（沒帶就照舊）：
+ *   cards_per_pack  抽卡一包幾張（1／3／5／10，migration 666）
+ *   pack_style      卡包樣式 builtin／custom
+ *   description     自己的商品說明；沒帶才用下面依來源套的預設文案
  */
 
 import fs from 'fs'
@@ -32,10 +38,12 @@ interface Item {
   src: string; type: string; category: string
   name: string; price: number; image: string | null
   prizes: Prize[]; total_count: number
+  cards_per_pack?: number; pack_style?: string; description?: string
 }
 
 const [, , inPath] = process.argv
 const apply = process.argv.includes('--apply')
+const only = (process.argv.find(a => a.startsWith('--only='))?.split('=')[1] ?? '').toUpperCase()
 if (!inPath) {
   console.error('用法：tsx scripts/insert_competitor_products.ts <out.json> [--apply]')
   process.exit(1)
@@ -43,9 +51,10 @@ if (!inPath) {
 
 const items: Item[] = JSON.parse(fs.readFileSync(inPath, 'utf8'))
 
-const description = (src: string) => src.startsWith('fc:')
-  ? '匯入自 fortune-cookie（fortune-cookie.tokyo）公開商品頁，名稱／文案／圖片待替換'
-  : '匯入自潮玩家公開商品頁，圖片與文案待替換'
+const description = (it: Item) => it.description
+  ?? (it.src.startsWith('fc:')
+    ? '匯入自 fortune-cookie（fortune-cookie.tokyo）公開商品頁，名稱／文案／圖片待替換'
+    : '匯入自潮玩家公開商品頁，圖片與文案待替換')
 
 async function run(db: typeof DBS[number]) {
   const c = new Client({ connectionString: db.url })
@@ -61,10 +70,13 @@ async function run(db: typeof DBS[number]) {
       const { rows } = await c.query(
         `INSERT INTO products
            (name, category, price, type, status, is_active, supplier_id,
-            image_url, description, total_count, remaining, remaining_count, sales)
-         VALUES ($1,$2,$3,$4,'pending',false,$5,$6,$7,$8,$8,0,0)
+            image_url, description, total_count, remaining, remaining_count, sales,
+            cards_per_pack, pack_style)
+         VALUES ($1,$2,$3,$4,'pending',false,$5,$6,$7,$8,$8,0,0,$9,$10)
          RETURNING id`,
-        [it.name, it.category, it.price, it.type, SUPPLIER_ID, it.image, description(it.src), total],
+        [it.name, it.category, it.price, it.type, SUPPLIER_ID, it.image, description(it), total,
+         it.type === 'card' && (it.cards_per_pack ?? 1) > 1 ? it.cards_per_pack : null,
+         it.pack_style === 'custom' ? 'custom' : 'builtin'],
       )
       const pid = rows[0].id as number
       ;(ids[it.type] ??= []).push(pid)
@@ -94,7 +106,10 @@ async function run(db: typeof DBS[number]) {
 async function main() {
   const prizes = items.reduce((s, i) => s + i.prizes.length, 0)
   console.log(`${items.length} 件商品、${prizes} 個品項${apply ? '' : '（乾跑，不會寫入）'}\n`)
-  for (const db of DBS) await run(db)
+  const targets = only ? DBS.filter(d => d.name === only) : DBS
+  if (!targets.length) { console.error(`--only=${only} 不認得，只能是 STG 或 PROD`); process.exit(1) }
+  if (only) console.log(`只寫 ${only}\n`)
+  for (const db of targets) await run(db)
   if (!apply) console.log('\n確認無誤後加上 --apply 才會真的寫入。')
 }
 
