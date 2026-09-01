@@ -660,3 +660,28 @@ a, video, canvas {
   margin-top: 6px;
 }
 .lp-center .lpv-callout { font-size: 14px; }
+
+/*
+ * 圖片長按不要跳出系統的原生選單（老闆 2026-09-01）。
+ *
+ * iOS 長按圖片會彈出「儲存影像／拷貝／分享」，還會把圖片網址秀出來。
+ * 在 App 裡尤其破功 —— webview 沒有網址列，玩家卻能從這個選單看到 R2 的網址，
+ * 而且那不是我們設計的操作。
+ *
+ * ⚠️ 三條缺一不可，而且分別擋不同的東西：
+ *   `-webkit-touch-callout` —— iOS Safari／WKWebView 的長按選單只吃這一條
+ *   `-webkit-user-drag`     —— 桌機把圖拖出瀏覽器（拖到桌面就存下來了）
+ *   `user-select`           —— 長按變成「選取圖片」
+ * Android 的長按選單走 `contextmenu` 事件，CSS 擋不到 ——
+ * 那條在 `components/ImageLongPressGuard.tsx`，兩邊要一起看。
+ *
+ * **不影響曬圖與邀請圖的分享／下載**：那兩個走的是按鈕
+ *（`navigator.share({ files })`／`a.download`），本來就不靠玩家長按存圖。
+ */
+img,
+canvas {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
+}

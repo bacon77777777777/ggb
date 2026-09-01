@@ -67,15 +67,9 @@ export default function WarehouseGridCell({
           深底會在每張圖周圍框一圈深藍灰，卡牌那種滿版直式圖尤其明顯（老闆 2026-08-25）。
           商品照本來就多半是白背景，白底接得起來 */}
       {/*
-        * 長按不要跳出 iOS 的原生選單（「儲存影像」「拷貝」「分享」，還會帶出圖片網址）。
-        * 倉庫的品項圖是玩家的獎品，長按要能做的是我們自己的操作，不是把圖存下來
-        *（老闆 2026-09-01）。
-        *
-        * 三件要一起做才擋得住：
-        *   ・`WebkitTouchCallout: none` —— iOS Safari／WKWebView 的長按選單就吃這一條
-        *   ・`userSelect: none` —— 不然長按會變成選取文字／圖片
-        *   ・`onContextMenu` preventDefault —— 桌機右鍵與 Android 長按走這條
-        * `draggable={false}` 另外擋掉桌機把圖拖出去。
+        * 長按不跳原生選單。**全站已經統一擋掉了**（`globals.css` 的 img/canvas 規則
+        * ＋ `components/ImageLongPressGuard.tsx`），這裡多加一層是因為倉庫的圖是
+        * 玩家的獎品 —— 就算哪天全站那層被動到，這一格也不該破功。
         */}
       <div
         className="relative aspect-square w-full overflow-hidden rounded-lg bg-white"

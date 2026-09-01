@@ -24,6 +24,7 @@ import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import NativeAppBootstrap from '@/components/native/NativeAppBootstrap';
 import ColdStartOnResume from '@/components/native/ColdStartOnResume';
 import ExternalLinkHandler from '@/components/native/ExternalLinkHandler';
+import ImageLongPressGuard from '@/components/ImageLongPressGuard';
 import AppSplashAd from '@/components/native/AppSplashAd';
 import AppUpdateGate from '@/components/native/AppUpdateGate';
 import PaymentReturnBridge from '@/components/native/PaymentReturnBridge';
@@ -248,6 +249,8 @@ export default async function RootLayout({
                     <ServiceWorkerRegistrar />
                     <NativeAppBootstrap />
                     <ExternalLinkHandler />
+                    {/* 圖片長按不跳原生選單；iOS 那半在 globals.css，見該元件說明 */}
+                    <ImageLongPressGuard />
                     <AppUpdateGate />
                     <Suspense fallback={null}><PaymentReturnBridge /></Suspense>
                     <PathnameKeyed>{children}</PathnameKeyed>

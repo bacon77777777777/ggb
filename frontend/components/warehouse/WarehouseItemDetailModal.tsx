@@ -34,7 +34,8 @@ export function WarehouseItemDetailModal({ item, isOpen, onClose }: WarehouseIte
     >
       <div className="space-y-6">
         {/* Image Section */}
-        {/* 長按不跳原生選單，理由見 WarehouseGridCell */}
+        {/* 長按不跳原生選單。全站已統一擋（globals.css ＋ ImageLongPressGuard），
+            這裡多一層是因為這是玩家的獎品，見 WarehouseGridCell */}
         <div
           className="relative aspect-square w-full bg-white rounded-2xl overflow-hidden shadow-inner"
           style={{ WebkitTouchCallout: 'none', userSelect: 'none', WebkitUserSelect: 'none' } as React.CSSProperties}
