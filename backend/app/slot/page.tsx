@@ -132,7 +132,7 @@ export default function SlotThemesPage() {
       render: theme => (
         <div className="flex items-center gap-3">
           {theme.image_url ? (
-            <img src={theme.image_url} alt="" className="w-10 h-10 rounded-lg object-cover bg-neutral-100 flex-shrink-0" />
+            <img src={theme.image_url} alt="" className="w-10 h-10 rounded-lg object-contain bg-neutral-100 flex-shrink-0" />
           ) : (
             <div className="w-10 h-10 rounded-lg bg-neutral-100 flex-shrink-0 flex items-center justify-center text-lg">🎰</div>
           )}

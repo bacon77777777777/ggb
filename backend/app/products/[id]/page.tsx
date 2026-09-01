@@ -919,7 +919,7 @@ export default function EditProductPage() {
                     }} />
                   <div className="w-14 h-14 rounded-lg border-2 border-dashed border-neutral-300 overflow-hidden bg-white flex items-center justify-center group-hover:border-primary transition-colors">
                     {formData.imagePreview
-                      ? <img src={formData.imagePreview} alt="" className="w-full h-full object-cover" />
+                      ? <img src={formData.imagePreview} alt="" className="w-full h-full object-contain" />
                       : <svg className="w-5 h-5 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                     }
                   </div>
@@ -1023,7 +1023,7 @@ export default function EditProductPage() {
                           }} />
                           <div className="w-14 h-14 rounded-lg border-2 border-dashed border-neutral-300 overflow-hidden bg-white flex items-center justify-center hover:border-primary transition-colors">
                             {preview
-                              ? <img src={preview} alt={label} className="w-full h-full object-cover" />
+                              ? <img src={preview} alt={label} className="w-full h-full object-contain" />
                               : <span className="text-lg text-neutral-300">＋</span>}
                           </div>
                         </label>
@@ -1308,7 +1308,7 @@ export default function EditProductPage() {
                           />
                           <div className="w-16 h-16 rounded-lg border-2 border-dashed border-neutral-300 overflow-hidden bg-neutral-50 flex items-center justify-center group-hover:border-primary transition-colors">
                             {prize.imagePreview ? (
-                              <img src={prize.imagePreview} alt="" className="w-full h-full object-cover" />
+                              <img src={prize.imagePreview} alt="" className="w-full h-full object-contain" />
                             ) : (
                               <svg className="w-5 h-5 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -1615,7 +1615,7 @@ export default function EditProductPage() {
                           src={item.imageUrl || 'https://via.placeholder.com/60'}
                           alt={item.name}
                           fill
-                          className="object-cover"
+                          className="object-contain"
                         />
                       </div>
                       <div className="text-sm font-medium text-neutral-900 mb-1">{item.name}</div>

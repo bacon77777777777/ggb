@@ -589,7 +589,7 @@ export default function SlotThemeDetailPage() {
                   }} className="text-neutral-600 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200" />
                   {machineImagePreview && (
                     <div className="mt-2 w-14 h-14 rounded-lg overflow-hidden border border-neutral-200 bg-neutral-100">
-                      <img src={machineImagePreview} alt="" className="w-full h-full object-cover" />
+                      <img src={machineImagePreview} alt="" className="w-full h-full object-contain" />
                     </div>
                   )}
                 </Field>
@@ -890,7 +890,7 @@ export default function SlotThemeDetailPage() {
                           <tr key={item.id} className="hover:bg-neutral-50 transition-colors">
                             <td className="px-4 py-3">
                               <div className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 border border-neutral-200">
-                                <img src={prizeImg} alt="" className="w-full h-full object-cover" />
+                                <img src={prizeImg} alt="" className="w-full h-full object-contain" />
                               </div>
                             </td>
                             <td className="px-4 py-3 font-medium text-neutral-900">{prizeName}</td>
@@ -991,7 +991,7 @@ export default function SlotThemeDetailPage() {
                   <button key={p.id} type="button"
                     className="w-full flex items-center gap-3 px-3 py-2 hover:bg-neutral-50 text-left"
                     onClick={() => { setSelectedPrize(p); setPrizeSearch(p.name) }}>
-                    <img src={p.image_url ?? '/images/item.png'} alt="" className="w-8 h-8 rounded object-cover bg-neutral-100 flex-shrink-0" />
+                    <img src={p.image_url ?? '/images/item.png'} alt="" className="w-8 h-8 rounded object-contain bg-neutral-100 flex-shrink-0" />
                     <span className="text-sm text-neutral-800">{p.name}</span>
                   </button>
                 ))}
@@ -999,7 +999,7 @@ export default function SlotThemeDetailPage() {
             )}
             {selectedPrize && (
               <div className="mt-2 flex items-center gap-3 px-3 py-2 bg-green-50 rounded-lg border border-green-200">
-                <img src={selectedPrize.image_url ?? '/images/item.png'} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
+                <img src={selectedPrize.image_url ?? '/images/item.png'} alt="" className="w-10 h-10 rounded object-contain flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-neutral-800">{selectedPrize.name}</div>
                 </div>

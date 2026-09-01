@@ -1058,7 +1058,7 @@ export default function ProductsPage() {
                       <td className={getDensityClasses()}>
                         <div className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 flex-shrink-0">
                           {product.imageUrl ? (
-                            <img src={product.imageUrl} alt="" className="w-full h-full object-cover" />
+                            <img src={product.imageUrl} alt="" className="w-full h-full object-contain" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-neutral-300 text-[9px] font-bold">GGB</div>
                           )}
@@ -1314,7 +1314,7 @@ export default function ProductsPage() {
                                     >
                                       <span className="text-neutral-400 w-3 text-xs">{isExpanded ? '▾' : '▸'}</span>
                                       <span className="text-neutral-500 font-mono text-xs min-w-[80px]">{getDisplayCode(product)}{(idx + 1).toString().padStart(2, '0')}</span>
-                                      <img src={prize.imageUrl} alt={prize.name} className="w-10 h-10 object-cover rounded-lg" />
+                                      <img src={prize.imageUrl} alt={prize.name} className="w-10 h-10 object-contain rounded-lg" />
                                       <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700 shrink-0">{prize.level}</span>
                                       <span className="text-neutral-700 min-w-[100px]">{prize.name}</span>
                                       <span className="text-neutral-700 min-w-[60px]">{prize.remaining}/{prize.total}</span>

@@ -98,7 +98,7 @@ export default function ImageUploadField({
         {/* 預覽：有圖才顯示，讓管理員確認上傳到的是對的東西 */}
         {value ? (
           <div className="relative w-16 h-16 rounded-lg border border-neutral-200 overflow-hidden bg-neutral-50 flex-shrink-0">
-            <Image src={value} alt="" fill sizes="64px" className="object-cover" unoptimized />
+            <Image src={value} alt="" fill sizes="64px" className="object-contain" unoptimized />
             <button
               type="button"
               onClick={() => onChange('')}

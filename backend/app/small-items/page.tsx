@@ -317,7 +317,7 @@ export default function SmallItemsPage() {
                           src={item.imageUrl || 'https://via.placeholder.com/60'}
                           alt={item.name}
                           fill
-                          className="object-cover"
+                          className="object-contain"
                         />
                       </div>
                     </td>
@@ -389,7 +389,7 @@ export default function SmallItemsPage() {
                 {imagePreview && (
                   <div className="relative h-28 w-28 overflow-hidden rounded-lg border-2 border-neutral-200 bg-neutral-100">
                     {/* 本機 blob 預覽，next/image 吃不了 blob: 網址 */}
-                    <img src={imagePreview} alt="預覽" className="h-full w-full object-cover" />
+                    <img src={imagePreview} alt="預覽" className="h-full w-full object-contain" />
                   </div>
                 )}
                 <FileInput accept="image/*" onChange={handleImageChange} />

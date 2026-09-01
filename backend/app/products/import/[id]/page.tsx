@@ -171,7 +171,7 @@ export default function ImportJobDetailPage() {
       key: 'image', label: '圖', className: 'w-16',
       render: (r) => r.product.image_url ? (
         <Image src={String(r.product.image_url)} alt="" width={40} height={40} unoptimized
-          className="h-10 w-10 rounded object-cover" />
+          className="h-10 w-10 rounded object-contain" />
       ) : (
         <div className="grid h-10 w-10 place-items-center rounded bg-neutral-100 text-[10px] text-neutral-400">無</div>
       ),
@@ -228,7 +228,7 @@ export default function ImportJobDetailPage() {
               <td className="py-1.5">
                 {z.image_url ? (
                   <Image src={String(z.image_url)} alt="" width={32} height={32} unoptimized
-                    className="h-8 w-8 rounded object-cover" />
+                    className="h-8 w-8 rounded object-contain" />
                 ) : (
                   <div className="grid h-8 w-8 place-items-center rounded bg-neutral-200 text-[9px] text-neutral-400">無</div>
                 )}

@@ -258,7 +258,7 @@ export default function OrderDetailModal({
                 <div key={i} className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-neutral-50">
                   <span className="w-6 shrink-0 text-right font-mono text-sm tabular-nums text-neutral-300">{i + 1}</span>
                   <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded bg-neutral-100">
-                    <Image src={it.imageUrl} alt={it.prizeName} fill sizes="44px" className="object-cover" unoptimized />
+                    <Image src={it.imageUrl} alt={it.prizeName} fill sizes="44px" className="object-contain" unoptimized />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">

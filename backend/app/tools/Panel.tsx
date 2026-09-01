@@ -447,7 +447,7 @@ export function ToolsPanel() {
                                 <img
                                   src={r.imageUrl}
                                   alt={r.name}
-                                  className="w-full h-full object-cover"
+                                  className="w-full h-full object-contain"
                                   onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
                                 />
                               </button>
@@ -585,7 +585,7 @@ export function ToolsPanel() {
                                               <img
                                                 src={p.image}
                                                 alt={p.name}
-                                                className="w-full h-full object-cover"
+                                                className="w-full h-full object-contain"
                                                 onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
                                               />
                                             </button>

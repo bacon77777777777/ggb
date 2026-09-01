@@ -304,7 +304,7 @@ export default function DrawsPage() {
       render: (tx) => (
         <div className="flex items-center gap-2">
           {tx.product?.image_url && (
-            <img src={tx.product.image_url} alt="" className="w-8 h-8 rounded object-cover" />
+            <img src={tx.product.image_url} alt="" className="w-8 h-8 rounded object-contain" />
           )}
           <span className="truncate max-w-[200px]" title={tx.product?.name}>{slotMachineLabel(tx.records[0]) || tx.product?.name || '未知商品'}</span>
         </div>

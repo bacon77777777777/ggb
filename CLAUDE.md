@@ -568,6 +568,18 @@ curl -X POST https://admin.ggb.com.tw/api/admin/storage/clear-products \
 其餘現成元件：`StatsCard`、`FilterTags`、`TagSelector`、`CopyableID`、`AlertDialog`、
 `SortableTableHeader`、`CsvImportWizard`、`XlsxImportWizard`、`ShippingProgress`。
 
+### 商品圖與品項圖一律 `object-contain`，不裁切
+
+**後台任何顯示商品圖／品項圖的地方都用 `object-contain`**（老闆 2026-09-01 指定）。
+卡包是直式、盒玩是方的、卡片是 63:88 —— 塞進同一個方框裡用 `object-cover`
+會把上下或左右切掉，列表上看起來全是碎片，分不出誰是誰。
+
+例外只有三種，那些本來就該裁切填滿：**頭像**（users、leaderboard-bots）、
+**輪播圖與彈窗圖**（banners、PopupPanel）、**情報封面**（news）。
+
+⚠️ 改成 contain 之後圖片不會填滿容器，容器要自己有底色（多數已經是
+`bg-neutral-100` / `bg-white`），不然會看到後面的列底。
+
 **⚠ 沒有對應元件時才寫 tailwind**，且必須沿用既有樣式：
 主要按鈕 `px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60`、
 次要按鈕 `px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors`。

@@ -1792,7 +1792,7 @@ export default function OrdersPage() {
                                         className="w-10 h-10 rounded-lg overflow-hidden border border-neutral-200 bg-white flex-shrink-0 hover:ring-2 hover:ring-primary/40 transition-shadow"
                                         title="點擊看大圖"
                                       >
-                                        <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                                        <img src={item.imageUrl} alt="" className="w-full h-full object-contain" />
                                       </button>
                                       {!!item.level && (
                                         <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700 whitespace-nowrap flex-shrink-0">

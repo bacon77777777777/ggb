@@ -232,7 +232,7 @@ export default function LotteryPage() {
       render: e => (
         <div className="flex items-center gap-3">
           {e.product?.image_url
-            ? <img src={e.product.image_url} alt="" className="w-10 h-10 rounded-lg object-cover bg-neutral-100 shrink-0" />
+            ? <img src={e.product.image_url} alt="" className="w-10 h-10 rounded-lg object-contain bg-neutral-100 shrink-0" />
             : <div className="w-10 h-10 rounded-lg bg-neutral-100 shrink-0 flex items-center justify-center">🎟️</div>}
           <div className="min-w-0">
             <div className="font-semibold text-neutral-900 truncate">{e.title || e.product?.name || `#${e.id}`}</div>

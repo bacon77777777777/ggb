@@ -555,7 +555,7 @@ export default function SellAdminPage() {
                           <td className={densityClasses}>
                             <div className="w-10 h-10 rounded-lg bg-neutral-100 border border-neutral-200 overflow-hidden flex items-center justify-center">
                               {coverImage ? (
-                                <img src={coverImage} alt={item.title} className="w-full h-full object-cover" />
+                                <img src={coverImage} alt={item.title} className="w-full h-full object-contain" />
                               ) : (
                                 <span className="text-xs text-neutral-300">無圖</span>
                               )}
@@ -735,7 +735,7 @@ export default function SellAdminPage() {
                                         <div key={idx} className="flex items-center gap-3 text-sm">
                                           <div className="w-10 h-10 rounded-lg bg-white border border-neutral-200 overflow-hidden flex items-center justify-center">
                                             {image ? (
-                                              <img src={image} alt={name} className="w-full h-full object-cover" />
+                                              <img src={image} alt={name} className="w-full h-full object-contain" />
                                             ) : (
                                               <span className="text-xs text-neutral-300">No</span>
                                             )}
