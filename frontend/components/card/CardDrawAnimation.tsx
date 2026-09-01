@@ -129,70 +129,120 @@ interface TopCardProps {
   fit: FittedBox;
 }
 
+/*
+ * 手勢改成**整個畫面**都能操作（老闆 2026-09-01，比照一番賞沈浸式撕紙）。
+ *
+ * 原本是 framer 的 `drag="x"` 掛在卡片本身，等於玩家得先瞄準手掌上那張
+ * 205×286 的卡才拖得動、才點得到。現在改成一層滿版感應層自己收 pointer 事件，
+ * 再把位移寫進卡片的 motion value —— 卡片只負責演，不接任何事件。
+ *
+ * 位移的手感照抄原本的 `dragElastic={{ left: 0.03, right: 1.1 }}`：
+ * 往右 1.1 倍（略微放大，跟手指走起來才跟得上），往左幾乎鎖死。
+ * 判定門檻（右移 35px／速度 80px/s／輕點）也跟原本一模一樣。
+ */
 function TopCard({ prize, current, onSwiped, s, fit }: TopCardProps) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 0, 200], [CR - 12, CR, CR + 12]);
-  // Track drag distance to distinguish real click from drag-end
-  const dragDeltaRef = useRef(0);
 
   const cardW = fit.w;
   const cardH = fit.h;
 
-  const handleDragEnd = useCallback(
-    (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
-      dragDeltaRef.current = Math.abs(info.offset.x);
-      if (info.offset.x > 35 || info.velocity.x > 80) {
-        animate(x, 900, { duration: 0.22, ease: [0.2, 0, 0.4, 1], onComplete: onSwiped });
-      }
-    },
-    [x, onSwiped],
-  );
+  /*
+   * 這一張已經決定要飛出去了，之後的手勢一律忽略。
+   * 快速的小幅度輕甩會同時滿足「輕點」與「速度夠快」兩個條件，不擋會一次跳兩張。
+   * 每換一張卡這個元件都會重新掛載（key 是索引），所以 ref 自然歸零。
+   */
+  const firedRef = useRef(false);
+  const startRef = useRef<{ x: number; t: number } | null>(null);
 
-  const handleClick = useCallback(() => {
-    // Ignore if this click was actually the end of a drag
-    if (dragDeltaRef.current > 10) {
-      dragDeltaRef.current = 0;
-      return;
-    }
+  const flyOut = useCallback(() => {
+    if (firedRef.current) return;
+    firedRef.current = true;
     animate(x, 900, { duration: 0.22, ease: [0.2, 0, 0.4, 1], onComplete: onSwiped });
   }, [x, onSwiped]);
 
-  return (
-    <motion.div
-      key={`top-${current}`}
-      drag="x"
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={{ left: 0.03, right: 1.1 }}
-      dragTransition={{ bounceStiffness: 450, bounceDamping: 24 }}
-      style={{
-        x,
-        rotate,
-        position: 'absolute',
-        // 加 offset 讓收合後的卡片維持在原本卡框的中心，才不會從手掌上偏掉
-        top: CY * s + fit.offY,
-        left: CX * s + fit.offX,
-        zIndex: 12,
-        touchAction: 'none',
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
-      }}
-      draggable={false}
-      onDragEnd={handleDragEnd}
-      onClick={handleClick}
-      initial={{ scale: 0.92, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
-      className="cursor-pointer"
-    >
-      {/* 就只顯示品項原圖：不加圓角、不加陰影、不加底色、不疊光效。
-          品項圖本身多半是去背 PNG，任何外框或底色都會在圖的外緣露出一圈方形，
-          比不加還醜。框的尺寸由 useFittedBox 收成與圖同比例，所以 contain
-          剛好填滿、不會有留白。 */}
-      <div style={{ width: cardW, height: cardH, position: 'relative' }}>
-        <Image src={getCardImage(prize)} alt={prize.name} fill className="object-contain" unoptimized priority />
-      </div>
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    if (firedRef.current) return;
+    // 抓住 pointer：手指滑出感應層邊界之後也還收得到 move／up
+    e.currentTarget.setPointerCapture(e.pointerId);
+    startRef.current = { x: e.clientX, t: performance.now() };
+  }, []);
 
-    </motion.div>
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    const st = startRef.current;
+    if (!st || firedRef.current) return;
+    const dx = e.clientX - st.x;
+    x.set(dx >= 0 ? dx * 1.1 : dx * 0.03);
+  }, [x]);
+
+  const settle = useCallback((clientX: number | null) => {
+    const st = startRef.current;
+    startRef.current = null;
+    if (!st || firedRef.current) return;
+
+    if (clientX === null) {                       // pointercancel：一律彈回去
+      animate(x, 0, { type: 'spring', stiffness: 450, damping: 24 });
+      return;
+    }
+    const dx = clientX - st.x;
+    const dt = Math.max(1, performance.now() - st.t);
+    const vx = (dx / dt) * 1000;                  // px/s，跟 framer 同單位
+    // 幾乎沒動＝輕點，跟以前點卡片的行為一樣
+    const tapped = Math.abs(dx) <= 10 && dt < 400;
+    if (tapped || dx > 35 || vx > 80) { flyOut(); return; }
+    animate(x, 0, { type: 'spring', stiffness: 450, damping: 24 });
+  }, [x, flyOut]);
+
+  return (
+    <>
+      {/*
+        滿版手勢層。z-index 25：蓋過手指（20）與卡片（12），但仍在 SKIP（z-30）之下，
+        SKIP 照樣按得到。提示文字是 z-26 且 pointer-events-none，不會擋在前面。
+      */}
+      <div
+        style={{
+          position: 'absolute', inset: 0, zIndex: 25,
+          cursor: 'pointer',
+          touchAction: 'none',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          WebkitTouchCallout: 'none',
+        } as React.CSSProperties}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={e => settle(e.clientX)}
+        onPointerCancel={() => settle(null)}
+        onContextMenu={e => e.preventDefault()}
+      />
+
+      <motion.div
+        key={`top-${current}`}
+        style={{
+          x,
+          rotate,
+          position: 'absolute',
+          // 加 offset 讓收合後的卡片維持在原本卡框的中心，才不會從手掌上偏掉
+          top: CY * s + fit.offY,
+          left: CX * s + fit.offX,
+          zIndex: 12,
+          pointerEvents: 'none',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+        }}
+        draggable={false}
+        initial={{ scale: 0.92, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+      >
+        {/* 就只顯示品項原圖：不加圓角、不加陰影、不加底色、不疊光效。
+            品項圖本身多半是去背 PNG，任何外框或底色都會在圖的外緣露出一圈方形，
+            比不加還醜。框的尺寸由 useFittedBox 收成與圖同比例，所以 contain
+            剛好填滿、不會有留白。 */}
+        <div style={{ width: cardW, height: cardH, position: 'relative' }}>
+          <Image src={getCardImage(prize)} alt={prize?.name ?? ''} fill className="object-contain" unoptimized priority />
+        </div>
+      </motion.div>
+    </>
   );
 }
 
@@ -438,6 +488,33 @@ export default function CardDrawAnimation({
                   />
                 )}
               </AnimatePresence>
+
+              {/*
+                操作提示（老闆 2026-09-01）：位置與樣式跟蓄力開包那行完全一樣 ——
+                兩個畫面是同一個場景，提示落在同一處、長得一樣，眼睛不用重新找。
+                最後一張改成「看結果」，不然滑完會以為還有下一張。
+              */}
+              <motion.div
+                className="absolute left-1/2 flex flex-col items-center"
+                style={{ top: '78%', width: 220 * s, marginLeft: -110 * s, zIndex: 26, pointerEvents: 'none' }}
+                animate={{ opacity: [0.35, 1, 1, 0.35] }}
+                transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', times: [0, 0.25, 0.75, 1] }}
+              >
+                {/* 先壓下去、再往右滑 —— 兩種操作各演一次 */}
+                <motion.div
+                  style={{ width: 52 * s, height: 52 * s, position: 'relative' }}
+                  animate={{ x: [0, 0, 44 * s, 0], scale: [1, 0.88, 0.88, 1] }}
+                  transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', times: [0, 0.22, 0.68, 1] }}
+                >
+                  <Image src={asset('/images/finger.png')} alt="" fill className="object-contain drop-shadow-md" unoptimized />
+                </motion.div>
+                <span
+                  className="mt-1 whitespace-nowrap font-black text-white/90"
+                  style={{ fontSize: 13 * s, letterSpacing: '0.1em', textShadow: '0 2px 6px rgba(0,0,0,0.7)' }}
+                >
+                  {topIndex >= prizes.length - 1 ? '點擊或右滑看結果' : '點擊或右滑換下一張'}
+                </span>
+              </motion.div>
 
               {/* hand2 — in front of card, same position as charge screen */}
               {/* eslint-disable-next-line @next/next/no-img-element */}

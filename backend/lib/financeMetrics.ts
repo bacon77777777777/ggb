@@ -20,6 +20,17 @@ export function getTaiwanYesterdayWindow(date = new Date()) {
   }
 }
 
+/**
+ * 某一個瞬間，落在台灣哪一個月？回傳那個月 1 號 00:00（台灣）對應的 UTC 瞬間。
+ *
+ * 跟 `getFinancePeriodWindow('this_month')` 的差別是**它吃參數**：
+ * 早報報的是昨天，換月當天（9/1 報 8/31）月份必須跟著昨天走，不是跟著今天。
+ */
+export function getTaiwanMonthStartUtc(date = new Date()) {
+  const tw = getTaiwanNow(date)
+  return new Date(Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), 1) - TW_MS)
+}
+
 export function getFinancePeriodWindow(period: FinancePeriod, date = new Date()) {
   const tw = getTaiwanNow(date)
   const todayStart = getTaiwanDayStartUtc(date)

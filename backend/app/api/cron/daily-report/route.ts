@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import {
   formatTaiwanDate,
-  getFinancePeriodWindow,
   getRevenueSummaryForWindow,
+  getTaiwanMonthStartUtc,
+  getTaiwanNow,
   getTaiwanYesterdayWindow,
   isRealRevenueRecharge,
 } from '@/lib/financeMetrics'
@@ -31,7 +32,17 @@ export async function POST(req: NextRequest) {
     const supabase = getSupabaseAdmin()
 
     const { start: yestStart, end: yestEnd } = getTaiwanYesterdayWindow()
-    const { start: monthStart } = getFinancePeriodWindow('this_month')
+    /*
+     * 月累計的月份**以昨日為準**，不是以發報當天為準（老闆 2026-09-01）。
+     *
+     * 早報從頭到尾都在講昨天，月份當然要跟著昨天走。而且以前用
+     * `getFinancePeriodWindow('this_month')`（＝今天所在的月）搭配「昨天結束」
+     * 當上界，**每個月 1 號兩端會夾成空區間**：9/1 那天是
+     * [9/1 00:00, 9/1 00:00) → 撈不到任何一筆 → 報成 NT$ 0。
+     * 實例：9/1 早報寫「本月累計儲值 NT$ 0」，八月實際是 NT$ 617,600。
+     * 八月是第一個真的有儲值的月份，所以這個洞到現在才被看見。
+     */
+    const monthStart = getTaiwanMonthStartUtc(yestStart)
 
     // 用 bot exclusion（.not）取代 real-user inclusion（.in）— 避免用戶數超過 1000 時截斷
     const { data: botRows } = await supabase.from('users').select('id').eq('is_bot', true)
@@ -53,7 +64,7 @@ export async function POST(req: NextRequest) {
         .or('is_bot.eq.false,is_bot.is.null')
         .gte('created_at', yestStart.toISOString()).lt('created_at', yestEnd.toISOString()),
       /*
-       * 本月累計要切在**昨天結束**，跟上面的「昨日數據」同一個切點（老闆 2026-08-31 回報）。
+       * 上界切在**昨天結束**，跟上面的「昨日數據」同一個切點（老闆 2026-08-31 回報）。
        *
        * 原本是 `>= 月初` 但沒有上界 —— 等於算到「發報當下」。凌晨進來的儲值
        * 當天早上就被算進月累計，但它屬於今天、要隔天才會出現在「昨日儲值」，
@@ -61,7 +72,8 @@ export async function POST(req: NextRequest) {
        * 實例：08-30 00:11 的 100,000 在 8/30 的報表裡已經計入月累計 617,600，
        * 而 8/31 的報表才把它列進昨日儲值。
        *
-       * 對齊之後這條式子才成立：本月累計 = 這個月每天「昨日儲值」的總和。
+       * 對齊之後這條式子才成立：該月累計 = 那個月每天「昨日儲值」的總和。
+       * 換月當天（9/1 報 8/31）算出來的就是八月的完整月結。
        */
       excBot(supabase.from('recharge_records').select('amount, payment_method').eq('status', 'success'))
         .gte('created_at', monthStart.toISOString())
@@ -81,6 +93,15 @@ export async function POST(req: NextRequest) {
     const monthTotal    = (rechargeMonth.data ?? []).filter(isRealRevenueRecharge).reduce((s: number, r: any) => s + Number(r.amount), 0)
 
     const yestLabel = formatTaiwanDate(yestStart, { month: 'long', day: 'numeric', weekday: 'short' })
+    /*
+     * 月累計那行的標題：平常只寫月份（「8月累計儲值」），跟開頭的「8月31日週一」一致。
+     * **只有跨年那天帶年份** —— 1/1 的早報報的是去年 12/31，寫「12月累計儲值」
+     * 會被當成今年的十二月。判斷式直接比昨日與今日的台灣年份，不用寫死日期。
+     */
+    const twYest = getTaiwanNow(yestStart)
+    const monthLabel = twYest.getUTCFullYear() !== getTaiwanNow().getUTCFullYear()
+      ? formatTaiwanDate(yestStart, { year: 'numeric', month: 'long' })   // 2025年12月
+      : formatTaiwanDate(yestStart, { month: 'long' })                    // 8月
 
     const pendingLines: string[] = []
     if ((pendingShipments  ?? 0) > 0) pendingLines.push(`• 待配送 ${pendingShipments} 筆`)
@@ -98,7 +119,9 @@ export async function POST(req: NextRequest) {
       `• 抽獎次數：${fmt(drawCount)} 次`,
       `• 參與玩家：${fmt(uniquePlayers)} 人`,
       `• 新增會員：${fmt(newUsers)} 人`,
-      `• 本月累計儲值：NT$ ${fmt(monthTotal)}`,
+      /* 月累計獨立成一段：混在「昨日數據」底下會被讀成昨天的數字（老闆 2026-09-01） */
+      ``,
+      `• ${monthLabel}累計儲值：NT$ ${fmt(monthTotal)}`,
       ``,
       pendingLines.length > 0
         ? `待處理\n${pendingLines.join('\n')}`
