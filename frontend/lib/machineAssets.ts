@@ -34,7 +34,6 @@ export const MACHINE_ASSETS: Record<string, string[]> = {
   // 卡包模式的棚景底圖：沒等它就是老闆回報的「進去先看到一張全白卡包」
   /* 抽卡的背景 2026-09-01 起是 WebGL 海景，不再是圖檔 —— 這裡只等卡背 */
   card: [asset('/images/card/back.webp')],
-  card_pack_mode: [asset('/images/card/back.webp')],
   card_peel: [asset('/images/card/back.webp')],
   card_pack: [asset('/images/card/back.webp')],
 

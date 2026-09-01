@@ -132,11 +132,12 @@ export default function ProductCard(props: ProductCardProps) {
     }
   };
 
-  /* 卡包模式（migration 584）：玩家買的是包，張數是內部籤位數。
-     這裡不換算的話，列表會顯示「1000/1000」而玩家只買得到 100 包 */
+  /* 抽卡買的是「一包」，張數是內部籤位數（migration 584）。
+     這裡不換算的話，列表會顯示「1000/1000」而玩家只買得到 100 包。
+     一包 1 張時換算前後一樣，但單位仍寫「/包」—— 商品頁已經統一成包
+     （migration 666 拿掉了單抽／卡包兩種模式），兩邊的字要對得起來 */
   const perPack = type === 'card' && (cardsPerPack ?? 1) >= 2 ? (cardsPerPack as number) : 1
-  const isPackMode = perPack >= 2
-  const effUnitLabel = unitLabel ?? (isPackMode ? '/包' : '/抽')
+  const effUnitLabel = unitLabel ?? (type === 'card' ? '/包' : '/抽')
   const packTotal = typeof total === 'number' ? Math.floor(total / perPack) : total
   const packRemaining = typeof remaining === 'number' ? Math.floor(remaining / perPack) : remaining
 

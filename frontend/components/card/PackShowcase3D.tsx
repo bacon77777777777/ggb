@@ -47,7 +47,7 @@ type Props = {
   height?: number;
   /**
    * 指定卡包正／背面圖，蓋過後台參數與內建款式。
-   * 卡包模式用：玩家買的是「這一檔商品的卡包」，樣式必須固定且由商品決定，
+   * 卡包樣式選「自訂」時用：玩家買的是「這一檔商品的卡包」，樣式必須固定且由商品決定，
    * 不能每次進頁面都隨機換一款（老闆 2026-08-18）。
    */
   frontImage?: string;
@@ -58,11 +58,11 @@ type Props = {
  * 後台「商品頁卡包展示」可以調的東西**只有轉法**，沒有卡包圖（老闆 2026-09-01）。
  *
  * 卡包圖有兩個來源，都不該有第三個全站設定插進來：
- *   ・單抽模式 → 內建五款輪流（/images/card/pack/a~e）
- *   ・卡包模式 → 商品編輯頁上傳的 pack_front/back_image_url
+ *   ・卡包樣式＝預設 → 內建五款輪流（/images/card/pack/a~e）
+ *   ・卡包樣式＝自訂 → 商品編輯頁上傳的 pack_front/back_image_url
  *
  * 先前後台那組 frontImage／backImage 是從原型的 demo 上傳鈕留下來的。
- * 卡包模式永遠被商品自己的圖蓋過（形同無效），**單抽模式卻會真的生效** ——
+ * 有自訂圖時永遠被商品自己的圖蓋過（形同無效），**沒有自訂圖時卻會真的生效** ——
  * 一設下去全站每一件單抽商品的五款輪播會全部變成同一張圖。
  */
 type Params = {
@@ -298,7 +298,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         .select('params')
         /* card_showcase＝「商品頁卡包輪播」自己的設定（migration 591）。
            以前讀的是 card_pack（蓄力開卡包模組），等於把商品頁的展示綁在某一個
-           開包模組底下 —— 在單抽模式改設定會連卡包模式的商品頁一起改掉。 */
+           開包模組底下 —— 改一個模組的設定會連別的模組的商品頁一起改掉。 */
         .eq('theme', 'card_showcase')
         .maybeSingle()
         .then(({ data }) => {
@@ -496,7 +496,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
             try { return await loadImage(custom); } catch { return loadImage(fallback); }
           };
           try {
-            /* 卡包模式才有自訂圖（prop 傳進來），單抽一律走內建五款 */
+            /* 卡包樣式＝自訂才有圖（prop 傳進來），預設一律走內建五款 */
             const [fImg, bImg] = await Promise.all([
               loadOr(frontImage, builtinFront),
               loadOr(backImage, builtinBack),

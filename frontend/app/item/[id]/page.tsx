@@ -91,7 +91,7 @@ import { skyGradientCss, skyProgressNow } from '@/lib/oceanSky';
 const FAIR_ENGINE_TYPES = ['ichiban', 'card', 'custom'];
 
 /**
- * 內建卡包外觀（單張模式的輪播用；卡包模式吃商品自己的 pack_front/back_image_url）
+ * 內建卡包外觀（卡包樣式選「預設」時的輪播用；選「自訂」吃商品自己的 pack_front/back_image_url）
  *
  * 素材在 `public/images/card/pack/`，每款兩張：`<款>01.webp` 正面、`<款>02.webp` 背面。
  * 老闆 2026-08-30 換了整組圖，從六款（01~06）變成五款（a~e）。
@@ -466,15 +466,11 @@ export default function ProductDetailPage() {
    *
    * ⚠️ 位置有講究：hook 不能寫在 `if (product.type === 'card')` 裡（條件呼叫），
    * 也不能放在第一個條件式 return 之後。這裡剛好在 moduleSettings 宣告之後、
-   * 所有 return 之前。isPackMode 直接就地算，不用後面那個（它宣告得更晚）。
+   * 所有 return 之前。
    */
   const cardAssetUrls = useMemo(() => {
     if (!product || product.type !== 'card') return [];
-    const perPack = Math.max(1, Number((product as any).cards_per_pack) || 1);
-    const theme = (product as any).machine_theme
-      || (perPack >= 2
-        ? moduleSettings['card_pack_mode' as keyof typeof moduleSettings]
-        : moduleSettings['card']);
+    const theme = (product as any).machine_theme || moduleSettings['card'];
     // 商品自己的卡包正面／卡背也要等 —— 那才是玩家第一眼看到的東西
     return machineAssets(theme, [
       (product as any).pack_front_image_url,
@@ -974,7 +970,7 @@ export default function ProductDetailPage() {
     trackEvent('draw_trial', { productId: product.id });
 
     /*
-     * 卡包模式的試玩要開「一整包」，不是一張（老闆回報：試試看只跑出 1/1）。
+     * 試玩要開「一整包」，不是一張（老闆回報：試試看只跑出 1/1）。
      * 組法：前面填一般卡、最後一張放 makeTrialPrize 挑出的大賞 ——
      * 演出的收尾光環吃的是最後一張，壓軸擺前面就白做了。
      */
@@ -1507,12 +1503,35 @@ export default function ProductDetailPage() {
           ? validPrizes.reduce((acc, prize) => acc + (prize.remaining || 0), 0)
           : 0);
 
-  /* 抽卡卡包模式（migration 584）：一抽 = 一整包。
-     庫存與價格對玩家一律以「包」為單位呈現 —— 張數是內部的籤位數，
+  /* 庫存與價格對玩家一律以「包」為單位呈現 —— 張數是內部的籤位數，
      玩家買的是包，看到「剩餘 1030」會以為還能抽一千次 */
+  /*
+   * 抽卡不再分「單抽／卡包」（老闆 2026-09-01）—— 全部都是「開一包卡」，
+   * 差別只有一包裝幾張（1／3／5／10）。每包 1 張就是一包裡只有一張，
+   * 不是另一種模式：抽獎引擎的整包分支代進 N=1 本來就等於原本的單抽分支。
+   *
+   * 所以下面所有文案一律用「包」。N = 1 時包數等於張數，數字看起來一樣，
+   * 只有「每包 N 張」那一行會收起來（寫「每包 1 張」很囉唆）。
+   */
   const cardsPerPack = Math.max(1, Number((product as any).cards_per_pack) || 1);
-  const isPackMode = product.type === 'card' && cardsPerPack >= 2;
-  const packsRemaining = isPackMode ? Math.floor((totalRemaining ?? 0) / cardsPerPack) : 0;
+  const packsRemaining = Math.floor((totalRemaining ?? 0) / cardsPerPack);
+  /* 卡包外觀：後台明講的欄位，不是靠「有沒有上傳圖」去猜（migration 666） */
+  const useCustomPack = (product as any).pack_style === 'custom';
+  /*
+   * 演出裡要撕／要開的那個卡包正面。
+   *
+   * **一定要跟商品頁架上那個是同一個** —— 玩家看著一個卡包按下去，
+   * 撕開的卻是另一張圖會很錯亂。migration 666 之前撞不到這個問題：
+   * 撕開封口只有卡包模式能用，而卡包模式的輪播本來就吃商品自己的圖。
+   * 現在三種演出都能配上內建五款，兩邊就必須共用同一條判斷。
+   *
+   * 選內建時用 activePackStyle —— 那是玩家**當下滑到的**那一款，
+   * 不是隨便挑一款；他撕開的就是他剛剛看到的那一個。
+   */
+  const builtinPackFace = asset(`/images/card/pack/${activePackStyle}01.webp`);
+  const packFaceImage = useCustomPack
+    ? ((product as any).pack_front_image_url || product.image_url || builtinPackFace)
+    : builtinPackFace;
 
   const totalItems =
     typeof product.total_count === 'number'
@@ -1547,7 +1566,7 @@ export default function ProductDetailPage() {
 
   if (product.type === 'card') {
     const cardThemeForMachine = (product as any).machine_theme
-      || (isPackMode ? moduleSettings['card_pack_mode' as keyof typeof moduleSettings] : moduleSettings['card']);
+      || moduleSettings['card'];
     const renderCardMachine = () => (
       <div
         className="relative overflow-hidden"
@@ -1569,7 +1588,7 @@ export default function ProductDetailPage() {
             {/* 閃電＝快速模式（略過撕包＋SKIP 一次跳到最後），位置在機台區左上角。
                 只掛在 card_peel：`card_pack` 走的是 CardDrawAnimation，那支沒有撕包步驟
                 也沒有 SKIP，先前把它一起列進條件，玩家按了會轉金但完全沒作用。 */}
-            {isPackMode && cardThemeForMachine === 'card_peel' && (
+            {cardThemeForMachine === 'card_peel' && (
               <button
                 type="button"
                 onClick={toggleSkipPackIntro}
@@ -1636,13 +1655,12 @@ export default function ProductDetailPage() {
                   packStyles={packStyles}
                   onActiveStyleChange={handleActiveStyleChange}
                   height={Math.round(375 * 932 / 750)}
-                  /* 卡包模式：一律用這一檔商品自己的卡包正／背面，不再隨機換內建款式。
-                     玩家買的是「這一檔的卡包」，每次進頁面長得不一樣會很怪（老闆指定）。
-                     正面＝商品主圖，背面＝pack_back_image_url */
-                  /* 卡包正面是獨立欄位（migration 592）；沒設才退回商品主圖 —— 商品主圖是
-                     列表／小卡用的，構圖跟直式卡包不一定合，不該綁在一起 */
-                  frontImage={isPackMode ? ((product as any).pack_front_image_url || product.image_url || undefined) : undefined}
-                  backImage={isPackMode ? ((product as any).pack_back_image_url || undefined) : undefined}
+                  /* 卡包樣式選「自訂」才用這一檔商品自己的正／背面，選「預設」就是內建
+                     五款輪流（migration 666 之前是看「是不是卡包模式」）。
+                     卡包正面是獨立欄位（migration 592）；沒設才退回商品主圖 ——
+                     商品主圖是列表／小卡用的，構圖跟直式卡包不一定合，不該綁在一起 */
+                  frontImage={useCustomPack ? ((product as any).pack_front_image_url || product.image_url || undefined) : undefined}
+                  backImage={useCustomPack ? ((product as any).pack_back_image_url || undefined) : undefined}
                 />
               </div>
             </div>
@@ -1961,17 +1979,17 @@ export default function ProductDetailPage() {
                         <Image src={asset("/images/gcoin.webp")} alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-4xl font-black text-accent-red font-amount tracking-tighter leading-none">{product.price.toLocaleString()}</span>
-                          <span className="text-sm text-neutral-400 font-black uppercase tracking-widest">{isPackMode ? '/ 包' : '/ 抽'}</span>
+                          <span className="text-sm text-neutral-400 font-black uppercase tracking-widest">/ 包</span>
                         </div>
                       </div>
                       {typeof totalRemaining === 'number' && (
                         <div className="text-right shrink-0">
                           <div className="text-[11px] text-neutral-400 font-bold">剩餘</div>
                           <div className="text-xl font-black text-neutral-900 dark:text-white font-amount leading-none">
-                            {(isPackMode ? packsRemaining : totalRemaining).toLocaleString()}
-                            {isPackMode && <span className="ml-0.5 text-xs font-bold text-neutral-400">包</span>}
+                            {packsRemaining.toLocaleString()}
+                            <span className="ml-0.5 text-xs font-bold text-neutral-400">包</span>
                           </div>
-                          {isPackMode && <div className="text-[10px] text-neutral-400">每包 {cardsPerPack} 張</div>}
+                          {cardsPerPack >= 2 && <div className="text-[10px] text-neutral-400">每包 {cardsPerPack} 張</div>}
                         </div>
                       )}
                     </div>
@@ -1991,15 +2009,15 @@ export default function ProductDetailPage() {
           onPrev={prizes.length > 1 ? () => stepPrize(-1) : undefined}
           onNext={prizes.length > 1 ? () => stepPrize(1) : undefined}
           sealed={FAIR_ENGINE_TYPES.includes(product.type)}
-          /* 卡包模式：圖區塊改成卡牌 360° 立體展示（老闆原型 card-showcase） */
-          showcase3d={isPackMode}
+          /* 抽卡的品項就是卡片，圖區塊一律用 360° 立體展示（老闆原型 card-showcase）。
+             migration 666 之前只有卡包模式才開 —— 那是綁錯東西，跟一包幾張無關 */
+          showcase3d
           showcaseBackImage={(product as any).card_back_image_url}
         />
 
         {(() => {
-          // 全站預設拆成兩組：card = 單抽模式、card_pack_mode = 卡包模式
-          const cardTheme = (product as any).machine_theme
-            || (isPackMode ? moduleSettings['card_pack_mode' as keyof typeof moduleSettings] : moduleSettings['card']);
+          // 全站預設只有一組（migration 666 合併，模式概念已拿掉）
+          const cardTheme = (product as any).machine_theme || moduleSettings['card'];
           if (cardTheme === 'card_peel') {
             // 全畫面直開，不套彈窗 —— 原型的根容器本身就是 fixed inset-0，
             // 再包一層 modal 會變成「畫面裡的一個小框」，跟蓄力開卡包的體感不一致（老闆指定）
@@ -2046,8 +2064,7 @@ export default function ProductDetailPage() {
                  這層只負責疊層，不是彈窗：仍然是滿版無邊框，與過場影片同一個 z-[2100] */
               <div className="fixed inset-0 z-[2100]">
               <GgbPackRip
-                /* 卡包正面用自己的欄位，沒設才退回商品主圖，再沒有才用內建款式 */
-                packImage={(product as any).pack_front_image_url || product.image_url || asset(`/images/card/pack/${activePackStyle}01.webp`)}
+                packImage={packFaceImage}
                 cardBack={(product as any).card_back_image_url || asset('/images/card/back.webp')}
                 cards={ordered.map(p => p.image_url || asset('/images/card/00004.webp'))}
                 prizeTier={packTiers[0] ?? 'blue'}
@@ -2070,7 +2087,7 @@ export default function ProductDetailPage() {
               <CardDrawAnimation
                 isOpen={isVideoOpen}
                 prizes={wonPrizes}
-                packImage={asset(`/images/card/pack/${activePackStyle}01.webp`)}
+                packImage={packFaceImage}
                 onGoToWarehouse={handleVideoEnd}
                 onContinue={handleCardContinue}
               />
@@ -2148,7 +2165,7 @@ export default function ProductDetailPage() {
           <div className="mx-auto flex h-16 max-w-2xl items-center gap-3 px-4">
             <div className="flex h-full shrink-0 flex-col justify-center pl-1">
               <span className="mb-0.5 text-[13px] font-black uppercase tracking-widest leading-none text-neutral-400">
-                {isPackMode ? '單包' : '單抽'}
+                單包
               </span>
               <div className="flex items-center gap-1">
                 <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16}
@@ -2160,8 +2177,8 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="flex h-[44px] flex-1 items-center gap-2">
-              {/* 卡包模式沒有「換一批」：整檔只有一種卡包樣式，換了畫面不會有任何變化 */}
-              {!isPackMode && (
+              {/* 自訂卡包沒有「換一批」：整檔只有一種樣式，換了畫面不會有任何變化 */}
+              {!useCustomPack && (
                 <button
                   onClick={handleChangePack}
                   disabled={isSoldOut}
@@ -2540,8 +2557,9 @@ export default function ProductDetailPage() {
           onPrev={prizes.length > 1 ? () => stepPrize(-1) : undefined}
           onNext={prizes.length > 1 ? () => stepPrize(1) : undefined}
           sealed={FAIR_ENGINE_TYPES.includes(product.type)}
-          /* 卡包模式：圖區塊改成卡牌 360° 立體展示（老闆原型 card-showcase） */
-          showcase3d={isPackMode}
+          /* 抽卡的品項就是卡片，圖區塊一律用 360° 立體展示（老闆原型 card-showcase）。
+             migration 666 之前只有卡包模式才開 —— 那是綁錯東西，跟一包幾張無關 */
+          showcase3d
           showcaseBackImage={(product as any).card_back_image_url}
         />
 
@@ -2552,7 +2570,7 @@ export default function ProductDetailPage() {
           <div className="mx-auto flex h-16 max-w-2xl items-center gap-3 px-4">
             <div className="flex h-full shrink-0 flex-col justify-center pl-1">
               <span className="mb-0.5 text-[13px] font-black uppercase tracking-widest leading-none text-neutral-400">
-                {isPackMode ? '單包' : '單抽'}
+                單包
               </span>
               <div className="flex items-center gap-1">
                 <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16}

@@ -90,21 +90,22 @@ const CATEGORIES: { key: string; label: string; info: string; rows: Row[] }[] = 
   {
     key: 'card',
     label: '抽卡',
-    info: '抽卡有兩種開卡模式，各自可以指定演出。上方的「商品頁卡包展示」是商品頁上半部那個會轉的卡包，兩種模式共用。',
+    /*
+     * 2026-09-01 起抽卡不再分「單抽／卡包」兩種模式（migration 666）。
+     * 那兩種本來就是同一件事 —— 都是開一包卡，差別只有一包裝幾張，
+     * 所以這裡從兩列預設模組合併成一列，三款演出都能選。
+     * 「一包幾張」是商品自己的設定（1／3／5／10），不在這一頁。
+     */
+    info: '沒有個別指定模組的抽卡商品，開包時用哪一款演出。上方的「商品頁卡包展示」是商品頁上半部那個會轉的卡包，與開包演出無關。',
     rows: [
       {
         kind: 'params', theme: 'card_showcase', paramLabel: '商品頁卡包展示',
         title: '商品頁卡包展示',
-        desc: '商品頁上半部會轉的那個卡包。與開包演出無關，單抽與卡包模式共用同一組設定',
+        desc: '商品頁上半部會轉的那個卡包。與開包演出無關，所有抽卡商品共用同一組設定',
       },
       {
-        kind: 'default', productType: 'card', title: '單抽模式・開包演出',
-        desc: '一抽一張。不可使用「撕開封口」——那是整包的演出',
-        themes: CARD_MODULES.filter(t => t.value !== 'card_peel'),
-      },
-      {
-        kind: 'default', productType: 'card_pack_mode', title: '卡包模式・開包演出',
-        desc: '一抽一整包。三款都可以用',
+        kind: 'default', productType: 'card', title: '預設開包演出',
+        desc: '商品頁沒有另外指定時套用這一款。三款都可以用，不論一包幾張',
         themes: CARD_MODULES,
       },
     ],

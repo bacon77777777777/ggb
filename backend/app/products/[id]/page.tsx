@@ -235,8 +235,10 @@ export default function EditProductPage() {
     endedAt: '',
     txidHash: '',
     seed: '',
-    // 整包模式：一抽開幾張（migration 584）。空白或 1 = 單張模式
+    // 一包幾張（1／3／5／10）。migration 666 之後這是純粹的數量，不再是「模式」
     cardsPerPack: '',
+    // 卡包樣式：builtin = 內建五款輪流、custom = 用自己上傳的卡包正／背面
+    packStyle: 'builtin',
     // 已排籤封存 → 開卡模式與抽獎模組鎖定（migration 585 的 DB trigger 也會擋）
     isSealed: false,
     // 抽籤販售（只有抽卡用得到）
@@ -377,30 +379,29 @@ export default function EditProductPage() {
     }
   }, [showSmallItemLibrary])
 
-  /* ── 抽卡兩種模式（老闆 2026-08-18 定案，DB 端由 migration 586 的 CHECK 把關）──
-     單抽模式：一抽一張，模組不可用「撕開封口」（那是整包的演出）
-     卡包模式：一抽一整包、玩家選的是包，模組固定「撕開封口」，
-               庫存以包為單位 —— 總張數必須是每包張數的整數倍，不然會有湊不成包的尾數 */
+  /*
+   * 抽卡不再分「單抽／卡包」兩種模式（老闆 2026-09-01，migration 666）。
+   * 全部都是「開一包卡」，一包裝 1／3／5／10 張，三種模組都能選。
+   * 一包 1 張不是另一種模式 —— 抽獎引擎的整包分支代進 N=1 就等於原本的單抽分支。
+   *
+   * 庫存一律以包為單位：總張數必須是每包張數的整數倍（N=1 時恆成立）。
+   */
   const isCardType   = formData.type === 'card'
   const cardsPerPack = Math.max(1, Number(formData.cardsPerPack) || 1)
-  const isPackMode   = isCardType && cardsPerPack >= 2
+  const isMultiPack  = isCardType && cardsPerPack >= 2
 
   // 自動計算商品總數和剩餘數量（排除最後賞）
   const normalPrizes = prizes.filter(p => !isLastOneLevel(p.level))
   const calculatedTotalCount = normalPrizes.reduce((sum, prize) => sum + prize.total, 0)
   const calculatedRemaining = normalPrizes.reduce((sum, prize) => sum + prize.remaining, 0)
 
-  // 卡包模式的庫存單位是「包」。除不盡代表有湊不成包的尾數張，存檔時擋下
-  const packTotal      = isPackMode ? Math.floor(calculatedTotalCount / cardsPerPack) : 0
-  const packRemainder  = isPackMode ? calculatedTotalCount % cardsPerPack : 0
-  const packRemaining  = isPackMode ? Math.floor(calculatedRemaining / cardsPerPack) : 0
+  // 庫存單位是「包」。除不盡代表有湊不成包的尾數張，存檔時擋下
+  const packTotal      = isMultiPack ? Math.floor(calculatedTotalCount / cardsPerPack) : 0
+  const packRemainder  = isMultiPack ? calculatedTotalCount % cardsPerPack : 0
+  const packRemaining  = isMultiPack ? Math.floor(calculatedRemaining / cardsPerPack) : 0
 
-  // 模組清單照模式過濾：選不到不該選的，就不會被 DB 打回來
-  // 卡包模式三種模組都可以（migration 589 放寬）；單抽模式仍不給 card_peel（整包專用的演出）
-  const moduleOptions = (MODULE_OPTIONS[formData.type] ?? []).filter(o => {
-    if (!isCardType) return true
-    return isPackMode ? true : o.value !== 'card_peel'
-  })
+  // migration 666 拿掉了「單抽不可用撕開封口」的限制，三種模組一律都能選
+  const moduleOptions = MODULE_OPTIONS[formData.type] ?? []
 
   // 當獎項數量變化時，自動更新機率
   useEffect(() => {
@@ -499,6 +500,7 @@ export default function EditProductPage() {
             type: product.type || 'ichiban',
             saleMode: product.sale_mode || 'normal',
             cardsPerPack: product.cards_per_pack?.toString() ?? '',
+            packStyle: (product as { pack_style?: string }).pack_style === 'custom' ? 'custom' : 'builtin',
             isSealed: !!product.sealed_at,
             lotteryTotalDraws: product.lottery_total_draws?.toString() ?? '',
             lotteryPerUserDraws: product.lottery_per_user_draws?.toString() ?? '',
@@ -593,14 +595,14 @@ export default function EditProductPage() {
       return
     }
 
-    // 卡包模式：庫存以包為單位，張數除不盡代表有永遠賣不掉的尾數張。
+    // 庫存以包為單位，張數除不盡代表有永遠賣不掉的尾數張。
     // DB 也有 CHECK 擋（migration 586），但那邊的錯誤訊息對操作者沒有幫助
-    if (isPackMode && packRemainder !== 0) {
-      toast(`卡包模式的總張數必須是每包 ${cardsPerPack} 張的整數倍，目前 ${calculatedTotalCount} 張多出 ${packRemainder} 張`, 'warning')
+    if (isMultiPack && packRemainder !== 0) {
+      toast(`總張數必須是每包 ${cardsPerPack} 張的整數倍，目前 ${calculatedTotalCount} 張多出 ${packRemainder} 張`, 'warning')
       return
     }
-    if (isPackMode && packTotal < 1) {
-      toast(`卡包模式至少要湊得出一包（每包 ${cardsPerPack} 張）`, 'warning')
+    if (isMultiPack && packTotal < 1) {
+      toast(`至少要湊得出一包（每包 ${cardsPerPack} 張）`, 'warning')
       return
     }
 
@@ -687,11 +689,12 @@ export default function EditProductPage() {
         // 但萬一還有歷史商品掛著，存檔不該把它默默改掉。
         // lottery_total_draws / lottery_per_user_draws 乾脆不送 —— 沒送就不會被動到
         sale_mode: formData.saleMode || 'normal',
-        // 整包模式只有抽卡有意義；填 1 或空白一律寫回 null（＝單張模式），
-        // 免得改過類別的商品留著一個永遠不生效的張數
+        // 一包幾張只有抽卡有意義。1 一樣寫成 null —— DB 端 COALESCE(…,1) 視為 1，
+        // 而寫 null 可以讓改過類別的商品不留下一個永遠不生效的張數
         cards_per_pack: formData.type === 'card' && Number(formData.cardsPerPack) > 1
           ? Number(formData.cardsPerPack)
           : null,
+        pack_style: formData.type === 'card' && formData.packStyle === 'custom' ? 'custom' : 'builtin',
         price: parseInt(formData.price) || 0,
         cost: formData.cost ? parseFloat(formData.cost) : null,
         remaining: calculatedRemaining,
@@ -948,56 +951,58 @@ export default function EditProductPage() {
                   </SelectField>
                 </div>
               {formData.type === 'card' && (
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <label className="block text-xs font-medium text-neutral-500">開卡模式</label>
-                    <InfoIcon width={280} text={
-                      (formData.isSealed ? '已排籤封存，不可更改每包張數 —— 包的組成已隨封存表定案，改了已售出的包會驗不過。\n\n' : '')
-                      + (Number(formData.cardsPerPack) > 1
-                          ? `售價 ${formData.price || 0} G 是「一包」的價格，一抽開 ${formData.cardsPerPack} 張、扣 ${formData.cardsPerPack} 張籤。庫存以包為單位，總張數必須是每包張數的整數倍。`
-                          : '一抽開一張，售價即單張價格。')
-                    } />
+                <>
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <label className="block text-xs font-medium text-neutral-500">一包幾張</label>
+                      <InfoIcon width={300} text={
+                        (formData.isSealed ? '已排籤封存，不可更改 —— 包的組成已隨封存表定案，改了已售出的包會驗不過。\n\n' : '')
+                        + `售價 ${formData.price || 0} G 是「一包」的價格，一抽開 ${cardsPerPack} 張、扣 ${cardsPerPack} 張籤。`
+                        + '\n\n庫存以包為單位：品項總張數必須是每包張數的整數倍，否則會有湊不成包、永遠賣不掉的尾數。'
+                        + '\n\n三種開包演出都可以用，不論一包幾張。'
+                      } />
+                    </div>
+                    <SelectField
+                      value={formData.cardsPerPack || '1'}
+                      disabled={formData.isSealed}
+                      onChange={(e) => setFormData({ ...formData, cardsPerPack: e.target.value })}
+                    >
+                      <option value="1">1 張</option>
+                      <option value="3">3 張</option>
+                      <option value="5">5 張</option>
+                      <option value="10">10 張</option>
+                    </SelectField>
                   </div>
-                  <SelectField
-                    value={formData.cardsPerPack || '1'}
-                    disabled={formData.isSealed}
-                    onChange={(e) => {
-                      const next = e.target.value
-                      // 卡包模式固定「撕開封口」；切回單抽時把它清掉，
-                      // 免得留下一個 DB 會擋的組合（單抽 + 撕開封口）
-                      // 切到卡包模式預設帶「撕開封口」，但之後可以改成別的（migration 589）；
-                      // 切回單抽時要清掉 card_peel，否則會留下 DB 會擋的組合
-                      const nextTheme = Number(next) >= 2
-                        ? (formData.machineTheme || 'card_peel')
-                        : (formData.machineTheme === 'card_peel' ? '' : formData.machineTheme)
-                      setFormData({ ...formData, cardsPerPack: next, machineTheme: nextTheme })
-                    }}
-                  >
-                    <option value="1">單張（一抽一張）</option>
-                    <option value="3">整包・3 張</option>
-                    <option value="5">整包・5 張</option>
-                    <option value="10">整包・10 張</option>
-                    <option value="12">整包・12 張</option>
-                    <option value="20">整包・20 張</option>
-                  </SelectField>
-                </div>
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <label className="block text-xs font-medium text-neutral-500">卡包樣式</label>
+                      <InfoIcon width={300} text={
+                        '商品頁上半部那個會轉的卡包長什麼樣。\n\n'
+                        + '預設：站上內建的五款卡包輪流出現，玩家可以按「換一批」換。\n\n'
+                        + '自訂：用你自己上傳的卡包正面／背面，整檔固定同一種（「換一批」會收起來）。'
+                      } />
+                    </div>
+                    <SelectField
+                      value={formData.packStyle}
+                      onChange={(e) => setFormData({ ...formData, packStyle: e.target.value })}
+                    >
+                      <option value="builtin">預設（內建五款輪流）</option>
+                      <option value="custom">自訂（上傳自己的卡包圖）</option>
+                    </SelectField>
+                  </div>
+                </>
               )}
               {/* 抽卡的圖：商品圖片、卡包正面、卡包背面、卡牌背面。
-                  卡包模式的輪播與開包演出都吃自己的卡包圖，不再用內建隨機款式。
-
-                  ⚠️ 卡包正面／背面**只有卡包模式才會生效**（老闆 2026-08-29 回報
-                  「單張的為什麼可以選卡包正面或背面」）。前台只有兩個地方讀那兩個欄位
-                  —— 商品頁 3D 輪播與撕開封口演出 —— 兩處都綁死卡包模式；單張模式的
-                  輪播吃的是內建六款、玩家滑到哪張就用哪張（activePackStyle），跟商品
-                  自己的圖無關。先前這排只判斷「是不是抽卡商品」，於是單張模式也看得到
-                  兩個選了不會生效的欄位。
-                  已經存在 DB 裡的值不清掉（存檔仍照舊寫回），切回卡包模式還在。
-                  商品圖片與卡牌背面兩種模式都會用到，不能整排收掉。 */}
+                  卡包正面／背面只在「卡包樣式＝自訂」時出現 —— 選預設時前台走內建五款，
+                  那兩個欄位設了也不會生效，露出來只會讓人以為設了有用
+                  （老闆 2026-08-29 就問過「單張的為什麼可以選卡包正面或背面」）。
+                  切回預設不清掉已經存在 DB 裡的值，改回自訂還在。
+                  商品圖片與卡牌背面永遠都用得到，不能跟著收。 */}
               {isCardType && (
                 <div className="col-span-2 grid grid-cols-4 gap-3">
                   {(([
                     { key: 'image', label: '商品圖片', preview: formData.imagePreview },
-                    ...(isPackMode ? [
+                    ...(formData.packStyle === 'custom' ? [
                       { key: 'packFront', label: '卡包正面', preview: formData.packFrontImagePreview },
                       { key: 'packBack',  label: '卡包背面', preview: formData.packBackImagePreview },
                     ] : []),
@@ -1058,17 +1063,16 @@ export default function EditProductPage() {
                 {!isSlot && <div>
                   <div className="flex items-center gap-1.5 mb-1">
                     <label className="block text-xs font-medium text-neutral-500">抽獎模組</label>
-                    {(formData.isSealed || isPackMode) && (
+                    {(formData.isSealed || isCardType) && (
                       <InfoIcon width={280} text={
                         (formData.isSealed ? '已排籤封存，不可更換模組 —— 賣到一半換演出，先買與後買的玩家看到的會是兩套。' : '')
-                        + (formData.isSealed && isPackMode ? '\n\n' : '')
-                        + (isPackMode ? '卡包模式三種模組都可以用。' : '')
+                        + (formData.isSealed && isCardType ? '\n\n' : '')
+                        + (isCardType ? '三種開包演出都可以用，不論一包幾張。' : '')
                       } />
                     )}
                   </div>
                   <SelectField value={formData.machineTheme} disabled={formData.isSealed}
                     onChange={(e) => setFormData({ ...formData, machineTheme: e.target.value })}>
-                    {/* 卡包模式必須明確指定 card_peel，不能留「類別預設」 */}
                     <option value="">— 類別預設 —</option>
                     {moduleOptions.map(o => (
                       <option key={o.value} value={o.value}>{o.label}</option>
@@ -1231,8 +1235,8 @@ export default function EditProductPage() {
                 <span className="mx-1 text-neutral-300">/</span>
                 總計 <span className="text-neutral-700 font-semibold">{calculatedTotalCount}</span>
                 <span className="ml-1">張</span>
-                {/* 卡包模式的庫存單位是包，張數只是換算來源 */}
-                {isPackMode && (
+                {/* 庫存單位是包，張數只是換算來源。一包 1 張時兩者相同就不重複顯示 */}
+                {isMultiPack && (
                   packRemainder === 0 ? (
                     <span className="ml-2 text-primary">
                       = {packRemaining} / {packTotal} 包（每包 {cardsPerPack} 張）

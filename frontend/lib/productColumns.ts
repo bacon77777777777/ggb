@@ -30,6 +30,6 @@
  * 驗證碼欄位顯示「這一檔沒有封存對照表」，但點進 /fairness/[id]
  * （走 get_ticket_seal RPC）又看得到那串碼 —— 兩邊說法不一致。
  */
-export const PRODUCT_PUBLIC_COLUMNS = 'id, product_code, name, description, image_url, category, type, status, price, total_count, remaining, remaining_count, is_hot, txid_hash, sealed_at, is_preorder, preorder_available_at, distributor, series, barcode, supplier_id, machine_theme, cards_per_pack, pack_front_image_url, pack_back_image_url, card_back_image_url, box_image_url, created_at, feed_boost'
+export const PRODUCT_PUBLIC_COLUMNS = 'id, product_code, name, description, image_url, category, type, status, price, total_count, remaining, remaining_count, is_hot, txid_hash, sealed_at, is_preorder, preorder_available_at, distributor, series, barcode, supplier_id, machine_theme, cards_per_pack, pack_style, pack_front_image_url, pack_back_image_url, card_back_image_url, box_image_url, created_at, feed_boost'
 
 export const PRIZE_PUBLIC_COLUMNS = 'id, product_id, level, name, image_url, total, remaining, probability, display_mode, created_at'

@@ -268,8 +268,8 @@ export default function GGBPackRip({
   const packLastOf = (idx) =>
     Math.min(cards.length - 1, (Math.floor(idx / packSize) + 1) * packSize - 1);
   /*
-   * 逐包收尾只在「卡包模式」成立（每包 ≥ 2 張）。
-   * 單抽模式 packSize 是 1，那時每一張都會被 isPackLast 判成壓軸 ——
+   * 逐包收尾只在「一包 ≥ 2 張」時才有意義。
+   * 一包 1 張時 packSize 是 1，那時每一張都會被 isPackLast 判成壓軸 ——
    * 若照卡包規則辦，買五張單抽就變成每張都要點一下才翻，太黏。
    */
   const packCeremony = packSize >= 2;
