@@ -36,14 +36,16 @@ export const MACHINE_PARAM_SPECS: Record<string, ParamSpec[]> = {
    * 連卡包模式的商品頁都跟著停（老闆 2026-08-19 回報）。拆成獨立的 card_showcase，
    * 兩種模式共用同一組，因為那本來就是同一個元件。
    */
+  /*
+   * ⚠ 這裡**不放卡包正面／背面**（老闆 2026-09-01 指定拿掉）。
+   * 卡包圖有兩個來源，全站設定不該再插進去當第三個：
+   *   ・單抽模式 → 內建五款輪流（前台 /images/card/pack/a~e）
+   *   ・卡包模式 → 商品編輯頁上傳的「卡包正面／背面」
+   * 那兩個欄位是從原型的 demo 上傳鈕留下來的：卡包模式永遠被商品自己的圖蓋過
+   * （形同無效），**單抽模式卻會真的生效**——一設下去全站每一件單抽商品的
+   * 五款輪播會全部變成同一張圖。
+   */
   card_showcase: [
-    /* 尺寸只寫在這裡一次。比例的唯一來源是前台的 components/card/packSpec.ts
-       （PACK_MM_W/H = 62×116），輪播與撕開封口共用同一份 —— 改比例要改那裡。 */
-    { key: 'frontImage', label: '卡包正面', group: '卡包外觀', type: 'image', default: '',
-      hint: '直式卡包，比例 62 : 116（實體卡包尺寸，1 : 1.871）。建議出 1280 × 2394（2x）或 1920 × 3591（3x）。⚠️ 上緣 7%（2394px 時約 168px）在開包演出裡是會被撕走的封條，logo 與商品名不要壓進去。輪播另外會套 2.2% 的圓角、上下各切 0.75% 的鋸齒撕線。留空用內建卡包圖。' },
-    { key: 'backImage',  label: '卡包背面', group: '卡包外觀', type: 'image', default: '',
-      hint: '玩家把卡包轉過去時看到的那面，尺寸同正面（1280 × 2394）。留空用內建卡背。' },
-
     { key: 'autoSpin',   label: '自動翻轉', group: '展示動態', type: 'toggle', default: true,
       hint: '玩家停手一段時間後，主卡包自己慢慢轉。' },
     { key: 'spinSpeed',  label: '翻轉速度', group: '展示動態', type: 'range', min: 0.002, max: 0.03, step: 0.002, default: 0.008,

@@ -54,17 +54,24 @@ type Props = {
   backImage?: string;
 };
 
+/*
+ * 後台「商品頁卡包展示」可以調的東西**只有轉法**，沒有卡包圖（老闆 2026-09-01）。
+ *
+ * 卡包圖有兩個來源，都不該有第三個全站設定插進來：
+ *   ・單抽模式 → 內建五款輪流（/images/card/pack/a~e）
+ *   ・卡包模式 → 商品編輯頁上傳的 pack_front/back_image_url
+ *
+ * 先前後台那組 frontImage／backImage 是從原型的 demo 上傳鈕留下來的。
+ * 卡包模式永遠被商品自己的圖蓋過（形同無效），**單抽模式卻會真的生效** ——
+ * 一設下去全站每一件單抽商品的五款輪播會全部變成同一張圖。
+ */
 type Params = {
-  frontImage: string;
-  backImage: string;
   autoSpin: boolean;
   spinSpeed: number;
   idleDelay: number;
 };
 
 const DEFAULTS: Params = {
-  frontImage: '',
-  backImage: '',
   autoSpin: true,
   spinSpeed: 0.008,
   idleDelay: 1.2,
@@ -282,14 +289,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
     skyNowRef.current = skyNow;
 
     useEffect(() => { notifyRef.current = onActiveStyleChange; });
-    // prop 指定的圖優先（卡包模式）；沒給才用後台參數／內建款式
-    useEffect(() => {
-      paramsRef.current = {
-        ...params,
-        frontImage: frontImage || params.frontImage,
-        backImage: backImage || params.backImage,
-      };
-    }, [params, frontImage, backImage]);
+    useEffect(() => { paramsRef.current = params; }, [params]);
 
     // 後台參數（讀不到就用預設，展示照樣能看）
     useEffect(() => {
@@ -486,7 +486,6 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
        */
       let disposed = false;
       const applyTextures = async () => {
-        const p = paramsRef.current;
         for (let i = 0; i < N; i++) {
           const style = packStyles[i] ?? '01';
           const builtinFront = asset(`/images/card/pack/${style}01.webp`);
@@ -497,9 +496,10 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
             try { return await loadImage(custom); } catch { return loadImage(fallback); }
           };
           try {
+            /* 卡包模式才有自訂圖（prop 傳進來），單抽一律走內建五款 */
             const [fImg, bImg] = await Promise.all([
-              loadOr(p.frontImage, builtinFront),
-              loadOr(p.backImage, builtinBack),
+              loadOr(frontImage, builtinFront),
+              loadOr(backImage, builtinBack),
             ]);
             if (disposed) return;
             const fTex = imageTexture(fImg);
@@ -675,7 +675,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
 
     if (fallback) {
       const style = packStyles[0] ?? '01';
-      const src = params.frontImage || asset(`/images/card/pack/${style}01.webp`);
+      const src = frontImage || asset(`/images/card/pack/${style}01.webp`);
       return (
         <div className="w-full flex items-center justify-center" style={{ height, background: skyBackground(skyS) }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
