@@ -174,6 +174,42 @@ export default function FigmaTearScene({
   };
 
   /*
+   * 按著不放的持續震動（老闆 2026-09-01）。
+   *
+   * 原本只有「移動」才震：按下一下 hapticLight，之後每拖 8px 一次 hapticTick。
+   * 手指壓在螢幕上不動的那段是完全沒感覺的 —— 而那正是玩家在「使力」的時候，
+   * 手上該有紙被繃緊的顆粒感。
+   *
+   * iOS 沒有「持續震動」這種 API（Taptic 只給得出一次一次的脈衝），
+   * 所以連續感一律是靠密集短震堆出來的，這裡用 HOLD_MS 的節拍鋪底。
+   * 拖曳時的 8px 顆粒仍然照舊，只是**共用同一個節流時鐘**（lastBuzzAt）——
+   * 不然快速拖動時兩套會疊在一起，變成一團糊掉的嗡嗡聲。
+   */
+  const HOLD_HAPTIC_MS = 70;
+  const holdBuzzTimer = useRef<number | null>(null);
+  const lastBuzzAt = useRef(0);
+  /** 震一下並記下時間（拖曳顆粒與按住鋪底共用，避免疊在一起） */
+  const buzz = () => {
+    lastBuzzAt.current = performance.now();
+    hapticTick();
+  };
+  const startHoldBuzz = () => {
+    if (holdBuzzTimer.current !== null) return;
+    holdBuzzTimer.current = window.setInterval(() => {
+      // 剛剛才因為拖曳震過就跳過這一拍
+      if (performance.now() - lastBuzzAt.current < HOLD_HAPTIC_MS - 10) return;
+      buzz();
+    }, HOLD_HAPTIC_MS);
+  };
+  const stopHoldBuzz = () => {
+    if (holdBuzzTimer.current === null) return;
+    window.clearInterval(holdBuzzTimer.current);
+    holdBuzzTimer.current = null;
+  };
+  // 元件收掉時一定要停：不然離開這一張券之後手機還在震
+  useEffect(() => stopHoldBuzz, []);
+
+  /*
    * 背景音樂（懸念感）與券落定的聲音。
    *
    * 每一張券都是重新掛載這個元件（父層用 key 換），所以音樂會跟著每張重新起頭 ——
@@ -273,6 +309,8 @@ export default function FigmaTearScene({
       }
       /* 震動不看靜音開關：靜音是為了不吵到別人，震動本來就是靜的（其他頁也是這樣） */
       hapticLight();                     // 捏到了的手感，跟 sfxGrab 同一刻
+      lastBuzzAt.current = performance.now();
+      startHoldBuzz();                   // 之後只要手指還壓著就一直震
     };
 
     const onCapturePointerMove = (e: PointerEvent) => {
@@ -311,12 +349,13 @@ export default function FigmaTearScene({
         if (!isSoundMuted()) crackle(Math.min(1, 0.25 + speed * 0.5));
         /* 每一格都頓一下 —— 這一下才是「紙在我手上裂開」的來源，
            節流跟聲音共用同一個 8px 門檻，快撕就密、慢撕就疏 */
-        hapticTick();
+        buzz();
         lastCrackle.current = dx;
       }
     };
 
     const onPointerUp = () => {
+      stopHoldBuzz();
       lastCrackle.current = 0;
       inGrabZone.current = false;
 
@@ -399,6 +438,7 @@ export default function FigmaTearScene({
           turned: (_e: Event, page: number) => {
             if (page === 2) {
               tearCompleted.current = true;
+              stopHoldBuzz();         // 撕開了就不用再鋪底，重的那一下自己來
               hapticHeavy();          // 撕開的那一下，跟 bigRip 同一刻
               if (!isSoundMuted()) {
                 /*

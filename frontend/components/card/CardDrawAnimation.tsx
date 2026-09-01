@@ -23,9 +23,9 @@ type CardDrawAnimationProps = {
 
 type Phase = 'pack' | 'swipe';
 
-function getCardImage(prize: Prize) {
-  if (prize.image_url) return prize.image_url;
-  const raw = (prize.grade || prize.rarity || '').toUpperCase();
+function getCardImage(prize?: Prize | null) {
+  if (prize?.image_url) return prize.image_url;
+  const raw = (prize?.grade || prize?.rarity || '').toUpperCase();
   if (raw.includes('SSR') || raw.includes('超稀有')) return asset('/images/card/00001.webp');
   if (raw.includes('SR')) return asset('/images/card/00002.webp');
   if (raw.includes('R') || raw.includes('稀有')) return asset('/images/card/00003.webp');
@@ -35,8 +35,8 @@ function getCardImage(prize: Prize) {
 // 稀有度配色與 SSR 光效已移除 —— 卡片改成只顯示品項原圖，不加任何外框與疊層。
 
 /** 稀有度 → 揭曉音的級別。判斷順序與 getCardImage 一致（SSR 要先於 SR、SR 先於 R） */
-function tierOf(prize: Prize): CardTier {
-  const raw = (prize.grade || prize.rarity || '').toUpperCase();
+function tierOf(prize?: Prize | null): CardTier {
+  const raw = (prize?.grade || prize?.rarity || '').toUpperCase();
   if (raw.includes('SSR') || raw.includes('超稀有')) return 'ssr';
   if (raw.includes('SR')) return 'sr';
   if (raw.includes('R') || raw.includes('稀有')) return 'r';
@@ -224,10 +224,37 @@ export default function CardDrawAnimation({
   const [swipeIndex, setSwipeIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
+  /*
+   * 「新的一場演出」要在**這一次 render 就歸零**，不能等 useEffect。
+   *
+   * 原本是 `useEffect(..., [isOpen, prizes])`，effect 在 commit 之後才跑 ——
+   * isOpen 由 false 翻 true 的那一個 render，phase 還是上一場結束時的 'swipe'、
+   * swipeIndex 還停在上一場的最後一張。上一場十連（swipeIndex=9）、這一場單抽
+   * （prizes.length=1）時就會去讀 prizes[9] = undefined，整頁掛掉：
+   *   TypeError: undefined is not an object (evaluating 'e.image_url')
+   * （老闆 2026-09-01 回報，商品 761 [天井]プチュンオールスター）
+   *
+   * 這是 React 官方的「render 期依 prop 調整 state」寫法：setState 之後 React
+   * 會丟掉這次的輸出重跑，壞掉的畫面根本不會被 commit。
+   */
+  const [session, setSession] = useState<Prize[] | null>(null);
+  if (isOpen && session !== prizes) {
+    setSession(prizes);
+    setPhase('pack');
+    setSwipeIndex(0);
+    setIsLoading(true);
+  } else if (!isOpen && session !== null) {
+    setSession(null);
+  }
+
   // Responsive scale for swipe scene
   const swipeSceneRef = useRef<HTMLDivElement>(null);
   const [sceneDimW, setSceneDimW] = useState(DW);
   const s = sceneDimW / DW;
+
+  /* 保險用的夾範圍索引：上面的 render 期歸零已經擋掉已知的越界，
+     但這疊卡是靠索引在讀的，任何一條沒想到的路徑都不該讓整頁掛掉 */
+  const topIndex = prizes.length ? Math.min(Math.max(swipeIndex, 0), prizes.length - 1) : 0;
 
   /*
    * 整疊卡共用一個尺寸，由「目前最上面那張」的圖片比例決定。
@@ -237,7 +264,7 @@ export default function CardDrawAnimation({
    * 最上面那張的尺寸 —— 後排本來就幾乎全被手掌與前一張擋住，比例差一點看不出來。
    */
   const deckFit = useFittedBox(
-    prizes.length ? getCardImage(prizes[Math.min(swipeIndex, prizes.length - 1)]) : '',
+    prizes.length ? getCardImage(prizes[topIndex]) : '',
     CW * s,
     CH * s,
   );
@@ -254,16 +281,9 @@ export default function CardDrawAnimation({
 
   useEffect(() => {
     if (!isOpen) return;
-    setPhase('pack');
-    setSwipeIndex(0);
-    setIsLoading(true);
-  }, [isOpen, prizes]);
-
-  useEffect(() => {
-    if (!isOpen) return;
     const t = setTimeout(() => setIsLoading(false), 1200);
     return () => clearTimeout(t);
-  }, [isOpen]);
+  }, [isOpen, prizes]);
 
   /*
    * 音效（lib/cardPackSfx）：開包畫面全程鋪背景音樂；**多張才另外鋪醞釀底**——
@@ -283,7 +303,7 @@ export default function CardDrawAnimation({
   // 每張卡輪到最上面就是它的「揭曉」時刻，依稀有度分四級
   useEffect(() => {
     if (!isOpen || phase !== 'swipe') return;
-    const prize = prizes[swipeIndex];
+    const prize = prizes[topIndex];
     if (!prize) return;
     const tier = tierOf(prize);
     sfxRevealTier(tier);
@@ -293,18 +313,18 @@ export default function CardDrawAnimation({
       const t = setTimeout(() => setPackDucking(false), tier === 'ssr' ? 2400 : 1400);
       return () => clearTimeout(t);
     }
-  }, [isOpen, phase, swipeIndex, prizes]);
+  }, [isOpen, phase, topIndex, prizes]);
 
   const handleSwiped = useCallback(() => {
     sfxCardSlide();
-    const next = swipeIndex + 1;
+    const next = topIndex + 1;
     if (next >= prizes.length) {
       sfxPackFinale();
       onGoToWarehouse();
     } else {
       setSwipeIndex(next);
     }
-  }, [swipeIndex, prizes.length, onGoToWarehouse]);
+  }, [topIndex, prizes.length, onGoToWarehouse]);
 
   if (!isOpen) return null;
 
@@ -400,21 +420,23 @@ export default function CardDrawAnimation({
                   之前讓每張各自貼合自己的圖，結果後排的圖比較寬就整張超出手掌
                   輪廓露在外面，看起來像有張獎項圖跑到手的後面。 */}
               {[2, 1].map(depth => {
-                const idx = swipeIndex + depth;
+                const idx = topIndex + depth;
                 if (idx >= prizes.length) return null;
                 return <DepthCard key={`depth-${idx}`} prize={prizes[idx]} depth={depth} s={s} fit={deckFit} />;
               })}
 
               {/* Top draggable card */}
               <AnimatePresence>
-                <TopCard
-                  key={swipeIndex}
-                  prize={prizes[swipeIndex]}
-                  current={swipeIndex}
-                  onSwiped={handleSwiped}
-                  s={s}
-                  fit={deckFit}
-                />
+                {prizes[topIndex] && (
+                  <TopCard
+                    key={topIndex}
+                    prize={prizes[topIndex]}
+                    current={topIndex}
+                    onSwiped={handleSwiped}
+                    s={s}
+                    fit={deckFit}
+                  />
+                )}
               </AnimatePresence>
 
               {/* hand2 — in front of card, same position as charge screen */}

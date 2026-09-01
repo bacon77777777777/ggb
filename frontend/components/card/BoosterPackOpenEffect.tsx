@@ -170,6 +170,12 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
   }, [phase, tick]);
 
   const cancelCharge = useCallback((e: React.PointerEvent) => {
+    /*
+     * 感應區改成全螢幕之後，這個 handler 在 tearing／done 期間也還在 ——
+     * 沒有這道閘，撕開的當下再滑一下就會第二次觸發 triggerTear，
+     * onComplete 被叫兩次。以前卡包按鈕在 tearing 時整個被卸載，所以碰不到。
+     */
+    if (phase !== 'charging') return;
     const dx = e.clientX - pointerStartX.current;
     const dt = performance.now() - pointerStartTime.current;
     const vx = dx / Math.max(dt, 1) * 1000; // px/s
@@ -178,7 +184,6 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
       triggerTear();
       return;
     }
-    if (phase !== 'charging') return;
     cancelAnimationFrame(rafRef.current);
     endChargeCancel();           // 沒蓄滿：能量往下滑掉
     hapticIdx.current = 0;
@@ -289,28 +294,17 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
               )}
             </AnimatePresence>
 
-            <motion.button
-              type="button"
+            {/* 純視覺：按壓由下面那層全螢幕感應區負責（老闆 2026-09-01） */}
+            <motion.div
               style={{
                 display: 'block',
-                background: 'none', border: 'none', padding: 0,
-                cursor: 'pointer',
-                userSelect: 'none', touchAction: 'none',
+                userSelect: 'none',
                 WebkitUserSelect: 'none',
                 WebkitTouchCallout: 'none',
+                pointerEvents: 'none',
                 transform: `rotate(${PR}deg)`,
                 transformOrigin: 'center',
               } as React.CSSProperties}
-              onPointerDown={startCharge}
-              onPointerUp={cancelCharge}
-              onPointerCancel={() => {
-                // System interrupt (e.g. phone call) — cancel charge
-                if (phase !== 'charging') return;
-                cancelAnimationFrame(rafRef.current);
-                setCharge(0);
-                setPhase('idle');
-              }}
-              onContextMenu={e => e.preventDefault()}
               animate={
                 phase === 'charging'
                   ? { x: [-3 * s, 3 * s, -2.5 * s, 2.5 * s, 0] }
@@ -323,7 +317,7 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
               }
             >
               {packFace()}
-            </motion.button>
+            </motion.div>
           </motion.div>
         )}
 
@@ -387,6 +381,72 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
           WebkitUserSelect: 'none',
         } as React.CSSProperties}
       />
+
+      {/*
+        層 4：全螢幕感應區（老闆 2026-09-01，比照一番賞沈浸式撕紙）。
+
+        以前只有卡包本身可以按 —— 卡包在 393 寬的場景裡只佔 180px，
+        玩家得先瞄準畫面中間那一小塊才蓄得了力，按到旁邊完全沒反應。
+        現在按哪裡都算，卡包只負責演。
+
+        z-index 給 4：蓋過卡包與手（0~3），但仍在外層 SKIP（z-30）之下 ——
+        這個元件的根是 `position: relative` 且沒有 z-index，不會生出堆疊脈絡，
+        所以這裡的 4 是直接跟 SKIP 的 30 比大小的，SKIP 照樣按得到。
+      */}
+      <div
+        style={{
+          position: 'absolute', inset: 0, zIndex: 4,
+          cursor: 'pointer',
+          touchAction: 'none',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          WebkitTouchCallout: 'none',
+        } as React.CSSProperties}
+        onPointerDown={startCharge}
+        onPointerUp={cancelCharge}
+        onPointerCancel={() => {
+          // System interrupt (e.g. phone call) — cancel charge
+          if (phase !== 'charging') return;
+          cancelAnimationFrame(rafRef.current);
+          setCharge(0);
+          setPhase('idle');
+        }}
+        onContextMenu={e => e.preventDefault()}
+      />
+
+      {/*
+        操作提示。位置與樣式照抄一番賞沈浸式撕紙那行（老闆 2026-09-01）：
+        手指圖示 ＋ 一行帶陰影的白字，慢慢呼吸。
+
+        高度用 78% 不是沈浸式的 72%：這個場景的手掌是 490*s 寬、
+        從 230*s 一路蓋到約 640*s（1079×904 的圖等比縮放），
+        72% 會壓在手上；78% 剛好落在手下方、又還在 SKIP 之上。
+
+        放手沒蓄滿會退回 idle，提示就跟著回來 —— 沒撕開的人一定看得到指引。
+      */}
+      {phase === 'idle' && (
+        <motion.div
+          className="absolute left-1/2 flex flex-col items-center"
+          style={{ top: '78%', width: 200 * s, marginLeft: -100 * s, zIndex: 5, pointerEvents: 'none' }}
+          animate={{ opacity: [0.35, 1, 1, 0.35] }}
+          transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', times: [0, 0.25, 0.75, 1] }}
+        >
+          {/* 先壓下去、再往右滑 —— 兩種操作各演一次 */}
+          <motion.div
+            style={{ width: 52 * s, height: 52 * s, position: 'relative' }}
+            animate={{ x: [0, 0, 44 * s, 0], scale: [1, 0.88, 0.88, 1] }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', times: [0, 0.22, 0.68, 1] }}
+          >
+            <Image src={asset('/images/finger.png')} alt="" fill className="object-contain drop-shadow-md" unoptimized />
+          </motion.div>
+          <span
+            className="mt-1 whitespace-nowrap font-black text-white/90"
+            style={{ fontSize: 13 * s, letterSpacing: '0.1em', textShadow: '0 2px 6px rgba(0,0,0,0.7)' }}
+          >
+            按住或右滑撕開
+          </span>
+        </motion.div>
+      )}
 
       {/* 白色閃光 */}
       <AnimatePresence>
