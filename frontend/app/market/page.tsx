@@ -1,237 +1,561 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
-import { useFeatureGate } from '@/lib/useFeatureGate';
-import { useToast } from '@/components/ui/Toast';
-import { useAlert } from '@/components/ui/AlertDialog';
-import { useRequireLogin } from '@/hooks/useRequireLogin';
-import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
-import SimplePageHeader from '@/components/ui/SimplePageHeader';
-import { asset } from '@/lib/asset';
+import '../sell/market.css';
+import './exchange.css';
 
 /**
  * 交易所
  *
- * 玩家把倉庫裡還沒配送、而且是大賞的品項掛上來，賣掉換成 G 幣。
- * 跟「商城」不同 —— 那個像露天拍賣，收的是真錢、賣什麼都行。
+ * 玩家把倉庫裡還沒配送、賞等在白名單內的品項掛上來，賣掉換 G 幣。
+ * 跟「商城」不同 —— 那個像露天拍賣、收的是真錢、賣什麼都行。
  *
- * 這一頁原本只是一個轉址：`/market` 把人丟到 `/profile?tab=market`，
- * 而那裡只看得到「自己上架的東西」。也就是說買方這一側從來不存在 ——
- * 沒有地方逛，也沒有地方買。
+ * ── 2026-09-01 改版（老闆指定）──
+ * 原本這頁是 237 行的兩欄 grid：沒有搜尋、沒有篩選、沒有排序、寫死 limit 200、
+ * 沒有詳情頁，「我的上架」還要跳去 /profile?tab=market。老闆看過商城之後
+ * 指定「複製商城過來，我喜歡商城介面跟 UI 還有 UI 交互」，並定案：
+ *   ・整體介面、橘紅頂欄、瀑布卡、彈層手感 → 照搬
+ *   ・底部分頁不要五個那麼複雜 → 收成三個（逛街／我的上架／交易紀錄）
+ *   ・商品詳情獨立頁 → /market/<id>
+ *   ・沿用版型換主題色，保持 G 幣交易 → 見 exchange.css
  *
- * 所有驗證都在 DB 的 buy_listing 裡（餘額、重複購買、買自己的、狀態競態），
- * 這裡只負責把結果講清楚。前端擋不住直接打 API 的人。
+ * ⚠️ 版型走的是商城那一整套 CSS（app/sell/market.css，全部收斂在 .mk 之下），
+ * 這裡只輸出對應的 class。**不要把那些規則複製過來改**，
+ * 商城之後調版型這邊就跟著走鐘。配色與交易所特有的東西在 exchange.css。
+ *
+ * ⚠️ 這頁改成自己的底部分頁列，所以 /market 已從 MobileTabbar 的 mainTabPaths
+ * 移除（同商城 /sell）—— 兩排底欄疊在一起沒得看。離開靠頂欄的返回鍵。
+ *
+ * 所有驗證都在 DB（buy_listing／create_listing／cancel_listing 裡的餘額、
+ * 重複購買、買自己的、賞等白名單、價格上下限、狀態競態），前端擋不住直接打 API 的人。
  */
 
-type Listing = {
-  id: number;
-  price: number;
-  seller_id: string;
-  prize_name: string;
-  prize_level: string;
-  prize_image: string | null;
-  product_name: string;
-  seller_name: string;
-};
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureGate } from '@/lib/useFeatureGate';
+import { useRequireLogin } from '@/hooks/useRequireLogin';
+import { useListScrollMemory } from '@/lib/useListScrollMemory';
+import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
+import { asset } from '@/lib/asset';
+import PrizeCard from '@/components/market/PrizeCard';
+import { Sheet, Dialog, Toast, useMarketToast, useSheetRoute, gnum, ago } from '@/components/market/ui';
+import {
+  fetchFeed, fetchSettings, fetchMyListings, fetchMyDeals, fetchSellable,
+  createListing, cancelListing, levelAllowed,
+  PAGE_SIZE, SORTS,
+  type Listing, type MyListing, type Deal, type Sellable, type MarketSettings, type SortKey,
+} from './data';
 
-const FALLBACK_IMAGE = asset('/images/banner_defaulet.png');
+export const dynamic = 'force-dynamic';
+
+const FALLBACK = asset('/images/item_defaulet.webp');
+const HISTORY_KEY = 'ggb:market:searches';
+type Tab = 'market' | 'mine' | 'deals';
 
 export default function MarketPage() {
-  const [supabase] = useState(() => createClient());
-  const router = useRouter();
-  const { user, refreshProfile } = useAuth();
-  const { flags, isLoading: isFlagsLoading } = useFeatureFlags();
-  const { showToast } = useToast();
-  const { showAlert } = useAlert();
-  const requireLogin = useRequireLogin();
-
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [buyingId, setBuyingId] = useState<number | null>(null);
-
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      /*
-       * 讀的是 public_marketplace_listings 這個 view，不是直接查
-       * marketplace_listings 再 join 過去。draw_records 與 users 的 RLS
-       * 都是「只看得到自己的」，join 出來別人的上架會是一張沒有圖、
-       * 沒有名字、沒有賣家的空白卡片。view 只曝露逛街要用的欄位，
-       * 不含籤號、種子雜湊與賣家的其他資料。
-       */
-      const { data, error } = await supabase
-        .from('public_marketplace_listings')
-        .select('id, price, seller_id, seller_name, prize_name, prize_level, prize_image, product_name')
-        .order('created_at', { ascending: false })
-        .limit(200);
-
-      if (error) throw error;
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setListings(((data ?? []) as unknown as Array<any>).map((r) => ({
-        id: Number(r.id),
-        price: Number(r.price),
-        seller_id: String(r.seller_id),
-        prize_name: r.prize_name ?? '未知品項',
-        prize_level: r.prize_level ?? '',
-        prize_image: r.prize_image ?? null,
-        product_name: r.product_name ?? '',
-        seller_name: r.seller_name ?? '玩家',
-      })));
-    } catch {
-      showToast('讀取失敗，請稍後再試', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [supabase, showToast]);
-
-  useEffect(() => { load(); }, [load]);
-
-  // 關閉或維護中直接 404（見 lib/useFeatureGate）。
-  // 原本是 router.replace('/')，頁面會先閃一下再彈回首頁，體感很差
   useFeatureGate('market');
+  const router = useRouter();
+  const params = useSearchParams();
+  const { user, refreshProfile } = useAuth();
+  const requireLogin = useRequireLogin();
+  const { text: toastText, show: toast } = useMarketToast();
+  const { view, open: openSheet, close: closeSheet } = useSheetRoute();
+  const restoreCount = useRef(0);
 
-  const doBuy = async (item: Listing) => {
-    setBuyingId(item.id);
+  const tab = ((params?.get('tab') as Tab) || 'market');
+  const setTab = (t: Tab) => {
+    // 分頁用 replace（不進 history）：返回鍵是拿來關彈層、離開交易所的，
+    // 不該變成「一路退回逛過的每個分頁」
+    router.replace(t === 'market' ? '/market' : `/market?tab=${t}`, { scroll: false });
+  };
+
+  const [settings, setSettings] = useState<MarketSettings | null>(null);
+
+  /* ── 逛街 ── */
+  const [search, setSearch] = useState('');
+  const [level, setLevel] = useState('');
+  const [sort, setSort] = useState<SortKey>('new');
+  const [items, setItems] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [done, setDone] = useState(false);
+  const sentinel = useRef<HTMLDivElement | null>(null);
+
+  /*
+   * 從詳情頁返回時捲回原本看到的位置（老闆 2026-08-30：每一頁都要有）。
+   * count 一定要給 —— 這頁是無限捲動，只還原位置的話返回時頁面只剩第一頁那麼高，
+   * 捲動位置會被夾在那個高度的底部（restoreCount 在 loadFeed 首次載入時用掉）。
+   */
+  const rememberScroll = useListScrollMemory('ggb:market:view', {
+    count: items.length,
+    onRestoreCount: (n) => { restoreCount.current = n; },
+  });
+
+  /* ── 我的 ── */
+  const [mine, setMine] = useState<MyListing[]>([]);
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [sellable, setSellable] = useState<Sellable[]>([]);
+  const [pick, setPick] = useState<number | null>(null);
+  const [priceInput, setPriceInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [confirmOff, setConfirmOff] = useState<MyListing | null>(null);
+
+  /* ── 搜尋紀錄 ── */
+  const [history, setHistory] = useState<string[]>([]);
+  const [draft, setDraft] = useState('');
+
+  useEffect(() => {
+    fetchSettings().then(setSettings);
     try {
-      const { data, error } = await supabase.rpc('buy_listing', { p_listing_id: item.id });
-      if (error) throw error;
-      const res = data as { success: boolean; message: string };
-      if (!res?.success) {
-        showToast(res?.message || '購買失敗', 'error');
-        // 失敗多半是被別人先買走或賣家下架了，重讀一次讓畫面對上現況
-        load();
-        return;
-      }
-      showToast('買到了！東西已經進倉庫', 'success');
-      refreshProfile?.();
-      load();
+      const raw = localStorage.getItem(HISTORY_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(arr)) setHistory(arr.map(String).slice(0, 10));
+    } catch { /* 隱私模式讀不到 localStorage，沒有搜尋紀錄而已 */ }
+  }, []);
+
+  const loadFeed = useCallback(async (reset: boolean) => {
+    if (reset) { setLoading(true); setDone(false); } else { setLoadingMore(true); }
+    try {
+      const offset = reset ? 0 : items.length;
+      // 返回時一次補回原本已經捲出來的筆數，不然位置接不回去
+      const limit = reset && restoreCount.current > PAGE_SIZE ? restoreCount.current : PAGE_SIZE;
+      if (reset) restoreCount.current = 0;
+      const rows = await fetchFeed({ search, level, sort, offset, limit });
+      setItems(prev => (reset ? rows : [...prev, ...rows]));
+      if (rows.length < limit) setDone(true);
     } catch {
-      showToast('購買失敗，請稍後再試', 'error');
+      toast('讀取失敗，請稍後再試');
     } finally {
-      setBuyingId(null);
+      setLoading(false);
+      setLoadingMore(false);
     }
+    // items.length 故意不進相依：它變動的唯一原因就是這支自己載進來的資料
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, level, sort]);
+
+  useEffect(() => { loadFeed(true); }, [loadFeed]);
+
+  /* 捲到底自動接下一頁。IntersectionObserver 比監聽 scroll 省，
+     而且不用自己算「離底部還有多少」 */
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || done || loading || tab !== 'market') return;
+    const io = new IntersectionObserver((es) => {
+      if (es[0]?.isIntersecting && !loadingMore) loadFeed(false);
+    }, { rootMargin: '400px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [done, loading, loadingMore, loadFeed, tab]);
+
+  const loadMine = useCallback(async () => {
+    if (!user) { setMine([]); setSellable([]); return; }
+    try {
+      const [ls, sa] = await Promise.all([fetchMyListings(user.id), fetchSellable(user.id)]);
+      setMine(ls);
+      setSellable(sa);
+    } catch { toast('讀取我的上架失敗'); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  const loadDeals = useCallback(async () => {
+    if (!user) { setDeals([]); return; }
+    try { setDeals(await fetchMyDeals()); } catch { toast('讀取交易紀錄失敗'); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  useEffect(() => { if (tab === 'mine') loadMine(); }, [tab, loadMine]);
+  useEffect(() => { if (tab === 'deals') loadDeals(); }, [tab, loadDeals]);
+
+  /** 倉庫裡賞等過得了白名單的那些。DB 端一樣會擋，這裡只是不要列出按了會失敗的東西 */
+  const eligible = useMemo(
+    () => (settings ? sellable.filter(s => levelAllowed(s.prizeLevel, settings.allowedLevels)) : []),
+    [sellable, settings],
+  );
+
+  const submitSearch = (q: string) => {
+    const v = q.trim();
+    setSearch(v);
+    if (v) {
+      const next = [v, ...history.filter(h => h !== v)].slice(0, 10);
+      setHistory(next);
+      try { localStorage.setItem(HISTORY_KEY, JSON.stringify(next)); } catch { /* 存不了就算了 */ }
+    }
+    closeSheet();
   };
 
-  const handleBuy = (item: Listing) => {
-    if (!user) { requireLogin(); return; }
-    if (item.seller_id === user.id) return;
-
-    showAlert({
-      type: 'confirm',
-      title: '確定要買嗎？',
-      message: `${item.prize_name}\n付出 ${item.price.toLocaleString()} G 幣。買到之後東西直接進你的倉庫，可以申請配送或再上架。交易完成不能反悔。`,
-      confirmText: '確定購買',
-      onConfirm: () => { void doBuy(item); },
-    });
+  const doList = async () => {
+    if (!requireLogin('登入後就可以把倉庫裡的東西掛上交易所')) return;
+    if (!pick) { toast('先選一件要上架的東西'); return; }
+    const p = Math.round(Number(priceInput));
+    if (!Number.isFinite(p) || p <= 0) { toast('填一個售價'); return; }
+    if (settings && (p < settings.minPrice || p > settings.maxPrice)) {
+      toast(`售價要在 ${gnum(settings.minPrice)} ~ ${gnum(settings.maxPrice)} G 之間`);
+      return;
+    }
+    setBusy(true);
+    const res = await createListing(pick, p);
+    setBusy(false);
+    if (!res.success) { toast(res.message || '上架失敗'); return; }
+    setPick(null);
+    setPriceInput('');
+    closeSheet();
+    toast('已經掛上去了');
+    loadMine();
+    loadFeed(true);
   };
 
-  if (isLoading) return <ProductLoadingScreen />;
+  const doCancel = async (item: MyListing) => {
+    setBusy(true);
+    const res = await cancelListing(item.id);
+    setBusy(false);
+    setConfirmOff(null);
+    if (!res.success) { toast(res.message || '下架失敗'); return; }
+    toast('已下架，東西回到你的倉庫');
+    loadMine();
+    loadFeed(true);
+    refreshProfile?.();
+  };
 
-  // safe-header-offset：SimplePageHeader 是 fixed，內容要自己讓開頭部高度
+  /* ── 版面 ── */
+
+  const heroItems = items.slice(0, 3);
+  const [heroIdx, setHeroIdx] = useState(0);
+  useEffect(() => {
+    if (heroItems.length < 2 || tab !== 'market') return;
+    const t = setInterval(() => setHeroIdx(i => (i + 1) % heroItems.length), 3600);
+    return () => clearInterval(t);
+  }, [heroItems.length, tab]);
+
+  const levelChips = useMemo(
+    () => ['', ...(settings?.allowedLevels ?? [])],
+    [settings],
+  );
+
+  const goItem = (id: number) => {
+    rememberScroll();
+    router.push(`/market/${id}`);
+  };
+
+  if (loading && items.length === 0 && tab === 'market' && !settings) return <ProductLoadingScreen />;
+
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-28 safe-header-offset">
-      <SimplePageHeader title="交易所" onBack={() => router.back()} />
-
-      <div className="max-w-3xl mx-auto px-4 pt-3">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="text-[13px] font-bold leading-relaxed text-neutral-400">
-            玩家把倉庫裡的大賞掛上來，買到直接進你的倉庫。
-          </p>
-          <Link
-            href="/profile?tab=market"
-            className="shrink-0 text-[13px] font-black text-primary underline underline-offset-2"
-          >
-            我的上架
-          </Link>
+    <div className="mk mallroot gx">
+      <div className="hdr">
+        <div className="srch">
+          <button className="hicon hback" onClick={() => router.push('/')} aria-label="返回">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
+          <button className="sbox" onClick={() => { setDraft(search); openSheet('search'); }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BFBFBF" strokeWidth="2.4">
+              <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" />
+            </svg>
+            <span className="sboxt">{search || '搜尋獎項、作品名稱'}</span>
+          </button>
+          <button className="hicon" onClick={() => setTab('mine')} aria-label="我的上架">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round">
+              <path d="M4 8h16v11a1 1 0 01-1 1H5a1 1 0 01-1-1z" /><path d="M4 8l2-4h12l2 4" /><path d="M9.5 12h5" />
+            </svg>
+          </button>
         </div>
+      </div>
 
-        {listings.length === 0 ? (
-          <div className="py-24 text-center">
-            <p className="text-sm font-black text-neutral-400">目前沒有人上架</p>
-            <p className="mt-1 text-[13px] text-neutral-400">
-              倉庫裡還沒配送的大賞可以掛上來換 G 幣。
-            </p>
-            <Link
-              href="/profile"
-              className="mt-5 inline-flex h-10 items-center rounded-xl bg-primary px-5 text-sm font-black text-white"
-            >
-              去我的倉庫看看
-            </Link>
+      <div className="screen">
+        {tab === 'market' && (
+          <>
+            {heroItems.length > 0 && (
+              <div className="heroC">
+                {heroItems.map((it, i) => (
+                  <button key={it.id} className={`hslide${i === heroIdx ? ' on' : ''}`} onClick={() => goItem(it.id)}>
+                    <span className="hart" style={{ background: '#F7F7F7', position: 'relative' }}>
+                      <Image src={it.prizeImage || FALLBACK} alt="" fill sizes="100px" className="object-contain" unoptimized />
+                    </span>
+                    <span className="htx">
+                      <h3>{it.prizeName}</h3>
+                      <p>{it.sellerName} · {ago(it.createdAt)}</p>
+                      <span className="hprice">{gnum(it.price)} G</span>
+                    </span>
+                  </button>
+                ))}
+                <span className="hdots">
+                  {heroItems.map((_, i) => <i key={i} className={i === heroIdx ? 'on' : ''} />)}
+                </span>
+              </div>
+            )}
+
+            <div className="lvrow">
+              {levelChips.map(lv => (
+                <button key={lv || 'all'} aria-pressed={level === lv} onClick={() => setLevel(lv)}>
+                  {lv || '全部賞等'}
+                </button>
+              ))}
+            </div>
+
+            <div className="sortrow">
+              {SORTS.map(s => (
+                <button key={s.key} aria-pressed={sort === s.key} onClick={() => setSort(s.key)}>{s.label}</button>
+              ))}
+              <span className="cnt">{items.length} 件{done ? '' : '＋'}</span>
+            </div>
+
+            {loading ? (
+              <ProductLoadingScreen />
+            ) : items.length === 0 ? (
+              <div className="empty">
+                {search || level ? '沒有符合條件的上架' : '目前沒有人上架'}
+                <div style={{ marginTop: 14 }}>
+                  {search || level ? (
+                    <button className="ghostbtn" onClick={() => { setSearch(''); setLevel(''); }}>清除條件</button>
+                  ) : (
+                    <button className="ghostbtn" onClick={() => setTab('mine')}>去掛一件上來</button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="grid">
+                  {items.map(it => <PrizeCard key={it.id} item={it} onClick={() => goItem(it.id)} />)}
+                </div>
+                <div ref={sentinel} />
+                {loadingMore && <div className="empty" style={{ padding: '24px 0' }}>載入中…</div>}
+                {done && items.length > PAGE_SIZE && <div className="empty" style={{ padding: '24px 0' }}>已經是全部了</div>}
+              </>
+            )}
+          </>
+        )}
+
+        {tab === 'mine' && (
+          <div style={{ padding: '8px 10px 0' }}>
+            <div className="dban" style={{ margin: '0 0 10px' }}>
+              <div>
+                <b>倉庫裡有 {eligible.length} 件可以掛上來</b>
+                <small>
+                  {settings
+                    ? `開放 ${settings.allowedLevels.join('、')}，售價 ${gnum(settings.minPrice)}～${gnum(settings.maxPrice)} G，成交收 ${settings.feePercent}% 手續費`
+                    : '載入規則中…'}
+                </small>
+              </div>
+              <button className="go" onClick={() => { if (requireLogin('登入後就可以上架')) openSheet('sell'); }}>去上架</button>
+            </div>
+
+            {!user ? (
+              <div className="empty">登入之後才看得到自己的上架</div>
+            ) : mine.length === 0 ? (
+              <div className="empty">你還沒有上架任何東西</div>
+            ) : (
+              mine.map(m => (
+                <div className="mkrow" key={m.id}>
+                  <span className="th">
+                    <Image src={m.prizeImage || FALLBACK} alt="" width={62} height={62} className="object-contain" unoptimized />
+                  </span>
+                  <span className="tx">
+                    <b>{m.prizeLevel ? `${m.prizeLevel} ` : ''}{m.prizeName}</b>
+                    <span>{m.productName}</span>
+                    <span>{ago(m.createdAt)}上架 · {m.status === 'active' ? '架上' : m.status === 'sold' ? '已賣出' : '已下架'}</span>
+                  </span>
+                  <span className="rt">
+                    <span className={`p${m.status === 'active' ? '' : ' minus'}`}>{gnum(m.price)} G</span>
+                    {m.status === 'active' && (
+                      <button className="act danger" onClick={() => setConfirmOff(m)}>下架</button>
+                    )}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {listings.map((item) => {
-              const isMine = user?.id === item.seller_id;
-              return (
-                <div
-                  key={item.id}
-                  className="flex flex-col overflow-hidden rounded-xl border border-neutral-100 bg-white dark:border-neutral-800 dark:bg-neutral-900"
-                >
-                  <div className="relative aspect-square bg-neutral-100 dark:bg-neutral-800">
-                    <Image
-                      src={item.prize_image || FALLBACK_IMAGE}
-                      alt=""
-                      fill
-                      sizes="(max-width: 768px) 50vw, 240px"
-                      className="object-cover"
-                      unoptimized
-                    />
-                    {item.prize_level && (
-                      <span className="absolute left-0 top-0 rounded-br-lg bg-primary px-2 py-0.5 text-[11px] font-black text-white">
-                        {item.prize_level}
+        )}
+
+        {tab === 'deals' && (
+          <div style={{ padding: '8px 10px 0' }}>
+            {!user ? (
+              <div className="empty">登入之後才看得到自己的交易紀錄</div>
+            ) : deals.length === 0 ? (
+              <div className="empty">還沒有成交紀錄</div>
+            ) : (
+              deals.map(d => (
+                <div className="mkrow" key={`${d.side}-${d.id}`}>
+                  <span className="th">
+                    <Image src={d.prizeImage || FALLBACK} alt="" width={62} height={62} className="object-contain" unoptimized />
+                  </span>
+                  <span className="tx">
+                    <b>{d.prizeLevel ? `${d.prizeLevel} ` : ''}{d.prizeName}</b>
+                    <span>{d.productName}</span>
+                    <span>
+                      {d.side === 'buy' ? `向 ${d.counterparty} 買` : `賣給 ${d.counterparty}`} · {ago(d.createdAt)}
+                    </span>
+                  </span>
+                  <span className="rt">
+                    {/* 賣出看的是「實收」不是售價 —— 手續費已經扣掉，寫售價會對不上錢包 */}
+                    <span className={`p${d.side === 'buy' ? ' minus' : ''}`}>
+                      {d.side === 'buy' ? `-${gnum(d.price)}` : `+${gnum(d.sellerReceive)}`} G
+                    </span>
+                    {d.side === 'sell' && d.fee > 0 && (
+                      <span style={{ display: 'block', fontSize: 11, color: 'var(--sub)', marginTop: 3 }}>
+                        手續費 {gnum(d.fee)}
                       </span>
                     )}
-                  </div>
-
-                  <div className="flex flex-1 flex-col p-2.5">
-                    <h3 className="line-clamp-2 text-[13px] font-bold leading-snug text-neutral-900 dark:text-white">
-                      {item.prize_name}
-                    </h3>
-                    {item.product_name && (
-                      <p className="mt-0.5 line-clamp-1 text-[11px] text-neutral-400">{item.product_name}</p>
-                    )}
-
-                    <div className="mt-auto pt-2">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-[15px] font-black tabular-nums text-primary">
-                          {item.price.toLocaleString()}
-                        </span>
-                        <span className="text-[11px] font-bold text-neutral-400">G 幣</span>
-                      </div>
-                      <p className="mt-0.5 line-clamp-1 text-[11px] text-neutral-400">
-                        賣家：{item.seller_name}
-                      </p>
-
-                      {isMine ? (
-                        // 自己的東西不給買，但也不要藏起來 —— 看得到才知道自己掛了什麼價
-                        <div className="mt-2 flex h-9 items-center justify-center rounded-lg bg-neutral-100 text-[13px] font-black text-neutral-400 dark:bg-neutral-800">
-                          你上架的
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleBuy(item)}
-                          disabled={buyingId !== null}
-                          className="mt-2 h-9 w-full rounded-lg bg-primary text-[13px] font-black text-white transition-opacity disabled:opacity-50"
-                        >
-                          {buyingId === item.id ? '購買中…' : '購買'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                  </span>
                 </div>
-              );
-            })}
+              ))
+            )}
           </div>
         )}
       </div>
+
+      <nav className="tabbar" role="tablist">
+        <button role="tab" aria-selected={tab === 'market'} onClick={() => setTab('market')}>
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <circle cx="11" cy="11" r="7" /><path d="M20 20l-4.2-4.2" />
+          </svg>逛街
+        </button>
+        <button role="tab" aria-selected={tab === 'mine'} onClick={() => setTab('mine')}>
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M4 8h16v11a1 1 0 01-1 1H5a1 1 0 01-1-1z" /><path d="M4 8l2-4h12l2 4" /><path d="M9.5 12h5" />
+          </svg>我的上架
+        </button>
+        <button role="tab" aria-selected={tab === 'deals'} onClick={() => setTab('deals')}>
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M4 7h13l-2.5-2.5M20 17H7l2.5 2.5" />
+          </svg>交易紀錄
+        </button>
+      </nav>
+
+      {/* ── 搜尋（照商城的搜尋頁：膠囊輸入框＋搜尋紀錄）── */}
+      <Sheet open={view === 'search'} title="搜尋" onClose={closeSheet} full>
+        <div className="msrchbar">
+          <button className="hicon" style={{ color: 'var(--txt)' }} onClick={closeSheet} aria-label="返回">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
+          <div className="msrch">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#BFBFBF" strokeWidth="2.4">
+              <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" />
+            </svg>
+            <input
+              autoFocus
+              value={draft}
+              placeholder="搜尋獎項、作品名稱"
+              onChange={e => setDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') submitSearch(draft); }}
+            />
+            <button className="sgo2" onClick={() => submitSearch(draft)}>搜尋</button>
+          </div>
+        </div>
+        <div style={{ padding: '0 14px' }}>
+          {history.length > 0 && (
+            <>
+              <div className="kwsec">搜尋紀錄</div>
+              {history.map(h => (
+                <div className="mhist" key={h}>
+                  <button className="w" onClick={() => submitSearch(h)}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BFBFBF" strokeWidth="2">
+                      <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
+                    </svg>
+                    {h}
+                  </button>
+                  <button
+                    className="del"
+                    onClick={() => {
+                      const next = history.filter(x => x !== h);
+                      setHistory(next);
+                      try { localStorage.setItem(HISTORY_KEY, JSON.stringify(next)); } catch { /* 存不了就算了 */ }
+                    }}
+                  >刪除</button>
+                </div>
+              ))}
+            </>
+          )}
+          <div className="kwsec">依賞等找</div>
+          {(settings?.allowedLevels ?? []).map(lv => (
+            <button className="kwrow" key={lv} onClick={() => { setLevel(lv); setSearch(''); closeSheet(); }}>
+              {lv}
+            </button>
+          ))}
+        </div>
+      </Sheet>
+
+      {/* ── 上架 ── */}
+      <Sheet
+        open={view === 'sell'}
+        title="上架到交易所"
+        onClose={closeSheet}
+        footer={
+          <button className="buy" onClick={doList} disabled={busy}>
+            {busy ? '上架中…' : '確認上架'}
+          </button>
+        }
+      >
+        <div className="blk first">
+          <div className="secttl">選一件要上架的</div>
+          {eligible.length === 0 ? (
+            <p className="hint">
+              倉庫裡沒有可以上架的東西。只有<b>還沒申請配送</b>、而且賞等在
+              {settings ? `「${settings.allowedLevels.join('、')}」` : '白名單'}內的品項可以掛上來
+              （抽籤販售的中籤品、還沒到貨的預購不行）。
+            </p>
+          ) : (
+            eligible.map(s => (
+              <button
+                key={s.drawRecordId}
+                className="pickrow"
+                aria-pressed={pick === s.drawRecordId}
+                onClick={() => setPick(s.drawRecordId)}
+              >
+                <span className="ck" />
+                <span className="th" style={{ width: 48, height: 48, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: '#F2F2F2' }}>
+                  <Image src={s.prizeImage || FALLBACK} alt="" width={48} height={48} className="object-contain" unoptimized />
+                </span>
+                <span className="tx" style={{ flex: 1, minWidth: 0 }}>
+                  <b style={{ display: 'block', fontSize: 13.5, fontWeight: 700 }}>
+                    {s.prizeLevel ? `${s.prizeLevel} ` : ''}{s.prizeName}
+                  </b>
+                  <span style={{ display: 'block', fontSize: 11.5, color: 'var(--sub)', marginTop: 3 }}>
+                    {s.productName}{s.ticketNumber ? ` · #${s.ticketNumber}` : ''}
+                  </span>
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+
+        <div className="blk">
+          <div className="secttl">開價</div>
+          <div className="gin">
+            <input
+              type="number"
+              inputMode="numeric"
+              placeholder="0"
+              value={priceInput}
+              onChange={e => setPriceInput(e.target.value)}
+            />
+            <span className="u">G</span>
+          </div>
+          {settings && (
+            <p className="hint">
+              可填 {gnum(settings.minPrice)} ~ {gnum(settings.maxPrice)} G。成交時平台收 {settings.feePercent}% 手續費，
+              你實際拿到 <b>{gnum(Math.max(0, Math.round(Number(priceInput) || 0) - Math.floor((Number(priceInput) || 0) * settings.feePercent / 100)))} G</b>。
+            </p>
+          )}
+          <p className="hint">
+            掛上去之後這件東西會鎖在架上，不能申請配送也不能分解 —— 想拿回來就先下架。
+          </p>
+        </div>
+      </Sheet>
+
+      <Dialog
+        open={!!confirmOff}
+        title="確定要下架嗎？"
+        desc={confirmOff ? `${confirmOff.prizeName} 會回到你的倉庫，之後可以再上架、申請配送或分解。` : ''}
+        confirmText="確定下架"
+        busy={busy}
+        onCancel={() => setConfirmOff(null)}
+        onConfirm={() => confirmOff && doCancel(confirmOff)}
+      />
+
+      <Toast text={toastText} />
     </div>
   );
 }

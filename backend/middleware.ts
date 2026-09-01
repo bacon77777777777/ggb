@@ -152,7 +152,10 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string | string[] }>
   { prefix: '/suppliers',           permission: 'suppliers' },
   { prefix: '/categories',          permission: 'categories' },
   { prefix: '/coupons',             permission: 'coupons' },
-  { prefix: '/marketplace',         permission: 'marketplace' },
+  // 交易所（三頁）。長前綴優先比對，所以子頁一定拿到自己的權限，不會落到 /marketplace 的保底
+  { prefix: '/marketplace/transactions', permission: 'marketplace_transactions' },
+  { prefix: '/marketplace/settings',     permission: 'marketplace_settings' },
+  { prefix: '/marketplace',              permission: 'marketplace' },
   // 系統設定 (specific rules before /settings catch-all)
   { prefix: '/users',               permission: 'users' },
   { prefix: '/banners',             permission: 'banners' },

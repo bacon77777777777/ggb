@@ -338,7 +338,7 @@ function NavbarInner() {
     if (pathname === '/forgot-password') return '忘記密碼';
     if (pathname === '/update-password') return '重置密碼';
     if (pathname === '/exchange') return '交換';
-    if (pathname === '/market') return '交換';
+    if (pathname === '/market') return '交易所';
     if (pathname === '/ranking') return '排行榜';
     // 商品名撈到前先留空，不要先顯示「公平性驗證」再跳成商品名
     if (pathname.startsWith('/fairness')) return productName || '';

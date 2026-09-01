@@ -605,6 +605,8 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/refund-requests': 'header_refunds',
     '/coupons': 'coupons',
     '/marketplace': 'marketplace',
+    '/marketplace/transactions': 'marketplace_transactions',
+    '/marketplace/settings': 'marketplace_settings',
     // 系統設定
     '/users': 'users',
     '/referrals': 'referrals',
@@ -810,7 +812,9 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         id: 'marketplace',
         title: '交易所',
         items: [
-          { name: '交易所商品管理', path: '/marketplace', icon: IconMarketplace },
+          { name: '交易所品項管理', path: '/marketplace', icon: IconMarketplace },
+          { name: '交易紀錄', path: '/marketplace/transactions', icon: IconReports },
+          { name: '交易所設定', path: '/marketplace/settings', icon: IconSettings },
         ],
       },
       {

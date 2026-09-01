@@ -1,14 +1,31 @@
 'use client'
 
-import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, MemberNo } from '@/components'
+/**
+ * 交易所品項管理
+ *
+ * 交易所＝玩家把倉庫裡還沒配送的賞掛上來，用 G 幣賣給別的玩家（跟商城收真錢不同）。
+ * 這頁只管「架上的東西」；成交金流看「交易紀錄」，規則看「交易所設定」。
+ *
+ * 2026-09-01 重寫：原本這頁是手刻 <table>、手刻按鈕、全部錯誤只 console.error，
+ * 而且 FilterTags 上那顆「狀態：全部」永遠在、狀態卻**沒有任何地方能切換**
+ * —— 篩選功能等於不存在。現在整頁改用後台既有元件（DataTable／SearchToolbar／
+ * ActionMenu／BulkActionBar／useToast）。
+ *
+ * 測試工具（插入假資料／清除市集）已移到「交易所設定 → 測試工具」——
+ * 那兩顆是不可逆操作，不該和日常審核並排在同一排。
+ */
+
+import { useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
+import { AdminLayout, PageCard, SearchToolbar, StatsCard, DataTable, MemberNo, FilterTags } from '@/components'
+import type { Column } from '@/components'
+import { Badge, Button, ActionMenu } from '@/components/ui'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import { useToast } from '@/contexts/ToastContext'
 import { formatDateTime } from '@/utils/dateFormat'
-import { useEffect, useMemo, useState } from 'react'
-import { TableSkeleton } from '@/components/ui/TableSkeleton'
-import { TableEmpty } from '@/components/ui/EmptyState'
 
-interface MarketplaceListing {
+interface Listing {
   id: number
   price: number
   status: 'active' | 'sold' | 'cancelled'
@@ -18,388 +35,344 @@ interface MarketplaceListing {
   seller_name: string
   seller_email: string
   seller_member_no: number | null
+  seller_is_bot: boolean
   product_name: string
+  product_type: string
   prize_name: string
   prize_level: string
+  prize_image: string | null
+  ticket_number: number | null
 }
 
 type StatusFilter = 'all' | 'active' | 'sold' | 'cancelled'
+type BotFilter = 'real' | 'all' | 'bot'
 
-export default function MarketplaceAdminPage() {
+const STATUS_LABEL: Record<Listing['status'], string> = {
+  active: '上架中',
+  sold: '已售出',
+  cancelled: '已下架',
+}
+const STATUS_VARIANT: Record<Listing['status'], 'success' | 'info' | 'default'> = {
+  active: 'success',
+  sold: 'info',
+  cancelled: 'default',
+}
+
+export default function MarketplaceListingsPage() {
   const { confirm, dialogProps } = useConfirmDialog()
-  const [listings, setListings] = useState<MarketplaceListing[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const { toast } = useToast()
+
+  const [listings, setListings] = useState<Listing[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const [sortField, setSortField] = useState<string>('created_at')
+  const [botFilter, setBotFilter] = useState<BotFilter>('all')
+  const [sortField, setSortField] = useState('created_at')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
-  const [isClearing, setIsClearing] = useState(false)
-  const [isSeeding, setIsSeeding] = useState(false)
+  const [density, setDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact')
+  const [selectedIds, setSelectedIds] = useState<Set<number | string>>(new Set())
+  const [busy, setBusy] = useState(false)
 
   const fetchListings = async () => {
     try {
       setIsLoading(true)
-      const res = await fetch('/api/admin/marketplace/listings', { method: 'GET', credentials: 'include' })
+      const res = await fetch('/api/admin/marketplace/listings', { credentials: 'include' })
       if (!res.ok) {
         const data = await res.json().catch(() => null)
-        throw new Error(data?.error || res.statusText || '載入失敗')
+        throw new Error(data?.error || '載入失敗')
       }
-
-      const data = (await res.json()) as any[]
-      const mapped: MarketplaceListing[] = (data || []).map((row) => ({
-        id: row.id,
-        price: row.price,
-        status: row.status,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
-        seller_id: row.seller?.id || row.seller_id,
-        seller_name: row.seller?.name || '未知會員',
-        seller_email: row.seller?.email || '',
-        seller_member_no: row.seller?.member_no ?? null,
-        product_name: row.draw_records?.products?.name || '未知商品',
-        prize_name: row.draw_records?.product_prizes?.name || '未知獎項',
-        prize_level: row.draw_records?.product_prizes?.level || '?'
-      }))
-
-      setListings(mapped)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rows = (await res.json()) as any[]
+      setListings((rows || []).map((r) => ({
+        id: r.id,
+        price: r.price,
+        status: r.status,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+        seller_id: r.seller?.id || r.seller_id,
+        seller_name: r.seller?.name || '未知會員',
+        seller_email: r.seller?.email || '',
+        seller_member_no: r.seller?.member_no ?? null,
+        seller_is_bot: !!r.seller?.is_bot,
+        product_name: r.draw_records?.products?.name || '未知商品',
+        product_type: r.draw_records?.products?.type || '',
+        prize_name: r.draw_records?.product_prizes?.name || '未知獎項',
+        prize_level: r.draw_records?.product_prizes?.level || '',
+        prize_image: r.draw_records?.product_prizes?.image_url || null,
+        ticket_number: r.draw_records?.ticket_number ?? null,
+      })))
     } catch (e) {
-      console.error('Unexpected error fetching marketplace listings:', e)
+      toast(e instanceof Error ? e.message : '載入失敗', 'error')
     } finally {
       setIsLoading(false)
     }
   }
 
-  useEffect(() => {
-    fetchListings()
-  }, [])
+  useEffect(() => { fetchListings() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSort = (field: string) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortField(field)
-      setSortDirection('asc')
-    }
+    if (sortField === field) setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    else { setSortField(field); setSortDirection('asc') }
   }
 
-  const handleForceCancel = (listing: MarketplaceListing) => {
+  /** 強制下架一筆。走 cancel_listing（跟玩家自己下架同一支），獎品會退回賣家倉庫 */
+  const cancelOne = async (item: Listing) => {
+    const res = await fetch('/api/admin/marketplace/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ listingId: item.id, sellerId: item.seller_id }),
+    })
+    const data = await res.json().catch(() => null)
+    if (!res.ok || data?.success === false) throw new Error(data?.message || data?.error || '下架失敗')
+    return true
+  }
+
+  const handleForceCancel = (item: Listing) => {
     confirm({
       title: '強制下架',
-      message: `確定要強制下架這筆上架嗎？\n${listing.prize_level}賞 ${listing.prize_name}｜售價：${listing.price} G`,
+      message: `${item.prize_level} ${item.prize_name}｜售價 ${item.price.toLocaleString()} G\n下架後獎品退回賣家倉庫，賣家可以重新上架或申請配送。`,
       type: 'danger',
       onConfirm: async () => {
         try {
-          const res = await fetch('/api/admin/marketplace/cancel', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ listingId: listing.id, sellerId: listing.seller_id }),
-          })
-          if (!res.ok) { console.error('下架失敗'); return }
-          const data = await res.json().catch(() => null)
-          if (data?.success) {
-            setListings((prev) => prev.map((item) => item.id === listing.id ? { ...item, status: 'cancelled' } : item))
-          }
+          await cancelOne(item)
+          setListings(prev => prev.map(x => x.id === item.id ? { ...x, status: 'cancelled' } : x))
+          toast('已強制下架', 'success')
         } catch (e) {
-          console.error('Unexpected error cancelling listing:', e)
+          toast(e instanceof Error ? e.message : '下架失敗', 'error')
         }
       },
     })
   }
 
-  const handleClearTestData = () => {
+  const handleBulkCancel = () => {
+    const targets = listings.filter(x => selectedIds.has(x.id) && x.status === 'active')
+    if (targets.length === 0) { toast('選取的項目裡沒有上架中的品項', 'warning'); return }
     confirm({
-      title: '清空市集資料',
-      message: '此操作會清空所有市集上架、交易紀錄與回收池資料，僅建議在測試環境使用，確定要繼續嗎？',
+      title: `強制下架 ${targets.length} 筆`,
+      message: '下架後獎品全部退回各自賣家的倉庫。此操作會逐筆執行，失敗的會保留在架上。',
       type: 'danger',
       onConfirm: async () => {
-        try {
-          setIsClearing(true)
-          const res = await fetch('/api/admin/marketplace/clear', { method: 'POST', credentials: 'include' })
-          if (!res.ok) { console.error('清除測試資料失敗'); return }
-          await fetchListings()
-        } catch (e) {
-          console.error('Unexpected error clearing test data:', e)
-        } finally {
-          setIsClearing(false)
+        setBusy(true)
+        let ok = 0
+        const failed: number[] = []
+        for (const t of targets) {
+          try { await cancelOne(t); ok++ } catch { failed.push(t.id) }
         }
+        setBusy(false)
+        setSelectedIds(new Set())
+        await fetchListings()
+        if (failed.length) toast(`下架 ${ok} 筆，失敗 ${failed.length} 筆`, 'warning')
+        else toast(`已強制下架 ${ok} 筆`, 'success')
       },
     })
   }
 
-  const handleSeedTestData = () => {
-    confirm({
-      title: '建立假資料',
-      message: '此操作會從倉庫挑選可上架的賞項（status=in_warehouse、可交易、且有圖片），建立市集上架測試資料。確定要繼續嗎？',
-      type: 'warning',
-      onConfirm: async () => {
-        try {
-          setIsSeeding(true)
-          const res = await fetch('/api/admin/marketplace/seed', { method: 'POST', credentials: 'include' })
-          if (!res.ok) { console.error('建立假資料失敗'); return }
-          await fetchListings()
-        } catch (e) {
-          console.error('Unexpected error seeding marketplace listings:', e)
-        } finally {
-          setIsSeeding(false)
-        }
-      },
-    })
+  const filtered = useMemo(() => listings.filter((item) => {
+    if (statusFilter !== 'all' && item.status !== statusFilter) return false
+    if (botFilter === 'real' && item.seller_is_bot) return false
+    if (botFilter === 'bot' && !item.seller_is_bot) return false
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      const hay = [item.prize_name, item.product_name, item.prize_level, item.seller_name,
+        item.seller_email, item.seller_id, String(item.id)].join(' ').toLowerCase()
+      if (!hay.includes(q)) return false
+    }
+    return true
+  }), [listings, searchQuery, statusFilter, botFilter])
+
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let av: any, bv: any
+    switch (sortField) {
+      case 'created_at': av = new Date(a.created_at).getTime(); bv = new Date(b.created_at).getTime(); break
+      case 'price': av = a.price; bv = b.price; break
+      case 'prize': av = a.prize_name; bv = b.prize_name; break
+      case 'seller': av = a.seller_name; bv = b.seller_name; break
+      case 'status': av = a.status; bv = b.status; break
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      default: av = (a as any)[sortField]; bv = (b as any)[sortField]
+    }
+    if (typeof av === 'string') return sortDirection === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
+    return sortDirection === 'asc' ? av - bv : bv - av
+  }), [filtered, sortField, sortDirection])
+
+  const activeCount = listings.filter(x => x.status === 'active').length
+  const soldCount = listings.filter(x => x.status === 'sold').length
+  const cancelledCount = listings.filter(x => x.status === 'cancelled').length
+  // 架上總值：買家要買光整個交易所得付多少 G。看得出這池子有多重
+  const activeValue = listings.filter(x => x.status === 'active').reduce((n, x) => n + x.price, 0)
+
+  const exportCSV = () => {
+    const head = ['上架編號', '上架時間', '賞等', '獎項', '來源商品', '售價(G)', '賣家', '會員編號', 'Email', '狀態']
+    const rows = sorted.map(x => [
+      x.id, formatDateTime(x.created_at), x.prize_level, x.prize_name, x.product_name,
+      x.price, x.seller_name, x.seller_member_no ?? '', x.seller_email, STATUS_LABEL[x.status],
+    ])
+    const csv = [head, ...rows]
+      .map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+    const url = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `交易所品項_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
-  const filteredListings = useMemo(() => {
-    return listings.filter((item) => {
-      if (statusFilter !== 'all' && item.status !== statusFilter) {
-        return false
-      }
-
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase()
-        const source = [
-          item.prize_name,
-          item.product_name,
-          item.prize_level,
-          item.seller_name,
-          item.seller_email,
-          item.seller_id,
-          String(item.id)
-        ]
-          .join(' ')
-          .toLowerCase()
-
-        if (!source.includes(q)) {
-          return false
-        }
-      }
-
-      return true
-    })
-  }, [listings, searchQuery, statusFilter])
-
-  const sortedListings = useMemo(() => {
-    return [...filteredListings].sort((a, b) => {
-      let aValue: any
-      let bValue: any
-
-      switch (sortField) {
-        case 'created_at':
-          aValue = new Date(a.created_at).getTime()
-          bValue = new Date(b.created_at).getTime()
-          break
-        case 'price':
-          aValue = a.price
-          bValue = b.price
-          break
-        case 'status':
-          aValue = a.status
-          bValue = b.status
-          break
-        default:
-          aValue = (a as any)[sortField]
-          bValue = (b as any)[sortField]
-      }
-
-      if (typeof aValue === 'string') {
-        return sortDirection === 'asc'
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue)
-      }
-
-      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue
-    })
-  }, [filteredListings, sortField, sortDirection])
-
-  const activeCount = listings.filter((item) => item.status === 'active').length
-  const soldCount = listings.filter((item) => item.status === 'sold').length
-  const cancelledCount = listings.filter((item) => item.status === 'cancelled').length
-
-  return (
-    <AdminLayout
-      pageTitle="市集管理"
-    >
-      <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold text-neutral-900">玩家市集上架審核</h2>
-            <p className="text-sm text-neutral-500 mt-1">
-              檢視玩家上架的獎項，必要時進行下架，並可一鍵清除測試資料。
-            </p>
+  const columns: Column<Listing>[] = [
+    {
+      key: 'prize', label: '獎項', sortable: true,
+      render: (item) => (
+        <div className="flex items-center gap-3">
+          <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-neutral-100">
+            {item.prize_image && (
+              <Image src={item.prize_image} alt="" fill sizes="44px" className="object-contain" unoptimized />
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleSeedTestData}
-              disabled={isSeeding}
-              className="px-4 py-2 rounded-lg text-sm font-medium border border-neutral-200 text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSeeding ? '建立中…' : '插入市集假資料'}
-            </button>
-            <button
-              onClick={handleClearTestData}
-              disabled={isClearing}
-              className="px-4 py-2 rounded-lg text-sm font-medium border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isClearing ? '清除中…' : '一鍵清除市集 / 回收池測試資料'}
-            </button>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              {item.prize_level && <Badge variant="warning" size="sm">{item.prize_level}</Badge>}
+              <span className="truncate text-sm font-medium text-neutral-900">{item.prize_name}</span>
+            </div>
+            <div className="truncate text-xs text-neutral-500">
+              {item.product_name}{item.ticket_number ? `　#${item.ticket_number}` : ''}
+            </div>
           </div>
         </div>
+      ),
+    },
+    {
+      key: 'price', label: '售價(G)', sortable: true,
+      render: (item) => <span className="text-sm font-semibold tabular-nums text-amber-600">{item.price.toLocaleString()}</span>,
+    },
+    {
+      key: 'seller', label: '賣家', sortable: true,
+      render: (item) => (
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-sm font-medium text-neutral-900">{item.seller_name}</span>
+            {item.seller_is_bot && <Badge variant="default" size="sm">機器人</Badge>}
+          </div>
+          <div className="truncate text-xs text-neutral-500">
+            {item.seller_email || <MemberNo no={item.seller_member_no} uuid={item.seller_id} />}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'status', label: '狀態', sortable: true,
+      render: (item) => <Badge variant={STATUS_VARIANT[item.status]}>{STATUS_LABEL[item.status]}</Badge>,
+    },
+    {
+      key: 'created_at', label: '上架時間', sortable: true,
+      render: (item) => <span className="whitespace-nowrap text-sm text-neutral-600">{formatDateTime(item.created_at)}</span>,
+    },
+    {
+      key: 'operations', label: '操作', sticky: true,
+      render: (item) => (
+        <div className="flex justify-end">
+          <ActionMenu
+            items={[
+              { label: '複製賣家 UUID', onClick: () => { navigator.clipboard.writeText(item.seller_id); toast('已複製賣家 UUID', 'success') } },
+              { label: '強制下架', danger: true, disabled: item.status !== 'active', onClick: () => handleForceCancel(item) },
+            ]}
+          />
+        </div>
+      ),
+    },
+  ]
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+  return (
+    <AdminLayout pageTitle="交易所品項管理">
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <StatsCard title="上架中" value={activeCount} />
+          <StatsCard title="架上總值" value={`${activeValue.toLocaleString()} G`} />
           <StatsCard title="已售出" value={soldCount} />
           <StatsCard title="已下架" value={cancelledCount} />
         </div>
 
         <PageCard>
           <SearchToolbar
-            searchPlaceholder="搜尋獎項名稱、賣家名稱、Email、UUID..."
+            searchPlaceholder="搜尋獎項、來源商品、賣家名稱、Email、UUID…"
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
-          />
+            showDensity
+            density={density}
+            onDensityChange={setDensity}
+            showExportCSV
+            onExportCSV={exportCSV}
+            showFilter
+            filterOptions={[
+              {
+                key: 'status', label: '狀態', type: 'select', value: statusFilter,
+                onChange: (v: StatusFilter) => setStatusFilter(v),
+                options: [
+                  { value: 'all', label: '全部狀態' },
+                  { value: 'active', label: '上架中' },
+                  { value: 'sold', label: '已售出' },
+                  { value: 'cancelled', label: '已下架' },
+                ],
+              },
+              {
+                key: 'bot', label: '賣家', type: 'select', value: botFilter,
+                onChange: (v: BotFilter) => setBotFilter(v),
+                options: [
+                  { value: 'all', label: '全部賣家' },
+                  { value: 'real', label: '只看真實玩家' },
+                  { value: 'bot', label: '只看機器人' },
+                ],
+              },
+            ]}
+            selectedCount={selectedIds.size}
+            batchActions={[{ label: '強制下架', variant: 'danger', onClick: handleBulkCancel }]}
+            onClearSelection={() => setSelectedIds(new Set())}
+          >
+            <Button variant="secondary" size="sm" onClick={fetchListings} isLoading={isLoading || busy}>
+              重新整理
+            </Button>
+          </SearchToolbar>
 
-          <div className="mt-3">
-            <FilterTags
-              tags={[
-                {
-                  key: 'status',
-                  label: '狀態',
-                  value:
-                    statusFilter === 'all'
-                      ? '全部'
-                      : statusFilter === 'active'
-                      ? '上架中'
-                      : statusFilter === 'sold'
-                      ? '已售出'
-                      : '已下架',
-                  color: 'primary',
-                  onRemove: () => setStatusFilter('all')
-                }
-              ]}
+          {(statusFilter !== 'all' || botFilter !== 'all') && (
+            <div className="mt-3">
+              <FilterTags
+                tags={[
+                  ...(statusFilter !== 'all' ? [{
+                    key: 'status', label: '狀態',
+                    value: STATUS_LABEL[statusFilter as Listing['status']],
+                    color: 'primary' as const, onRemove: () => setStatusFilter('all'),
+                  }] : []),
+                  ...(botFilter !== 'all' ? [{
+                    key: 'bot', label: '賣家',
+                    value: botFilter === 'real' ? '只看真實玩家' : '只看機器人',
+                    color: 'primary' as const, onRemove: () => setBotFilter('all'),
+                  }] : []),
+                ]}
+              />
+            </div>
+          )}
+
+          <div className="mt-4">
+            <DataTable
+              data={sorted}
+              columns={columns}
+              keyField="id"
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              selectable
+              selectedIds={selectedIds}
+              onSelectChange={setSelectedIds}
+              isSelectable={(item) => item.status === 'active'}
+              density={density}
+              isLoading={isLoading}
+              emptyMessage="目前沒有符合條件的上架品項"
             />
-          </div>
-
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[900px]">
-              <thead className="bg-neutral-50 border-b border-neutral-200">
-                <tr>
-                  <SortableTableHeader
-                    sortKey="created_at"
-                    currentSortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    className="py-3 px-4"
-                  >
-                    上架時間
-                  </SortableTableHeader>
-                  <SortableTableHeader
-                    sortKey="prize_name"
-                    currentSortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    className="py-3 px-4"
-                  >
-                    獎項
-                  </SortableTableHeader>
-                  <SortableTableHeader
-                    sortKey="price"
-                    currentSortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    className="py-3 px-4"
-                  >
-                    售價(G)
-                  </SortableTableHeader>
-                  <SortableTableHeader
-                    sortKey="seller_name"
-                    currentSortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    className="py-3 px-4"
-                  >
-                    賣家
-                  </SortableTableHeader>
-                  <SortableTableHeader
-                    sortKey="status"
-                    currentSortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    className="py-3 px-4"
-                  >
-                    狀態
-                  </SortableTableHeader>
-                  <th className="py-3 px-4 text-right text-xs font-semibold text-neutral-500">操作</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-200">
-                {isLoading ? (
-                  <TableSkeleton rows={5} cols={6} />
-                ) : sortedListings.length === 0 ? (
-                  <TableEmpty colSpan={6} message="目前沒有符合條件的市集上架資料" />
-                ) : (
-                  sortedListings.map((item) => (
-                    <tr key={item.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
-                      <td className="py-3 px-4 text-sm text-neutral-600 whitespace-nowrap">
-                        {formatDateTime(item.created_at)}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium text-neutral-900">
-                            {item.prize_level}賞 {item.prize_name}
-                          </span>
-                          <span className="text-xs text-neutral-500">
-                            {item.product_name}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="text-sm font-semibold text-amber-600">
-                          {item.price.toLocaleString()} G
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium text-neutral-900">
-                            {item.seller_name}
-                          </span>
-                          <span className="text-xs text-neutral-500">
-                            {item.seller_email ? item.seller_email : <MemberNo no={item.seller_member_no} uuid={item.seller_id} />}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            item.status === 'active'
-                              ? 'bg-green-50 text-green-700'
-                              : item.status === 'sold'
-                              ? 'bg-primary/10 text-primary'
-                              : 'bg-neutral-100 text-neutral-600'
-                          }`}
-                        >
-                          {item.status === 'active'
-                            ? '上架中'
-                            : item.status === 'sold'
-                            ? '已售出'
-                            : '已下架'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => handleForceCancel(item)}
-                          disabled={item.status !== 'active'}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium border border-neutral-300 text-neutral-700 hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          強制下架
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
           </div>
         </PageCard>
       </div>
-          {dialogProps && <ConfirmDialog {...dialogProps} />}
+      {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

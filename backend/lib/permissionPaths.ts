@@ -45,6 +45,8 @@ export const MENU_PATH_ORDER: Array<{ path: string; permission: string }> = [
   { path: '/logs',               permission: 'logs' },
   { path: '/tools',              permission: 'tools' },
   { path: '/marketplace',        permission: 'marketplace' },
+  { path: '/marketplace/transactions', permission: 'marketplace_transactions' },
+  { path: '/marketplace/settings',     permission: 'marketplace_settings' },
   { path: '/sell',               permission: 'sell' },
   { path: '/sell-orders',        permission: 'sell_orders' },
   { path: '/exchange',           permission: 'exchange' },

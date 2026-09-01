@@ -1,0 +1,45 @@
+'use client';
+
+/*
+ * 交易所的商品卡 —— 商城 .pcard 的交易所版。
+ *
+ * ⚠️ 這裡刻意**不用** components/ProductCard：那張卡是抽獎商品用的
+ * （價格、剩餘籤數、機台類型），交易所賣的是「別人抽到的單一品項」，
+ * 要顯示的是賞等、賣家與 G 幣價格。老闆 2026-09-01 指定照商城的卡片語言。
+ */
+
+import Image from 'next/image';
+import { asset } from '@/lib/asset';
+import type { Listing } from '@/app/market/data';
+import { gnum, hue } from './ui';
+
+const FALLBACK = asset('/images/item_defaulet.webp');
+
+export default function PrizeCard({ item, onClick }: { item: Listing; onClick: () => void }) {
+  return (
+    <button type="button" className="pcard" onClick={onClick}>
+      <div className="pimg" style={{ background: '#F7F7F7' }}>
+        <Image
+          src={item.prizeImage || FALLBACK}
+          alt=""
+          fill
+          sizes="(max-width: 768px) 50vw, 240px"
+          className="object-contain"
+          unoptimized
+        />
+        {item.prizeLevel && <span className="lvbadge">{item.prizeLevel}</span>}
+      </div>
+      <div className="pbody">
+        <div className="ptitle">{item.prizeName}</div>
+        <div className="pprice"><b>{gnum(item.price)}</b><i>G</i></div>
+        <div className="pshop">
+          <span className="dot" style={{ background: hue(item.sellerName) }} />
+          <span className="nm">{item.sellerName}</span>
+        </div>
+        <div className="tags">
+          {item.productName && <span className="tg tg--pay">{item.productName}</span>}
+        </div>
+      </div>
+    </button>
+  );
+}

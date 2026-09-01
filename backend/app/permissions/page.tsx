@@ -104,7 +104,9 @@ const PERMISSION_GROUPS = [
   {
     title: '交易所',
     items: [
-      { id: 'marketplace', label: '交易所商品管理' },
+      { id: 'marketplace', label: '交易所品項管理' },
+      { id: 'marketplace_transactions', label: '交易所交易紀錄' },
+      { id: 'marketplace_settings', label: '交易所設定' },
     ],
   },
   {

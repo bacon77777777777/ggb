@@ -57,7 +57,9 @@ function MobileTabbarInner() {
   const activeTab = searchParams.get('tab');
 
   // /challenge 不在裡面：它已不是頁籤，改用頂部導航返回（同常見問題那類內頁）
-  const mainTabPaths = ['/', '/ranking', '/news', '/exchange', '/market', '/profile', '/mission'];
+  // /market 不在裡面：交易所 2026-09-01 改版後有自己的底部分頁列（逛街／我的上架／交易紀錄），
+  // 跟商城 /sell 一樣。兩排底欄疊在一起沒得看，離開靠它頂欄的返回鍵
+  const mainTabPaths = ['/', '/ranking', '/news', '/exchange', '/profile', '/mission'];
   // 文章內頁 /news/[id] 不在 mainTabPaths，但 MobileTabbar 仍要顯示（讓使用者可以切回情報）
   const isNewsDetail = pathname.startsWith('/news/') && pathname !== '/news';
   const isMainTabPath = mainTabPaths.includes(pathname);
