@@ -4,6 +4,19 @@
 
 ---
 
+## v2026.09.01f｜2026-09-01｜換掉五款內建卡包外觀
+
+老闆重畫了整組 WILD PACK（紫／綠／藍／紅／金黑，每款正反各一張）。
+檔名與 `PACK_STYLES = ['a'…'e']` 都沒變，程式端零改動。
+
+原檔是 PNG 共 28.0 MB，照既有的 `convert_frontend_images.ts`（q88、alphaQuality 100、
+保留 alpha）轉成 WebP → 3.9 MB，省 86%。規格與前一組一致：1240 × 2340、RGBA。
+
+`lib/assetManifest.generated.json` **沒有跟著 commit**：它由 predev／prebuild 自動產生，
+Vercel build 會重產。手動重產反而會把本機還沒進 git 的素材寫進去。
+
+---
+
 ## v2026.09.01e｜2026-09-01｜撕紙的持續震動改成照抄蓄力那條曲線
 
 v2026.09.01c 做的版本老闆試了說「我是要跟蓄力一樣」。回頭比對，差在兩件事：
