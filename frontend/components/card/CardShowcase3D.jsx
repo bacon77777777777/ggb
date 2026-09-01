@@ -484,7 +484,11 @@ export default function CardShowcase3D({ frontImage, backImage, height = 320, au
         <button
           onClick={() => apiRef.current?.resetZoom()}
           style={{
-            position: "absolute", top: 14, right: 14, zIndex: 2,
+            position: "absolute",
+            /* 全螢幕時這顆是貼著整個視窗的，瀏海／動態島會壓在它上面
+               （老闆 2026-09-01 回報）。安全區高度各機不同，交給 env() 算 */
+            top: "calc(env(safe-area-inset-top, 0px) + 14px)",
+            right: 14, zIndex: 2,
             height: 36, padding: "0 16px", borderRadius: 999,
             background: "rgba(0,0,0,.55)", color: "#fff", border: "none",
             fontSize: 13, fontWeight: 700, cursor: "pointer",
