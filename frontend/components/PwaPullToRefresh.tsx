@@ -337,8 +337,28 @@ function resolveStart(target: EventTarget | null): StartVerdict {
      * 真正的捲動區高度不會超過視窗（超過就輪到頁面捲了），用這條擋掉。
      * 仍然不看 scrollHeight —— 空清單也算捲動區，那條原則沒變。
      */
+    /*
+     * ⚠️ 再擋一種：**只能橫向捲的容器**。
+     *
+     * 上面那條規則（overflow-x 寫了一軸、另一軸就被算成 auto）也會反過來咬人 ——
+     * 一番賞商品頁「品項總覽」的表格外框是 `overflow-x-auto`（表格比畫面寬），
+     * 它的 overflow-y 因此也是 auto，高度 407px 又剛好落在上面的區間裡，
+     * 於是整個品項總覽被當成內層捲動區，在它身上往下拉就會觸發下拉刷新
+     *（老闆 2026-09-01 回報）。
+     *
+     * 判準用「物理上能不能縱向捲」而不是「有沒有寫 overflow-y」：
+     * 縱向捲不動（scrollHeight = clientHeight）**而且**橫向捲得動
+     * （scrollWidth > clientWidth）→ 它就是個橫向捲動區，不是縱向的。
+     *
+     * 這樣不會動到原本「空清單也算捲動區」那條原則：真正的縱向面板即使是空的，
+     * 也不會有橫向溢出，所以不會被這條擋掉。
+     */
+    const horizontalOnly =
+      el.scrollHeight <= el.clientHeight && el.scrollWidth > el.clientWidth;
+
     if (
       (oy === 'auto' || oy === 'scroll') &&
+      !horizontalOnly &&
       el.clientHeight >= window.innerHeight * 0.4 &&
       el.clientHeight <= window.innerHeight + 1 &&
       main?.contains(el)

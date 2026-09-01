@@ -204,25 +204,38 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
   const isNewArrival = promo.layout === 'new_arrival';
 
 
-  /*
-   * 點內容就是要去看，不算「不想再看到」——只有按叉叉時才把勾選存起來。
-   * （老闆指定：按叉叉＝儲存並關閉）
+  /**
+   * 收起這一則，並讓佇列往下走一則。
+   *
+   * @param saveHideToday 要不要把「今日不再顯示」的勾選存起來。
+   *   只有按叉叉才存 —— 點內容是「我要去看」，不是「不想再看到」（老闆指定）。
    */
-  const go = (href: string | null) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (href) navigate(href);
-    else setVisible(false);
-  };
-
-  const close = () => {
+  const dismiss = (saveHideToday: boolean) => {
     setVisible(false);
-    if (hideToday) hideForToday(promo.id);
+    if (saveHideToday && hideToday) hideForToday(promo.id);
     const id = promo.id;
     setTimeout(() => {
       setClosedIds(prev => [...prev, id]);
       setCurrent(null);          // 讓上面的 effect 接手挑下一則
     }, EXIT_MS);
   };
+
+  /*
+   * 點 CTA／圖片。
+   *
+   * ⚠️ **沒有連結時要走 dismiss，不能只 setVisible(false)。**
+   * 公告的按鈕常常是「我知道了」這種純確認、`cta_href` 是空的；舊版那條路只把
+   * 彈窗收起來，`current` 與 `closedIds` 都沒動，佇列因此永遠停在這一則 ——
+   * 按叉叉會接著彈「最新上架」，按「我知道了」就不會（老闆 2026-09-01 回報）。
+   * 有連結的話是換頁、元件會跟著卸載，不需要再推佇列。
+   */
+  const go = (href: string | null) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (href) { navigate(href); return; }
+    dismiss(false);
+  };
+
+  const close = () => dismiss(true);
 
   return (
     <AnimatePresence>
