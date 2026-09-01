@@ -11,6 +11,7 @@ import { asset } from '@/lib/asset';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { prefetchPackArt } from '@/lib/prefetchPackArt';
 import { prefetch } from '@/lib/swr';
 import { productKey, fetchProductDetail } from '@/lib/queries/product';
 import { recordImpression, recordClick } from '@/lib/feed/events';
@@ -70,6 +71,14 @@ export default function ProductCard(props: ProductCardProps) {
     cardsPerPack,
     showRemainingText = true,
   } = props;
+
+  /*
+   * 列表上出現抽卡商品時，趁瀏覽器閒置先把內建的五款卡包圖抓進快取
+   *（老闆 2026-09-01：進商品頁時卡包是純白的、要等圖）。
+   * 那五張是 `?v=` 雜湊、一年 immutable，暖過一次之後點進任何抽卡商品
+   * 都是本機讀取。一個 session 只會真的跑一次，重複呼叫沒有成本。
+   */
+  useEffect(() => { if (type === 'card') prefetchPackArt(); }, [type]);
   const href =
     hrefOverride ||
     (type === 'blindbox'

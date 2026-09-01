@@ -474,6 +474,18 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         blob.renderOrder = 1;   // 在地板霧面層之下，才不會被它蓋掉
         scene.add(blob);
 
+        /*
+         * **貼圖還沒到就先不要畫**（老闆 2026-09-01 回報「卡包都是純白底」）。
+         *
+         * 幾何體是掛載當下就建好的，但貼圖要等圖載完才補上去 —— 中間那段
+         * 沒有 map 的 MeshPhysicalMaterial 配上這個亮棚（環境光 0.95 ＋ 主光 0.75
+         * ＋兩顆補光）就是一片白，看起來像九塊白石板。
+         * 藏起來的話畫面只剩海景與手，那是完整的；卡包晚一點浮現遠比白板好。
+         */
+        grp.visible = false;
+        rGrp.visible = false;
+        blob.visible = false;
+
         packs.push({
           grp, rGrp, blob, blobMat,
           mats: [frontMat, backMat, rFrontMat, rBackMat], rot: slot.rot,
@@ -483,36 +495,84 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       /*
        * 貼圖：後台有設就整批用同一張（一個商品一款卡包），
        * 沒設才照 packStyles 給每格不同的內建卡包圖 —— 否則每格會長得一模一樣。
+       *
+       * ── 2026-09-01 重寫，原本有三個成本（老闆回報「渲染很慢」）──
+       *
+       * ① **一格一格排隊**。舊版是 `for` 迴圈裡 `await`，九格等於九次來回，
+       *    不是 18 張平行下載。現在改成「玩家正在看的那一格先載完就顯示」，
+       *    其餘八格同時併發 —— 感知上只等一張圖。
+       *
+       * ② **同一張圖做了好幾次貼圖**。內建只有五款，`packStyles` 卻是從五款裡
+       *    隨機抽九格，必然重複；而舊版對每一格都獨立跑一次 `imageTexture()`
+       *    —— 那是畫進 640×1197 的 canvas（76 萬像素）再上傳 GPU。
+       *    九格正反兩面就是 18 次，實際只需要最多 10 次。用 src 當 key 快取起來，
+       *    Three 允許多個材質共用同一個 texture，省下的是主執行緒的頓挫。
+       *
+       * ③ 貼圖到位前那格是藏起來的（見上面 grp.visible = false），到了才顯示。
        */
       let disposed = false;
-      const applyTextures = async () => {
-        for (let i = 0; i < N; i++) {
-          const style = packStyles[i] ?? '01';
-          const builtinFront = asset(`/images/card/pack/${style}01.webp`);
-          const builtinBack = asset(`/images/card/pack/${style}02.webp`);
-          // 自訂圖載不到（網址失效、格式不支援…）就退回內建款式 —— 寧可長得不一樣，也不要白色空包
-          const loadOr = async (custom: string | undefined, fallback: string) => {
-            if (!custom) return loadImage(fallback);
-            try { return await loadImage(custom); } catch { return loadImage(fallback); }
-          };
-          try {
-            /* 卡包樣式＝自訂才有圖（prop 傳進來），預設一律走內建五款 */
-            const [fImg, bImg] = await Promise.all([
-              loadOr(frontImage, builtinFront),
-              loadOr(backImage, builtinBack),
-            ]);
-            if (disposed) return;
-            const fTex = imageTexture(fImg);
-            const bTex = imageTexture(bImg);
-            textures.push(fTex, bTex);
-            const [fm, bm, rfm, rbm] = packs[i].mats;
-            fm.map = fTex; rfm.map = fTex;
-            bm.map = bTex; rbm.map = bTex;
-            [fm, bm, rfm, rbm].forEach(m => { m.needsUpdate = true; });
-          } catch {
-            // 圖掛了就讓那格保持無貼圖，不要中斷其他格
-          }
+      /** 同一個網址只做一次 canvas + 一次 GPU 上傳 */
+      const texCache = new Map<string, THREE.Texture>();
+      const texFor = (src: string, img: HTMLImageElement) => {
+        const hit = texCache.get(src);
+        if (hit) return hit;
+        const tex = imageTexture(img);
+        texCache.set(src, tex);
+        textures.push(tex);       // 只推一次，卸載時才不會重複 dispose
+        return tex;
+      };
+
+      /*
+       * 卡包樣式＝自訂才有圖（prop 傳進來），預設一律走內建五款。
+       * 自訂圖載不到（網址失效、格式不支援…）就退回內建款式 ——
+       * 寧可長得不一樣，也不要白色空包。**永遠不 reject**：呼叫端是兩個各自
+       * await 的 promise，讓它拋出去會變成 unhandled rejection。
+       */
+      const pick = async (custom: string | undefined, fallback: string) => {
+        if (custom) {
+          try { return { src: custom, img: await loadImage(custom) }; } catch { /* 退回內建 */ }
         }
+        try { return { src: fallback, img: await loadImage(fallback) }; } catch { return null; }
+      };
+
+      const applyOne = async (i: number) => {
+        const style = packStyles[i] ?? '01';
+        const builtinFront = asset(`/images/card/pack/${style}01.webp`);
+        const builtinBack = asset(`/images/card/pack/${style}02.webp`);
+
+        // 兩面同時開始下載，但**正面到了就先顯示** —— 一格只等一張圖的時間。
+        // 背面只有轉到側面或遠格（rot = π）才看得到，晚幾百毫秒沒人察覺。
+        const fP = pick(frontImage, builtinFront);
+        const bP = pick(backImage, builtinBack);
+        const pk = packs[i];
+        const [fm, bm, rfm, rbm] = pk.mats;
+
+        const f = await fP;
+        if (disposed) return;
+        if (f) {
+          const fTex = texFor(f.src, f.img);
+          fm.map = fTex; rfm.map = fTex;
+          fm.needsUpdate = true; rfm.needsUpdate = true;
+          pk.grp.visible = true;
+          pk.rGrp.visible = true;
+          pk.blob.visible = true;
+        }
+
+        const b = await bP;
+        if (disposed || !b) return;
+        const bTex = texFor(b.src, b.img);
+        bm.map = bTex; rbm.map = bTex;
+        bm.needsUpdate = true; rbm.needsUpdate = true;
+      };
+
+      const applyTextures = async () => {
+        // 中間那一格是玩家的視線焦點，先把它弄出來，其餘的併發補上
+        const first = Math.min(Math.max(curRef.current, 0), N - 1);
+        await applyOne(first);
+        if (disposed) return;
+        await Promise.all(
+          Array.from({ length: N }, (_, i) => i).filter(i => i !== first).map(applyOne),
+        );
       };
       applyTextures();
 
