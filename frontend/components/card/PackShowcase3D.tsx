@@ -29,6 +29,11 @@ import SoundToggle from '@/components/ui/SoundToggle';
 import { swoosh, unlockPackAudio } from '@/lib/packSfx';
 import { asset } from '@/lib/asset';
 import { PACK_RATIO } from './packSpec';
+import { createOceanSkyLayer } from './oceanSkyLayer';
+import {
+  nightAmount, parseSkyOverride, skyGradientCss, skyHorizonRgb, skyProgressAtHour,
+  skyProgressNow, solarPhaseAtHour, solarPhaseNow,
+} from '@/lib/oceanSky';
 
 export type PackShowcase3DHandle = {
   goToNext: () => void;
@@ -207,13 +212,17 @@ function slotFor(d: number, aspect: number) {
 }
 
 /**
- * 攝影棚背景（老闆給的圖，自 bg.png 轉 WebP：367KB → 12KB）。
+ * 背景底色：跟著台灣時間走的天空漸層（老闆 2026-09-01 指定換掉原本的白棚）。
  *
- * 卡包是兩片曲面組成的殼，轉到側面時中間那道縫會透出背景。
- * 這張是淺色棚景，縫透出來也是淺的所以看不出來 —— 換成暗色背景就會露餡，
- * 先前那條「側面黑縫」就是背景留成暗色機台圖造成的。
+ * 真正的海景是 WebGL 那一層（`oceanSkyLayer`），這個漸層只是**它還沒畫出來
+ * 或畫不出來**時的底：卡包輪播載入中、WebGL 建不起來、`prefers-reduced-motion`。
+ * 顏色一樣照當下時刻算，所以退到這條路日夜感還在，也不會閃一下白底。
+ *
+ * ⚠️ 卡包是兩片曲面組成的殼，轉到側面時中間那道縫會透出背景。以前是淺色棚景
+ * 所以看不出來；**換成會變暗的天空之後，深夜可能會重新露出那條縫**。
+ * 真的看得到再補一片不透明的芯，不要又把背景改回淺色。
  */
-const STUDIO_BG = `url(${asset('/images/card/showcase-bg.webp')}) center/cover no-repeat`;
+const skyBackground = (s: number) => skyGradientCss(s);
 
 /**
  * 背景的流星。
@@ -243,6 +252,34 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
     const [params, setParams] = useState<Params>(DEFAULTS);
     const [ready, setReady] = useState(false);
     const [fallback, setFallback] = useState(false);
+
+    /*
+     * 天色進度。CSS 底色用 state（每分鐘更新一次就夠，它只是底），
+     * WebGL 那層則是每次重算海面時自己讀時鐘，不經過 React。
+     *
+     * `?sky=14:30` 是開發用的時間覆寫，帶了就固定在那個時刻 ——
+     * 要檢查各時段長相不用等一整天。
+     */
+    const skyOverrideRef = useRef<number | null>(null);
+    const [skyS, setSkyS] = useState(0.5);
+    useEffect(() => {
+      const o = parseSkyOverride(window.location.search);
+      skyOverrideRef.current = o;
+      const tick = () => setSkyS(o != null ? skyProgressAtHour(o) : skyProgressNow());
+      tick();
+      if (o != null) return;
+      const id = window.setInterval(tick, 60_000);
+      return () => window.clearInterval(id);
+    }, []);
+    /** 當下的天色與太陽位置。兩者刻意分開算 —— 白天色票是平的，太陽卻要一路走 */
+    const skyNow = () => {
+      const o = skyOverrideRef.current;
+      return o != null
+        ? { s: skyProgressAtHour(o), sun: solarPhaseAtHour(o) }
+        : { s: skyProgressNow(), sun: solarPhaseNow() };
+    };
+    const skyNowRef = useRef(skyNow);
+    skyNowRef.current = skyNow;
 
     useEffect(() => { notifyRef.current = onActiveStyleChange; });
     // prop 指定的圖優先（卡包模式）；沒給才用後台參數／內建款式
@@ -285,6 +322,8 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       const H = mount.clientHeight || height;
 
       const scene = new THREE.Scene();
+      /* 霧色不能再寫死白棚那個 0xe9edf7 —— 側包離鏡頭 9~11、霧的近平面是 7，
+         真的吃得到。深夜不跟著換色的話側包會蒙一層灰白霧。下面每幀跟著天空更新 */
       scene.fog = new THREE.Fog(0xe9edf7, 7, 16);
 
       const camera = new THREE.PerspectiveCamera(FOV, W / H, 0.1, 100);
@@ -309,6 +348,23 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       mount.appendChild(renderer.domElement);
+
+      /*
+       * 海景背景層（老闆 2026-09-01）。畫在卡包**之前**，所以要自己管清除：
+       * autoClear 關掉、每幀手動 clear 一次，然後海景、卡包依序畫上去。
+       * 陰影貼圖那一趟 Three 自己會清，不受這個開關影響。
+       */
+      renderer.autoClear = false;
+      const sky = createOceanSkyLayer(renderer);
+      const dbSize = new THREE.Vector2();
+      const syncSkySize = () => {
+        renderer.getDrawingBufferSize(dbSize);
+        sky.setSize(dbSize.x, dbSize.y);
+      };
+      syncSkySize();
+      /* 動態效果關掉時海就不動：只有天色會隨時間換，所以三十秒重算一次就夠 */
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const skyInterval = reduceMotion ? 30_000 : undefined;
 
       // ── 燈光（明亮棚）──
       scene.add(new THREE.AmbientLight(0xffffff, 0.95));
@@ -510,9 +566,18 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       // 原型是滿版 demo 所以吃掉所有手勢；商品頁下面還有內容，直向要留給頁面捲動
       el.style.touchAction = 'pan-y';
 
+      /* 捲出畫面就整個停下來 —— 商品頁下面還很長，沒必要在看不到的地方燒 GPU */
+      let onScreen = true;
+      const io = new IntersectionObserver(
+        entries => { onScreen = entries.some(e => e.isIntersecting); },
+        { rootMargin: '10% 0px' },
+      );
+      io.observe(mount);
+
       let raf = 0, t = 0;
       const loop = () => {
         raf = requestAnimationFrame(loop);
+        if (!onScreen) return;
         t += 0.016;
         const p = paramsRef.current;
         const ci = curRef.current;
@@ -566,6 +631,12 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
           pk.rGrp.rotation.y = pk.rot;
         });
 
+        const { s, sun } = skyNowRef.current();
+        const hz = skyHorizonRgb(s);
+        scene.fog!.color.setRGB(hz[0], hz[1], hz[2]);
+
+        renderer.clear();
+        sky.render(s, sun, reduceMotion ? 0 : t, performance.now(), skyInterval);
         renderer.render(scene, camera);
       };
       loop();
@@ -576,12 +647,15 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
         renderer.setSize(w, h);
+        syncSkySize();
       };
       window.addEventListener('resize', onResize);
 
       return () => {
         disposed = true;
         cancelAnimationFrame(raf);
+        io.disconnect();
+        sky.dispose();
         window.removeEventListener('resize', onResize);
         window.removeEventListener('pointermove', move);
         window.removeEventListener('pointerup', up);
@@ -603,7 +677,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       const style = packStyles[0] ?? '01';
       const src = params.frontImage || asset(`/images/card/pack/${style}01.webp`);
       return (
-        <div className="w-full flex items-center justify-center" style={{ height, background: STUDIO_BG }}>
+        <div className="w-full flex items-center justify-center" style={{ height, background: skyBackground(skyS) }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={src} alt="" style={{ height: height * 0.82, objectFit: 'contain' }} />
         </div>
@@ -611,9 +685,18 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
     }
 
     return (
-      <div className="relative w-full overflow-hidden" style={{ height, background: STUDIO_BG }}>
-        {/* 流星層：夾在背景圖與 3D 畫布中間（畫布是透明的，所以看得到） */}
-        <div className="pointer-events-none absolute inset-0" aria-hidden>
+      <div className="relative w-full overflow-hidden" style={{ height, background: skyBackground(skyS) }}>
+        {/*
+          流星層。
+          **2026-09-01 從畫布底下搬到畫布之上**：背景換成 WebGL 海景之後畫布是
+          不透明的，夾在下面等於整層看不到。改疊在上面，並且只在夜裡浮出來 ——
+          白色流星配白天的藍天本來就看不見，亮著也只是浪費。
+        */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ zIndex: 2, opacity: nightAmount(skyS), transition: 'opacity 1s linear' }}
+          aria-hidden
+        >
           <style>{`
             @keyframes ggbMeteor {
               0%   { transform: translate3d(0,0,0) rotate(22deg); opacity: 0; }
@@ -656,8 +739,8 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
             />
           ))}
         </div>
-        {/* 3D 畫布疊在流星之上 */}
-        <div ref={mountRef} className="absolute inset-0" />
+        {/* 3D 畫布（海景 + 卡包都畫在這一張）。流星改疊在它上面，見上面的說明 */}
+        <div ref={mountRef} className="absolute inset-0" style={{ zIndex: 1 }} />
 
         {/* 音效開關（右上角，同原型）。站上共用 SoundToggle，靜音偏好也共用一份 */}
         <SoundToggle className="absolute right-3 top-3 z-40" />

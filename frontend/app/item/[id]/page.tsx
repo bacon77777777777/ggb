@@ -44,13 +44,13 @@ const CardDrawAnimation = dynamic(() => import('@/components/card/CardDrawAnimat
 const GgbPackRip = dynamic(() => import('@/components/card/GgbPackRip'), { ssr: false });
 const PackShowcase3D = dynamic(() => import('@/components/card/PackShowcase3D'), {
   ssr: false,
-  // 佔位用同一張棚景，載入期間不會出現空白或別的顏色
+  // 佔位用同一個天空漸層，載入期間不會出現空白或別的顏色（ssr:false，所以讀得到時鐘）
   loading: () => (
     <div
       style={{
         width: '100%',
         height: Math.round(375 * 932 / 750),
-        background: `url(${asset('/images/card/showcase-bg.webp')}) center/cover no-repeat`,
+        background: skyGradientCss(skyProgressNow()),
       }}
     />
   ),
@@ -78,6 +78,7 @@ import { isCategoryHidden, isCategoryUnderMaintenance, categoryFlagKey, CATEGORY
 import { fetchProductPromotion, type ProductPromotion } from '@/lib/promotions';
 import GradeBadge from '@/components/ui/GradeBadge';
 import { asset } from '@/lib/asset';
+import { skyGradientCss, skyProgressNow } from '@/lib/oceanSky';
 
 /**
  * 走 commit-reveal 抽獎引擎的三種商品（migration 405 的 play_ichiban_auto）。
@@ -1557,12 +1558,12 @@ export default function ProductDetailPage() {
             className="relative w-full"
             style={{
               aspectRatio: '750/932',
-              // 卡包輪播會整片蓋住這一區，底圖用同一張棚景 ——
-              // 用舊的暗色 bg.webp 的話，輪播載入完成前會先閃一下暗背景（老闆回報）
-              backgroundImage: `url(${asset('/images/card/showcase-bg.webp')})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat',
+              /*
+               * 卡包輪播會整片蓋住這一區（它自己畫海景），這裡只是它還沒接手前的底。
+               * 用同一支函式算，所以載入那一瞬間的顏色就是接手後的顏色，不會閃。
+               * 只在 render 時算一次就夠 —— 上面那層蓋住之後這個顏色不會再被看到。
+               */
+              background: skyGradientCss(skyProgressNow()),
             }}
           >
             {/* 閃電＝快速模式（略過撕包＋SKIP 一次跳到最後），位置在機台區左上角。
