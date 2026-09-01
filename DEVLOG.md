@@ -21,6 +21,22 @@
 > 兩者目的不同（輪播要靜謐遠景、撕包要速度感），而且星流幾百顆各有深度與透視，
 > 只能走 canvas，搬過去也不會是同一件事。
 
+### 後記：PROD build 被一個全形空白擋下（來自前一批交易所改版）
+
+推正之後 Vercel 後台 build 掛在 lint：
+`app/marketplace/page.tsx:239 Irregular whitespace not allowed`。
+那是籤號前面用來拉開間距的**全形空白 `\u3000`**，寫在 template literal 裡。
+`no-irregular-whitespace` 的 `skipStrings` 預設是 true、**`skipTemplates` 預設是 false**
+—— 所以同一個字元寫在一般字串（`app/dev-logs/page.tsx`、
+`api/admin/line-push-templates/route.ts` 都有）不會被唸，寫進反引號就是 error。
+改成跳脫寫法 `\u3000`，畫面完全一樣。
+
+> ⚠️ 同一批檔案還有 7 個「Unused eslint-disable directive」的 **warning，沒有動它們**。
+> 那是因為 build log 上面那句 `The Next.js plugin was not detected in your ESLint
+> configuration` —— react-hooks 與 no-explicit-any 這些規則現在根本沒載入，
+> 所以 ESLint 才說「沒有問題被回報」。把 disable 拿掉是把未來的保護一起拿掉：
+> 哪天 ESLint 設定修好，那幾行就會變成真的 error。要清的是設定，不是這些註解。
+
 ---
 
 ## v2026.09.01y｜2026-09-01｜一番賞撕紙：換新券素材、賞等字重排、上下拖曳方向救回來

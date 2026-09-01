@@ -236,7 +236,7 @@ export default function MarketplaceListingsPage() {
               <span className="truncate text-sm font-medium text-neutral-900">{item.prize_name}</span>
             </div>
             <div className="truncate text-xs text-neutral-500">
-              {item.product_name}{item.ticket_number ? `　#${item.ticket_number}` : ''}
+              {item.product_name}{item.ticket_number ? `\u3000#${item.ticket_number}` : ''}
             </div>
           </div>
         </div>
