@@ -26,7 +26,8 @@ import { useFeatureGate } from '@/lib/useFeatureGate';
 import { useRequireLogin } from '@/hooks/useRequireLogin';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { asset } from '@/lib/asset';
-import { Dialog, Toast, useMarketToast, gnum, hue, ago } from '@/components/market/ui';
+import { Dialog, Toast, useMarketToast, useSheetRoute, gnum, hue, ago } from '@/components/market/ui';
+import { ChatThreadSheet } from '@/components/market/ChatSheets';
 import {
   fetchListing, fetchPriceStats, fetchSellerOthers, fetchSettings, buyListing,
   type Listing, type PriceStats, type MarketSettings,
@@ -43,6 +44,7 @@ export default function MarketItemPage() {
   const { user, refreshProfile } = useAuth();
   const requireLogin = useRequireLogin();
   const { text: toastText, show: toast } = useMarketToast();
+  const { view, open: openSheet, close: closeSheet } = useSheetRoute();
 
   const id = Number(params?.id);
   const [item, setItem] = useState<Listing | null>(null);
@@ -187,6 +189,13 @@ export default function MarketItemPage() {
                 {others.length > 0 ? `另外還掛了 ${others.length} 件` : '目前只掛了這一件'}
               </div>
             </div>
+            {/* 自己的東西沒有人可以聊 */}
+            {!isMine && (
+              <button
+                className="ghostbtn"
+                onClick={() => { if (requireLogin('登入後就可以跟賣家聊聊')) openSheet('chat'); }}
+              >聊聊</button>
+            )}
           </div>
 
           {stats ? (
@@ -245,6 +254,19 @@ export default function MarketItemPage() {
               {gnum(balance)}
             </b>
           </div>
+          {!isMine && (
+            <button
+              className="aicon"
+              onClick={() => { if (requireLogin('登入後就可以跟賣家聊聊')) openSheet('chat'); }}
+            >
+              <span className="ai">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round">
+                  <path d="M20 12a7.5 7.5 0 01-11 6.6L4 20l1.4-4.2A7.5 7.5 0 1120 12z" />
+                </svg>
+              </span>
+              <span>聊聊</span>
+            </button>
+          )}
           {isMine ? (
             <button className="buy" disabled style={{ background: '#DDD', color: '#888' }}>你上架的</button>
           ) : (
@@ -254,6 +276,16 @@ export default function MarketItemPage() {
           )}
         </div>
       </div>
+
+      <ChatThreadSheet
+        open={view === 'chat'}
+        loggedIn={!!user}
+        listingId={item.id}
+        otherId={item.sellerId}
+        otherName={item.sellerName}
+        context={{ name: item.prizeName, image: item.prizeImage, price: item.price }}
+        onClose={closeSheet}
+      />
 
       <Dialog
         open={confirming}

@@ -31,7 +31,11 @@ export default function PrizeCard({ item, onClick }: { item: Listing; onClick: (
       </div>
       <div className="pbody">
         <div className="ptitle">{item.prizeName}</div>
-        <div className="pprice"><b>{gnum(item.price)}</b><i>G</i></div>
+        {/* 金額照首頁 ProductCard：14px 的 G 幣圖標 + 24px/900 的金額紅（老闆 2026-09-01） */}
+        <div className="gprice">
+          <Image src={asset('/images/gcoin.webp')} alt="G" width={14} height={14} className="gc object-contain" unoptimized />
+          <b>{gnum(item.price)}</b>
+        </div>
         <div className="pshop">
           <span className="dot" style={{ background: hue(item.sellerName) }} />
           <span className="nm">{item.sellerName}</span>

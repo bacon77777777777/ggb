@@ -579,6 +579,12 @@ function NavbarInner() {
    */
   if (pathname === '/sell' || pathname.startsWith('/sell/') || pathname.startsWith('/official/'))
     return null;
+  /*
+   * 交易所同理（老闆 2026-09-01 截圖：頂部導航重複了）——
+   * 它 2026-09-01 改版後也自帶主題色 header 與三格底部導航。
+   * 兩層疊起來就是兩個返回鍵、兩個標題、兩個搜尋入口。
+   */
+  if (pathname === '/market' || pathname.startsWith('/market/')) return null;
 
   const handleBack = () => {
     // 1. Handle special paths

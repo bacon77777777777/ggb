@@ -116,11 +116,15 @@ const toListing = (r: any): Listing => ({
 export async function fetchFeed(opts: {
   search?: string;
   level?: string;
+  /** 商品類型（products.type）：一級頁籤「類別」 */
+  type?: string;
+  /** 來源商品名：二級頁籤「系列」 */
+  series?: string;
   sort?: SortKey;
   offset?: number;
   limit?: number;
 }): Promise<Listing[]> {
-  const { search = '', level = '', sort = 'new', offset = 0, limit = PAGE_SIZE } = opts;
+  const { search = '', level = '', type = '', series = '', sort = 'new', offset = 0, limit = PAGE_SIZE } = opts;
   const sb = createClient();
   let q = sb.from('public_marketplace_listings').select('*');
 
@@ -130,6 +134,8 @@ export async function fetchFeed(opts: {
   }
   // 賞等比對用前綴：DB 存的是「A賞」，但也有「A賞 限定版」這種寫法
   if (level) q = q.ilike('prize_level', `${level}%`);
+  if (type) q = q.eq('product_type', type);
+  if (series) q = q.eq('product_name', series);
 
   if (sort === 'cheap') q = q.order('price', { ascending: true });
   else if (sort === 'rich') q = q.order('price', { ascending: false });
@@ -140,6 +146,62 @@ export async function fetchFeed(opts: {
   const { data, error } = await q.range(offset, offset + limit - 1);
   if (error) throw error;
   return (data || []).map(toListing);
+}
+
+
+/**
+ * 頁籤要用的分面（類別 × 系列）。
+ *
+ * 清單是後端分頁的，所以不能從已載入的那幾筆推 —— 那樣頁籤會隨著捲動長出來。
+ * 這支只抓兩個欄位、抓全部在架上的，在前端 group 一次。
+ * 交易所的量級（上架同時存在幾百筆）撐得住；真的長到幾千筆再改成 RPC 聚合。
+ */
+export type Facets = {
+  types: { key: string; label: string; count: number }[];
+  seriesByType: Record<string, { name: string; count: number }[]>;
+};
+
+/** products.type → 首頁那排頁籤的字（label 與首頁 primaryTabs 一致） */
+export const TYPE_LABEL: Record<string, string> = {
+  ichiban: '一番賞',
+  blindbox: '盒玩',
+  gacha: '轉蛋',
+  card: '抽卡',
+  custom: '自製賞',
+};
+const TYPE_ORDER = ['ichiban', 'blindbox', 'gacha', 'card', 'custom'];
+
+export async function fetchFacets(): Promise<Facets> {
+  const { data } = await createClient()
+    .from('public_marketplace_listings')
+    .select('product_type, product_name')
+    .limit(2000);
+
+  const typeCount = new Map<string, number>();
+  const seriesMap = new Map<string, Map<string, number>>();
+  for (const r of (data || []) as any[]) {
+    const t = String(r.product_type || '');
+    const n = String(r.product_name || '');
+    if (!t) continue;
+    typeCount.set(t, (typeCount.get(t) || 0) + 1);
+    // 每個類別自己一份系列表，另外再存一份「全部」的
+    for (const key of [t, '']) {
+      if (!seriesMap.has(key)) seriesMap.set(key, new Map());
+      if (n) seriesMap.get(key)!.set(n, (seriesMap.get(key)!.get(n) || 0) + 1);
+    }
+  }
+
+  const types = TYPE_ORDER
+    .filter(t => typeCount.has(t))
+    .map(t => ({ key: t, label: TYPE_LABEL[t] || t, count: typeCount.get(t) || 0 }));
+
+  const seriesByType: Facets['seriesByType'] = {};
+  for (const [key, m] of seriesMap) {
+    seriesByType[key] = [...m.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  }
+  return { types, seriesByType };
 }
 
 export async function fetchListing(id: number): Promise<Listing | null> {
@@ -326,3 +388,69 @@ export function levelAllowed(raw: string | null | undefined, allowed: string[]):
   if (!n) return false;
   return allowed.some((lv) => normLevel(lv) === n);
 }
+
+/* ────────────────────────────────────────────────
+ * 聊聊（migration 672）
+ *
+ * `marketplace_messages` 從 175 就存在、RLS 也對，但全站沒有任何程式碼碰它 ——
+ * 買家想問賣家「這件有盒損嗎」一直沒有地方問。三支 RPC 都是 SECURITY DEFINER：
+ * 訊息本身 RLS 讀得到，但**對方的暱稱與頭像讀不到**（users 只看得到自己的）。
+ * ──────────────────────────────────────────────── */
+
+export type Chat = {
+  listingId: number;
+  listingStatus: string;
+  otherId: string;
+  otherName: string;
+  otherAvatar: string | null;
+  prizeName: string;
+  prizeImage: string | null;
+  price: number;
+  lastBody: string;
+  lastAt: string;
+  lastFromMe: boolean;
+};
+
+export type ChatMessage = {
+  id: number;
+  body: string;
+  kind: string;
+  fromMe: boolean;
+  createdAt: string;
+};
+
+export async function fetchChats(): Promise<Chat[]> {
+  const { data, error } = await createClient().rpc('my_marketplace_chats');
+  if (error) throw error;
+  return ((data || []) as any[]).map((r) => ({
+    listingId: Number(r.listing_id),
+    listingStatus: r.listing_status || '',
+    otherId: String(r.other_id),
+    otherName: r.other_name || '玩家',
+    otherAvatar: r.other_avatar || null,
+    prizeName: r.prize_name || '未知品項',
+    prizeImage: r.prize_image || null,
+    price: Number(r.price) || 0,
+    lastBody: r.last_body || '',
+    lastAt: r.last_at,
+    lastFromMe: !!r.last_from_me,
+  }));
+}
+
+export async function fetchChatThread(listingId: number, otherId: string): Promise<ChatMessage[]> {
+  const { data, error } = await createClient().rpc('marketplace_chat_thread', {
+    p_listing_id: listingId,
+    p_other: otherId,
+  });
+  if (error) throw error;
+  return ((data || []) as any[]).map((r) => ({
+    id: Number(r.id),
+    body: r.body || '',
+    kind: r.kind || 'text',
+    fromMe: !!r.from_me,
+    createdAt: r.created_at,
+  }));
+}
+
+export const sendChatMessage = (listingId: number, toId: string, body: string) =>
+  callRpc('marketplace_send_message', { p_listing_id: listingId, p_to: toId, p_body: body });

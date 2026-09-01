@@ -40,11 +40,12 @@ import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { asset } from '@/lib/asset';
 import PrizeCard from '@/components/market/PrizeCard';
 import { Sheet, Dialog, Toast, useMarketToast, useSheetRoute, gnum, ago } from '@/components/market/ui';
+import { ChatListSheet, ChatThreadSheet } from '@/components/market/ChatSheets';
 import {
-  fetchFeed, fetchSettings, fetchMyListings, fetchMyDeals, fetchSellable,
+  fetchFeed, fetchFacets, fetchSettings, fetchMyListings, fetchMyDeals, fetchSellable,
   createListing, cancelListing, levelAllowed,
   PAGE_SIZE, SORTS,
-  type Listing, type MyListing, type Deal, type Sellable, type MarketSettings, type SortKey,
+  type Listing, type MyListing, type Deal, type Sellable, type MarketSettings, type SortKey, type Facets,
 } from './data';
 
 export const dynamic = 'force-dynamic';
@@ -75,6 +76,11 @@ export default function MarketPage() {
   /* ── 逛街 ── */
   const [search, setSearch] = useState('');
   const [level, setLevel] = useState('');
+  /* 類別（products.type）與系列（來源商品名）—— 版型照首頁那兩排（老闆 2026-09-01） */
+  const [type, setType] = useState('');
+  const [series, setSeries] = useState('');
+  const [facets, setFacets] = useState<Facets | null>(null);
+  const [sortOpen, setSortOpen] = useState(false);
   const [sort, setSort] = useState<SortKey>('new');
   const [items, setItems] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,12 +107,16 @@ export default function MarketPage() {
   const [busy, setBusy] = useState(false);
   const [confirmOff, setConfirmOff] = useState<MyListing | null>(null);
 
+  /* ── 聊聊 ── */
+  const [chatWith, setChatWith] = useState<{ listingId: number; otherId: string; otherName: string } | null>(null);
+
   /* ── 搜尋紀錄 ── */
   const [history, setHistory] = useState<string[]>([]);
   const [draft, setDraft] = useState('');
 
   useEffect(() => {
     fetchSettings().then(setSettings);
+    fetchFacets().then(setFacets).catch(() => {});
     try {
       const raw = localStorage.getItem(HISTORY_KEY);
       const arr = raw ? JSON.parse(raw) : [];
@@ -121,7 +131,7 @@ export default function MarketPage() {
       // 返回時一次補回原本已經捲出來的筆數，不然位置接不回去
       const limit = reset && restoreCount.current > PAGE_SIZE ? restoreCount.current : PAGE_SIZE;
       if (reset) restoreCount.current = 0;
-      const rows = await fetchFeed({ search, level, sort, offset, limit });
+      const rows = await fetchFeed({ search, level, type, series, sort, offset, limit });
       setItems(prev => (reset ? rows : [...prev, ...rows]));
       if (rows.length < limit) setDone(true);
     } catch {
@@ -132,7 +142,7 @@ export default function MarketPage() {
     }
     // items.length 故意不進相依：它變動的唯一原因就是這支自己載進來的資料
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, level, sort]);
+  }, [search, level, type, series, sort]);
 
   useEffect(() => { loadFeed(true); }, [loadFeed]);
 
@@ -219,18 +229,13 @@ export default function MarketPage() {
 
   /* ── 版面 ── */
 
-  const heroItems = items.slice(0, 3);
-  const [heroIdx, setHeroIdx] = useState(0);
-  useEffect(() => {
-    if (heroItems.length < 2 || tab !== 'market') return;
-    const t = setInterval(() => setHeroIdx(i => (i + 1) % heroItems.length), 3600);
-    return () => clearInterval(t);
-  }, [heroItems.length, tab]);
+  /* 橫式商品小卡（商城的 .heroC 輪播）老闆 2026-09-01 指定先隱藏 —— 版位留著，之後要放什麼再說 */
 
-  const levelChips = useMemo(
-    () => ['', ...(settings?.allowedLevels ?? [])],
-    [settings],
-  );
+  /** 目前這個類別底下的系列。切類別時系列跟著換，選中的那個不在新表裡就清掉 */
+  const seriesTabs = useMemo(() => facets?.seriesByType[type] ?? [], [facets, type]);
+  useEffect(() => {
+    if (series && !seriesTabs.some(x => x.name === series)) setSeries('');
+  }, [seriesTabs, series]);
 
   const goItem = (id: number) => {
     rememberScroll();
@@ -248,15 +253,17 @@ export default function MarketPage() {
               <path d="m15 18-6-6 6-6" />
             </svg>
           </button>
+          {/* 全域 Navbar 在這頁關掉了（兩層頂欄會重複），標題沒人接就沒了 */}
+          <span className="htitle">交易所</span>
           <button className="sbox" onClick={() => { setDraft(search); openSheet('search'); }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BFBFBF" strokeWidth="2.4">
               <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" />
             </svg>
             <span className="sboxt">{search || '搜尋獎項、作品名稱'}</span>
           </button>
-          <button className="hicon" onClick={() => setTab('mine')} aria-label="我的上架">
+          <button className="hicon" onClick={() => openSheet('chats')} aria-label="聊聊">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round">
-              <path d="M4 8h16v11a1 1 0 01-1 1H5a1 1 0 01-1-1z" /><path d="M4 8l2-4h12l2 4" /><path d="M9.5 12h5" />
+              <path d="M20 12a7.5 7.5 0 01-11 6.6L4 20l1.4-4.2A7.5 7.5 0 1120 12z" />
             </svg>
           </button>
         </div>
@@ -265,49 +272,70 @@ export default function MarketPage() {
       <div className="screen">
         {tab === 'market' && (
           <>
-            {heroItems.length > 0 && (
-              <div className="heroC">
-                {heroItems.map((it, i) => (
-                  <button key={it.id} className={`hslide${i === heroIdx ? ' on' : ''}`} onClick={() => goItem(it.id)}>
-                    <span className="hart" style={{ background: '#F7F7F7', position: 'relative' }}>
-                      <Image src={it.prizeImage || FALLBACK} alt="" fill sizes="100px" className="object-contain" unoptimized />
-                    </span>
-                    <span className="htx">
-                      <h3>{it.prizeName}</h3>
-                      <p>{it.sellerName} · {ago(it.createdAt)}</p>
-                      <span className="hprice">{gnum(it.price)} G</span>
-                    </span>
+            {/* 一級「類別」：market.css 的 .ptabs ＝ 首頁 Tabs 那排底線頁籤 */}
+            {(facets?.types.length ?? 0) > 1 && (
+              <div className="tabbar2">
+                <div className="ptabs">
+                  <button aria-pressed={type === ''} onClick={() => { setType(''); setSeries(''); }}>
+                    <span className="tl">全部</span>
                   </button>
-                ))}
-                <span className="hdots">
-                  {heroItems.map((_, i) => <i key={i} className={i === heroIdx ? 'on' : ''} />)}
-                </span>
+                  {facets!.types.map(t => (
+                    <button key={t.key} aria-pressed={type === t.key} onClick={() => { setType(t.key); setSeries(''); }}>
+                      <span className="tl">{t.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
-            <div className="lvrow">
-              {levelChips.map(lv => (
-                <button key={lv || 'all'} aria-pressed={level === lv} onClick={() => setLevel(lv)}>
-                  {lv || '全部賞等'}
+            {/* 二級「系列」＋ 排序圖標：照首頁 app/page.tsx 那排膠囊 */}
+            <div className="serirow">
+              <div className="serilist">
+                <div>
+                  <button aria-pressed={series === ''} onClick={() => setSeries('')}>全部</button>
+                  {seriesTabs.map(sx => (
+                    <button key={sx.name} aria-pressed={series === sx.name} onClick={() => setSeries(sx.name)}>
+                      {sx.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="serisort">
+                <button
+                  className="sorticon"
+                  aria-pressed={sort !== 'new' || sortOpen}
+                  aria-label="排序"
+                  onClick={() => setSortOpen(o => !o)}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 4h16" /><path d="M6 12h12" /><path d="M10 20h4" />
+                  </svg>
                 </button>
-              ))}
-            </div>
-
-            <div className="sortrow">
-              {SORTS.map(s => (
-                <button key={s.key} aria-pressed={sort === s.key} onClick={() => setSort(s.key)}>{s.label}</button>
-              ))}
-              <span className="cnt">{items.length} 件{done ? '' : '＋'}</span>
+                {sortOpen && (
+                  <>
+                    <div className="sortscrim" onClick={() => setSortOpen(false)} />
+                    <div className="sortmenu">
+                      {SORTS.map(o => (
+                        <button
+                          key={o.key}
+                          aria-pressed={sort === o.key}
+                          onClick={() => { setSort(o.key); setSortOpen(false); }}
+                        >{o.label}</button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
             {loading ? (
               <ProductLoadingScreen />
             ) : items.length === 0 ? (
               <div className="empty">
-                {search || level ? '沒有符合條件的上架' : '目前沒有人上架'}
+                {search || level || type || series ? '沒有符合條件的上架' : '目前沒有人上架'}
                 <div style={{ marginTop: 14 }}>
-                  {search || level ? (
-                    <button className="ghostbtn" onClick={() => { setSearch(''); setLevel(''); }}>清除條件</button>
+                  {search || level || type || series ? (
+                    <button className="ghostbtn" onClick={() => { setSearch(''); setLevel(''); setType(''); setSeries(''); }}>清除條件</button>
                   ) : (
                     <button className="ghostbtn" onClick={() => setTab('mine')}>去掛一件上來</button>
                   )}
@@ -544,6 +572,25 @@ export default function MarketPage() {
           </p>
         </div>
       </Sheet>
+
+      {/* 聊聊：列表 → 單一對話。對話開在同一格網址上（?v=chat），返回鍵一樣關得掉 */}
+      <ChatListSheet
+        open={view === 'chats'}
+        loggedIn={!!user}
+        onClose={closeSheet}
+        onPick={(listingId, otherId, otherName) => {
+          setChatWith({ listingId, otherId, otherName });
+          openSheet('chat');
+        }}
+      />
+      <ChatThreadSheet
+        open={view === 'chat' && !!chatWith}
+        loggedIn={!!user}
+        listingId={chatWith?.listingId ?? null}
+        otherId={chatWith?.otherId ?? null}
+        otherName={chatWith?.otherName ?? ''}
+        onClose={closeSheet}
+      />
 
       <Dialog
         open={!!confirmOff}
