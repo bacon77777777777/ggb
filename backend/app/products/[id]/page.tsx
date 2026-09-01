@@ -1063,15 +1063,18 @@ export default function EditProductPage() {
                 {!isSlot && <div>
                   <div className="flex items-center gap-1.5 mb-1">
                     <label className="block text-xs font-medium text-neutral-500">抽獎模組</label>
-                    {(formData.isSealed || isCardType) && (
-                      <InfoIcon width={280} text={
-                        (formData.isSealed ? '已排籤封存，不可更換模組 —— 賣到一半換演出，先買與後買的玩家看到的會是兩套。' : '')
-                        + (formData.isSealed && isCardType ? '\n\n' : '')
-                        + (isCardType ? '三種開包演出都可以用，不論一包幾張。' : '')
-                      } />
-                    )}
+                    {/*
+                      模組**上架後也可以改**（老闆 2026-09-01，migration 667）。
+                      它是純表演：開出什麼由封存表在開賣前定死，籤號、賞項、機率都不會變。
+                      原本鎖著的理由（先買與後買看到兩套）擋得住個別商品、卻擋不住
+                      全站預設模組 —— 改 module_settings 一樣會把上架中的商品換掉。
+                    */}
+                    <InfoIcon width={300} text={
+                      '模組只是開獎的呈現方式，上架後也可以隨時更換 —— 開出什麼、籤號與機率都由封存表定案，不受影響。'
+                      + (isCardType ? '\n\n三種開包演出都可以用，不論一包幾張。' : '')
+                    } />
                   </div>
-                  <SelectField value={formData.machineTheme} disabled={formData.isSealed}
+                  <SelectField value={formData.machineTheme}
                     onChange={(e) => setFormData({ ...formData, machineTheme: e.target.value })}>
                     <option value="">— 類別預設 —</option>
                     {moduleOptions.map(o => (

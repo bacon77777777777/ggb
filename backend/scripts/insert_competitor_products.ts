@@ -20,6 +20,7 @@
  * out.json 的每一件商品另外可以帶三個選填欄位（沒帶就照舊）：
  *   cards_per_pack  抽卡一包幾張（1／3／5／10，migration 666）
  *   pack_style      卡包樣式 builtin／custom
+ *   machine_theme   個別指定開包演出；留空＝跟著全站預設走
  *   description     自己的商品說明；沒帶才用下面依來源套的預設文案
  */
 
@@ -38,7 +39,7 @@ interface Item {
   src: string; type: string; category: string
   name: string; price: number; image: string | null
   prizes: Prize[]; total_count: number
-  cards_per_pack?: number; pack_style?: string; description?: string
+  cards_per_pack?: number; pack_style?: string; machine_theme?: string; description?: string
 }
 
 const [, , inPath] = process.argv
@@ -71,12 +72,13 @@ async function run(db: typeof DBS[number]) {
         `INSERT INTO products
            (name, category, price, type, status, is_active, supplier_id,
             image_url, description, total_count, remaining, remaining_count, sales,
-            cards_per_pack, pack_style)
-         VALUES ($1,$2,$3,$4,'pending',false,$5,$6,$7,$8,$8,0,0,$9,$10)
+            cards_per_pack, pack_style, machine_theme)
+         VALUES ($1,$2,$3,$4,'pending',false,$5,$6,$7,$8,$8,0,0,$9,$10,$11)
          RETURNING id`,
         [it.name, it.category, it.price, it.type, SUPPLIER_ID, it.image, description(it), total,
          it.type === 'card' && (it.cards_per_pack ?? 1) > 1 ? it.cards_per_pack : null,
-         it.pack_style === 'custom' ? 'custom' : 'builtin'],
+         it.pack_style === 'custom' ? 'custom' : 'builtin',
+         it.machine_theme || null],
       )
       const pid = rows[0].id as number
       ;(ids[it.type] ??= []).push(pid)

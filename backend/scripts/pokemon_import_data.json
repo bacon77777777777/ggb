@@ -1,0 +1,4351 @@
+[
+ {
+  "src": "pokemon-card-tw:M6",
+  "type": "card",
+  "category": "抽卡",
+  "name": "寶可夢 擴充包「綠寶石風暴」",
+  "price": 154,
+  "cards_per_pack": 5,
+  "pack_style": "builtin",
+  "description": "官方擴充包「綠寶石風暴」（M6），一包 5 張。卡圖與卡名取自寶可夢卡牌官方資料庫，售價與收錄張數為初始設定，上架前請覆核。",
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-main.webp",
+  "prizes": [
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "001 赫拉克羅斯",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p1.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "002 溜溜糖球",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p2.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "003 雨翅蛾",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p3.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "004 刺球仙人掌",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p4.png",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "005 夢歌仙人掌",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p5.png",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "006 三蜜蜂",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p6.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "007 蜂女王",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p7.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "008 膽小蟲",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p8.png",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "009 超級具甲武者ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p9.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "010 卡蒂狗",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p10.png",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "011 風速狗",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p11.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "012 鴨嘴火獸",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p12.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "013 鴨嘴炎獸",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p13.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "014 煤炭龜",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p14.png",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "015 加熱洛托姆ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p15.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "016 熔蟻獸",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p16.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "017 巨翅飛魚",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p17.png",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "018 蓋歐卡",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p18.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "019 輕飄飄",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p19.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "020 胖嘟嘟",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p20.png",
+    "qty": 12
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "021 弱丁魚ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p21.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "022 電擊獸",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p22.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "023 電擊魔獸",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p23.png",
+    "qty": 12
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "024 雷公ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p24.webp",
+    "qty": 1
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "025 雷電雲",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p25.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "026 啪嚓海膽",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p26.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "027 電海燕",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p27.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "028 大電海燕",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p28.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "029 催眠貘",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p29.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "030 引夢貘人",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p30.png",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "031 騎拉帝納",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p31.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "032 泥偶小人",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p32.png",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "033 超級泥偶巨人ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p33.webp",
+    "qty": 1
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "034 眷戀雲",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p34.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "035 穿山鼠",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p35.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "036 穿山王",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p36.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "037 大岩蛇",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p37.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "038 大鋼蛇",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p38.webp",
+    "qty": 12
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "039 固拉多",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p39.webp",
+    "qty": 4
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "040 土地雲",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p40.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "041 尼多蘭",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p41.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "042 尼多娜",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p42.webp",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "043 尼多后",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p43.png",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "044 圓絲蛛",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p44.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "045 阿利多斯",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p45.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "046 勾魂眼",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p46.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "047 好啦魷",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p47.png",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "048 超級烏賊王ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p48.webp",
+    "qty": 1
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "049 赤面龍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p49.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "050 心鱗寶",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p50.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "051 鱗甲龍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p51.png",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "052 杖尾鱗甲龍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p52.png",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "053 摩托蜥",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p53.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "054 露力麗",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p54.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "055 青綿鳥",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p55.png",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "056 七夕青鳥",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p56.png",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "057 變隱龍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p57.png",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "058 超級烈空坐ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p58.webp",
+    "qty": 1
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "059 龍捲雲",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p59.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "060 小箭雀",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p60.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "061 火箭雀",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p61.png",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "062 烈箭鷹ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p62.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "063 美味飯糰",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p63.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "064 冒險提燈",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p64.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "065 訂製背心",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p65.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "066 超級烈空坐帽子",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p66.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "067 主持人的帶動",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p67.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "068 基利",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p68.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "069 希嘉娜的信賴",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p69.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "070 小楓與小南的修行",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p70.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "071 傳說的海溝",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p71.webp",
+    "qty": 12
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "072 傳說的海溝（特別插圖）",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p72.webp",
+    "qty": 1
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "073 傳說的山頂",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p73.webp",
+    "qty": 12
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "074 傳說的山頂（特別插圖）",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p74.webp",
+    "qty": 1
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "075 傳說的熔岩洞",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788236830789-M6-p75.webp",
+    "qty": 12
+   }
+  ],
+  "total_count": 4070,
+  "product_id_stg": 856,
+  "note": "來源：寶可夢卡牌官方 asia.pokemon-card.com（擴充包 M6 綠寶石風暴）。官方搜尋索引 73 張，另從官方特別頁補 072／074 的特別插圖版；076 官網無圖未收。圖已全數搬進 R2，無外站網址。"
+ },
+ {
+  "src": "pokemon-card-tw:MTL",
+  "type": "card",
+  "category": "抽卡",
+  "name": "寶可夢 戰術牌組「超級噴火龍Xex」",
+  "price": 550,
+  "cards_per_pack": 5,
+  "pack_style": "builtin",
+  "machine_theme": "",
+  "description": "寶可夢卡牌官方系列 MTL，一包 5 張。卡圖與卡名取自官方資料庫，售價依官方建議售價換算，上架前請覆核。",
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-main.webp",
+  "prizes": [
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "001 小火龍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p1.png",
+    "qty": 101
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "002 火恐龍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p2.webp",
+    "qty": 101
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "003 超級噴火龍Xex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p3.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "004 比克提尼",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p4.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "005 熔蟻獸",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p5.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "006 萊希拉姆",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p6.png",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "007 花舞鳥ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p7.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "008 吉雉雞ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p8.png",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "009 能量回收",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p9.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "010 能量回收器",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p10.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "011 特殊紅牌",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p11.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "012 高級球",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p12.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "013 神奇糖果",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p13.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "014 貴重手推車",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p14.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "015 寶可平板",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p15.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "016 寶可夢交替",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p16.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "017 夜間擔架",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p17.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "018 氣球",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p18.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "019 艾莉絲的鬥志",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p19.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "020 小光",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p20.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "021 吹火人",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p21.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "022 老大的指令（烏羽）",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p22.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "023 莉莉艾的決意",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p23.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "FIR 基本【火】能量",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTL-p24.webp",
+    "qty": 100
+   }
+  ],
+  "total_count": 2105,
+  "product_id_stg": 864,
+  "note": "來源：寶可夢卡牌官方 asia.pokemon-card.com。圖已全數搬進 R2，無外站網址。"
+ },
+ {
+  "src": "pokemon-card-tw:MTS",
+  "type": "card",
+  "category": "抽卡",
+  "name": "寶可夢 戰術牌組「超級沙奈朵ex」",
+  "price": 550,
+  "cards_per_pack": 5,
+  "pack_style": "builtin",
+  "machine_theme": "",
+  "description": "寶可夢卡牌官方系列 MTS，一包 5 張。卡圖與卡名取自官方資料庫，售價依官方建議售價換算，上架前請覆核。",
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-main.webp",
+  "prizes": [
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "001 莉莉艾的皮皮ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p1.png",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "002 拉魯拉絲",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p2.png",
+    "qty": 101
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "003 奇魯莉安",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p3.png",
+    "qty": 101
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "004 超級沙奈朵ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p4.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "005 拉帝亞斯ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p5.png",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "006 輕飄飄",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p6.png",
+    "qty": 101
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "007 胖嘟嘟ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p7.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "008 超級蒂安希ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p8.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "009 米立龍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p9.png",
+    "qty": 101
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "010 喵喵ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p10.png",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "011 特殊紅牌",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p11.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "012 高級球",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p12.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "013 神奇糖果",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p13.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "014 寶可平板",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p14.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "015 夜間擔架",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p15.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "016 奇跡修正檔",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p16.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "017 英雄斗篷",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p17.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "018 氣球",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p18.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "019 艾莉絲的鬥志",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p19.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "020 鬥子",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p20.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "021 老大的指令（烏羽）",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p21.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "022 莉莉艾的決意",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p22.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "023 感應【超】能量",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p23.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "PSY 基本【超】能量",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTS-p24.webp",
+    "qty": 100
+   }
+  ],
+  "total_count": 1810,
+  "product_id_stg": 865,
+  "note": "來源：寶可夢卡牌官方 asia.pokemon-card.com。圖已全數搬進 R2，無外站網址。"
+ },
+ {
+  "src": "pokemon-card-tw:MTH",
+  "type": "card",
+  "category": "抽卡",
+  "name": "寶可夢 戰術牌組「超級巨牙鯊ex」",
+  "price": 550,
+  "cards_per_pack": 5,
+  "pack_style": "builtin",
+  "machine_theme": "",
+  "description": "寶可夢卡牌官方系列 MTH，一包 5 張。卡圖與卡名取自官方資料庫，售價依官方建議售價換算，上架前請覆核。",
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-main.webp",
+  "prizes": [
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "001 願增猿",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p1.png",
+    "qty": 101
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "002 利牙魚",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p2.webp",
+    "qty": 101
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "003 超級巨牙鯊ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p3.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "004 飯匙蛇",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p4.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "005 毒電嬰",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p5.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "006 顫弦蠑螈",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p6.webp",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "007 吉雉雞ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p7.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "008 桃歹郎ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p8.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "009 特殊紅牌",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p9.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "010 好友寶芬",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p10.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "011 高級球",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p11.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "012 頂尖捕捉器",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p12.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "013 寶可平板",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p13.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "014 夜間擔架",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p14.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "015 龐克頭盔",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p15.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "016 氣球",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p16.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "017 艾莉絲的鬥志",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p17.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "018 鬥子",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p18.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "019 老大的指令（烏羽）",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p19.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "020 莉莉艾的決意",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p20.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "DAR 基本【惡】能量",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-MTH-p21.webp",
+    "qty": 100
+   }
+  ],
+  "total_count": 1805,
+  "product_id_stg": 866,
+  "note": "來源：寶可夢卡牌官方 asia.pokemon-card.com。圖已全數搬進 R2，無外站網址。"
+ },
+ {
+  "src": "pokemon-card-tw:M1L",
+  "type": "card",
+  "category": "抽卡",
+  "name": "寶可夢 擴充包「超級勇氣」",
+  "price": 149,
+  "cards_per_pack": 10,
+  "pack_style": "builtin",
+  "machine_theme": "",
+  "description": "寶可夢卡牌官方系列 M1L，一包 10 張。卡圖與卡名取自官方資料庫，售價依官方建議售價換算，上架前請覆核。",
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-main.webp",
+  "prizes": [
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "001 妙蛙種子",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p1.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "002 妙蛙草",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p2.webp",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "003 超級妙蛙花ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p3.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "004 蛋蛋",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p4.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "005 椰蛋樹",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p5.webp",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "006 時拉比",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p6.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "007 橡實果",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p7.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "008 長鼻葉",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p8.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "009 狡猾天狗",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p9.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "010 六尾",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p10.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "011 九尾",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p11.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "012 呆火駝",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p12.webp",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "013 超級噴火駝ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p13.webp",
+    "qty": 1
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "014 波爾凱尼恩",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p14.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "015 炎兔兒",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p15.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "016 騰蹴小將",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p16.webp",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "017 閃焰王牌",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p17.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "018 龍蝦小兵",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p18.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "019 索財靈",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p19.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "020 穿山鼠",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p20.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "021 穿山王",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p21.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "022 大岩蛇",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p22.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "023 無畏小子",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p23.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "024 幕下力士",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p24.webp",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "025 鐵掌力士",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p25.webp",
+    "qty": 4
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "026 月石",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p26.webp",
+    "qty": 4
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "027 太陽岩",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p27.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "028 利歐路",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p28.webp",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "029 超級路卡利歐ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p29.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "030 不良蛙",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p30.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "031 毒骷蛙",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p31.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "032 瑪夏多",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p32.webp",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "033 巨石丁",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p33.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "034 鹽石寶",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p34.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "035 鹽石壘",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p35.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "036 鹽石巨靈",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p36.webp",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "037 鐵螯龍蝦",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p37.webp",
+    "qty": 12
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "038 超級阿勃梭魯ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p38.webp",
+    "qty": 1
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "039 花岩怪",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p39.webp",
+    "qty": 12
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "040 伊裴爾塔爾",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p40.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "041 偷兒狐",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p41.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "042 狐大盜",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p42.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "043 滋汁鼴",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p43.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "044 塗標客",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p44.png",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "045 大鋼蛇",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p45.webp",
+    "qty": 4
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "046 超級大嘴娃ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p46.webp",
+    "qty": 1
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "047 帝牙盧卡",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p47.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "048 小鍛匠",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p48.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "049 巧鍛匠",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p49.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "050 巨鍛匠",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p50.webp",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "051 賽富豪",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p51.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "052 烈雀",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p52.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "053 大嘴雀",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p53.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "054 大奶罐",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p54.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "055 貓鼬少",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p55.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "056 貓鼬探長",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p56.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "057 鐵之防禦強化",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p57.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "058 力量蛋白飲",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p58.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "059 戰鬥鑼",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p59.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "060 除蟲噴霧",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p60.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "061 馬志士的交易",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p61.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "062 莉莉艾的決意",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p62.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "063 險惡廢墟",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p63.png",
+    "qty": 12
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "064 妙蛙種子",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p64.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "065 妙蛙草",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p65.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "066 椰蛋樹",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p66.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "067 六尾",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p67.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "068 利歐路",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p68.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "069 瑪夏多",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p69.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "070 鹽石巨靈",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p70.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "071 花岩怪",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p71.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "072 滋汁鼴",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p72.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "073 大鋼蛇",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p73.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "074 烈雀",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p74.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "075 貓鼬探長",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p75.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "076 超級妙蛙花ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p76.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "077 超級噴火駝ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p77.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "078 超級路卡利歐ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p78.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "079 超級阿勃梭魯ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p79.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "080 超級大嘴娃ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p80.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "081 力量蛋白飲",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p81.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "082 戰鬥鑼",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p82.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "083 夜間擔架",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p83.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "084 氣球",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p84.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "085 馬志士的交易",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p85.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "086 莉莉艾的決意",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p86.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "087 超級妙蛙花ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p87.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "088 超級路卡利歐ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p88.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "089 超級阿勃梭魯ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p89.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "090 馬志士的交易",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p90.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "091 莉莉艾的決意",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p91.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "092 超級路卡利歐ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M1L-p92.webp",
+    "qty": 1
+   }
+  ],
+  "total_count": 3410,
+  "product_id_stg": 867,
+  "note": "來源：寶可夢卡牌官方 asia.pokemon-card.com。圖已全數搬進 R2，無外站網址。"
+ },
+ {
+  "src": "pokemon-card-tw:M5",
+  "type": "card",
+  "category": "抽卡",
+  "name": "寶可夢 擴充包「深淵之瞳」",
+  "price": 154,
+  "cards_per_pack": 3,
+  "pack_style": "builtin",
+  "machine_theme": "card_pack",
+  "description": "寶可夢卡牌官方系列 M5，一包 3 張。卡圖與卡名取自官方資料庫，售價依官方建議售價換算，上架前請覆核。",
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-main.webp",
+  "prizes": [
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "001 熱帶龍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p1.webp",
+    "qty": 101
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "002 強顎雞母蟲",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p2.webp",
+    "qty": 101
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "003 偽螳草",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p3.webp",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "004 蘭螳花ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p4.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "005 斯魔茶",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p5.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "006 來悲粗茶",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p6.webp",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "007 席多藍恩",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p7.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "008 燒火蚣",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p8.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "009 焚焰蚣",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p9.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "010 炭小侍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p10.webp",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "011 紅蓮鎧騎",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p11.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "012 角金魚",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p12.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "013 金魚王",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p13.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "014 吼吼鯨",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p14.png",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "015 吼鯨王ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p15.webp",
+    "qty": 1
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "016 古空棘魚",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p16.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "017 球球海獅",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p17.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "018 花漾海獅",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p18.webp",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "019 西獅海壬",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p19.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "020 波普海豚",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p20.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "021 海豚俠",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p21.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "022 落雷獸",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p22.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "023 雷電獸",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p23.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "024 蟲電寶",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p24.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "025 鍬農炮蟲",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p25.webp",
+    "qty": 12
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "026 超級捷拉奧拉ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p26.webp",
+    "qty": 1
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "027 密勒頓",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p27.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "028 呆呆獸",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p28.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "029 呆殼獸",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p29.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "030 迷唇姐",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p30.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "031 怨影娃娃",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p31.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "032 詛咒娃娃",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p32.webp",
+    "qty": 12
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "033 花岩怪",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p33.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "034 燭光靈",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p34.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "035 燈火幽靈",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p35.webp",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "036 超級水晶燈火靈ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p36.webp",
+    "qty": 1
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "037 破破舵輪",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p37.webp",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "038 瑪夏多",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p38.webp",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "039 棄世猴",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p39.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "040 猴怪",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p40.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "041 火爆猴",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p41.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "042 頭蓋龍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p42.webp",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "043 戰槌龍ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p43.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "044 螺釘地鼠",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p44.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "045 故勒頓",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p45.webp",
+    "qty": 12
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "046 超級達克萊伊ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p46.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "047 禿鷹丫頭",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p47.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "048 禿鷹娜",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p48.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "049 好啦魷",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p49.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "050 烏賊王",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p50.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "051 偷兒狐",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p51.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "052 狐大盜",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p52.png",
+    "qty": 12
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "053 莫魯貝可ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p53.webp",
+    "qty": 1
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "054 薩戮德",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p54.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "055 偶叫獒",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p55.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "056 獒教父",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p56.png",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "057 古玉魚",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p57.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "058 盔甲鳥",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p58.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "059 盾甲龍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p59.webp",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "060 護城龍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p60.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "061 銅鏡怪",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p61.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "062 青銅鐘",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p62.png",
+    "qty": 12
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "063 超級龍頭地鼠ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p63.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "064 小篤兒",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p64.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "065 喇叭啄鳥",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p65.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "066 銃嘴大鳥",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p66.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "067 屬性：空",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p67.png",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "068 銀伴戰獸",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p68.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "069 下石鳥",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p69.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "070 暗黑鈴",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p70.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "071 陳舊的頭蓋化石",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p71.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "072 陳舊的盾甲化石",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p72.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "073 豪邁炸彈",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p73.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "074 重試徽章",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p74.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "075 小霞的朝氣",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p75.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "076 格拉吉歐的決戰",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p76.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "077 鏽蝕組手下",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p77.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "078 沐淨",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p78.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "079 化石採掘場",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p79.png",
+    "qty": 12
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "080 伏特【雷】能量",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p80.png",
+    "qty": 4
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "081 暗影【惡】能量",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p81.png",
+    "qty": 4
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "082 偽螳草",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p82.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "083 紅蓮鎧騎",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p83.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "084 角金魚",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p84.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "085 西獅海壬",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p85.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "086 雷電獸",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p86.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "087 呆殼獸",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p87.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "088 破破舵輪",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p88.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "089 狐大盜",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p89.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "090 薩戮德",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p90.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "091 護城龍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p91.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "092 銃嘴大鳥",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p92.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "093 銀伴戰獸",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p93.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "094 蘭螳花ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p94.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "095 吼鯨王ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p95.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "096 超級捷拉奧拉ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p96.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "097 超級水晶燈火靈ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p97.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "098 戰槌龍ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p98.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "099 超級達克萊伊ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p99.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "100 莫魯貝可ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p100.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "101 超級龍頭地鼠ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p101.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "102 鐵之防禦強化",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p102.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "103 能量轉移",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p103.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "104 粉碎之錘",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p104.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "105 暗黑鈴",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p105.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "106 豪邁炸彈",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p106.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "107 猛攻手鐲",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p107.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "108 小霞的朝氣",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p108.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "109 格拉吉歐的決戰",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p109.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "110 鏽蝕組手下",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p110.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "111 沐淨",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p111.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "112 超級捷拉奧拉ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p112.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "113 超級水晶燈火靈ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p113.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "114 超級達克萊伊ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p114.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "115 莫魯貝可ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p115.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "116 格拉吉歐的決戰",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p116.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "117 沐淨",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p117.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "118 超級達克萊伊ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M5-p118.webp",
+    "qty": 1
+   }
+  ],
+  "total_count": 4203,
+  "product_id_stg": 868,
+  "note": "來源：寶可夢卡牌官方 asia.pokemon-card.com。圖已全數搬進 R2，無外站網址。"
+ },
+ {
+  "src": "pokemon-card-tw:M2",
+  "type": "card",
+  "category": "抽卡",
+  "name": "寶可夢 擴充包「烈獄狂火X」",
+  "price": 149,
+  "cards_per_pack": 3,
+  "pack_style": "builtin",
+  "machine_theme": "card_pack",
+  "description": "寶可夢卡牌官方系列 M2，一包 3 張。卡圖與卡名取自官方資料庫，售價依官方建議售價換算，上架前請覆核。",
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-main.webp",
+  "prizes": [
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "001 走路草",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p1.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "002 臭臭花",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p2.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "003 霸王花",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p3.webp",
+    "qty": 12
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "004 超級赫拉克羅斯ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p4.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "005 蓮葉童子",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p5.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "006 蓮帽小童",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p6.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "007 樂天河童",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p7.webp",
+    "qty": 12
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "008 蓋諾賽克特",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p8.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "009 豆蟋蟀",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p9.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "010 烈腿蝗",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p10.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "011 小火龍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p11.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "012 火恐龍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p12.webp",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "013 超級噴火龍Xex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p13.webp",
+    "qty": 1
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "014 火焰鳥",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p14.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "015 火紅不倒翁",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p15.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "016 達摩狒狒",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p16.png",
+    "qty": 12
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "017 萊希拉姆",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p17.webp",
+    "qty": 4
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "018 花舞鳥ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p18.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "019 炭小侍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p19.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "020 蒼炎刃鬼",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p20.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "021 小海獅",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p21.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "022 白海獅",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p22.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "023 小山豬",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p23.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "024 長毛豬",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p24.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "025 象牙豬",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p25.png",
+    "qty": 12
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "026 水君",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p26.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "027 波加曼",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p27.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "028 波皇子",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p28.png",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "029 洛托姆ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p29.png",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "030 來電汪",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p30.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "031 逐電犬",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p31.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "032 布撥",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p32.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "033 布土撥",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p33.png",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "034 巴布土撥",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p34.png",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "035 夢妖",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p35.png",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "036 夢妖魔ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p36.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "037 木棉球",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p37.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "038 風妖精",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p38.webp",
+    "qty": 12
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "039 蒼響",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p39.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "040 納噬草",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p40.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "041 怖納噬草",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p41.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "042 帕底亞 肯泰羅",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p42.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "043 天蠍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p43.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "044 天蠍王",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p44.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "045 大顎蟻",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p45.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "046 超音波幼蟲",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p46.png",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "047 沙漠蜻蜓",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p47.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "048 狃拉",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p48.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "049 瑪狃拉",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p49.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "050 利牙魚",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p50.webp",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "051 超級巨牙鯊ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p51.webp",
+    "qty": 1
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "052 飯匙蛇",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p52.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "053 黑眼鱷",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p53.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "054 混混鱷",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p54.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "055 流氓鱷",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p55.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "056 毒電嬰",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p56.png",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "057 顫弦蠑螈",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p57.webp",
+    "qty": 4
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "058 帝王拿波ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p58.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "059 銅鏡怪",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p59.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "060 青銅鐘",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p60.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "061 托戈德瑪爾",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p61.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "062 鋁鋼龍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p62.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "063 鋁鋼橋龍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p63.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "064 胖丁",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p64.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "065 胖可丁",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p65.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "066 長尾怪手",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p66.png",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "067 雙尾怪手",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p67.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "068 圖圖犬",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p68.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "069 蛇紋熊",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p69.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "070 直衝熊",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p70.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "071 捲捲耳",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p71.png",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "072 超級長耳兔ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p72.webp",
+    "qty": 1
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "073 超大冰淇淋",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p73.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "074 高溫燃燒器",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p74.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "075 神聖護符",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p75.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "076 越橘的一步棋",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p76.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "077 小光",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p77.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "078 吹火人",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p78.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "079 對戰圓形競技場",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p79.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "080 暈眩山谷",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p80.png",
+    "qty": 12
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "081 樂天河童",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p81.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "082 豆蟋蟀",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p82.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "083 炭小侍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p83.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "084 白海獅",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p84.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "085 波加曼",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p85.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "086 來電汪",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p86.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "087 蒼響",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p87.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "088 沙漠蜻蜓",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p88.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "089 顫弦蠑螈",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p89.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "090 托戈德瑪爾",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p90.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "091 胖可丁",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p91.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "092 雙尾怪手",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p92.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "093 超級赫拉克羅斯ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p93.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "094 超級噴火龍Xex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p94.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "095 花舞鳥ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p95.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "096 洛托姆ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p96.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "097 夢妖魔ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p97.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "098 超級巨牙鯊ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p98.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "099 帝王拿波ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p99.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "100 超級長耳兔ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p100.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "101 高溫燃燒器",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p101.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "102 寶可夢交替",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p102.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "103 神聖護符",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p103.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "104 龐克頭盔",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p104.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "105 越橘的一步棋",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p105.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "106 小光",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p106.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "107 吹火人",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p107.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "108 對戰圓形競技場",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p108.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "109 燃火能量",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p109.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "110 超級噴火龍Xex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p110.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "111 花舞鳥ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p111.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "112 洛托姆ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p112.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "113 超級巨牙鯊ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p113.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "114 超級長耳兔ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p114.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "115 小光",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p115.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "116 超級噴火龍Xex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-M2-p116.webp",
+    "qty": 1
+   }
+  ],
+  "total_count": 4188,
+  "product_id_stg": 869,
+  "note": "來源：寶可夢卡牌官方 asia.pokemon-card.com。圖已全數搬進 R2，無外站網址。"
+ },
+ {
+  "src": "pokemon-card-tw:SV10",
+  "type": "card",
+  "category": "抽卡",
+  "name": "寶可夢 擴充包「火箭隊的榮耀」",
+  "price": 149,
+  "cards_per_pack": 1,
+  "pack_style": "builtin",
+  "machine_theme": "card_pack",
+  "description": "寶可夢卡牌官方系列 SV10，一包 1 張。卡圖與卡名取自官方資料庫，售價依官方建議售價換算，上架前請覆核。",
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-main.webp",
+  "prizes": [
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "001 榛果球",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p1.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "002 蘑蘑菇",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p2.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "003 斗笠菇",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p3.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "004 切割洛托姆",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p4.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "005 偽螳草",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p5.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "006 蘭螳花",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p6.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "007 <火箭隊的>索偵蟲",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p7.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "008 <火箭隊的>團珠蛛",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p8.png",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "009 <火箭隊的>操陷蛛",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p9.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "010 迷你芙",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p10.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "011 奧利紐",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p11.webp",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "012 奧利瓦ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p12.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "013 卡蒂狗",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p13.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "014 風速狗",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p14.webp",
+    "qty": 12
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "015 <火箭隊的>火焰鳥ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p15.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "016 <火箭隊的>戴魯比",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p16.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "017 <火箭隊的>黑魯加",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p17.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "018 火稚雞",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p18.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "019 力壯雞",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p19.webp",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "020 火焰雞",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p20.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "021 加熱洛托姆",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p21.png",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "022 <火箭隊的>急凍鳥",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p22.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "023 珍珠貝",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p23.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "024 獵斑魚",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p24.webp",
+    "qty": 12
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "025 櫻花魚",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p25.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "026 雪笠怪",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p26.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "027 暴雪王",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p27.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "028 清洗洛托姆",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p28.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "029 刺梭魚",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p29.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "030 戽斗尖梭",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p30.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "031 走鯨",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p31.png",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "032 浩大鯨ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p32.webp",
+    "qty": 1
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "033 <火箭隊的>閃電鳥",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p33.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "034 <火箭隊的>咩利羊",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p34.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "035 <火箭隊的>茸茸羊",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p35.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "036 <火箭隊的>電龍",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p36.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "037 <火箭隊的>催眠貘",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p37.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "038 <火箭隊的>引夢貘人",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p38.png",
+    "qty": 12
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "039 <火箭隊的>超夢ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p39.webp",
+    "qty": 1
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "040 <火箭隊的>果然翁",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p40.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "041 <火箭隊的>鈴鐺響",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p41.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "042 <火箭隊的>謎擬Q",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p42.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "043 <火箭隊的>天罩蟲",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p43.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "044 <火箭隊的>以歐路普",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p44.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "045 猴怪",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p45.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "046 火爆猴",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p46.png",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "047 棄世猴",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p47.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "048 <火箭隊的>幼基拉斯",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p48.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "049 <火箭隊的>沙基拉斯",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p49.png",
+    "qty": 12
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "050 <火箭隊的>班基拉斯",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p50.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "051 朝北鼻",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p51.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "052 大朝北鼻",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p52.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "053 瑪沙那",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p53.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "054 恰雷姆",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p54.webp",
+    "qty": 12
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "055 雷吉洛克ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p55.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "056 <火箭隊的>阿柏蛇",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p56.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "057 <火箭隊的>阿柏怪",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p57.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "058 <火箭隊的>尼多蘭",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p58.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "059 <火箭隊的>尼多娜",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p59.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "060 <火箭隊的>尼多后",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p60.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "061 <火箭隊的>尼多朗",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p61.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "062 <火箭隊的>尼多力諾",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p62.png",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "063 <火箭隊的>尼多王ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p63.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "064 <火箭隊的>超音蝠",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p64.webp",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "065 <火箭隊的>大嘴蝠",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p65.webp",
+    "qty": 12
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "066 <火箭隊的>叉字蝠ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p66.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "067 <火箭隊的>臭泥",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p67.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "068 <火箭隊的>臭臭泥",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p68.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "069 <火箭隊的>瓦斯彈",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p69.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "070 <火箭隊的>雙彈瓦斯",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p70.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "071 <火箭隊的>黑暗鴉",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p71.webp",
+    "qty": 12
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "072 <火箭隊的>狃拉",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p72.webp",
+    "qty": 4
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "073 佛烈托斯",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p73.webp",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "074 盔甲鳥",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p74.png",
+    "qty": 100
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "075 藏瑪然特",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p75.webp",
+    "qty": 4
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "076 <火箭隊的>小拉達",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p76.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "077 <火箭隊的>拉達",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p77.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "078 <火箭隊的>喵喵",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p78.webp",
+    "qty": 100
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "079 <火箭隊的>貓老大ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p79.webp",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "080 袋獸",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p80.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "081 <火箭隊的>多邊獸",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p81.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "082 <火箭隊的>多邊獸Ⅱ",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p82.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "083 <火箭隊的>多邊獸Z",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p83.png",
+    "qty": 12
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "084 傲骨燕",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p84.png",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "085 大王燕",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p85.webp",
+    "qty": 100
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "086 怒鸚哥",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p86.png",
+    "qty": 100
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "087 火箭隊的妨礙機器人",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p87.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "088 火箭隊的超級球",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p88.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "089 火箭隊的驚嚇炸彈",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p89.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "090 火箭隊的接收器",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p90.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "091 火箭隊的雅典娜",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p91.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "092 火箭隊的阿波羅",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p92.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "093 火箭隊的坂木",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p93.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "094 火箭隊的拉姆達",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p94.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "095 火箭隊的蘭斯",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p95.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "096 火箭隊的監視塔",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p96.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "097 火箭隊的工廠",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p97.png",
+    "qty": 12
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "098 火箭隊能量",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p98.png",
+    "qty": 12
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "099 <火箭隊的>操陷蛛",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p99.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "100 <火箭隊的>黑魯加",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p100.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "101 火焰雞",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p101.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "102 珍珠貝",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p102.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "103 <火箭隊的>果然翁",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p103.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "104 <火箭隊的>以歐路普",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p104.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "105 <火箭隊的>雙彈瓦斯",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p105.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "106 <火箭隊的>黑暗鴉",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p106.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "107 藏瑪然特",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p107.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "108 <火箭隊的>拉達",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p108.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "109 <火箭隊的>喵喵",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p109.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "110 袋獸",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p110.png",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "111 奧利瓦ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p111.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "112 <火箭隊的>火焰鳥ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p112.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "113 浩大鯨ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p113.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "114 <火箭隊的>超夢ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p114.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "115 雷吉洛克ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p115.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "116 <火箭隊的>尼多王ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p116.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "117 <火箭隊的>叉字蝠ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p117.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "118 <火箭隊的>貓老大ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p118.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "119 火箭隊的雅典娜",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p119.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "120 火箭隊的阿波羅",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p120.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "121 火箭隊的坂木",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p121.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "122 火箭隊的拉姆達",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p122.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "123 火箭隊的蘭斯",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p123.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "124 <火箭隊的>火焰鳥ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p124.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "125 <火箭隊的>超夢ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p125.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "126 <火箭隊的>尼多王ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p126.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "127 <火箭隊的>叉字蝠ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p127.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "128 火箭隊的雅典娜",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p128.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "129 火箭隊的坂木",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p129.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "130 <火箭隊的>超夢ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p130.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "131 <火箭隊的>叉字蝠ex",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p131.webp",
+    "qty": 1
+   },
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "132 阻礙之塔",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788238473962-SV10-p132.webp",
+    "qty": 1
+   }
+  ],
+  "total_count": 5178,
+  "product_id_stg": 870,
+  "note": "來源：寶可夢卡牌官方 asia.pokemon-card.com。圖已全數搬進 R2，無外站網址。"
+ }
+]
