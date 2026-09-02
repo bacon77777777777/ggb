@@ -118,7 +118,11 @@ export default function MarketPage() {
   const [confirmOff, setConfirmOff] = useState<MyListing | null>(null);
 
   /* ── 聊聊 ── */
-  const [chatWith, setChatWith] = useState<{ listingId: number; otherId: string; otherName: string; otherAvatar: string | null } | null>(null);
+  const [chatWith, setChatWith] = useState<{
+    listingId: number; otherId: string; otherName: string; otherAvatar: string | null;
+    /** 「正在聊這件」商品小卡（老闆 2026-09-02：從列表進對話也要帶） */
+    context: { name: string; image: string | null; price: number } | null;
+  } | null>(null);
 
   /* ── 搜尋紀錄 ── */
   const [history, setHistory] = useState<string[]>([]);
@@ -687,8 +691,14 @@ export default function MarketPage() {
         open={view === 'chats'}
         loggedIn={!!user}
         onClose={closeSheet}
-        onPick={(listingId, otherId, otherName, otherAvatar) => {
-          setChatWith({ listingId, otherId, otherName, otherAvatar });
+        onPick={(c) => {
+          setChatWith({
+            listingId: c.listingId,
+            otherId: c.otherId,
+            otherName: c.otherName,
+            otherAvatar: c.otherAvatar,
+            context: { name: c.prizeName, image: c.prizeImage, price: c.price },
+          });
           openSheet('chat');
         }}
       />
@@ -699,6 +709,7 @@ export default function MarketPage() {
         otherId={chatWith?.otherId ?? null}
         otherName={chatWith?.otherName ?? ''}
         otherAvatar={chatWith?.otherAvatar ?? null}
+        context={chatWith?.context ?? null}
         onClose={closeSheet}
       />
 

@@ -39,7 +39,8 @@ function ChatAvatar({ src }: { src: string | null }) {
 export function ChatListSheet({ open, onClose, onPick, loggedIn }: {
   open: boolean;
   onClose: () => void;
-  onPick: (listingId: number, otherId: string, otherName: string, otherAvatar: string | null) => void;
+  /** 整筆給出去：對話視窗要帶「正在聊這件」的商品小卡（老闆 2026-09-02） */
+  onPick: (chat: Chat) => void;
   loggedIn: boolean;
 }) {
   const [rows, setRows] = useState<Chat[]>([]);
@@ -71,7 +72,7 @@ export function ChatListSheet({ open, onClose, onPick, loggedIn }: {
               key={`${c.listingId}-${c.otherId}`}
               className="mrowi"
               style={{ width: '100%', textAlign: 'left' }}
-              onClick={() => onPick(c.listingId, c.otherId, c.otherName, c.otherAvatar)}
+              onClick={() => onPick(c)}
             >
               <span className="mth" style={{ background: '#F2F2F2', overflow: 'hidden' }}>
                 <Image src={c.prizeImage || FALLBACK} alt="" width={52} height={52} className="object-contain" unoptimized />
@@ -86,7 +87,7 @@ export function ChatListSheet({ open, onClose, onPick, loggedIn }: {
                   {c.listingStatus !== 'active' && (c.listingStatus === 'sold' ? ' · 已售出' : ' · 已下架')}
                 </span>
               </span>
-              <span className="mact" style={{ fontSize: 10.5, color: 'var(--sub)' }}>{ago(c.lastAt)}</span>
+              <span className="mact" style={{ fontSize: 12, color: 'var(--sub)' }}>{ago(c.lastAt)}</span>
             </button>
           ))
         )}
