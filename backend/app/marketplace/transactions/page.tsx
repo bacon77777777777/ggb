@@ -185,20 +185,6 @@ export default function MarketplaceTransactionsPage() {
         </div>
       ),
     },
-    /* 三個金額各自一欄、一律黑字（老闆 2026-09-02：後台是給管理員看的）；
-       手續費是平台唯一從交易所賺到的東西，放最右邊壓軸 */
-    {
-      key: 'price', label: '售價(G)', sortable: true,
-      render: (d) => (
-        <span className="whitespace-nowrap text-sm font-semibold tabular-nums text-neutral-900">{d.price.toLocaleString()}</span>
-      ),
-    },
-    {
-      key: 'seller_receive', label: '賣家實收(G)', sortable: true,
-      render: (d) => (
-        <span className="whitespace-nowrap text-sm tabular-nums text-neutral-900">{d.seller_receive.toLocaleString()}</span>
-      ),
-    },
     {
       key: 'buyer', label: '買家',
       render: (d) => (
@@ -225,6 +211,20 @@ export default function MarketplaceTransactionsPage() {
             {d.seller_email || <MemberNo no={d.seller_member_no} uuid={d.seller_id} />}
           </div>
         </div>
+      ),
+    },
+    /* 三個金額各自一欄、一律黑字、靠右收尾（老闆 2026-09-02）：
+       售價 → 實收 → 手續費，管理員最在意的手續費壓軸 */
+    {
+      key: 'price', label: '售價(G)', sortable: true,
+      render: (d) => (
+        <span className="whitespace-nowrap text-sm font-semibold tabular-nums text-neutral-900">{d.price.toLocaleString()}</span>
+      ),
+    },
+    {
+      key: 'seller_receive', label: '賣家實收(G)', sortable: true,
+      render: (d) => (
+        <span className="whitespace-nowrap text-sm tabular-nums text-neutral-900">{d.seller_receive.toLocaleString()}</span>
       ),
     },
     {
