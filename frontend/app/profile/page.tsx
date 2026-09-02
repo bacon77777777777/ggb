@@ -3313,7 +3313,11 @@ function ProfileContent() {
                   onClick={() => router.push('/market?tab=mine&v=sell')}
                   className="fixed right-4 z-[60] w-14 h-14 text-white text-[14.5px] font-black active:brightness-90 flex items-center justify-center"
                   style={{
-                    bottom: 'calc(88px + env(safe-area-inset-bottom))',
+                    /* 「全選」bar 收起時跟著坐下去，不然中間空一塊（老闆 2026-09-02） */
+                    bottom: warehouseBarHidden
+                      ? 'calc(16px + env(safe-area-inset-bottom))'
+                      : 'calc(88px + env(safe-area-inset-bottom))',
+                    transition: 'bottom .3s ease',
                     textShadow: '0 1px 3px rgba(0, 0, 0, 0.35)',
                     /* font-black 已是 900 上限，再粗只能用同色描邊增厚筆畫 */
                     WebkitTextStroke: '0.6px #fff',
