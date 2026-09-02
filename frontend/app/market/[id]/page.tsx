@@ -28,9 +28,10 @@ import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { asset } from '@/lib/asset';
 import { Dialog, Toast, useMarketToast, useSheetRoute, gnum, hue, ago } from '@/components/market/ui';
 import { ChatThreadSheet } from '@/components/market/ChatSheets';
+import { GradeBadge } from '@/components/ui/GradeBadge';
 import {
-  fetchListing, fetchPriceStats, fetchSellerOthers, fetchSettings, buyListing,
-  type Listing, type PriceStats, type MarketSettings,
+  fetchListing, fetchPriceStats, fetchRecentDeals, fetchSellerOthers, fetchSettings, buyListing,
+  type Listing, type PriceStats, type MarketSettings, type DealPoint,
 } from '../data';
 
 export const dynamic = 'force-dynamic';
@@ -49,6 +50,7 @@ export default function MarketItemPage() {
   const id = Number(params?.id);
   const [item, setItem] = useState<Listing | null>(null);
   const [stats, setStats] = useState<PriceStats | null>(null);
+  const [deals, setDeals] = useState<DealPoint[]>([]);
   const [others, setOthers] = useState<Listing[]>([]);
   const [settings, setSettings] = useState<MarketSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,6 +68,7 @@ export default function MarketItemPage() {
       setItem(row);
       // 行情與賣家其他上架不擋畫面：主體先出來，這兩塊晚一點補上
       fetchPriceStats(row.productPrizeId).then(setStats).catch(() => {});
+      fetchRecentDeals(row.productPrizeId).then(setDeals).catch(() => {});
       fetchSellerOthers(row.sellerId, row.id).then(setOthers).catch(() => {});
     } catch {
       setGone(true);
@@ -169,12 +172,15 @@ export default function MarketItemPage() {
         <div className="pricebar">
           <Image src={asset('/images/gcoin.webp')} alt="G" width={24} height={24} className="gc object-contain" unoptimized />
           <span className="n">{gnum(item.price)}</span>
-          <span className="r">
-            {item.prizeLevel || '品項'}<br />{ago(item.createdAt)}上架
-          </span>
+          <span className="r">{ago(item.createdAt)}上架</span>
         </div>
 
-        <div className="blk"><div className="ttl">{item.prizeName}</div></div>
+        <div className="blk">
+          <div className="ttl" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ flex: 1, minWidth: 0 }}>{item.prizeName}</span>
+            <GradeBadge grade={item.prizeLevel} />
+          </div>
+        </div>
 
         <div className="blk">
           <div className="shoprow">
@@ -197,13 +203,20 @@ export default function MarketItemPage() {
               >聊聊</button>
             )}
           </div>
+        </div>
 
+        {/* 成交行情獨立一塊（老闆 2026-09-02）：有紀錄給三格數字＋走勢，沒紀錄講清楚價格是賣家開的 */}
+        <div className="blk">
+          <div className="mqhd">同款近 90 天行情</div>
           {stats ? (
-            <div className="quote mstat">
-              <div>最近成交<b>{gnum(stats.lastPrice)}</b></div>
-              <div>平均<b>{gnum(stats.avgPrice)}</b></div>
-              <div>近 90 天成交<b>{gnum(stats.dealCount)}</b></div>
-            </div>
+            <>
+              <div className="quote mstat">
+                <div>最近成交<b>{gnum(stats.lastPrice)}</b></div>
+                <div>平均<b>{gnum(stats.avgPrice)}</b></div>
+                <div>成交筆數<b>{gnum(stats.dealCount)}</b></div>
+              </div>
+              <DealTrend deals={deals} />
+            </>
           ) : (
             <p className="hint">這個品項還沒有成交紀錄，價格由賣家自己開 —— 買之前先想想值不值。</p>
           )}
@@ -304,6 +317,78 @@ export default function MarketItemPage() {
       />
 
       <Toast text={toastText} />
+    </div>
+  );
+}
+
+/**
+ * 近 90 天成交走勢 —— 單一序列迷你折線。
+ *
+ * 成交是逐筆的稀疏事件（一款十來筆），不畫日 K 也不補零：X 軸照成交時間、
+ * 每筆一個點，線只是把點串起來。最新一筆給實心點＋直接標價，其餘只在
+ * 按住／滑過時浮出「日期＋價格」。圖下方列最近三筆當文字對照（表格視圖）。
+ * 顏色只有主題紅一條線，文字一律用文字色（dataviz：text wears text tokens）。
+ */
+function DealTrend({ deals }: { deals: DealPoint[] }) {
+  const [sel, setSel] = useState<number | null>(null);
+  if (deals.length < 2) return null;
+
+  const W = 320, H = 88, T = 18, R = 14, B = 20, L = 10;
+  const ts = deals.map(d => new Date(d.createdAt).getTime());
+  const t0 = Math.min(...ts), t1 = Math.max(...ts);
+  const span = Math.max(1, t1 - t0);
+  const lo = Math.min(...deals.map(d => d.price));
+  const hi = Math.max(...deals.map(d => d.price));
+  const range = Math.max(1, hi - lo);
+  const px = (i: number) => L + ((ts[i] - t0) / span) * (W - L - R);
+  const py = (p: number) => T + (1 - (p - lo) / range) * (H - T - B);
+  const md = (iso: string) => { const d = new Date(iso); return `${d.getMonth() + 1}/${d.getDate()}`; };
+
+  const line = deals.map((d, i) => `${px(i).toFixed(1)},${py(d.price).toFixed(1)}`).join(' ');
+  const last = deals.length - 1;
+  const cur = sel ?? last;
+
+  /** 按住／滑過找最近的點 */
+  const pick = (e: React.PointerEvent<SVGSVGElement>) => {
+    const box = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - box.left) / box.width) * W;
+    let best = 0, dist = Infinity;
+    deals.forEach((_, i) => { const dd = Math.abs(px(i) - x); if (dd < dist) { dist = dd; best = i; } });
+    setSel(best);
+  };
+
+  return (
+    <div className="mqtrend">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        style={{ width: '100%', height: 'auto', display: 'block', touchAction: 'pan-y' }}
+        onPointerDown={pick}
+        onPointerMove={(e) => { if (e.buttons || e.pointerType === 'mouse') pick(e); }}
+        onPointerLeave={() => setSel(null)}
+      >
+        <polyline points={`${line} ${px(last).toFixed(1)},${H - B} ${px(0).toFixed(1)},${H - B}`}
+          fill="var(--red)" fillOpacity=".06" stroke="none" />
+        <polyline points={line} fill="none" stroke="var(--red)" strokeWidth="2"
+          strokeLinejoin="round" strokeLinecap="round" />
+        {deals.map((d, i) => (
+          <circle key={i} cx={px(i)} cy={py(d.price)}
+            r={i === cur ? 3.5 : 2.5}
+            fill={i === cur ? 'var(--red)' : '#fff'}
+            stroke="var(--red)" strokeWidth="1.5" />
+        ))}
+        {/* 目前選到（預設最新一筆）的直接標籤：日期＋價格 */}
+        <text x={Math.min(Math.max(px(cur), 44), W - 44)} y={12} textAnchor="middle"
+          fontSize="11" fontWeight="700" fill="var(--txt)">
+          {md(deals[cur].createdAt)}・{gnum(deals[cur].price)} G
+        </text>
+        <text x={L} y={H - 6} fontSize="9.5" fill="var(--sub)">{md(deals[0].createdAt)}</text>
+        <text x={W - R} y={H - 6} textAnchor="end" fontSize="9.5" fill="var(--sub)">{md(deals[last].createdAt)}</text>
+      </svg>
+      <div className="mqrows">
+        {deals.slice(-3).reverse().map((d, i) => (
+          <div key={i}><span>{md(d.createdAt)} 成交</span><b>{gnum(d.price)} G</b></div>
+        ))}
+      </div>
     </div>
   );
 }

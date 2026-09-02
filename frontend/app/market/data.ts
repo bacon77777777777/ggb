@@ -234,6 +234,23 @@ export async function fetchPriceStats(productPrizeId: number | null): Promise<Pr
   };
 }
 
+export type DealPoint = { price: number; createdAt: string };
+
+/**
+ * 同款近 90 天的逐筆成交（詳情頁「近期走勢」）。
+ * public_marketplace_recent_deals（673）只露價格與時間，買賣雙方是誰不關路人的事。
+ */
+export async function fetchRecentDeals(productPrizeId: number | null): Promise<DealPoint[]> {
+  if (!productPrizeId) return [];
+  const { data } = await createClient()
+    .from('public_marketplace_recent_deals')
+    .select('price, created_at')
+    .eq('product_prize_id', productPrizeId)
+    .order('created_at', { ascending: true })
+    .limit(200);
+  return (data || []).map((r: any) => ({ price: Number(r.price) || 0, createdAt: String(r.created_at) }));
+}
+
 /** 同一個賣家還掛著的其他東西（詳情頁「賣家的其他上架」） */
 export async function fetchSellerOthers(sellerId: string, exceptId: number): Promise<Listing[]> {
   const { data } = await createClient()

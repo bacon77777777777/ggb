@@ -37,6 +37,9 @@ import { useFeatureGate } from '@/lib/useFeatureGate';
 import { useRequireLogin } from '@/hooks/useRequireLogin';
 import { useListScrollMemory } from '@/lib/useListScrollMemory';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { useSwipeTabs } from '@/lib/useSwipeTabs';
+import { cn } from '@/lib/utils';
 import { asset } from '@/lib/asset';
 import PrizeCard from '@/components/market/PrizeCard';
 import { Sheet, Dialog, Toast, useMarketToast, useSheetRoute, gnum, ago } from '@/components/market/ui';
@@ -233,6 +236,9 @@ export default function MarketPage() {
 
   /** 目前這個類別底下的系列。切類別時系列跟著換，選中的那個不在新表裡就清掉 */
   const seriesTabs = useMemo(() => facets?.seriesByType[type] ?? [], [facets, type]);
+  // 一級頁籤左右滑切換（全站共用手勢，同首頁）
+  const typeKeys = useMemo(() => ['', ...(facets?.types.map(t => t.key) ?? [])], [facets]);
+  const swipeTypes = useSwipeTabs(typeKeys, type, (t) => { setType(t); setSeries(''); });
   useEffect(() => {
     if (series && !seriesTabs.some(x => x.name === series)) setSeries('');
   }, [seriesTabs, series]);
@@ -269,45 +275,62 @@ export default function MarketPage() {
         </div>
       </div>
 
-      <div className="screen">
+      {/* 左右滑切換一級頁籤（手勢只在逛街分頁有意義） */}
+      <div className="screen" {...(tab === 'market' ? swipeTypes : {})}>
         {tab === 'market' && (
           <>
-            {/* 一級「類別」：market.css 的 .ptabs ＝ 首頁 Tabs 那排底線頁籤 */}
-            {(facets?.types.length ?? 0) > 1 && (
-              <div className="tabbar2">
-                <div className="ptabs">
-                  <button aria-pressed={type === ''} onClick={() => { setType(''); setSeries(''); }}>
-                    <span className="tl">全部</span>
-                  </button>
-                  {facets!.types.map(t => (
-                    <button key={t.key} aria-pressed={type === t.key} onClick={() => { setType(t.key); setSeries(''); }}>
-                      <span className="tl">{t.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* 頁籤直接用首頁那組元件（老闆 2026-09-02：「複製首頁過來用」——
+                之前拿 market.css 的 .ptabs 仿首頁，字距行高都對不上）。
+                一級＝ui/Tabs 底線頁籤，二級＝Tailwind 膠囊列，樣式照抄 app/page.tsx */}
+            <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 space-y-2">
+              {/* ⚠️ market.css 的 `.mk button` reset（padding:0/background:none/color:inherit）
+                  比 Tailwind 單類別 specificity 高，頁籤與膠囊要用 `!` 修飾符才拿得回主導權 */}
+              {(facets?.types.length ?? 0) > 1 && (
+                <Tabs value={type} onValueChange={(val) => { setType(val); setSeries(''); }} className="w-full">
+                  <TabsList className="bg-transparent dark:bg-transparent px-0 justify-start mb-0 border-b border-neutral-100 dark:border-neutral-800 pb-0">
+                    <TabsTrigger value="" className={cn('!px-3 !py-2', type === '' ? '!text-primary' : '!text-neutral-500')}>全部</TabsTrigger>
+                    {facets!.types.map(t => (
+                      <TabsTrigger key={t.key} value={t.key} className={cn('!px-3 !py-2', type === t.key ? '!text-primary' : '!text-neutral-500')}>{t.label}</TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              )}
 
-            {/* 二級「系列」＋ 排序圖標：照首頁 app/page.tsx 那排膠囊 */}
-            <div className="serirow">
-              <div className="serilist">
-                <div>
-                  <button aria-pressed={series === ''} onClick={() => setSeries('')}>全部</button>
-                  {seriesTabs.map(sx => (
-                    <button key={sx.name} aria-pressed={series === sx.name} onClick={() => setSeries(sx.name)}>
-                      {sx.name}
-                    </button>
-                  ))}
+              <div className={cn('flex items-center gap-1.5 pb-2 px-2', seriesTabs.length === 0 && 'hidden')}>
+                <div className="flex-1 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide snap-x snap-mandatory">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setSeries('')}
+                      className={cn(
+                        'snap-start flex-shrink-0 !px-3 !py-1 rounded-full text-[12px] font-black whitespace-nowrap transition-colors',
+                        series === '' ? '!bg-primary !text-white' : '!bg-neutral-100 !text-neutral-600',
+                      )}
+                    >全部</button>
+                    {seriesTabs.map(sx => (
+                      <button
+                        key={sx.name}
+                        onClick={() => setSeries(sx.name)}
+                        className={cn(
+                          'snap-start flex-shrink-0 !px-3 !py-1 rounded-full text-[12px] font-black whitespace-nowrap transition-colors',
+                          series === sx.name ? '!bg-primary !text-white' : '!bg-neutral-100 !text-neutral-600',
+                        )}
+                      >{sx.name}</button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="serisort">
+                <div className="serisort">
                 <button
-                  className="sorticon"
+                  className={cn(
+                    'ml-1 mr-1 !p-1.5 rounded-full active:scale-95 transition-all',
+                    sort === 'new' && !sortOpen
+                      ? '!text-neutral-500 hover:!text-primary hover:!bg-primary/5'
+                      : '!text-primary !bg-primary/5',
+                  )}
                   aria-pressed={sort !== 'new' || sortOpen}
                   aria-label="排序"
                   onClick={() => setSortOpen(o => !o)}
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M4 4h16" /><path d="M6 12h12" /><path d="M10 20h4" />
                   </svg>
                 </button>
@@ -325,6 +348,7 @@ export default function MarketPage() {
                     </div>
                   </>
                 )}
+                </div>
               </div>
             </div>
 

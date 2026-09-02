@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Box, Truck, Trophy, Settings, LogOut, ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, HelpCircle, Info, FileText, Shield, RefreshCcw, RefreshCw, Wallet, Heart, User, ChevronDown, X, Loader2, CreditCard, Copy, Ticket, Store, History, MessageCircle, Star, UserPlus, Search, Plus } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
+import { HoldToConfirmButton } from '@/components/ui/HoldToConfirmButton';
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
 import PageHeader from '@/components/ui/PageHeader';
 import { TopFadeBlur } from '@/components/ui/TopFadeBlur';
@@ -4111,19 +4112,27 @@ function ProfileContent() {
                       >
                         取消
                       </button>
-                      <button
-                        onClick={handleConfirmDelivery}
+                      {/* 按住集氣確認（老闆 2026-09-02，照商城 bindHold 那套）；金額改 G 幣圖標放左邊 */}
+                      <HoldToConfirmButton
+                        onConfirm={handleConfirmDelivery}
+                        onAbort={() => toast.error('請按住直到光條走完')}
                         disabled={isSubmittingDelivery || !settingsForm.recipientName || !settingsForm.recipientPhone || (logisticsType === 'CVS' ? !storeId : !settingsForm.recipientAddress)}
                         className={cn(
-                          "flex-1 bg-accent-red text-white rounded-xl font-black active:scale-[0.98] transition-transform disabled:opacity-50 disabled:active:scale-100",
+                          "flex-1 bg-accent-red text-white rounded-xl font-black disabled:opacity-50",
                           isDesktop ? "h-[52px] text-lg" : "h-[44px] text-base"
                         )}
                       >
                         {isSubmittingDelivery ? '處理中...'
                           : (currentShippingFee + lotteryPurchaseTotal) > 0
-                            ? `確認支付 ${currentShippingFee + lotteryPurchaseTotal} 代幣`
-                            : '確認配送'}
-                      </button>
+                            ? (
+                              <>
+                                按住支付
+                                <Image src={asset('/images/gcoin.webp')} alt="G" width={18} height={18} className="w-[18px] h-[18px] object-contain" unoptimized />
+                                {currentShippingFee + lotteryPurchaseTotal}
+                              </>
+                            )
+                            : '按住確認配送'}
+                      </HoldToConfirmButton>
                     </div>
                   </motion.div>
                 </div>
