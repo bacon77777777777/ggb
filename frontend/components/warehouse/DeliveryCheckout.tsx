@@ -239,7 +239,8 @@ export function DeliveryCheckout({
                               />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-[13px] font-bold text-neutral-900 dark:text-white leading-snug line-clamp-2">{g.name}</p>
+                              {/* line-clamp 是 overflow:hidden，行高不足時 ⑪ 這類全高字符會被削頭削腳 */}
+                              <p className="text-[13px] font-bold text-neutral-900 dark:text-white leading-relaxed line-clamp-2">{g.name}</p>
                               {g.grade && (
                                 <span className="mt-1 inline-block px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-700 text-[11px] font-bold text-neutral-500 dark:text-neutral-400">
                                   {g.grade}
