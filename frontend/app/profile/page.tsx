@@ -4109,19 +4109,6 @@ function ProfileContent() {
                 </div>
               )}
             </AnimatePresence>
-            {/* 「我要賣」懸浮鈕（老闆 2026-09-02）：倉庫頁右下角、底部導航上方，
-                直達交易所的上架表單（?v=sell 直開）。交易所在 App 內是 404
-                （賭博三要件疑慮，見 lib/nativeApp.ts），所以 App 內不顯示 —— 別讓審查員看到入口 */}
-            {activeTab === 'warehouse' && flags.market && !inApp && (
-              <button
-                type="button"
-                onClick={() => router.push('/market?tab=mine&v=sell')}
-                className="md:hidden fixed right-4 z-40 w-14 h-14 rounded-full bg-primary text-white text-[13px] font-black shadow-lg shadow-black/20 active:scale-95 transition-transform flex items-center justify-center"
-                style={{ bottom: 'calc(72px + env(safe-area-inset-bottom))' }}
-              >
-                我要賣
-              </button>
-            )}
             {/* Dismantle Modal */}
             <AnimatePresence>
               {showDismantleModal && (
@@ -8340,6 +8327,21 @@ function ProfileContent() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 「我要賣」懸浮鈕（老闆 2026-09-02）：倉庫頁右下角、底部導航上方，
+          直達交易所的上架表單（?v=sell 直開）。放在 return 根層級 ——
+          塞在 modal 樹裡會被外層條件吃掉不渲染。交易所在 App 內是 404
+          （賭博三要件疑慮，見 lib/nativeApp.ts），所以 App 內不顯示 */}
+      {activeTab === 'warehouse' && flags.market && !inApp && (
+        <button
+          type="button"
+          onClick={() => router.push('/market?tab=mine&v=sell')}
+          className="md:hidden fixed right-4 z-40 w-14 h-14 rounded-full bg-primary text-white text-[13px] font-black shadow-lg shadow-black/20 active:scale-95 transition-transform flex items-center justify-center"
+          style={{ bottom: 'calc(72px + env(safe-area-inset-bottom))' }}
+        >
+          我要賣
+        </button>
+      )}
 
       {/* 頭像裁切器 */}
       {cropperSrc && (
