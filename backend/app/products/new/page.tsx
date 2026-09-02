@@ -21,12 +21,20 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
     { value: 'card_peel',  label: '撕開封口' },
     { value: 'card_video', label: '過場影片' },
   ],
+  /*
+   * 自製賞只有兩款（老闆 2026-09-02：「怎麼有兩個不是自製賞的模組選項」）。
+   *
+   * 原本還列著「沉浸撕紙 custom_tear」與「票券網格 custom_grid」，但**前台從來
+   * 沒有實作過這兩款**：item 頁的判斷是 `product.type !== 'custom' && (…)`，
+   * 自製賞被排除在 GachaThemeRenderer 之外，不管選哪個值都走 GachaBattleEffect。
+   * 選了沒有任何變化，等於選單在騙人。查過 PROD／STG，27＋27 檔自製賞
+   * 全部是「未設定」，沒有商品在用這兩個值，拿掉不會讓誰變成孤兒。
+   */
   custom:   [
-    { value: 'custom_tear',  label: '沉浸撕紙' },
-    { value: 'custom_grid',  label: '票券網格' },
+    { value: 'custom_battle', label: '影片互動' },
     /* 選了這款要再上傳一支影片（下面的「過場影片」欄位），沒傳的話前台會退回
        站上內建的 video1.mp4，不會開天窗 */
-    { value: 'custom_video', label: '自製過場影片' },
+    { value: 'custom_video',  label: '自製過場影片' },
   ],
   /* 盒玩只留兩款（老闆 2026-08-29：「只留這兩個，其他移除，不需要了」）。
      兔子／叢林／賽璐璐三款的前台程式與圖素都沒有刪，只是後台不再讓人選 ——

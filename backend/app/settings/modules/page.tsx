@@ -118,7 +118,10 @@ const CATEGORIES: { key: string; label: string; info: string; rows: Row[] }[] = 
       kind: 'default', productType: 'custom', title: '預設開獎演出',
       desc: '商品頁沒有另外指定時套用這一款',
       themes: [
-        { value: 'custom_combo', label: '影片互動', desc: '全畫面影片播放，互動點擊揭曉最大賞' },
+        /* 值是 custom_battle，對應前台的 GachaBattleEffect。
+           這裡原本寫 custom_combo，但那個值 DB 裡從來沒存過
+           （PROD 是 custom_battle、STG 是 custom_grid），選單永遠顯示未選中 */
+        { value: 'custom_battle', label: '影片互動', desc: '全畫面影片播放，互動點擊揭曉最大賞' },
         /* 這一款要在**個別商品**上傳影片才有東西可播，所以放第二個 ——
            排第一就等於變成全站預設，而沒傳影片的商品會全部退回內建影片 */
         { value: 'custom_video', label: '自製過場影片', desc: '播放該檔商品自己上傳的影片，播完彈出中獎結果' },
