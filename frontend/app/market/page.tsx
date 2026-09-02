@@ -450,7 +450,7 @@ export default function MarketPage() {
               mine.map(m => (
                 /* 點小卡進詳情頁（老闆 2026-09-02）；已售出／下架的會落在詳情頁的「已下架」畫面 */
                 <div
-                  className="mkrow"
+                  className="mkrow mine"
                   key={m.id}
                   role="button"
                   tabIndex={0}
@@ -465,14 +465,15 @@ export default function MarketPage() {
                     <span>{m.productName}</span>
                     <span>{ago(m.createdAt)}上架 · {m.status === 'active' ? '架上' : m.status === 'sold' ? '已賣出' : '已下架'}</span>
                   </span>
+                  {/* 右欄：下架文字鈕靠右上、金額在它下面靠右（老闆 2026-09-02） */}
                   <span className="rt">
+                    {m.status === 'active' && (
+                      <button className="act danger" onClick={(e) => { e.stopPropagation(); setConfirmOff(m); }}>下架</button>
+                    )}
                     <span className={`p${m.status === 'active' ? '' : ' minus'}`}>
                       <Image src={asset('/images/gcoin.webp')} alt="G" width={15} height={15} className="object-contain" unoptimized />
                       {gnum(m.price)}
                     </span>
-                    {m.status === 'active' && (
-                      <button className="act danger" onClick={(e) => { e.stopPropagation(); setConfirmOff(m); }}>下架</button>
-                    )}
                   </span>
                 </div>
               ))

@@ -177,6 +177,19 @@
 }
 .mk.gx .mrowi .mact { align-self: flex-start; margin-top: 3px; }
 
+/* 我的上架列改版（老闆 2026-09-02）：
+   圖靠左上、品項名／商品名各夾兩行、下架改文字鈕靠右上、金額在它下面靠右 */
+.mk.gx .mkrow.mine { align-items: flex-start; }
+.mk.gx .mkrow.mine .tx b,
+.mk.gx .mkrow.mine .tx > span {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.mk.gx .mkrow.mine .rt { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.mk.gx .mkrow.mine .rt .act {
+  margin: 0; border: 0; background: none; padding: 0;
+  font-size: 13px; font-weight: 700; color: var(--red);
+}
+
 /* 交易紀錄＝帳戶明細（老闆 2026-09-02）：買進紅 -、賣出綠 +（實收），右上角紅／綠標 */
 .mk.gx .mkrow.deal { position: relative; }
 .mk.gx .mkrow .dtag {
