@@ -692,12 +692,9 @@ function ProfileContent() {
   const [mobileWarehouseDisplayCount, setMobileWarehouseDisplayCount] = useState(WAREHOUSE_PAGE);
   const mobileWarehouseSentinelRef = useRef<HTMLDivElement>(null);
   const mobileWarehouseScrollRef = useRef<HTMLDivElement>(null);
-  // 倉庫清單下滑時收起底部「全選」bar（老闆 2026-09-02，同首頁底部導航）。
-  // 倉庫是 fixed 覆蓋層、捲動在容器裡；renderTabContent 會渲染手機＋桌機兩份，
-  // ref 會落在隱藏那份上，所以用 selector 讓 hook 每次挑可見的那顆
+  // 倉庫下滑收起底部「全選」bar（同首頁）。分頁已改由 window 捲動，直接用預設模式
   const warehouseBarHidden = useHideOnScroll({
     enabled: activeTab === 'warehouse',
-    targetSelector: '[data-warehouse-scroll]',
     topThreshold: 40,
   });
   const [mobileDeliveryDisplayCount, setMobileDeliveryDisplayCount] = useState(10);
@@ -712,7 +709,7 @@ function ProfileContent() {
   useLayoutEffect(() => {
     const stops: (() => void)[] = [];
     const follows = followsView.read(true);
-    if (follows?.y) stops.push(restoreScrollTo(follows.y, 3000, () => followsScrollRef.current));
+    if (follows?.y) stops.push(restoreScrollTo(follows.y, 3000));
     const draws = drawView.read(true);
     if (draws?.y) {
       // 筆數要一起接回去，不然清單只剩第一頁那麼高，位置會被夾在那個高度的底部
@@ -720,7 +717,7 @@ function ProfileContent() {
         drawRestoreRef.current = draws.count;
         setMobileDrawDisplayCount(draws.count);
       }
-      stops.push(restoreScrollTo(draws.y, 3000, () => mobileDrawScrollRef.current));
+      stops.push(restoreScrollTo(draws.y, 3000));
     }
     return () => stops.forEach(stop => stop());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1283,6 +1280,30 @@ function ProfileContent() {
     
     return deliveryHistory.filter(order => matchesDeliveryTab(activeDeliveryTab, order.status));
   }, [deliveryHistory, activeDeliveryTab]);
+
+  /*
+   * 手機分頁 2026-09-02 全面改由 window 捲動（Safari 網址列會收、點狀態列回頂、
+   * 手感與首頁一致）。無限載入從各容器的 onScroll 收編成這一個 window 監聽。
+   */
+  useEffect(() => {
+    if (!['warehouse', 'delivery', 'draw-history'].includes(activeTab)) return;
+    const onScroll = () => {
+      const doc = document.documentElement;
+      if (doc.scrollHeight - window.scrollY - window.innerHeight > 300) return;
+      if (activeTab === 'warehouse') {
+        setMobileWarehouseDisplayCount(prev => Math.min(prev + WAREHOUSE_PAGE, sortedWarehouseItems.length));
+      } else if (activeTab === 'delivery') {
+        setMobileDeliveryDisplayCount(prev => (prev < filteredDeliveryHistory.length ? prev + 10 : prev));
+      } else {
+        setMobileDrawDisplayCount(prev => (prev < drawHistory.length ? prev + 10 : prev));
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [activeTab, sortedWarehouseItems.length, filteredDeliveryHistory.length, drawHistory.length]);
+
+  // 切分頁回到頂：原本每個覆蓋層自帶 scrollTop 0，改 window 捲動後自己歸位
+  useEffect(() => { window.scrollTo(0, 0); }, [activeTab]);
 
   useEffect(() => {
     const cleanup = trackPageView('/profile');
@@ -2395,7 +2416,7 @@ function ProfileContent() {
   // 換個排序，看到的是新順序的第 300 格，玩家會以為清單壞了
   useEffect(() => {
     setMobileWarehouseDisplayCount(WAREHOUSE_PAGE);
-    mobileWarehouseScrollRef.current?.scrollTo({ top: 0 });
+    window.scrollTo({ top: 0 });
   }, [
     activeWarehouseCategory, activeWarehouseSubCategory, activeWarehouseTab,
     warehouseSort, warehouseSearch, warehouseSupplier, warehouseFilter,
@@ -2419,9 +2440,8 @@ function ProfileContent() {
   useEffect(() => {
     if (sortedWarehouseItems.length === 0) return;
     const t = setTimeout(() => {
-      const container = mobileWarehouseScrollRef.current;
-      if (!container) return;
-      if (container.scrollHeight <= container.clientHeight + 50) {
+      const doc = document.documentElement;
+      if (doc.scrollHeight <= window.innerHeight + 50) {
         setMobileWarehouseDisplayCount(prev =>
           Math.min(prev + WAREHOUSE_PAGE, sortedWarehouseItems.length)
         );
@@ -2971,7 +2991,9 @@ function ProfileContent() {
         return (
           <>
             {/* Mobile Layout */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
+            <div className="md:hidden bg-neutral-50 dark:bg-neutral-950 flex flex-col min-h-[100dvh]">
+              {/* 頭部吸頂（window 捲動版）*/}
+              <div className="sticky top-0 z-30 bg-inherit">
               {/* Top Nav */}
                             {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
               <PageHeader
@@ -3164,18 +3186,11 @@ function ProfileContent() {
               )}
 
               {/* Content List */}
+              </div>{/* /sticky */}
               <div
                 ref={mobileWarehouseScrollRef}
                 data-warehouse-scroll
-                className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950"
-                onScroll={(e) => {
-                  const el = e.currentTarget;
-                  if (el.scrollHeight - el.scrollTop - el.clientHeight < 150) {
-                    setMobileWarehouseDisplayCount(prev =>
-                      prev < sortedWarehouseItems.length ? prev + WAREHOUSE_PAGE : prev
-                    );
-                  }
-                }}
+                className="p-0 pb-24 bg-neutral-50 dark:bg-neutral-950"
               >
                 {isLoadingData ? (
                   <div className="grid grid-cols-3 gap-2 p-2">
@@ -4469,7 +4484,9 @@ function ProfileContent() {
         return (
           <>
             {/* Mobile Layout */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col">
+            <div className="md:hidden bg-neutral-50 dark:bg-neutral-950 flex flex-col min-h-[100dvh]">
+              {/* 頭部吸頂（window 捲動版）*/}
+              <div className="sticky top-0 z-30 bg-inherit">
                             {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
               <PageHeader
                 title={activeMarketTab === 'listing' ? '交易所管理' : '交易紀錄'}
@@ -4532,7 +4549,8 @@ function ProfileContent() {
               </div>
 
                 {/* Market Management Content */}
-                <div className="flex-1 overflow-y-auto p-0 pb-24 bg-neutral-50 dark:bg-neutral-950">
+                </div>{/* /sticky */}
+              <div className="p-0 pb-24 bg-neutral-50 dark:bg-neutral-950">
                   {activeMarketTab === 'listing' ? (
                     filteredMarketListings.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full text-neutral-400">
@@ -5053,7 +5071,9 @@ function ProfileContent() {
         return (
           <div className="pb-24 md:pb-0">
             {/* Mobile Header & Tabs */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
+            <div className="md:hidden bg-neutral-50 dark:bg-neutral-950 flex flex-col min-h-[100dvh]">
+              {/* 頭部吸頂（window 捲動版）*/}
+              <div className="sticky top-0 z-30 bg-inherit">
                             {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
               <PageHeader
                 title="配送訂單"
@@ -5082,18 +5102,11 @@ function ProfileContent() {
               </div>
 
               {/* Mobile List Style (Unified 3-Layer Structure) */}
+              </div>{/* /sticky */}
               <div
                 ref={mobileDeliveryScrollRef}
                 {...swipeDeliveryTabs}
-                className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950"
-                onScroll={(e) => {
-                  const el = e.currentTarget;
-                  if (el.scrollHeight - el.scrollTop - el.clientHeight < 150) {
-                    setMobileDeliveryDisplayCount(prev =>
-                      prev < filteredDeliveryHistory.length ? prev + 10 : prev
-                    );
-                  }
-                }}
+                className="p-0 pb-24 bg-neutral-50 dark:bg-neutral-950"
               >
                 {filteredDeliveryHistory.length === 0 ? (
                   <div className="py-20 text-center text-neutral-400">
@@ -5513,7 +5526,9 @@ function ProfileContent() {
         return (
           <div className="pb-20 md:pb-0">
             {/* Mobile Header & Tabs */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
+            <div className="md:hidden bg-neutral-50 dark:bg-neutral-950 flex flex-col min-h-[100dvh]">
+              {/* 頭部吸頂（window 捲動版）*/}
+              <div className="sticky top-0 z-30 bg-inherit">
                             {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
               <PageHeader
                 title="抽獎紀錄"
@@ -5521,17 +5536,10 @@ function ProfileContent() {
               />
 
               {/* Mobile List */}
+              </div>{/* /sticky */}
               <div
                 ref={mobileDrawScrollRef}
-                className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950"
-                onScroll={(e) => {
-                  const el = e.currentTarget;
-                  if (el.scrollHeight - el.scrollTop - el.clientHeight < 150) {
-                    setMobileDrawDisplayCount(prev =>
-                      prev < drawHistory.length ? prev + 10 : prev
-                    );
-                  }
-                }}
+                className="p-0 pb-24 bg-neutral-50 dark:bg-neutral-950"
               >
                 {drawHistory.length === 0 ? (
                   <div className="py-20 text-center text-neutral-400">
@@ -5832,7 +5840,7 @@ function ProfileContent() {
                                       }
                                       drawView.remember({
                                         tab: '',
-                                        y: mobileDrawScrollRef.current?.scrollTop ?? 0,
+                                        y: window.scrollY,
                                         count: mobileDrawDisplayCount,
                                         from: `/fairness/${item.productId}`,
                                       });
@@ -5874,7 +5882,9 @@ function ProfileContent() {
         return (
           <div className="pb-24 md:pb-0">
             {/* Mobile Header & Tabs */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
+            <div className="md:hidden bg-neutral-50 dark:bg-neutral-950 flex flex-col min-h-[100dvh]">
+              {/* 頭部吸頂（window 捲動版）*/}
+              <div className="sticky top-0 z-30 bg-inherit">
                             {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
               <PageHeader
                 title="儲值紀錄"
@@ -5884,7 +5894,8 @@ function ProfileContent() {
               {/* 日期 tab 已移除（老闆 2026-08-20）：固定顯示近 30 天 */}
 
               {/* Mobile List Style (Unified 3-Layer Structure) */}
-              <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950">
+              </div>{/* /sticky */}
+              <div className="p-0 pb-24 bg-neutral-50 dark:bg-neutral-950">
                 {filteredTopupHistory.length === 0 ? (
                   <div className="py-20 text-center text-neutral-400">
                     <Wallet className="w-12 h-12 mx-auto mb-4 opacity-20" />
@@ -6096,7 +6107,9 @@ function ProfileContent() {
         return (
           <>
             {/* Mobile Layout */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col">
+            <div className="md:hidden bg-neutral-50 dark:bg-neutral-950 flex flex-col min-h-[100dvh]">
+              {/* 頭部吸頂（window 捲動版）*/}
+              <div className="sticky top-0 z-30 bg-inherit">
                             {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
               <PageHeader
                 title="我的關注"
@@ -6125,12 +6138,13 @@ function ProfileContent() {
                 </div>
               </div>
 
+              </div>{/* /sticky */}
               <div
                 ref={followsScrollRef}
-                className="flex-1 overflow-y-auto px-2 pt-2 pb-24 bg-neutral-50 dark:bg-neutral-950"
+                className="px-2 pt-2 pb-24 bg-neutral-50 dark:bg-neutral-950"
                 /* 點商品卡前先記下位置（商品卡自己就是連結，逐張補 onClick 會漏） */
                 onClickCapture={() => followsView.remember({
-                  tab: activeFollowsTab, y: followsScrollRef.current?.scrollTop ?? 0, count: 0, from: '',
+                  tab: activeFollowsTab, y: window.scrollY, count: 0, from: '',
                 })}
               >
                 {isLoadingData ? (
@@ -6356,7 +6370,9 @@ function ProfileContent() {
         return (
           <div className="pb-24 md:pb-0">
             {/* Mobile Header */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
+            <div className="md:hidden bg-neutral-50 dark:bg-neutral-950 flex flex-col min-h-[100dvh]">
+              {/* 頭部吸頂（window 捲動版）*/}
+              <div className="sticky top-0 z-30 bg-inherit">
                             {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
               <PageHeader
                 title="我的優惠券"
@@ -6370,7 +6386,8 @@ function ProfileContent() {
               />
 
               {/* Mobile List */}
-              <div className="flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-950 pb-24">
+              </div>{/* /sticky */}
+              <div className="bg-neutral-50 dark:bg-neutral-950 pb-24">
                 {coupons.length === 0 ? (
                   <div className="py-20 text-center text-neutral-400">
                     <Ticket className="w-12 h-12 mx-auto mb-4 opacity-20" />
@@ -6673,7 +6690,9 @@ function ProfileContent() {
         return (
           <div className="pb-24 md:pb-0 bg-neutral-100 dark:bg-neutral-950 min-h-screen">
             {/* Mobile Header */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-100 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
+            <div className="md:hidden bg-neutral-100 dark:bg-neutral-950 flex flex-col min-h-[100dvh]">
+              {/* 頭部吸頂（window 捲動版）*/}
+              <div className="sticky top-0 z-30 bg-inherit">
                             {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
               <PageHeader
                 title="修改個人資訊"
@@ -6683,7 +6702,8 @@ function ProfileContent() {
               {/* overscroll-y-none：內容塞得下時 iOS 仍會給橡皮筋彈跳，
                   滾動條就無中生有地現形（實機回報）。關掉過捲，
                   內容真的超出時照常捲動，只是不再彈跳 */}
-              <div className="flex-1 overflow-y-auto overscroll-y-none">
+              </div>{/* /sticky */}
+              <div className="pb-24">
                 <div className="space-y-3 p-3">
                   {/* Info Group 1 */}
                   <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm overflow-hidden divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -7586,7 +7606,9 @@ function ProfileContent() {
 
           {/* 2. Mobile Detail View (Only shown on mobile when a tab is active) */}
           <div className={cn("md:hidden col-span-1", !isMobileDetailOpen && "hidden")}>
-          <div className="bg-white dark:bg-neutral-900 min-h-[500px] overflow-hidden">
+          {/* ⚠️ 這層不能 overflow-hidden：分頁改 window 捲動後，頭部吸頂靠 position:sticky，
+              祖先只要有 overflow 非 visible 就整個失效（2026-09-02） */}
+          <div className="bg-white dark:bg-neutral-900 min-h-[500px]">
               {renderTabContent()}
             </div>
           </div>

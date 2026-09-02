@@ -325,8 +325,8 @@ export default function ExchangeManagePage() {
 
   return (
     <>
-      <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
-        <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
+      <div className="md:hidden bg-neutral-50 dark:bg-neutral-950 flex flex-col min-h-[100dvh]">
+        <div className="sticky top-0 z-30 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
@@ -369,7 +369,7 @@ export default function ExchangeManagePage() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950">
+        <div className="p-0 pb-24 bg-neutral-50 dark:bg-neutral-950">
           <div className="px-2 pt-2 space-y-2">
             {view === 'orders' ? (
               isDataLoading ? (
