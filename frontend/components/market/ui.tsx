@@ -105,9 +105,37 @@ export function Sheet({ open, title, onClose, children, footer, full }: {
     return () => { document.body.style.overflow = prev; };
   }, [open]);
 
+  /*
+   * 鍵盤讓位（老闆 2026-09-02：「輸入框 focus 時彈窗會跳一下」）。
+   * iOS 鍵盤彈出時不縮排版視口，而是平移視覺視口＋對 fixed 層做一次
+   * scroll-into-view 校正 —— 那一下就是跳動的來源。這裡自己用 visualViewport
+   * 算出鍵盤高度、把 #sheets 的底部讓出來：輸入框永遠在鍵盤上方，
+   * Safari 沒有東西要校正，就不跳了。瀏覽器沒鍵盤時 kb=0，什麼都不變。
+   */
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const sync = () => {
+      const el = rootRef.current;
+      if (!el) return;
+      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      el.style.bottom = kb ? `${kb}px` : '';
+    };
+    sync();
+    vv.addEventListener('resize', sync);
+    vv.addEventListener('scroll', sync);
+    return () => {
+      vv.removeEventListener('resize', sync);
+      vv.removeEventListener('scroll', sync);
+      if (rootRef.current) rootRef.current.style.bottom = '';
+    };
+  }, [open]);
+
   if (!open) return null;
   return (
-    <div id="sheets">
+    <div id="sheets" ref={rootRef}>
       <div className="layer">
         <div className={`scrim${on ? ' on' : ''}`} onClick={onClose} />
         <div className={`sheet${full ? ' full' : ' tall'}${on ? ' on' : ''}`} style={settled ? { transition: 'none' } : undefined}>
