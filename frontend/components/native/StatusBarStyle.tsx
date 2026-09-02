@@ -115,14 +115,19 @@ export default function StatusBarStyle() {
     if (native.isNativePlatform()) return;
     if (appliedColor.current === color) return;
     appliedColor.current = color;
-    // ⚠️ 一定要「拔舊插新」，不能只改 content 屬性 —— WebKit 對屬性變更的
-    // chrome 重繪不可靠（老闆 2026-09-02 實測：同一份 DOM，配送管理會變白、
-    // 我的倉庫卻停在紅），插入新節點才每次都吃
-    document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.remove());
-    const m = document.createElement('meta');
-    m.name = 'theme-color';
-    m.content = color;
-    document.head.appendChild(m);
+    // ⚠️ 只改屬性，**絕對不能拔節點**：layout 的 themeColor meta 是 React 管的，
+    // 拔掉之後 React 動到它就 `deletedFiber.parentNode.removeChild` 崩整棵樹
+    // （2026-09-02 PROD PWA 卡死事故）。找不到才補一顆自己的（掛 data-ggb 標記）
+    const metas = document.querySelectorAll('meta[name="theme-color"]');
+    if (metas.length === 0) {
+      const m = document.createElement('meta');
+      m.name = 'theme-color';
+      m.setAttribute('data-ggb', '1');
+      m.content = color;
+      document.head.appendChild(m);
+    } else {
+      metas.forEach(m => m.setAttribute('content', color));
+    }
   }, [color]);
 
   return null;
