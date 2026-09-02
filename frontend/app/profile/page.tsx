@@ -7959,25 +7959,25 @@ function ProfileContent() {
                     尚未設定收件地址
                   </div>
                 )}
-            </div>
 
-            {/* Bottom Add Button */}
-            <div className="bg-white dark:bg-neutral-900 p-4 pb-safe border-t border-neutral-100 dark:border-neutral-800">
-              <button
-                onClick={() => {
-                   if (!settingsForm.recipientName) {
-                     setShowEditRecipient(true);
-                   } else {
-                     toast.error('目前僅支援設定一組地址');
-                   }
-                }}
-                className="w-full h-[44px] border border-primary text-primary rounded-[4px] flex items-center justify-center gap-2 text-[15px] font-medium active:bg-primary/5 transition-colors"
-              >
-                <div className="w-4 h-4 rounded-full border border-primary flex items-center justify-center">
-                  <span className="text-sm leading-none -mt-0.5">+</span>
-                </div>
-                新增地址
-              </button>
+              {/* 新增地址：跟在最後一筆下面、灰色（老闆 2026-09-02：不放底部、不用主題色） */}
+              <div className="px-4">
+                <button
+                  onClick={() => {
+                     if (!settingsForm.recipientName) {
+                       setShowEditRecipient(true);
+                     } else {
+                       toast.error('目前僅支援設定一組地址');
+                     }
+                  }}
+                  className="w-full h-[44px] border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400 rounded-[4px] flex items-center justify-center gap-2 text-[15px] font-medium active:bg-neutral-50 dark:active:bg-neutral-800 transition-colors"
+                >
+                  <div className="w-4 h-4 rounded-full border border-neutral-400 flex items-center justify-center">
+                    <span className="text-sm leading-none -mt-0.5">+</span>
+                  </div>
+                  新增地址
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
@@ -8210,12 +8210,12 @@ function ProfileContent() {
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="p-4 pb-safe bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800">
+            {/* Footer —— 同購買確認的主鈕；App 無瀏海列，安全區高度要自己留 */}
+            <div className="bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
               <button
                 onClick={() => handleUpdateProfile('recipient', '')}
                 disabled={isUpdatingProfile || !settingsForm.recipientName || !settingsForm.recipientPhone || !settingsForm.recipientAddress}
-                className="w-full bg-primary text-white h-[44px] rounded-[4px] font-medium text-[15px] shadow-sm active:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full rounded-xl font-black shadow-xl transition-all h-[44px] text-base bg-accent-red text-white shadow-accent-red/20 active:scale-[0.98] disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
               >
                 {isUpdatingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : '儲存'}
               </button>
