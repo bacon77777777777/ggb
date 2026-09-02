@@ -423,8 +423,7 @@ export default function MarketPage() {
             <div className="dban" style={{ margin: '0 0 10px' }}>
               <div>
                 <b>倉庫裡有 {eligible.length} 件可以掛上來</b>
-                <small>{settings ? `開放 ${settings.allowedLevels.join('、')}` : '載入規則中…'}</small>
-                {/* 售價區間獨立一行，「G」改 G 幣圖標放金額左邊（老闆 2026-09-02） */}
+                {/* 「開放 XX賞」那行移除（老闆 2026-09-02）；售價區間獨立一行，「G」改 G 幣圖標放金額左邊 */}
                 {settings && (
                   <small style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
                     售價
