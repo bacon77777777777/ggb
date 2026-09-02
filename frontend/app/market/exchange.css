@@ -256,6 +256,10 @@
   color: #fff; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 0 0 8px 0;
 }
 
+/* B賞以下黑標（老闆 2026-09-02）：紅標只留給大獎（gradeRank ≤ 2），
+   不然滿版 C賞 紅成一片、真正的大獎反而跳不出來 */
+.mk.gx .lvbadge--minor { background: #262626; }
+
 /* 商品圖：交易所一律有真圖（獎項圖），不需要商城那套 SVG 佔位 */
 .mk.gx .pimg img, .mk.gx .hero img, .mk.gx .scard .si img {
   width: 100%; height: 100%; object-fit: contain; display: block;

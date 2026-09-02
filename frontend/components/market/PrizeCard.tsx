@@ -10,6 +10,7 @@
 
 import Image from 'next/image';
 import { asset } from '@/lib/asset';
+import { gradeRank } from '@/lib/prizeGrade';
 import type { Listing } from '@/app/market/data';
 import { gnum, hue } from './ui';
 
@@ -27,7 +28,12 @@ export default function PrizeCard({ item, onClick }: { item: Listing; onClick: (
           className="object-contain"
           unoptimized
         />
-        {item.prizeLevel && <span className="lvbadge">{item.prizeLevel}</span>}
+        {/* 大獎（最後賞／隱藏／A／SP）紅標搶眼，B賞以下黑標（老闆 2026-09-02） */}
+        {item.prizeLevel && (
+          <span className={`lvbadge${gradeRank(item.prizeLevel) > 2 ? ' lvbadge--minor' : ''}`}>
+            {item.prizeLevel}
+          </span>
+        )}
       </div>
       <div className="pbody">
         <div className="ptitle">{item.prizeName}</div>
