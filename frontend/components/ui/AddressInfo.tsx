@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { splitTwAddress, zip3Of } from '@/lib/twDistricts';
 
 /**
  * 收件資料的統一長相（老闆 2026-09-02：「同個數據三種 UI，統一」）。
@@ -25,6 +26,9 @@ export function AddressInfo({ name, phone, address, isDefault, className }: {
   isDefault?: boolean;
   className?: string;
 }) {
+  // 地址前綴 3 碼郵遞區號（推得出來才顯示；門市取貨等非台灣格式字串會自然略過）
+  const parts = splitTwAddress(address);
+  const zip = zip3Of(parts.city, parts.district);
   return (
     <div className={cn('min-w-0', className)}>
       <div className="flex items-center gap-2 min-w-0">
@@ -38,7 +42,7 @@ export function AddressInfo({ name, phone, address, isDefault, className }: {
           </span>
         )}
       </div>
-      <p className="mt-1 text-[14px] leading-relaxed text-neutral-600 dark:text-neutral-400">{address}</p>
+      <p className="mt-1 text-[14px] leading-relaxed text-neutral-600 dark:text-neutral-400">{zip ? `${zip} ${address}` : address}</p>
     </div>
   );
 }

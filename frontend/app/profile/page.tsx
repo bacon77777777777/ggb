@@ -4,11 +4,12 @@ import React, { useState, useEffect, useLayoutEffect, Suspense, useRef } from 'r
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Box, Truck, Trophy, Settings, LogOut, ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, HelpCircle, Info, FileText, Shield, RefreshCcw, RefreshCw, Wallet, Heart, User, ChevronDown, X, Loader2, CreditCard, Copy, Ticket, Store, History, MessageCircle, Star, UserPlus, Search, Plus, MoreHorizontal } from 'lucide-react';
-import { Modal } from '@/components/ui/Modal';
 import { HoldToConfirmButton } from '@/components/ui/HoldToConfirmButton';
 import { DeliveryCheckout, type ShippingCoupon, type DeliveryMethod } from '@/components/warehouse/DeliveryCheckout';
 import { TW_CITIES, TW_DISTRICTS, splitTwAddress, zip3Of } from '@/lib/twDistricts';
 import { AddressInfo } from '@/components/ui/AddressInfo';
+import { BottomModal } from '@/components/ui/BottomModal';
+import { WheelDatePicker } from '@/components/ui/WheelDatePicker';
 import { useHideOnScroll } from '@/lib/useHideOnScroll';
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
 import PageHeader from '@/components/ui/PageHeader';
@@ -6710,7 +6711,9 @@ function ProfileContent() {
                       className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
                       onClick={() => {
                         if (settingsForm.birthday) return;
-                        setShowEditBirthday(true);
+                        if (!tempBirthday) setTempBirthday(new Date(2000, 0, 1));
+                        if (!tempBirthday) setTempBirthday(new Date(2000, 0, 1));
+                      setShowEditBirthday(true);
                       }}
                     >
                       <label className="text-[15px] text-neutral-800 dark:text-neutral-200 flex items-center gap-1">
@@ -6904,6 +6907,7 @@ function ProfileContent() {
                     className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
                     onClick={() => {
                       if (settingsForm.birthday) return;
+                      if (!tempBirthday) setTempBirthday(new Date(2000, 0, 1));
                       setShowEditBirthday(true);
                     }}
                   >
@@ -7727,11 +7731,10 @@ function ProfileContent() {
         </div>
       </div>
       {/* Edit Nickname Modal (Alert Style) */}
-      <Modal compact
-        isOpen={showEditNickname}
+      <BottomModal
+        open={showEditNickname}
         onClose={() => setShowEditNickname(false)}
         title="編輯暱稱"
-
       >
         <div className="mb-2">
           <input
@@ -7753,14 +7756,13 @@ function ProfileContent() {
         >
           {isUpdatingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : '儲存'}
         </button>
-      </Modal>
+      </BottomModal>
 
       {/* Title Picker Modal */}
-      <Modal compact
-        isOpen={showTitlePicker}
+      <BottomModal
+        open={showTitlePicker}
         onClose={() => setShowTitlePicker(false)}
         title="選擇稱號"
-
       >
         {userTitles.length === 0 ? (
           <p className="text-sm text-neutral-400 text-center py-4">尚未獲得任何稱號，完成成就即可解鎖！</p>
@@ -7790,11 +7792,11 @@ function ProfileContent() {
         >
           關閉
         </button>
-      </Modal>
+      </BottomModal>
 
       {/* 頭像選擇彈窗（老闆 2026-08-29）—— 一排五個、全部圓形，第一格是上傳 */}
-      <Modal compact
-        isOpen={showAvatarPicker}
+      <BottomModal
+        open={showAvatarPicker}
         onClose={() => { setTempAvatar(null); setShowAvatarPicker(false); }}
         title="設定頭像"
       >
@@ -7861,18 +7863,17 @@ function ProfileContent() {
         >
           {isUploadingAvatar ? <Loader2 className="w-5 h-5 animate-spin" /> : '儲存'}
         </button>
-      </Modal>
+      </BottomModal>
 
       {/* Edit Gender Modal */}
-      <Modal compact
-        isOpen={showEditGender}
+      <BottomModal
+        open={showEditGender}
         onClose={() => {
           // Reset temp gender when closing without saving
           setTempGender('');
           setShowEditGender(false);
         }}
         title="設定性別"
-
       >
         <div className="space-y-2 mb-4">
           {['male', 'female', 'other'].map((option) => (
@@ -7904,92 +7905,45 @@ function ProfileContent() {
         >
           {isUpdatingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : '儲存'}
         </button>
-      </Modal>
+      </BottomModal>
 
       {/* Edit Birthday Modal */}
-      <Modal compact
-        isOpen={showEditBirthday}
+      <BottomModal
+        open={showEditBirthday}
         onClose={() => {
           setTempBirthday(null);
           setShowEditBirthday(false);
         }}
         title="設定生日"
-
       >
         <div className="mb-4">
-          <p className="text-sm text-neutral-500 mb-2">生日設定後將無法修改，請確認輸入正確。</p>
-          <div className="relative w-full">
-            <style>{datePickerStyles}</style>
-            {isMobile ? (
-              <input
-                type="date"
-                value={tempBirthday ? tempBirthday.toISOString().split('T')[0] : ''}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    const selectedDate = new Date(e.target.value);
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
-                    
-                    if (selectedDate > today) {
-                      toast.error('不能選擇未來日期');
-                      // Reset to empty or keep previous valid date? 
-                      // Let's reset to null to force user to pick again
-                      setTempBirthday(null);
-                      // Also reset the input value visually if possible, though controlled input handles it via value prop
-                    } else {
-                      setTempBirthday(selectedDate);
-                    }
-                  } else {
-                    setTempBirthday(null);
-                  }
-                }}
-                max={new Date().toISOString().split('T')[0]}
-                className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all appearance-none"
-                style={{ height: '48px' }}
-              />
-            ) : (
-              <DatePicker
-                selected={tempBirthday}
-                onChange={(date: Date | null) => setTempBirthday(date)}
-                dateFormat="yyyy/MM/dd"
-                maxDate={new Date()}
-                placeholderText="年 / 月 / 日"
-                locale="zh-TW"
-                showYearDropdown
-                scrollableYearDropdown
-                yearDropdownItemNumber={100}
-                showMonthDropdown
-                withPortal={false} 
-                popperProps={{
-                  strategy: "fixed", 
-                }}
-                customInput={
-                  <input 
-                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all cursor-pointer"
-                    readOnly 
-                  />
-                }
-              />
-            )}
-          </div>
+          <p className="text-sm text-neutral-500 mb-3">生日設定後將無法修改，請確認輸入正確。</p>
+          {/* 三滾輪（年／月／日），老闆指定不要日曆 */}
+          <WheelDatePicker
+            value={tempBirthday
+              ? { y: tempBirthday.getFullYear(), m: tempBirthday.getMonth() + 1, d: tempBirthday.getDate() }
+              : { y: 2000, m: 1, d: 1 }}
+            maxYear={new Date().getFullYear()}
+            onChange={({ y, m, d }) => {
+              const picked = new Date(y, m - 1, d);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              setTempBirthday(picked > today ? today : picked);
+            }}
+          />
         </div>
         <button
           onClick={() => {
-            if (tempBirthday) {
-              // Format date to YYYY-MM-DD
-              const year = tempBirthday.getFullYear();
-              const month = String(tempBirthday.getMonth() + 1).padStart(2, '0');
-              const day = String(tempBirthday.getDate()).padStart(2, '0');
-              const dateString = `${year}-${month}-${day}`;
-              handleUpdateProfile('birthday', dateString);
-            }
+            const bd = tempBirthday ?? new Date(2000, 0, 1);
+            const dateString = `${bd.getFullYear()}-${String(bd.getMonth() + 1).padStart(2, '0')}-${String(bd.getDate()).padStart(2, '0')}`;
+            handleUpdateProfile('birthday', dateString);
           }}
-          disabled={isUpdatingProfile || !tempBirthday}
+          disabled={isUpdatingProfile}
           className="w-full bg-primary text-white h-[44px] rounded-lg font-bold text-[15px] shadow-lg shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {isUpdatingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : '確認設定'}
         </button>
-      </Modal>
+      </BottomModal>
 
       {/* Address Book Modal (Slide-in) */}
       <AnimatePresence>
@@ -8083,11 +8037,10 @@ function ProfileContent() {
       </AnimatePresence>
 
       {/* Edit CVS Modal */}
-      <Modal compact
-        isOpen={showEditCvs}
+      <BottomModal
+        open={showEditCvs}
         onClose={() => setShowEditCvs(false)}
         title="設定超商取貨"
-
       >
         <div className="space-y-3 mb-2 max-h-[60vh] overflow-y-auto px-1">
           {/* Store Selection */}
@@ -8222,7 +8175,7 @@ function ProfileContent() {
         >
           {isUpdatingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : '儲存設定'}
         </button>
-      </Modal>
+      </BottomModal>
 
       {/* Edit Recipient Modal (Slide-in) */}
       <AnimatePresence>

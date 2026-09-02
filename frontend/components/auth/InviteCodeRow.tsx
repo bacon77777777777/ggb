@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ChevronRight, Loader2 } from 'lucide-react';
-import { Modal } from '@/components/ui/Modal';
+import { BottomModal } from '@/components/ui/BottomModal';
 import { useToast } from '@/components/ui/Toast';
 import { useSettingsStatus } from '@/components/auth/useSettingsStatus';
 
@@ -92,7 +92,7 @@ export function InviteCodeRow() {
         </div>
       </div>
 
-      <Modal compact isOpen={open} onClose={() => { if (!busy) { setOpen(false); setError(null); } }} title="填寫邀請碼">
+      <BottomModal open={open} onClose={() => { if (!busy) { setOpen(false); setError(null); } }} title="填寫邀請碼">
         <div className="mb-2">
           <input
             type="text"
@@ -113,7 +113,7 @@ export function InviteCodeRow() {
         >
           {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : '送出'}
         </button>
-      </Modal>
+      </BottomModal>
     </>
   );
 }
