@@ -11,7 +11,7 @@ import {
   startTearMusic, stopTearMusic, setTearDucking,
 } from '@/lib/tearSfx';
 import { isSoundMuted } from '@/lib/soundPrefs';
-import { hapticLight, hapticMedium, hapticTick } from '@/lib/haptics';
+import { hapticLight, hapticMedium } from '@/lib/haptics';
 import { asset } from '@/lib/asset';
 
 declare global {
@@ -182,9 +182,15 @@ export default function FigmaTearScene({
    *
    *   ① **強度**：蓄力用的是 `hapticLight`（impact LIGHT），明顯比 tick 重。
    *      網頁端的差別更大 —— tick 只 vibrate(6)，light 是 vibrate(12)。
-   *      ⚠️ 2026-09-02 老闆回報「震動太大」，**只把強度降回 `hapticTick`**，
-   *      節拍曲線原封不動 —— 上一版連整條鋪底一起拿掉，變成幾乎不震，那是砍過頭。
-   *      撕開收尾的那一下同時由 `hapticHeavy` 降成 `hapticMedium`。
+   *
+   * ⚠️ **「震動太大」要從密度降，不要從階級降**（2026-09-02 連撞兩次）：
+   *   第一次把整條鋪底拿掉 → 幾乎不震。第二次改成 `hapticTick` → 還是沒感覺，
+   *   因為 tick 在 iOS 走 `selectionChanged()`，那是 Apple 最弱的一階，
+   *   單獨點一下就很輕，拿來連續打根本感覺不到（老闆：「按著不放的震動沒感覺」）。
+   *   **impact LIGHT 已經是「摸得到」的下限**，再往下就是沒有。
+   *   所以階級留在 `hapticLight`，改把 `GAP_TIGHT` 從 42ms 放寬到 78ms ——
+   *   最密的時候由每秒 24 下降到 13 下，手感是「輕了」而不是「不見了」。
+   *   撕開收尾那一下維持由 `hapticHeavy` 降成 `hapticMedium`。
    *   ② **節奏**：蓄力的震動節點是 [0.2, 0.38, 0.52, 0.64, 0.74, 0.82, 0.89, 0.95]，
    *      間隔由 140ms 一路縮到 42ms —— 等距的話手感是平的，密起來才有
    *      「快滿了」的蓄力感。這裡取同樣的頭尾。
@@ -199,8 +205,9 @@ export default function FigmaTearScene({
    * 拖曳時每 8px 的顆粒感仍然照舊，只是跟鋪底**共用同一個節流時鐘**，
    * 而且最快不超過 GAP_TIGHT —— 不然快速拖動時兩套疊在一起會糊成一團嗡嗡聲。
    */
-  const GAP_LOOSE = 140;   // 蓄力第一拍的間隔
-  const GAP_TIGHT = 42;    // 蓄力最後一拍的間隔（也是整體的最快上限）
+  const GAP_LOOSE = 150;   // 蓄力第一拍的間隔
+  const GAP_TIGHT = 78;    // 蓄力最後一拍的間隔（也是整體的最快上限）
+                           // ⚠️ 這個數字就是「震動多大」的旋鈕，不要去動 hapticX 的階級
   const RAMP_MS = 700;     // 蓄力從第一拍到最後一拍的長度，這裡照用
   const holdBuzzTimer = useRef<number | null>(null);
   const lastBuzzAt = useRef(0);
@@ -221,7 +228,7 @@ export default function FigmaTearScene({
     const now = performance.now();
     if (now - lastBuzzAt.current < minGap) return;
     lastBuzzAt.current = now;
-    hapticTick();          // 降一級：impact LIGHT → selectionChanged（網頁 vibrate 12 → 6）
+    hapticLight();         // impact LIGHT —— 摸得到的下限，再輕就等於沒有
   };
   const scheduleHoldBuzz = () => {
     const gap = gapNow();
@@ -359,7 +366,7 @@ export default function FigmaTearScene({
         sfxGrab();                       // 捏到了 —— 沒有這一聲玩家不知道自己抓住了
       }
       /* 震動不看靜音開關：靜音是為了不吵到別人，震動本來就是靜的（其他頁也是這樣） */
-      hapticTick();                      // 捏到了的手感，跟 sfxGrab 同一刻
+      hapticLight();                     // 捏到了的手感，跟 sfxGrab 同一刻
       lastBuzzAt.current = performance.now();
       startHoldBuzz();                   // 之後只要手指還壓著就一直震
     };
@@ -530,7 +537,7 @@ export default function FigmaTearScene({
               }
               setTimeout(() => setDone(true), 300);
             } else if (page === 1) {
-              hapticTick();           // 沒撕開、彈回去了，手上也要知道
+              hapticLight();          // 沒撕開、彈回去了，手上也要知道
               if (!isSoundMuted()) sfxBounceBack();
               // 彈回時清除拖曳狀態
               wrapperRef.current?.classList.remove('tearing');
