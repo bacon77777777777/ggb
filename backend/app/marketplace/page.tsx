@@ -13,6 +13,10 @@
  *
  * 測試工具（插入假資料／清除市集）已移到「交易所設定 → 測試工具」——
  * 那兩顆是不可逆操作，不該和日常審核並排在同一排。
+ *
+ * 2026-09-02 老闆：「簡單點，這邊只會有上架中的，下架就是回到賣家的倉庫」。
+ * 已售出去「交易紀錄」看、已下架的東西就回倉庫了 —— 這頁不留屍體：
+ * 只撈 active、沒有狀態欄也沒有狀態篩選，強制下架成功那列直接消失。
  */
 
 import { useEffect, useMemo, useState } from 'react'
@@ -28,7 +32,6 @@ import { formatDateTime } from '@/utils/dateFormat'
 interface Listing {
   id: number
   price: number
-  status: 'active' | 'sold' | 'cancelled'
   created_at: string
   updated_at: string
   seller_id: string
@@ -44,19 +47,7 @@ interface Listing {
   ticket_number: number | null
 }
 
-type StatusFilter = 'all' | 'active' | 'sold' | 'cancelled'
 type BotFilter = 'real' | 'all' | 'bot'
-
-const STATUS_LABEL: Record<Listing['status'], string> = {
-  active: '上架中',
-  sold: '已售出',
-  cancelled: '已下架',
-}
-const STATUS_VARIANT: Record<Listing['status'], 'success' | 'info' | 'default'> = {
-  active: 'success',
-  sold: 'info',
-  cancelled: 'default',
-}
 
 export default function MarketplaceListingsPage() {
   const { confirm, dialogProps } = useConfirmDialog()
@@ -65,7 +56,6 @@ export default function MarketplaceListingsPage() {
   const [listings, setListings] = useState<Listing[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [botFilter, setBotFilter] = useState<BotFilter>('all')
   const [sortField, setSortField] = useState('created_at')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
@@ -83,10 +73,9 @@ export default function MarketplaceListingsPage() {
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const rows = (await res.json()) as any[]
-      setListings((rows || []).map((r) => ({
+      setListings((rows || []).filter((r) => r.status === 'active').map((r) => ({
         id: r.id,
         price: r.price,
-        status: r.status,
         created_at: r.created_at,
         updated_at: r.updated_at,
         seller_id: r.seller?.id || r.seller_id,
@@ -136,8 +125,8 @@ export default function MarketplaceListingsPage() {
       onConfirm: async () => {
         try {
           await cancelOne(item)
-          setListings(prev => prev.map(x => x.id === item.id ? { ...x, status: 'cancelled' } : x))
-          toast('已強制下架', 'success')
+          setListings(prev => prev.filter(x => x.id !== item.id))
+          toast('已強制下架，獎品退回賣家倉庫', 'success')
         } catch (e) {
           toast(e instanceof Error ? e.message : '下架失敗', 'error')
         }
@@ -146,8 +135,8 @@ export default function MarketplaceListingsPage() {
   }
 
   const handleBulkCancel = () => {
-    const targets = listings.filter(x => selectedIds.has(x.id) && x.status === 'active')
-    if (targets.length === 0) { toast('選取的項目裡沒有上架中的品項', 'warning'); return }
+    const targets = listings.filter(x => selectedIds.has(x.id))
+    if (targets.length === 0) { toast('先勾選要下架的品項', 'warning'); return }
     confirm({
       title: `強制下架 ${targets.length} 筆`,
       message: '下架後獎品全部退回各自賣家的倉庫。此操作會逐筆執行，失敗的會保留在架上。',
@@ -169,7 +158,6 @@ export default function MarketplaceListingsPage() {
   }
 
   const filtered = useMemo(() => listings.filter((item) => {
-    if (statusFilter !== 'all' && item.status !== statusFilter) return false
     if (botFilter === 'real' && item.seller_is_bot) return false
     if (botFilter === 'bot' && !item.seller_is_bot) return false
     if (searchQuery) {
@@ -179,7 +167,7 @@ export default function MarketplaceListingsPage() {
       if (!hay.includes(q)) return false
     }
     return true
-  }), [listings, searchQuery, statusFilter, botFilter])
+  }), [listings, searchQuery, botFilter])
 
   const sorted = useMemo(() => [...filtered].sort((a, b) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -189,7 +177,6 @@ export default function MarketplaceListingsPage() {
       case 'price': av = a.price; bv = b.price; break
       case 'prize': av = a.prize_name; bv = b.prize_name; break
       case 'seller': av = a.seller_name; bv = b.seller_name; break
-      case 'status': av = a.status; bv = b.status; break
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       default: av = (a as any)[sortField]; bv = (b as any)[sortField]
     }
@@ -197,17 +184,15 @@ export default function MarketplaceListingsPage() {
     return sortDirection === 'asc' ? av - bv : bv - av
   }), [filtered, sortField, sortDirection])
 
-  const activeCount = listings.filter(x => x.status === 'active').length
-  const soldCount = listings.filter(x => x.status === 'sold').length
-  const cancelledCount = listings.filter(x => x.status === 'cancelled').length
+  const activeCount = listings.length
   // 架上總值：買家要買光整個交易所得付多少 G。看得出這池子有多重
-  const activeValue = listings.filter(x => x.status === 'active').reduce((n, x) => n + x.price, 0)
+  const activeValue = listings.reduce((n, x) => n + x.price, 0)
 
   const exportCSV = () => {
-    const head = ['上架編號', '上架時間', '賞等', '獎項', '來源商品', '售價(G)', '賣家', '會員編號', 'Email', '狀態']
+    const head = ['上架編號', '上架時間', '賞等', '獎項', '來源商品', '售價(G)', '賣家', '會員編號', 'Email']
     const rows = sorted.map(x => [
       x.id, formatDateTime(x.created_at), x.prize_level, x.prize_name, x.product_name,
-      x.price, x.seller_name, x.seller_member_no ?? '', x.seller_email, STATUS_LABEL[x.status],
+      x.price, x.seller_name, x.seller_member_no ?? '', x.seller_email,
     ])
     const csv = [head, ...rows]
       .map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(','))
@@ -261,10 +246,6 @@ export default function MarketplaceListingsPage() {
       ),
     },
     {
-      key: 'status', label: '狀態', sortable: true,
-      render: (item) => <Badge variant={STATUS_VARIANT[item.status]}>{STATUS_LABEL[item.status]}</Badge>,
-    },
-    {
       key: 'created_at', label: '上架時間', sortable: true,
       render: (item) => <span className="whitespace-nowrap text-sm text-neutral-600">{formatDateTime(item.created_at)}</span>,
     },
@@ -275,7 +256,7 @@ export default function MarketplaceListingsPage() {
           <ActionMenu
             items={[
               { label: '複製賣家 UUID', onClick: () => { navigator.clipboard.writeText(item.seller_id); toast('已複製賣家 UUID', 'success') } },
-              { label: '強制下架', danger: true, disabled: item.status !== 'active', onClick: () => handleForceCancel(item) },
+              { label: '強制下架', danger: true, onClick: () => handleForceCancel(item) },
             ]}
           />
         </div>
@@ -286,11 +267,9 @@ export default function MarketplaceListingsPage() {
   return (
     <AdminLayout pageTitle="交易所品項管理">
       <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4">
           <StatsCard title="上架中" value={activeCount} />
           <StatsCard title="架上總值" value={`${activeValue.toLocaleString()} G`} />
-          <StatsCard title="已售出" value={soldCount} />
-          <StatsCard title="已下架" value={cancelledCount} />
         </div>
 
         <PageCard>
@@ -305,16 +284,6 @@ export default function MarketplaceListingsPage() {
             onExportCSV={exportCSV}
             showFilter
             filterOptions={[
-              {
-                key: 'status', label: '狀態', type: 'select', value: statusFilter,
-                onChange: (v: StatusFilter) => setStatusFilter(v),
-                options: [
-                  { value: 'all', label: '全部狀態' },
-                  { value: 'active', label: '上架中' },
-                  { value: 'sold', label: '已售出' },
-                  { value: 'cancelled', label: '已下架' },
-                ],
-              },
               {
                 key: 'bot', label: '賣家', type: 'select', value: botFilter,
                 onChange: (v: BotFilter) => setBotFilter(v),
@@ -334,21 +303,14 @@ export default function MarketplaceListingsPage() {
             </Button>
           </SearchToolbar>
 
-          {(statusFilter !== 'all' || botFilter !== 'all') && (
+          {botFilter !== 'all' && (
             <div className="mt-3">
               <FilterTags
-                tags={[
-                  ...(statusFilter !== 'all' ? [{
-                    key: 'status', label: '狀態',
-                    value: STATUS_LABEL[statusFilter as Listing['status']],
-                    color: 'primary' as const, onRemove: () => setStatusFilter('all'),
-                  }] : []),
-                  ...(botFilter !== 'all' ? [{
-                    key: 'bot', label: '賣家',
-                    value: botFilter === 'real' ? '只看真實玩家' : '只看機器人',
-                    color: 'primary' as const, onRemove: () => setBotFilter('all'),
-                  }] : []),
-                ]}
+                tags={[{
+                  key: 'bot', label: '賣家',
+                  value: botFilter === 'real' ? '只看真實玩家' : '只看機器人',
+                  color: 'primary' as const, onRemove: () => setBotFilter('all'),
+                }]}
               />
             </div>
           )}
@@ -364,7 +326,6 @@ export default function MarketplaceListingsPage() {
               selectable
               selectedIds={selectedIds}
               onSelectChange={setSelectedIds}
-              isSelectable={(item) => item.status === 'active'}
               density={density}
               isLoading={isLoading}
               emptyMessage="目前沒有符合條件的上架品項"
