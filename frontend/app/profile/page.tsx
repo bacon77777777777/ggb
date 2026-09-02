@@ -5093,7 +5093,7 @@ function ProfileContent() {
               />
 
               {/* Mobile Sticky Tabs (Using Tabs Component style) */}
-              <div className="sticky top-0 z-30 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
+              <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
                 <div className="max-w-7xl mx-auto space-y-2 pt-0 pb-0">
                     <Tabs 
                       key={activeDeliveryTab} // Force re-render
@@ -5139,7 +5139,7 @@ function ProfileContent() {
                           <div
                             onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
                             className={cn(
-                              "sticky top-0 z-30 p-3 space-y-2 transition-colors cursor-pointer",
+                              "p-3 space-y-2 transition-colors cursor-pointer",
                               !isExpanded && "bg-white dark:bg-neutral-900 active:bg-neutral-50 dark:active:bg-neutral-800/50",
                               isExpanded && "bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800"
                             )}
@@ -5572,7 +5572,7 @@ function ProfileContent() {
                           <div 
                             onClick={() => setExpandedDrawId(isExpanded ? null : item.id.toString())}
                             className={cn(
-                              "sticky top-0 z-30 p-3 space-y-2 active:bg-neutral-50 dark:active:bg-neutral-800/50 transition-colors cursor-pointer",
+                              "p-3 space-y-2 active:bg-neutral-50 dark:active:bg-neutral-800/50 transition-colors cursor-pointer",
                               !isExpanded && "bg-white dark:bg-neutral-900",
                               isExpanded && "bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-100 dark:border-neutral-800"
                             )}
