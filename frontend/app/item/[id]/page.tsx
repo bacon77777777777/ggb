@@ -2701,7 +2701,10 @@ export default function ProductDetailPage() {
                 <div className="relative w-full h-full max-w-[560px] bg-black shadow-2xl">
                   <video
                     src={introVideo}
-                    className="w-full h-full object-contain"
+                    /* 滿版高度、左右裁掉沒關係（老闆 2026-09-02）——
+                       過場影片的重點在畫面中央，上下留黑邊比左右被切難看得多。
+                       跟抽卡的 card_video 同一個做法 */
+                    className="w-full h-full object-cover"
                     autoPlay
                     preload="auto"
                     muted={isVideoMuted}
