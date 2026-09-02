@@ -168,8 +168,9 @@
 
 /* 對話視窗（老闆 2026-09-02：「畫面短、右邊灰條」）：商城原型的 .chatbox 是 44vh
    小框自己捲，跟 .sbd 疊成雙捲動。放開讓 .sbd 當唯一捲動容器。
-   min-height 100%：灰畫布撐滿整個面板身體，訊息少時不會下半截變白 */
-.mk.gx .chatbox { max-height: none; min-height: 100%; overflow: visible; }
+   底色跟面板一樣全白（老闆：「這邊也白底啊」）——原本的 #f2f2f2 超淡灰在手機上
+   看起來就是髒掉的白；訊息泡自帶邊框，白底上一樣分得清楚 */
+.mk.gx .chatbox { max-height: none; min-height: 100%; overflow: visible; background: var(--card); }
 /* 面板捲到底不要把手勢鏈給背景頁（配合 Sheet 開著時鎖 body） */
 .mk.gx .sbd { overscroll-behavior: contain; }
 
