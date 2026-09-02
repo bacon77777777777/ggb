@@ -46,6 +46,9 @@ interface Payload {
   kpi: {
     revenue: number; netRevenue: number; recycle: number; recycleRate: number; rechargeNet: number
     recharge: number; spend: number; draws: number; todayRecycle: number
+    grossProfit: number; grossMarginPct: number
+    marketFee: number; shippingIncome: number; shippingCost: number; marketingGrant: number
+    aov: number; todayAov: number; newUsers: number; todayNewUsers: number; returning: number
     activeUsers: number; payingUsers: number; payRate: number; arppu: number
     todayRevenue: number; todayRecharge: number; todaySpend: number; todayDraws: number; todayActive: number
   }
@@ -245,8 +248,18 @@ export default function DashboardPage() {
                 footerValue={<span>{(k?.netRevenue ?? 0).toLocaleString()} G幣<span className="ml-3 text-neutral-400">今日 {(k?.todayRevenue ?? 0).toLocaleString()}</span></span>}
               />
               <StatCard
+                title="毛利" loading={loading} skeletonWidth="w-32"
+                titleExtra={<InfoIcon width={320} text={`真實毛利＝消費 − 廠商分潤（逐抽套各廠商實際費率） − 綠界實扣手續費 ＋ 交易所手續費 ＋ 運費收入 − 運費實付。
+每一項都對得到實際的帳，跟廠商結算同口徑。
+本期成分：分潤外，交易所手續費 +${(k?.marketFee ?? 0).toLocaleString()}、運費 +${(k?.shippingIncome ?? 0).toLocaleString()}/−${(k?.shippingCost ?? 0).toLocaleString()}。
+行銷贈點發放 ${(k?.marketingGrant ?? 0).toLocaleString()} G（行銷費用，另列對照，不進毛利）。`} />}
+                value={`${(k?.grossProfit ?? 0).toLocaleString()} G幣`}
+                mid={g && <GrowthTag value={g.grossProfit ?? 0} label="期間同比" />}
+                footerLabel="毛利率" footerValue={`${(k?.grossMarginPct ?? 0)}%`}
+              />
+              <StatCard
                 title="儲值金額" loading={loading} skeletonWidth="w-32"
-                titleExtra={<InfoIcon width={300} text={'這段期間玩家儲值進來的現金總額（會計上是預收款）。\n只算付款成功的，已排除機器人帳號。\n下方實收＝扣掉綠界金流手續費後真正入袋的金額。'} />}
+                titleExtra={<InfoIcon width={300} text={'這段期間玩家儲值進來的現金總額（會計上是預收款）。\n只算真金過綠界且付款成功的 —— 行銷贈點、測試發幣不算儲值。\n下方實收＝扣掉綠界金流手續費後真正入袋的金額。'} />}
                 value={`${(k?.recharge ?? 0).toLocaleString()} 元`}
                 mid={!loading && hasSpark('recharge') ? (
                   <TinyArea data={spark} xField="x" yField="recharge" height={46} autoFit
@@ -270,6 +283,10 @@ export default function DashboardPage() {
                 footerLabel="回收率"
                 footerValue={<span>{k?.recycleRate ?? 0}%<span className="ml-3 text-neutral-400">今日 {(k?.todayRecycle ?? 0).toLocaleString()}</span></span>}
               />
+            </div>
+
+            {/* ── 第二排｜量：生意長什麼樣 ── */}
+            <div className="grid grid-cols-4 gap-6">
               <StatCard
                 title="抽獎次數" loading={loading} skeletonWidth="w-20"
                 titleExtra={<InfoIcon width={300} text={'這段期間玩家抽了幾次，抽一次算一次。\n這是抽獎平台最要緊的量體指標 —— 比「消費筆數」更能看出玩家有沒有在玩。'} />}
@@ -281,8 +298,30 @@ export default function DashboardPage() {
                 ) : <div className="w-full h-full" />}
                 footerLabel="今日" footerValue={(k?.todayDraws ?? 0).toLocaleString()}
               />
+              <StatCard
+                title="AOV 每抽均價" loading={loading} skeletonWidth="w-24"
+                titleExtra={<InfoIcon width={300} text={'消費金額 ÷ 抽獎次數＝平均一抽花多少。\n看玩家在玩貴的檔還是便宜的檔；跟 ARPPU（每人貢獻）是兩件事。'} />}
+                value={`${(k?.aov ?? 0).toLocaleString()} G幣`}
+                mid={g && <GrowthTag value={g.aov ?? 0} label="期間同比" />}
+                footerLabel="今日" footerValue={`${(k?.todayAov ?? 0).toLocaleString()} G幣`}
+              />
+              <StatCard
+                title="ARPPU" loading={loading} skeletonWidth="w-24"
+                titleExtra={<InfoIcon width={300} text={'每位付費用戶平均花多少＝消費金額 ÷ 付費用戶。\n人數沒變但這個數字掉下來，代表大戶變少了。'} />}
+                value={`${(k?.arppu ?? 0).toLocaleString()} G幣`}
+                mid={g && <GrowthTag value={g.arppu} label="期間同比" />}
+                footerLabel="消費金額" footerValue={`${(k?.spend ?? 0).toLocaleString()} G幣`}
+              />
+              <StatCard
+                title="付費率" loading={loading} skeletonWidth="w-16"
+                titleExtra={<InfoIcon width={300} text={'付費用戶 ÷ 活躍用戶。\n來的人裡面有多少比例真的掏錢玩，越高代表商品與價格越對得上玩家胃口。'} />}
+                value={`${(k?.payRate ?? 0)}%`}
+                mid={g && <GrowthTag value={g.payRate} label="期間同比" />}
+                footerLabel="付費 / 活躍" footerValue={`${(k?.payingUsers ?? 0).toLocaleString()} / ${(k?.activeUsers ?? 0).toLocaleString()}`}
+              />
             </div>
 
+            {/* ── 第三排｜人：人從哪來 ── */}
             <div className="grid grid-cols-4 gap-6">
               <StatCard
                 title="活躍用戶" loading={loading} skeletonWidth="w-20"
@@ -292,6 +331,13 @@ export default function DashboardPage() {
                 footerLabel="今日活躍" footerValue={`${(k?.todayActive ?? 0).toLocaleString()} 人`}
               />
               <StatCard
+                title="新增會員" loading={loading} skeletonWidth="w-20"
+                titleExtra={<InfoIcon width={300} text={'這段期間完成註冊的新會員數。\n這是「明天的生意」—— 營收可以靠老玩家撐，成長只能靠新人。'} />}
+                value={`${(k?.newUsers ?? 0).toLocaleString()} 人`}
+                mid={g && <GrowthTag value={g.newUsers ?? 0} label="期間同比" />}
+                footerLabel="今日" footerValue={`${(k?.todayNewUsers ?? 0).toLocaleString()} 人`}
+              />
+              <StatCard
                 title="付費用戶" loading={loading} skeletonWidth="w-20"
                 titleExtra={<InfoIcon width={300} text={'這段期間真的花 G 抽過獎的會員人數，同一個人只算一次。\n只是逛逛沒抽的不算。'} />}
                 value={`${(k?.payingUsers ?? 0).toLocaleString()} 人`}
@@ -299,18 +345,11 @@ export default function DashboardPage() {
                 footerLabel="活躍用戶" footerValue={`${(k?.activeUsers ?? 0).toLocaleString()} 人`}
               />
               <StatCard
-                title="付費率" loading={loading} skeletonWidth="w-16"
-                titleExtra={<InfoIcon width={300} text={'付費用戶 ÷ 活躍用戶。\n來的人裡面有多少比例真的掏錢玩，越高代表商品與價格越對得上玩家胃口。'} />}
-                value={`${(k?.payRate ?? 0)}%`}
-                mid={g && <GrowthTag value={g.payRate} label="期間同比" />}
-                footerLabel="付費 / 活躍" footerValue={`${(k?.payingUsers ?? 0).toLocaleString()} / ${(k?.activeUsers ?? 0).toLocaleString()}`}
-              />
-              <StatCard
-                title="ARPPU" loading={loading} skeletonWidth="w-24"
-                titleExtra={<InfoIcon width={300} text={'每位付費用戶平均花多少＝消費金額 ÷ 付費用戶。\n人數沒變但這個數字掉下來，代表大戶變少了。'} />}
-                value={`${(k?.arppu ?? 0).toLocaleString()} G幣`}
-                mid={g && <GrowthTag value={g.arppu} label="期間同比" />}
-                footerLabel="消費金額" footerValue={`${(k?.spend ?? 0).toLocaleString()} G幣`}
+                title="回流用戶" loading={loading} skeletonWidth="w-20"
+                titleExtra={<InfoIcon width={300} text={'上一個等長期間完全沒出現、這期間回來的舊會員。\n新增看成長、回流看留存 —— 舊客願不願意回來，決定生意能不能長久。'} />}
+                value={`${(k?.returning ?? 0).toLocaleString()} 人`}
+                mid={<div className="w-full h-full" />}
+                footerLabel="定義" footerValue="上期沒來、這期回來"
               />
             </div>
 
@@ -318,7 +357,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 gap-6">
               <Panel
                 title="營運趨勢"
-                tip={'這段期間的走勢。上面四個字可以切換要看哪一項：\n營收＝儲值扣掉手續費；儲值＝玩家放進來的錢；消費＝玩家花掉的 G；退款＝已經退出去的錢。\n沒有交易的時段一樣會列出來、顯示 0，才看得出哪幾天是掛零的。'}
+                tip={'這段期間的走勢。上面可以切換要看哪一項：\n營收＝玩家花掉的 G（毛營收）；儲值＝真金流入；回收＝拆解退還的 G（銷貨退回）。\n沒有交易的時段一樣會列出來、顯示 0，才看得出哪幾天是掛零的。'}
                 extra={
                   <div className="flex gap-1">
                     {TREND_METRICS.map(m => (

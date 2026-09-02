@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminScope } from '@/lib/requireAdmin'
 import { fetchAllRows } from '@/lib/fetchAllRows'
-import { effectiveFeeRate, marginPct, platformMargin } from '@/lib/settlementRates'
+import { effectiveFeeRate, marginPct, getSettlementDefaults } from '@/lib/settlementRates'
 import { checkSystemHealth } from '@/lib/systemHealth'
 
 /**
@@ -104,7 +104,10 @@ export async function GET(req: NextRequest) {
     const drawSel = 'created_at, user_id, product_id, tokens_spent, product:products(name, type, price)'
     const drawQ = () => noBot(db.from('draw_records').select(drawSel))
     const rechSel = 'created_at, user_id, amount, payment_fee'
-    const rechQ = () => noBot(db.from('recharge_records').select(rechSel).eq('status', 'success'))
+    /* 儲值＝真金過綠界的。行銷贈點（promotion/compensation）與測試（test）另計：
+       前者是行銷費用不是收入、後者根本不是錢（老闆 2026-09-02） */
+    const rechQ = () => noBot(db.from('recharge_records').select(rechSel).eq('status', 'success')
+      .not('payment_method', 'in', '(test,promotion,compensation)'))
     const evSel = 'created_at, event_type, user_id, session_id, product_id'
     const evQ = () => db.from('user_events').select(evSel)
 
@@ -113,6 +116,7 @@ export async function GET(req: NextRequest) {
       rech, prevRech, todayRech, yestRech,
       events, prevEvents,
       users, products, prizes, refunds, prevRefunds,
+      mktGrants, marketFees, shipAdjs, shipOrders, suppliers,
       dismantledAll,
     ] = await Promise.all([
       fetchAllRows<any>(() => inR(drawQ(), curStart, curEnd)),
@@ -127,10 +131,25 @@ export async function GET(req: NextRequest) {
       fetchAllRows<any>(() => inR(evQ(), curStart, curEnd)),
       fetchAllRows<any>(() => inR(evQ(), prevStart, curStart)),
       fetchAllRows<any>(() => db.from('users').select('id, created_at').or('is_bot.eq.false,is_bot.is.null')),
-      fetchAllRows<any>(() => db.from('products').select('id, name, type, status, created_at')),
+      fetchAllRows<any>(() => db.from('products').select('id, name, type, status, created_at, supplier_id')),
       fetchAllRows<any>(() => db.from('product_prizes').select('product_id, total, remaining')),
       fetchAllRows<any>(() => inR(db.from('refund_requests').select('created_at, amount_twd, status, processed_at'), curStart, curEnd)),
       fetchAllRows<any>(() => inR(db.from('refund_requests').select('created_at, amount_twd, status, processed_at'), prevStart, curStart)),
+      // 行銷贈點發放（promotion/compensation，成功）：老闆對照「補貼換多少營收」用
+      fetchAllRows<any>(() => noBot(db.from('recharge_records')
+        .select('created_at, amount, bonus')
+        .eq('status', 'success').in('payment_method', ['promotion', 'compensation'])
+        .gte('created_at', curStart.toISOString()).lt('created_at', curEnd.toISOString()))),
+      // 交易所手續費（平台服務收入，逐筆實數）
+      fetchAllRows<any>(() => inR(db.from('marketplace_transactions').select('created_at, fee'), curStart, curEnd)),
+      // 運費收入（跟玩家收的 G：delta 為負；取消退回為正，淨額看加總）
+      fetchAllRows<any>(() => noBot(inR(db.from('token_adjustments')
+        .select('created_at, user_id, delta').eq('category', 'shipping_fee'), curStart, curEnd))),
+      // 出貨單（算物流實付：綠界按單按通路計費）
+      fetchAllRows<any>(() => inR(db.from('orders')
+        .select('created_at, status, logistics_type'), curStart, curEnd)),
+      // 廠商分潤費率（逐抽精算用；NULL＝跟隨全站預設）
+      fetchAllRows<any>(() => db.from('suppliers').select('id, profit_share_percent')),
       /*
        * 回收（拆解退 G）＝銷貨退回。發生時間在 dismantled_at（migration 680），
        * 歷史列沒有就退回抽獎的 created_at —— COALESCE 在 PostgREST 過濾不了，
@@ -156,7 +175,9 @@ export async function GET(req: NextRequest) {
     const feeRows = rech.filter(r => r.payment_fee != null)
     const feeTotal = feeRows.reduce((s, r) => s + (r.payment_fee ?? 0), 0)
     const hasActualFee = feeRows.length > 0
+    const prevFeeTotalActual = prevRech.reduce((s, r) => s + (r.payment_fee ?? 0), 0)
     const feeRate = effectiveFeeRate(rechargeTotal, feeTotal, hasActualFee)
+    const settle = await getSettlementDefaults(db)
 
     const spend = sum(draws), prevSpend = sum(prevDraws)
     const drawCount = draws.length, prevDrawCount = prevDraws.length
@@ -185,6 +206,49 @@ export async function GET(req: NextRequest) {
     const todayRecycle = sumRecycle(recycleIn(ts, te))
     const netRevenue = revenue - recycleTotal
 
+    /*
+     * ── 真實毛利（老闆 2026-09-02：「我是老闆就是要看真實毛利」）──
+     *
+     *   毛利 ＝ 消費 − 廠商分潤（逐抽精算） − 金流實扣手續費
+     *         ＋ 交易所手續費 ＋ 運費收入 − 運費實付
+     *
+     * 每一項都對得到一張實際的帳：
+     * ・分潤：每一抽 join 到廠商，套該廠商實際費率（NULL 跟隨全站預設，
+     *   與結算頁 paidRateAt 同口徑＝消費 × 費率）
+     * ・金流費：期間內綠界「實際扣走」的 payment_fee 加總，不做攤提假設
+     * ・交易所手續費：marketplace_transactions.fee 逐筆
+     * ・運費收入：token_adjustments(shipping_fee) 淨額（收玩家為負 delta）
+     * ・運費實付：出貨單 × 通路費率 —— 綠界物流本來就按單固定計費
+     * 唯一分不出來的是行銷贈點被花掉的部分（G 幣不分色）：分潤照實扣了，
+     * 另以 marketingGrant 並列供對照，不影響毛利真實性。
+     */
+    const supplierShareOf = new Map<string, number>(
+      (suppliers as any[]).map(sp => [String(sp.id),
+        sp.profit_share_percent == null ? settle.supplierShare : Number(sp.profit_share_percent)]),
+    )
+    const productSupplier = new Map<string, string>(
+      (products as any[]).map(pd => [String(pd.id), String(pd.supplier_id ?? '')]),
+    )
+    const supplierCostOf = (rows: any[]) => rows.reduce((acc, r) => {
+      const share = supplierShareOf.get(productSupplier.get(String(r.product_id)) ?? '') ?? settle.supplierShare
+      return acc + amt(r) * share / 100
+    }, 0)
+    const supplierCost = Math.round(supplierCostOf(draws))
+    const prevSupplierCost = Math.round(supplierCostOf(prevDraws))
+
+    const marketFee = (marketFees as any[]).reduce((s2, r) => s2 + (r.fee ?? 0), 0)
+    const shippingIncome = -(shipAdjs as any[]).reduce((s2, r) => s2 + (r.delta ?? 0), 0)
+    const SHIP_STATUS = new Set(['shipping', 'delivered', 'completed'])
+    const shipRate = (t: string) => (t === 'HOME' ? 60 : 60)   // shipping_fee_home / shipping_fee_cvs 的計費標準
+    const shippingCost = (shipOrders as any[])
+      .filter(o => SHIP_STATUS.has(String(o.status)))
+      .reduce((s2, o) => s2 + shipRate(String(o.logistics_type)), 0)
+    const marketingGrant = (mktGrants as any[]).reduce((s2, r) => s2 + (r.amount ?? 0) + (r.bonus ?? 0), 0)
+
+    const grossProfit = Math.round(revenue - supplierCost - feeTotal + marketFee + shippingIncome - shippingCost)
+    const grossMarginPct = revenue > 0 ? Math.round(grossProfit / revenue * 1000) / 10 : 0
+    const prevGrossProfit = Math.round(prevSpend - prevSupplierCost - prevFeeTotalActual)
+
     // ── 人 ────────────────────────────────────────────────────────────────
     /** 訪客識別：登入前沒有 user_id，只能靠 session_id（實測 7,475 筆事件有 3,093 筆是未登入） */
     const visitorKey = (r: any) => String(r.user_id ?? r.session_id ?? '')
@@ -208,6 +272,7 @@ export async function GET(req: NextRequest) {
     const payingUsers = drawUsers.size                    // 「付費用戶」＝期間內真的花 G 抽過
     const payRate = ratio(payingUsers, activeUsers)
     const arppu = payingUsers > 0 ? Math.round(spend / payingUsers) : 0
+    const aov = drawCount > 0 ? Math.round(spend / drawCount) : 0
 
     const prevPayingUsers = prevDrawUsers.size
     const prevPayRate = ratio(prevPayingUsers, prevActiveSet.size)
@@ -218,6 +283,11 @@ export async function GET(req: NextRequest) {
       return t >= curStart.getTime() && t < curEnd.getTime()
     }
     const newUsers = users.filter(u => u.created_at && inPeriod(u.created_at)).length
+    const prevNewUsers = users.filter(u => {
+      if (!u.created_at) return false
+      const t = new Date(u.created_at).getTime()
+      return t >= prevStart.getTime() && t < curStart.getTime()
+    }).length
     /*
      * 回流＝這期間有動作、註冊日在期間之前、而且**上一個等長期間完全沒動作**。
      * 沒有「沉睡幾天才算回流」的設定檔，用「上一期沒來、這期來了」是這裡算得出來
@@ -225,6 +295,12 @@ export async function GET(req: NextRequest) {
      */
     const oldUserIds = new Set(users.filter(u => u.created_at && !inPeriod(u.created_at)).map(u => String(u.id)))
     const returning = [...activeSet].filter(id => oldUserIds.has(id) && !prevActiveSet.has(id)).length
+
+    const todayNewUsers = users.filter(u => {
+      if (!u.created_at) return false
+      const t = new Date(u.created_at).getTime()
+      return t >= ts.getTime() && t < te.getTime()
+    }).length
 
     const todayActive = new Set<string>([
       ...distinct(events.filter(e => e.user_id && new Date(e.created_at) >= ts), r => String(r.user_id)),
@@ -439,8 +515,8 @@ export async function GET(req: NextRequest) {
     const prevRefundTotal = prevRefunds.filter(r => r.processed_at).reduce((s, r) => s + (r.amount_twd ?? 0), 0)
     const refundRate = ratio(refundTotal, rechargeTotal)
     const prevRefundRate = ratio(prevRefundTotal, prevRechargeTotal)
-    const margin = marginPct(spend, feeRate)
-    const prevMargin = marginPct(prevSpend, feeRate)
+    const margin = grossMarginPct
+    const prevMargin = marginPct(prevSpend, feeRate) // 舊估算口徑，僅供 prev 對照
 
     const enough = drawCount >= MIN_SAMPLE_DRAWS
     /**
@@ -584,12 +660,17 @@ export async function GET(req: NextRequest) {
         revenue, netRevenue, recycle: recycleTotal, rechargeNet,
         recycleRate: ratio(recycleTotal, revenue),
         recharge: rechargeTotal, spend, draws: drawCount,
+        grossProfit, grossMarginPct,
+        marketFee, shippingIncome, shippingCost, marketingGrant,
+        aov, newUsers, returning,
         activeUsers, payingUsers, payRate, arppu,
         todayRevenue: sum(todayDraws),
         todayRecharge: sumAmount(todayRech),
         todaySpend: sum(todayDraws),
         todayRecycle,
         todayDraws: todayDraws.length,
+        todayAov: todayDraws.length > 0 ? Math.round(sum(todayDraws) / todayDraws.length) : 0,
+        todayNewUsers,
         todayActive,
       },
       growth: {
@@ -602,6 +683,9 @@ export async function GET(req: NextRequest) {
         payRate: pct(payRate, prevPayRate),
         arppu: pct(arppu, prevArppu),
         recycle: pct(recycleTotal, prevRecycleTotal),
+        grossProfit: pct(grossProfit, prevGrossProfit),
+        aov: pct(aov, prevDrawCount > 0 ? Math.round(prevSpend / prevDrawCount) : 0),
+        newUsers: pct(newUsers, prevNewUsers),
         revenueToday: pct(sum(todayDraws), sum(yestDraws)),
         drawsToday: pct(todayDraws.length, yestDraws.length),
       },
