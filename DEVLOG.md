@@ -4,6 +4,37 @@
 
 ---
 
+## v2026.09.02n｜2026-09-02｜自製賞新增「自製過場影片」模組，可上傳自己的影片
+
+抽獎後播該檔商品自己上傳的影片，播完彈中獎結果。站上原本的過場影片是寫死的
+靜態檔（`video1.mp4` 自製賞／`card.mp4` 抽卡／`blindbox_op.mp4` 盒玩），
+每一檔商品長得一模一樣；這款是第一個由 DB 帶網址的。
+
+- **migration 685**：`products.intro_video_url`（PROD／STG 已套用）
+- `MODULE_OPTIONS` 與模組設定頁新增 `custom_video`，**選了才出現上傳欄位**；
+  新增頁與編輯頁都有，檔案在選檔當下就開始傳（不等按儲存，附進度條）
+- 前台 item 頁在 `custom_video` ＋有影片時播它。**沒上傳就落回內建影片**、
+  影片載入失敗當作播完 —— 兩種情況都不能把玩家鎖在黑畫面
+- `PRODUCT_PUBLIC_COLUMNS` 補 `intro_video_url`（不加前台讀不到，而且是靜默的）
+
+### 影片為什麼不能走 /api/admin/upload
+那支是把檔案收進 serverless function 再轉手上傳，而 **Vercel 的 request body
+上限是 4.5MB** —— 站上現有的過場影片是 3.9～7MB，照那條路走一半會失敗。
+改成跟後端要一張 R2 簽名（`/api/admin/upload/presign`，限影片、200MB、10 分鐘到期），
+瀏覽器直接 PUT，檔案不經過我們的機器。
+
+⚠️ **直傳還沒通：R2 bucket 沒開 CORS，而我們的 API token 沒有 `PutBucketCors` 權限**
+（實測 AccessDenied，CORS 預檢 403）。要在 Cloudflare 後台設一次，
+規則見 `backend/scripts/r2_set_cors.ts`。在那之前 `lib/uploadVideo` 對 4MB 以內
+的檔案自動退回伺服器代傳，所以小影片現在就能用。
+
+### 錯誤訊息要寫給看到它的人
+第一版的失敗訊息是「影片直傳被瀏覽器擋下（R2 尚未開放 CORS）…設定內容見
+backend/scripts/r2_set_cors.ts」，老闆看到只回了「啥意思」。CORS、R2、檔案路徑
+對使用者都不是資訊。改成三句：影片幾 MB、上限幾 MB、換小一點的就能傳。
+
+---
+
 ## v2026.09.02m｜2026-09-02｜賞等開放到 Z賞；建立 Garmin／BIGBANG 兩檔自製賞
 
 ### 賞等 A賞～Z賞（一番賞／抽卡／自製賞）
