@@ -4,6 +4,22 @@
 
 ---
 
+## v2026.09.02j｜2026-09-02｜撕紙震動救回來——「變小」不等於「拿掉」
+
+v2026.09.02i 把持續震動的鋪底計時器整條移除，只留跟音效同步的那幾點，結果是幾乎不震。
+老闆的原話是「震動輕微一點點就好，現在太大」——要的是**強度**，不是**節奏**。
+
+- 節拍曲線原封不動放回：`GAP_LOOSE` 140 →`GAP_TIGHT` 42、`RAMP_MS` 700，
+  進度取「按住時間」與「拉開距離」的較大者，一個數字沒動
+- 只保留強度降級：`hapticLight`→`hapticTick`（impact LIGHT → selectionChanged，
+  網頁 vibrate 12→6）、撕開收尾 `hapticHeavy`→`hapticMedium`
+- 摺角上限 `pageW*1.15`→`2.6` 的修正不受影響
+
+教訓寫在程式的註解裡（FigmaTearScene 那段 ①）：**回報「太大」時先只動強度**，
+節奏是另一個維度，兩個一起改就分不出是哪一半造成的。
+
+---
+
 ## v2026.09.02i｜2026-09-02｜撕紙翻頁卡在螢幕邊界＋震動降級；FAQ 移除挑戰機台與過期的機率題
 
 ### 一番賞撕紙（frontend/components/shop/FigmaTearScene.tsx）
@@ -16,6 +32,8 @@
   sfxGrab 捏住／sfxBounceBack 彈回／bigRip 撕開）；`hapticLight`→`hapticTick`
   （selectionChanged／網頁 vibrate 12→6），撕開那一下 `hapticHeavy`→`hapticMedium`；
   節流 42→55ms
+  > ⚠️ **「移除鋪底」這一半是做過頭了，v2026.09.02j 已改回**：老闆要的只是「變小」，
+  > 結果變成幾乎不震。留在這裡當紀錄。
 
 ### 文案
 - 品項詳情彈窗品項名 `leading-snug`→`leading-relaxed`：長品名換行後兩行黏在一起，
