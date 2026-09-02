@@ -39,6 +39,7 @@ import { useListScrollMemory } from '@/lib/useListScrollMemory';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { useSwipeTabs } from '@/lib/useSwipeTabs';
+import { useHideOnScroll } from '@/lib/useHideOnScroll';
 import { cn } from '@/lib/utils';
 import { asset } from '@/lib/asset';
 import PrizeCard from '@/components/market/PrizeCard';
@@ -239,6 +240,23 @@ export default function MarketPage() {
   // 一級頁籤左右滑切換（全站共用手勢，同首頁）
   const typeKeys = useMemo(() => ['', ...(facets?.types.map(t => t.key) ?? [])], [facets]);
   const swipeTypes = useSwipeTabs(typeKeys, type, (t) => { setType(t); setSeries(''); });
+
+  // 下滑收起底部導航（同首頁 MobileTabbar 的 useHideOnScroll）
+  const navHidden = useHideOnScroll();
+
+  /* 兩排頁籤吸在 .hdr 下緣（老闆 2026-09-02）。.hdr 高度不能寫死：
+     App／PWA 的安全區、字級縮放都會讓它變高，量出來的才貼得準 */
+  const hdrRef = useRef<HTMLDivElement>(null);
+  const [hdrH, setHdrH] = useState(56);
+  useEffect(() => {
+    const el = hdrRef.current;
+    if (!el) return;
+    const sync = () => setHdrH(el.getBoundingClientRect().height);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   useEffect(() => {
     if (series && !seriesTabs.some(x => x.name === series)) setSeries('');
   }, [seriesTabs, series]);
@@ -252,7 +270,7 @@ export default function MarketPage() {
 
   return (
     <div className="mk mallroot gx">
-      <div className="hdr">
+      <div className="hdr" ref={hdrRef}>
         <div className="srch">
           <button className="hicon hback" onClick={() => router.push('/')} aria-label="返回">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -282,7 +300,10 @@ export default function MarketPage() {
             {/* 頁籤直接用首頁那組元件（老闆 2026-09-02：「複製首頁過來用」——
                 之前拿 market.css 的 .ptabs 仿首頁，字距行高都對不上）。
                 一級＝ui/Tabs 底線頁籤，二級＝Tailwind 膠囊列，樣式照抄 app/page.tsx */}
-            <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 space-y-2">
+            <div
+              className="sticky z-20 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 space-y-2"
+              style={{ top: hdrH }}
+            >
               {/* ⚠️ market.css 的 `.mk button` reset（padding:0/background:none/color:inherit）
                   比 Tailwind 單類別 specificity 高，頁籤與膠囊要用 `!` 修飾符才拿得回主導權 */}
               {(facets?.types.length ?? 0) > 1 && (
@@ -456,7 +477,12 @@ export default function MarketPage() {
         )}
       </div>
 
-      <nav className="tabbar" role="tablist">
+      {/* 下滑瀏覽時收起、往回撥馬上出現（同首頁底部導航） */}
+      <nav
+        className="tabbar transition-transform duration-300"
+        role="tablist"
+        style={navHidden ? { transform: 'translateY(100%)' } : undefined}
+      >
         <button role="tab" aria-selected={tab === 'market'} onClick={() => setTab('market')}>
           <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <circle cx="11" cy="11" r="7" /><path d="M20 20l-4.2-4.2" />
