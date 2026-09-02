@@ -216,6 +216,10 @@
       標題沒人接就沒了
    選擇器多帶一個 .gx，才蓋得過 market.css 適配層的 `.mk.mallroot .hdr .srch > .hicon.hback svg` */
 .mk.mallroot.gx .hdr .srch > .hicon.hback svg { width: 28px; height: 28px; stroke-width: 2.5; }
+/* 頂欄延伸進動態島／狀態列（老闆 2026-09-02）：安全區也鋪主題色紅。
+   一般瀏覽器 env() 是 0、完全不變；PWA／原生殼（contentInset: never）會
+   多出安全區高度的紅底。sticky 頁籤的 top 是 ResizeObserver 量的，自動跟上 */
+.mk.gx .hdr { padding-top: calc(12px + env(safe-area-inset-top)); }
 .mk.mallroot.gx .hdr .htitle {
   flex: 0 0 auto; font-size: 18px; font-weight: 900; color: #fff;
   white-space: nowrap; margin: 0 10px 0 2px; letter-spacing: .5px;

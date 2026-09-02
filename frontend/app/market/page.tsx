@@ -40,6 +40,7 @@ import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { useSwipeTabs } from '@/lib/useSwipeTabs';
 import { useHideOnScroll } from '@/lib/useHideOnScroll';
+import { useStatusBarText } from '@/components/native/StatusBarStyle';
 import { cn } from '@/lib/utils';
 import { asset } from '@/lib/asset';
 import PrizeCard from '@/components/market/PrizeCard';
@@ -62,6 +63,8 @@ type Tab = 'market' | 'mine' | 'deals';
 
 export default function MarketPage() {
   useFeatureGate('market');
+  // 頂欄是主題色紅、延伸進狀態列 → 動態島那排字要白的（App 內才有作用）
+  useStatusBarText('white');
   const router = useRouter();
   const params = useSearchParams();
   const { user, refreshProfile } = useAuth();
