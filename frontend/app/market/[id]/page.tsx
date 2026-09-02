@@ -26,7 +26,8 @@ import { useFeatureGate } from '@/lib/useFeatureGate';
 import { useRequireLogin } from '@/hooks/useRequireLogin';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { asset } from '@/lib/asset';
-import { Dialog, Toast, useMarketToast, useSheetRoute, gnum, hue, ago } from '@/components/market/ui';
+import { Toast, useMarketToast, useSheetRoute, gnum, hue, ago } from '@/components/market/ui';
+import { HoldToConfirmButton } from '@/components/ui/HoldToConfirmButton';
 import { ChatThreadSheet } from '@/components/market/ChatSheets';
 import { GradeBadge } from '@/components/ui/GradeBadge';
 import {
@@ -55,7 +56,6 @@ export default function MarketItemPage() {
   const [settings, setSettings] = useState<MarketSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [gone, setGone] = useState(false);
-  const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -104,7 +104,6 @@ export default function MarketItemPage() {
     setBusy(true);
     const res = await buyListing(item.id);
     setBusy(false);
-    setConfirming(false);
     if (!res.success) {
       toast(res.message || '購買失敗');
       // 失敗多半是被別人先買走或賣家下架了，重讀一次讓畫面對上現況
@@ -116,12 +115,12 @@ export default function MarketItemPage() {
     router.push('/market?tab=deals');
   };
 
-  const onBuyClick = () => {
+  /** 按住集氣走完才成交（老闆 2026-09-02，同商城／配送彈窗）：集氣本身就是確認，不再另開彈窗 */
+  const onBuyHold = () => {
     if (!item) return;
     if (!requireLogin('登入後就可以在交易所買東西')) return;
     if (isMine) return;
-    if (notEnough) { toast('G 幣不足，先去儲值'); return; }
-    setConfirming(true);
+    doBuy();
   };
 
   if (loading) return <ProductLoadingScreen />;
@@ -282,10 +281,23 @@ export default function MarketItemPage() {
           )}
           {isMine ? (
             <button className="buy" disabled style={{ background: '#DDD', color: '#888' }}>你上架的</button>
+          ) : notEnough ? (
+            <button className="buy" onClick={() => toast('G 幣不足，先去儲值')}>G 幣不足</button>
           ) : (
-            <button className="buy" onClick={onBuyClick} disabled={busy}>
-              {notEnough ? 'G 幣不足' : `立即購買 · ${gnum(item.price)} G`}
-            </button>
+            <HoldToConfirmButton
+              className="buy"
+              onConfirm={onBuyHold}
+              onAbort={() => toast('請按住直到光條走完')}
+              disabled={busy}
+            >
+              {busy ? '處理中…' : (
+                <>
+                  按住購買
+                  <Image src={asset('/images/gcoin.webp')} alt="G" width={18} height={18} className="w-[18px] h-[18px] object-contain" unoptimized />
+                  {gnum(item.price)}
+                </>
+              )}
+            </HoldToConfirmButton>
           )}
         </div>
       </div>
@@ -298,22 +310,6 @@ export default function MarketItemPage() {
         otherName={item.sellerName}
         context={{ name: item.prizeName, image: item.prizeImage, price: item.price }}
         onClose={closeSheet}
-      />
-
-      <Dialog
-        open={confirming}
-        title="確定要買嗎？"
-        desc={
-          <>
-            {item.prizeName}<br />
-            付出 {gnum(item.price)} G，買到之後東西直接進你的倉庫。<br />
-            交易完成不能反悔。
-          </>
-        }
-        confirmText="確定購買"
-        busy={busy}
-        onCancel={() => setConfirming(false)}
-        onConfirm={doBuy}
       />
 
       <Toast text={toastText} />
