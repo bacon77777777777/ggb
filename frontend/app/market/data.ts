@@ -348,6 +348,8 @@ export async function fetchMyListings(userId: string): Promise<MyListing[]> {
     .from('marketplace_listings')
     .select('id, price, status, created_at, draw_records ( product_prizes ( name, level, image_url ), products ( name ) )')
     .eq('seller_id', userId)
+    // 已下架的不列（老闆 2026-09-02）：東西回倉庫了，這裡留著只是屍體；已賣出去交易紀錄看
+    .neq('status', 'cancelled')
     .order('created_at', { ascending: false })
     .limit(200);
   if (error) throw error;
