@@ -455,7 +455,10 @@ export default function MarketPage() {
                     <span>{ago(m.createdAt)}上架 · {m.status === 'active' ? '架上' : m.status === 'sold' ? '已賣出' : '已下架'}</span>
                   </span>
                   <span className="rt">
-                    <span className={`p${m.status === 'active' ? '' : ' minus'}`}>{gnum(m.price)} G</span>
+                    <span className={`p${m.status === 'active' ? '' : ' minus'}`}>
+                      <Image src={asset('/images/gcoin.webp')} alt="G" width={15} height={15} className="object-contain" unoptimized />
+                      {gnum(m.price)}
+                    </span>
                     {m.status === 'active' && (
                       <button className="act danger" onClick={(e) => { e.stopPropagation(); setConfirmOff(m); }}>下架</button>
                     )}

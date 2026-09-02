@@ -145,11 +145,16 @@
 .mk.gx .mkrow .rt { flex-shrink: 0; text-align: right; }
 .mk.gx .mkrow .rt .p {
   font-family: "Oswald", sans-serif; font-weight: 600; font-size: 17px; color: var(--red);
+  /* 「G」字改 G 幣圖標放金額左邊（老闆 2026-09-02） */
+  display: inline-flex; align-items: center; gap: 3px; vertical-align: middle;
 }
+.mk.gx .mkrow .rt .p img { display: block; }
 .mk.gx .mkrow .rt .p.minus { color: var(--sub); }
 .mk.gx .mkrow .rt .act {
   margin-top: 6px; border: 1px solid var(--line2); border-radius: 16px;
   padding: 5px 12px; font-size: 12px; font-weight: 700; background: #fff;
+  /* 金額與下架鍵同列，留出間距別黏在一起 */
+  margin-left: 8px; vertical-align: middle;
 }
 .mk.gx .mkrow .rt .act.danger { border-color: #FFD3D9; color: var(--red); }
 
