@@ -435,6 +435,9 @@ export const cancelListing = (listingId: number) => callRpc('cancel_listing', { 
 /** 賣家改自己架上那件的售價（migration 674） */
 export const updateListingPrice = (listingId: number, price: number) =>
   callRpc('update_listing_price', { p_listing_id: listingId, p_price: price });
+/** 檢舉一筆上架（migration 676）；同一人重複檢舉同一筆會更新原因，不會疊 */
+export const reportListing = (listingId: number, reason: string) =>
+  callRpc('report_marketplace_listing', { p_listing_id: listingId, p_reason: reason });
 
 /**
  * 賞等正規化 —— 跟 DB 的 marketplace_norm_level 同一套規則。

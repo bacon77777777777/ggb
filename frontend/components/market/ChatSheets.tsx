@@ -74,8 +74,9 @@ export function ChatListSheet({ open, onClose, onPick, loggedIn }: {
               style={{ width: '100%', textAlign: 'left' }}
               onClick={() => onPick(c)}
             >
-              <span className="mth" style={{ background: '#F2F2F2', overflow: 'hidden' }}>
-                <Image src={c.prizeImage || FALLBACK} alt="" width={52} height={52} className="object-contain" unoptimized />
+              {/* 圓形對方頭像（老闆 2026-09-02）：商品資訊在文字列就有，縮圖給「人」 */}
+              <span style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#EEE' }}>
+                <Image src={asset(c.otherAvatar || AVATAR_FALLBACK)} alt="" width={48} height={48} className="w-full h-full object-cover" unoptimized />
               </span>
               <span className="mmeta">
                 <span className="mt" style={{ fontWeight: 700 }}>{c.otherName}</span>

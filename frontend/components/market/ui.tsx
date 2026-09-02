@@ -86,10 +86,14 @@ export function Sheet({ open, title, onClose, children, footer, full }: {
 }) {
   // 掛上之後下一幀才加 .on，transform 才有東西可以動（直接帶 .on 會沒有動畫）
   const [on, setOn] = useState(false);
+  // 開場動畫走完就把過渡關掉（settled）：iOS 鍵盤彈出時視口會動，
+  // 常駐的 transform 過渡會讓整張面板跟著「滑」一下（老闆 2026-09-02 回報）
+  const [settled, setSettled] = useState(false);
   useEffect(() => {
-    if (!open) { setOn(false); return; }
+    if (!open) { setOn(false); setSettled(false); return; }
     const t = requestAnimationFrame(() => setOn(true));
-    return () => cancelAnimationFrame(t);
+    const st = setTimeout(() => setSettled(true), 320);
+    return () => { cancelAnimationFrame(t); clearTimeout(st); };
   }, [open]);
 
   if (!open) return null;
@@ -97,7 +101,7 @@ export function Sheet({ open, title, onClose, children, footer, full }: {
     <div id="sheets">
       <div className="layer">
         <div className={`scrim${on ? ' on' : ''}`} onClick={onClose} />
-        <div className={`sheet${full ? ' full' : ' tall'}${on ? ' on' : ''}`}>
+        <div className={`sheet${full ? ' full' : ' tall'}${on ? ' on' : ''}`} style={settled ? { transition: 'none' } : undefined}>
           <div className="shd">
             <h3>{title}</h3>
             <button type="button" className="x" onClick={onClose} aria-label="關閉">

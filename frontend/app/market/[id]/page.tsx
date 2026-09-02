@@ -34,9 +34,18 @@ import { ChatThreadSheet } from '@/components/market/ChatSheets';
 import { GradeBadge } from '@/components/ui/GradeBadge';
 import {
   fetchListing, fetchPriceStats, fetchRecentDeals, fetchRelated, fetchSellerOthers, fetchSettings,
-  buyListing, cancelListing, updateListingPrice,
+  buyListing, cancelListing, updateListingPrice, reportListing,
   type Listing, type PriceStats, type MarketSettings, type DealPoint,
 } from '../data';
+
+/** 檢舉原因：radio 預設選項，不開放自由填字（老闆 2026-09-02） */
+const REPORT_REASONS = [
+  '價格哄抬／惡意炒價',
+  '圖片或說明與實物不符',
+  '疑似詐騙或引導場外交易',
+  '賣家行為不當（洗版、騷擾）',
+  '其他不當內容',
+];
 
 export const dynamic = 'force-dynamic';
 
@@ -66,6 +75,10 @@ export default function MarketItemPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editPrice, setEditPrice] = useState('');
   const [editBusy, setEditBusy] = useState(false);
+  // 檢舉（右上「⋯」進入）
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportBusy, setReportBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!Number.isFinite(id) || id <= 0) { setGone(true); setLoading(false); return; }
@@ -200,10 +213,20 @@ export default function MarketItemPage() {
             <path d="m15 18-6-6 6-6" />
           </svg>
         </button>
-        <button className="floatshare" onClick={share} aria-label="分享">
+        <button className="floatshare" style={{ right: 54 }} onClick={share} aria-label="分享">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="18" cy="5" r="2.6" /><circle cx="6" cy="12" r="2.6" /><circle cx="18" cy="19" r="2.6" />
             <path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3" />
+          </svg>
+        </button>
+        {/* 更多（檢舉）：radio 選預設原因，不開放填字（老闆 2026-09-02） */}
+        <button
+          className="floatshare"
+          onClick={() => { if (requireLogin('登入後才能檢舉')) { setReportReason(''); setReportOpen(true); } }}
+          aria-label="更多"
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
           </svg>
         </button>
       </div>
@@ -354,6 +377,46 @@ export default function MarketItemPage() {
         context={{ name: item.prizeName, image: item.prizeImage, price: item.price }}
         onClose={closeSheet}
       />
+
+      {/* 檢舉：radio 勾一個預設原因就能送，不用打字 */}
+      <Sheet
+        open={reportOpen}
+        title="檢舉這個上架"
+        onClose={() => setReportOpen(false)}
+        footer={
+          <button
+            className="buy"
+            disabled={!reportReason || reportBusy}
+            onClick={async () => {
+              if (!item || !reportReason) return;
+              setReportBusy(true);
+              const res = await reportListing(item.id, reportReason);
+              setReportBusy(false);
+              setReportOpen(false);
+              toast(res.message || (res.success ? '已收到檢舉' : '檢舉失敗'));
+            }}
+          >
+            {reportBusy ? '送出中…' : '送出檢舉'}
+          </button>
+        }
+      >
+        <div className="blk first">
+          <p className="hint" style={{ marginBottom: 6 }}>
+            選一個最接近的原因，送出後平台會查看這筆上架。
+          </p>
+          {REPORT_REASONS.map(r => (
+            <button
+              key={r}
+              className="pickrow"
+              aria-pressed={reportReason === r}
+              onClick={() => setReportReason(r)}
+            >
+              <span className="ck" />
+              <span style={{ fontSize: 14, fontWeight: 600 }}>{r}</span>
+            </button>
+          ))}
+        </div>
+      </Sheet>
 
       {/* 編輯價格（只有自己的上架進得來） */}
       <Sheet

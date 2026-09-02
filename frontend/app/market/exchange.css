@@ -158,9 +158,10 @@
 }
 .mk.gx .mkrow .rt .act.danger { border-color: #FFD3D9; color: var(--red); }
 
-/* 聊聊列表字級（老闆 2026-09-02：太小）。.mrowi 是商城共用列，只在交易所放大 */
-.mk.gx .mrowi .mt { font-size: 14.5px; font-weight: 700; }
-.mk.gx .mrowi .ms { font-size: 12.5px; }
+/* 聊聊列表（老闆 2026-09-02：字太小、內容沒置中）。.mrowi 是商城共用列，只在交易所改 */
+.mk.gx .mrowi { align-items: center; }
+.mk.gx .mrowi .mt { font-size: 15px; font-weight: 700; }
+.mk.gx .mrowi .ms { font-size: 13px; }
 
 /* 交易紀錄＝帳戶明細（老闆 2026-09-02）：買進紅 -、賣出綠 +（實收），右上角紅／綠標 */
 .mk.gx .mkrow.deal { position: relative; }
