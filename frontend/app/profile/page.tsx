@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Box, Truck, Trophy, Settings, LogOut, ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, HelpCircle, Info, FileText, Shield, RefreshCcw, RefreshCw, Wallet, Heart, User, ChevronDown, X, Loader2, CreditCard, Copy, Ticket, Store, History, MessageCircle, Star, UserPlus, Search, Plus } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { HoldToConfirmButton } from '@/components/ui/HoldToConfirmButton';
+import { DeliveryCheckout, type ShippingCoupon, type DeliveryMethod } from '@/components/warehouse/DeliveryCheckout';
+import { TW_CITIES, TW_DISTRICTS, splitTwAddress } from '@/lib/twDistricts';
 import { useHideOnScroll } from '@/lib/useHideOnScroll';
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
 import PageHeader from '@/components/ui/PageHeader';
@@ -693,6 +695,10 @@ function ProfileContent() {
    * 免得沿用到已經不適用的舊報價。
    */
   const [serverShippingFee, setServerShippingFee] = useState<number | null>(null);
+  /* 配送結帳（商城複製版 2026-09-02）：備註＋運費優惠券 */
+  const [deliveryNote, setDeliveryNote] = useState('');
+  const [deliveryCouponId, setDeliveryCouponId] = useState<string | null>(null);
+  const [shippingCoupons, setShippingCoupons] = useState<ShippingCoupon[]>([]);
 
   // Auto-scroll refs
   const warehouseSubTabsRef = useRef<HTMLDivElement>(null);
@@ -700,10 +706,12 @@ function ProfileContent() {
   const mobileWarehouseSentinelRef = useRef<HTMLDivElement>(null);
   const mobileWarehouseScrollRef = useRef<HTMLDivElement>(null);
   // 倉庫下滑收起底部「全選」bar（同首頁）。分頁已改由 window 捲動，直接用預設模式
-  const warehouseBarHidden = useHideOnScroll({
+  const warehouseBarHiddenRaw = useHideOnScroll({
     enabled: activeTab === 'warehouse',
     topThreshold: 40,
   });
+  // 有勾選品項＝正在操作，bar 強制展開不收（老闆 2026-09-02）
+  const warehouseBarHidden = warehouseBarHiddenRaw && selectedForDelivery.length === 0;
   const [mobileDeliveryDisplayCount, setMobileDeliveryDisplayCount] = useState(10);
   const mobileDeliveryScrollRef = useRef<HTMLDivElement>(null);
   const [mobileDrawDisplayCount, setMobileDrawDisplayCount] = useState(10);
@@ -1187,6 +1195,13 @@ function ProfileContent() {
       .some(i => (i.type === 'ichiban' || i.type === 'custom') && (i.prizeTotal ?? 999) <= 3);
   }, [warehouseItems, selectedForDelivery]);
 
+  // 結帳彈窗「配送商品」展開列表用（同名同賞等在元件內合併 ×N）
+  const deliveryItems = React.useMemo(() => {
+    return warehouseItems
+      .filter(i => selectedForDelivery.includes(i.id))
+      .map(i => ({ name: i.name, image: i.image, grade: i.grade }));
+  }, [warehouseItems, selectedForDelivery]);
+
   React.useEffect(() => {
     if (hasLargePackage) setLogisticsType('HOME');
   }, [hasLargePackage]);
@@ -1219,6 +1234,34 @@ function ProfileContent() {
   }, [selectedForDelivery, logisticsType, logisticsSubType]);
 
   const currentShippingFee = serverShippingFee ?? localShippingFee;
+
+  // 配送彈窗打開時載入可用的運費優惠券（scope=shipping，見 migration 681）
+  React.useEffect(() => {
+    if (!showDeliveryModal || !user) { return; }
+    let dead = false;
+    supabase.from('user_coupons')
+      .select('id, expiry_date, coupons(title, discount_value, scope, is_active)')
+      .eq('user_id', user.id).eq('status', 'unused')
+      .then(({ data }) => {
+        if (dead) return;
+        const rows = (data ?? []).filter((r: any) =>
+          r.coupons?.scope === 'shipping' && r.coupons?.is_active
+          && (!r.expiry_date || new Date(r.expiry_date) >= new Date()));
+        setShippingCoupons(rows.map((r: any) => ({
+          id: String(r.id),
+          title: String(r.coupons.title || '運費折抵券'),
+          discountValue: Number(r.coupons.discount_value) || 0,
+          expiryDate: r.expiry_date ?? null,
+        })));
+      });
+    return () => { dead = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showDeliveryModal, user?.id]);
+
+  const shippingDiscount = React.useMemo(() => {
+    const c = shippingCoupons.find(x => x.id === deliveryCouponId);
+    return c ? Math.min(c.discountValue, currentShippingFee) : 0;
+  }, [shippingCoupons, deliveryCouponId, currentShippingFee]);
 
   /*
    * 「再加 N 件可免運」用的門檻。原本寫的是舊的單一門檻 freeShippingThreshold（7），
@@ -1600,6 +1643,27 @@ function ProfileContent() {
 
   const [showEditNickname, setShowEditNickname] = useState(false);
   const [showEditRecipient, setShowEditRecipient] = useState(false);
+  // 收件地址改「台灣格式選擇式」（老闆 2026-09-02）：縣市／區用選單、其餘打字。
+  // 三段都齊才組回 recipientAddress，儲存鈕的 disabled 沿用原本的空值判斷
+  const [addrCity, setAddrCity] = useState('');
+  const [addrDist, setAddrDist] = useState('');
+  const [addrRest, setAddrRest] = useState('');
+  const [isNewAddress, setIsNewAddress] = useState(false);
+  React.useEffect(() => {
+    if (!showEditRecipient) return;
+    // 開啟當下判斷新增／編輯，打字過程不變（老闆：按「新增」進來標題不能是「編輯」）
+    setIsNewAddress(!(settingsForm.recipientName && settingsForm.recipientPhone && settingsForm.recipientAddress));
+    const parts = splitTwAddress(settingsForm.recipientAddress);
+    setAddrCity(parts.city);
+    setAddrDist(parts.district);
+    setAddrRest(parts.rest);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showEditRecipient]);
+  const applyAddr = (city: string, dist: string, rest: string) => {
+    setAddrCity(city); setAddrDist(dist); setAddrRest(rest);
+    const composed = city && dist && rest.trim() ? `${city}${dist}${rest.trim()}` : '';
+    setSettingsForm(f => ({ ...f, recipientAddress: composed }));
+  };
   const [showAddressBook, setShowAddressBook] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [showTitlePicker, setShowTitlePicker] = useState(false);
@@ -2524,7 +2588,9 @@ function ProfileContent() {
         p_store_id: logisticsType === 'CVS' ? storeId : null,
               p_store_name: logisticsType === 'CVS' ? storeName : null,
               p_draw_record_ids: selectedForDelivery.map(id => Number(id)),
-              p_delivery_fee_points: currentShippingFee
+              p_delivery_fee_points: currentShippingFee - shippingDiscount,
+              p_note: deliveryNote.trim() || null,
+              p_coupon_id: deliveryCouponId,
             });
 
       if (error) throw error;
@@ -2534,6 +2600,8 @@ function ProfileContent() {
       trackEvent('delivery_success', { path: '/profile', meta: { count: selectedForDelivery.length, logistics_type: logisticsType, fee: currentShippingFee } });
       setShowDeliveryModal(false);
       setSelectedForDelivery([]);
+      setDeliveryNote('');
+      setDeliveryCouponId(null);
       sessionStorage.removeItem('pending_delivery_items');
 
       // Refresh data and user points
@@ -3929,277 +3997,6 @@ function ProfileContent() {
               {/* 曬獎圖彈窗（Canvas 合成，見 components/warehouse/PrizeShareCard） */}
               {shareData && <PrizeShareCard data={shareData} onClose={() => setShareData(null)} />}
 
-              {showDeliveryModal && (
-                <div className={cn("fixed inset-0 z-[100] flex justify-center bg-black/50 backdrop-blur-sm", isDesktop ? "items-center p-4" : "items-end p-0")}>
-                  <motion.div 
-                    initial={isDesktop ? { opacity: 0, scale: 0.95 } : { y: '100%' }}
-                    animate={isDesktop ? { opacity: 1, scale: 1 } : { y: 0 }}
-                    exit={isDesktop ? { opacity: 0, scale: 0.95 } : { y: '100%' }}
-                    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                    drag={isDesktop ? false : "y"}
-                    dragConstraints={{ top: 0 }}
-                    dragElastic={0.2}
-                    onDragEnd={(_, info) => {
-                      if (!isDesktop && info.offset.y > 100) setShowDeliveryModal(false);
-                    }}
-                    className={cn(
-                      "bg-white dark:bg-neutral-900 w-full overflow-hidden shadow-2xl flex flex-col",
-                      isDesktop ? "rounded-3xl max-w-lg" : "rounded-t-3xl max-w-none max-h-[90vh]"
-                    )}
-                  >
-                    <div className={cn(
-                      "flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 shrink-0",
-                      isDesktop ? "p-6" : "px-4 py-3"
-                    )}>
-                      <h3 className={cn("font-black text-neutral-900 dark:text-white", isDesktop ? "text-xl" : "text-base")}>確認配送資訊</h3>
-                      <button onClick={() => { trackEvent('delivery_abandon', { path: '/profile', meta: { count: selectedForDelivery.length } }); setShowDeliveryModal(false); }} className="w-8 h-8 rounded-full bg-neutral-50 dark:bg-neutral-800 flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors">
-                        <X className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
-                      </button>
-                    </div>
-                    {/* 配送彈窗改用商城訂單彈層的語言（老闆 2026-08-24）：灰底 + 白色區塊卡（.blk）
-                        + 標籤／值兩欄列（.kv）+ 底部紅色主鈕（.abar）。欄位維持抽獎這邊原有的
-                        （件數／運費／抽籤價金／配送方式／門市／收件資料），只換視覺不動動線 ——
-                        倉庫勾選進來是單向流程，不是商城的「同一片 sheet 換內容」。*/}
-                    <div className={cn("flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-950", isDesktop ? "p-5 space-y-3" : "p-3 space-y-2.5")}>
-                      <div className={cn("bg-white dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-800 space-y-2", isDesktop ? "p-4" : "p-3")}>
-                        <div className={cn("flex justify-between", isDesktop ? "text-sm" : "text-[13px]")}>
-                          <span className="text-neutral-500 dark:text-neutral-400 font-bold">配送件數</span>
-                          <span className="font-black text-neutral-900 dark:text-white">{selectedForDelivery.length.toLocaleString()} 件</span>
-                        </div>
-                        <div className={cn("flex justify-between", isDesktop ? "text-sm" : "text-[13px]")}>
-                          <span className="text-neutral-500 dark:text-neutral-400 font-bold">運費</span>
-                          {currentShippingFee === 0 ? (
-                            <span className="font-black text-primary">免運費</span>
-                          ) : (
-                            <div className="flex items-center gap-1">
-                              <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16} className="object-contain" />
-                              <span className="font-black text-accent-red font-amount tracking-tighter">{currentShippingFee}</span>
-                              <span className="font-bold text-accent-red text-[13px]">代幣</span>
-                            </div>
-                          )}
-                        </div>
-                        {currentShippingFee > 0 && effectiveFreeThreshold !== null
-                          && effectiveFreeThreshold > selectedForDelivery.length && (
-                          <p className="text-[11px] text-neutral-400 dark:text-neutral-500 text-right">
-                            再加 {effectiveFreeThreshold - selectedForDelivery.length} 件可免運
-                          </p>
-                        )}
-                        {lotteryPurchaseTotal > 0 && (
-                          <div className={cn("flex justify-between pt-2 border-t border-neutral-200 dark:border-neutral-700", isDesktop ? "text-sm" : "text-[13px]")}>
-                            <span className="text-neutral-500 dark:text-neutral-400 font-bold">抽籤商品價金</span>
-                            <div className="flex items-center gap-1">
-                              <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16} className="object-contain" />
-                              <span className="font-black text-accent-red font-amount tracking-tighter">{lotteryPurchaseTotal}</span>
-                              <span className="font-bold text-accent-red text-[13px]">代幣</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      <div className={cn("bg-white dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-800 space-y-3", isDesktop ? "p-4" : "p-3")}>
-                        <p className={cn("font-black text-neutral-900 dark:text-white", isDesktop ? "text-sm" : "text-[13px]")}>配送方式</p>
-                        
-                        {/* Logistics Type Selection */}
-                        <div className="flex gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setLogisticsType('HOME')}
-                            className={cn(
-                              "flex-1 py-2.5 px-3 rounded-xl border font-bold text-sm transition-all",
-                              logisticsType === 'HOME'
-                                ? "border-accent-red bg-accent-red/5 text-accent-red font-black"
-                                : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-500"
-                            )}
-                          >
-                            宅配到府
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => !hasLargePackage && setLogisticsType('CVS')}
-                            disabled={hasLargePackage}
-                            className={cn(
-                              "flex-1 py-2.5 px-3 rounded-xl border font-bold text-sm transition-all",
-                              hasLargePackage
-                                ? "border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600 cursor-not-allowed"
-                                : logisticsType === 'CVS'
-                                ? "border-accent-red bg-accent-red/5 text-accent-red font-black"
-                                : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-500"
-                            )}
-                          >
-                            超商取貨
-                          </button>
-                        </div>
-                        {hasLargePackage && (
-                          <div className="flex items-center gap-1.5 text-[12px] font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400 px-3 py-2 rounded-xl border border-amber-200 dark:border-amber-800">
-                            ⚠ 包含大尺寸一番賞／自製賞品項，僅限宅配出貨
-                          </div>
-                        )}
-
-                        {logisticsType === 'CVS' && (
-                          <div className="space-y-3 pt-2">
-                             <label className="text-xs font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">選擇超商體系</label>
-                             <div className="grid grid-cols-2 gap-2">
-                                {[
-                                  { id: 'UNIMART', label: '7-11' },
-                                  { id: 'FAMI', label: '全家' },
-                                  { id: 'HILIFE', label: '萊爾富' },
-                                  // OK超商拿掉：綠界的店到店已停止此服務，點下去地圖只會回
-                                  // 「OK超商暫停服務(若有寄件需求，請使用711、全家、萊爾富)」。
-                                  // 後台運費設定的 OK 那欄先留著，恢復服務時把這行加回來就好。
-                                ].map((store) => (
-                                  <button
-                                    key={store.id}
-                                    type="button"
-                                    onClick={() => setLogisticsSubType(store.id as 'UNIMART' | 'FAMI' | 'HILIFE' | 'OKMART')}
-                                    className={cn(
-                                      "py-2 px-3 rounded-lg border font-bold text-xs transition-all",
-                                      logisticsSubType === store.id
-                                        ? "border-primary bg-primary text-white"
-                                        : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:border-primary/50"
-                                    )}
-                                  >
-                                    {store.label}
-                                  </button>
-                                ))}
-                             </div>
-                             
-                             <div className="mt-2 p-3 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-100 dark:border-neutral-700">
-                                {storeId ? (
-                                  <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-[10px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded">已選擇門市</span>
-                                      <button
-                                  type="button"
-                                  onClick={() => {
-                                    // Save selected items before redirect
-                                    try {
-                                      sessionStorage.setItem('pending_delivery_items', JSON.stringify(selectedForDelivery));
-                                    } catch (e) {
-                                      console.error('Failed to save delivery items:', e);
-                                    }
-
-                                    const rid = newStoreMapRequestId();
-                                          setPendingCvsToken(rid);
-                                          setCvsTarget('delivery');
-                                          // App 內走 in-app browser（不跳出去 Safari），網頁維持開新分頁
-                                          void openStoreMap({ logisticsSubType, requestId: rid });
-                                        }}
-                                        className="text-[11px] font-black text-neutral-400 hover:text-primary transition-colors"
-                                      >
-                                        重選門市
-                                      </button>
-                                    </div>
-                                    <div className="font-bold text-sm text-neutral-900 dark:text-white">{storeName} ({storeId})</div>
-                                    <div className="text-xs text-neutral-500">{storeAddress}</div>
-                                  </div>
-                                ) : (
-                                  <div className="text-center py-1">
-                                     <button 
-                                           type="button" 
-                                           onClick={() => {
-                                             // Save selected items before redirect
-                                             try {
-                                               sessionStorage.setItem('pending_delivery_items', JSON.stringify(selectedForDelivery));
-                                             } catch (e) {
-                                               console.error('Failed to save delivery items:', e);
-                                             }
-
-                                             const rid = newStoreMapRequestId();
-                                          setPendingCvsToken(rid);
-                                          setCvsTarget('delivery');
-                                          // App 內走 in-app browser（不跳出去 Safari），網頁維持開新分頁
-                                          void openStoreMap({ logisticsSubType, requestId: rid });
-                                        }}
-                                        className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 py-2.5 rounded-lg font-black text-sm shadow-lg hover:scale-[1.02] transition-all"
-                                     >
-                                        選擇取貨門市
-                                     </button>
-                                     <p className="text-[10px] text-neutral-400 mt-2">將跳轉至電子地圖選擇門市</p>
-                                  </div>
-                                )}
-                             </div>
-                          </div>
-                        )}
-
-                        <p className={cn("font-black text-neutral-900 dark:text-white pt-2", isDesktop ? "text-sm" : "text-[13px]")}>收件人資訊</p>
-                         <div className="grid grid-cols-1 gap-3">
-                           <input
-                             value={settingsForm.recipientName}
-                             onChange={e => setSettingsForm({...settingsForm, recipientName: e.target.value})}
-                             placeholder="例：王吉比"
-                             maxLength={30}
-                             className={cn(
-                               "w-full bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-bold text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all",
-                               isDesktop ? "px-4 py-3 text-sm" : "px-3 py-2.5 text-[13px]"
-                             )}
-                           />
-                           <input
-                             value={settingsForm.recipientPhone}
-                             onChange={e => setSettingsForm({...settingsForm, recipientPhone: e.target.value})}
-                             onBlur={e => setSettingsForm({...settingsForm, recipientPhone: normalizePhone(e.target.value)})}
-                             placeholder={PHONE_PLACEHOLDER}
-                             type="tel"
-                             inputMode="numeric"
-                             pattern="^09\d{8}$"
-                             className={cn(
-                               "w-full bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-bold text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all",
-                               isDesktop ? "px-4 py-3 text-sm" : "px-3 py-2.5 text-[13px]"
-                             )}
-                           />
-                           {logisticsType === 'HOME' && (
-                             <input 
-                               value={settingsForm.recipientAddress}
-                               onChange={e => setSettingsForm({...settingsForm, recipientAddress: e.target.value})}
-                               placeholder="收件地址" 
-                               className={cn(
-                                 "w-full bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-bold text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all",
-                                 isDesktop ? "px-4 py-3 text-sm" : "px-3 py-2.5 text-[13px]"
-                               )}
-                             />
-                           )}
-                         </div>
-                         {(!settingsForm.recipientName || !settingsForm.recipientPhone || (logisticsType === 'HOME' && !settingsForm.recipientAddress)) ? (
-                           <p className="text-xs text-accent-red font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3" /> 請填寫完整收件資訊</p>
-                         ) : null}
-                      </div>
-                    </div>
-                    <div className={cn(
-                      "border-t border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 flex items-center justify-center gap-3 shrink-0 mt-auto",
-                      isDesktop ? "h-24 px-6" : "min-h-16 px-4 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))]"
-                    )}>
-                      <button
-                        onClick={() => setShowDeliveryModal(false)}
-                        className={cn(
-                          "rounded-xl font-black text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors bg-neutral-50 dark:bg-neutral-800",
-                          isDesktop ? "h-[52px] text-base px-6" : "h-[44px] text-sm px-5"
-                        )}
-                      >
-                        取消
-                      </button>
-                      {/* 按住集氣確認（老闆 2026-09-02，照商城 bindHold 那套）；金額改 G 幣圖標放左邊 */}
-                      <HoldToConfirmButton
-                        onConfirm={handleConfirmDelivery}
-                        onAbort={() => toast.error('請按住直到光條走完')}
-                        disabled={isSubmittingDelivery || !settingsForm.recipientName || !settingsForm.recipientPhone || (logisticsType === 'CVS' ? !storeId : !settingsForm.recipientAddress)}
-                        className={cn(
-                          "flex-1 bg-accent-red text-white rounded-xl font-black disabled:opacity-50",
-                          isDesktop ? "h-[52px] text-lg" : "h-[44px] text-base"
-                        )}
-                      >
-                        {isSubmittingDelivery ? '處理中...'
-                          : (currentShippingFee + lotteryPurchaseTotal) > 0
-                            ? (
-                              <>
-                                按住支付
-                                <Image src={asset('/images/gcoin.webp')} alt="G" width={18} height={18} className="w-[18px] h-[18px] object-contain" unoptimized />
-                                {currentShippingFee + lotteryPurchaseTotal}
-                              </>
-                            )
-                            : '按住確認配送'}
-                      </HoldToConfirmButton>
-                    </div>
-                  </motion.div>
-                </div>
-              )}
             </AnimatePresence>
             {/* Dismantle Modal */}
             <AnimatePresence>
@@ -8340,7 +8137,7 @@ function ProfileContent() {
           >
             {/* Header */}
             {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
-            <PageHeader title="編輯地址" onBack={() => setShowEditRecipient(false)} />
+            <PageHeader title={isNewAddress ? '新增地址' : '編輯地址'} onBack={() => setShowEditRecipient(false)} />
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto">
@@ -8367,12 +8164,38 @@ function ProfileContent() {
                       className="w-full bg-transparent border-none py-3 px-0 text-[15px] text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:ring-0"
                     />
                   </div>
+                  {/* 台灣格式：縣市／區用原生選單（iOS 滾輪），剩下打門牌 */}
+                  <div className="py-1 flex gap-3">
+                    <select
+                      value={addrCity}
+                      onChange={e => applyAddr(e.target.value, '', addrRest)}
+                      className={cn(
+                        "flex-1 bg-transparent border-none py-3 px-0 text-[15px] focus:ring-0 appearance-none",
+                        addrCity ? "text-neutral-900 dark:text-white" : "text-neutral-400"
+                      )}
+                    >
+                      <option value="" disabled>選擇縣市</option>
+                      {TW_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <select
+                      value={addrDist}
+                      onChange={e => applyAddr(addrCity, e.target.value, addrRest)}
+                      disabled={!addrCity}
+                      className={cn(
+                        "flex-1 bg-transparent border-none py-3 px-0 text-[15px] focus:ring-0 appearance-none disabled:opacity-40",
+                        addrDist ? "text-neutral-900 dark:text-white" : "text-neutral-400"
+                      )}
+                    >
+                      <option value="" disabled>選擇鄉鎮市區</option>
+                      {(TW_DISTRICTS[addrCity] ?? []).map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </div>
                   <div className="py-1">
-                    <input 
-                      value={settingsForm.recipientAddress}
-                      onChange={e => setSettingsForm({...settingsForm, recipientAddress: e.target.value})}
+                    <input
+                      value={addrRest}
+                      onChange={e => applyAddr(addrCity, addrDist, e.target.value)}
                       className="w-full bg-transparent border-none py-3 px-0 text-[15px] text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:ring-0"
-                      placeholder="詳細地址 (地區、街道、門牌號碼)"
+                      placeholder="街道、巷弄、門牌號碼、樓層"
                     />
                   </div>
                 </div>
@@ -8400,6 +8223,77 @@ function ProfileContent() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 配送結帳（商城結帳複製版，老闆 2026-09-02）。資料源：users 收件欄位＝設定頁同一份 */}
+      <DeliveryCheckout
+        open={showDeliveryModal}
+        onClose={() => { if (!isSubmittingDelivery) setShowDeliveryModal(false); }}
+        items={deliveryItems}
+        itemCount={selectedForDelivery.length}
+        freeHint={
+          currentShippingFee > 0 && effectiveFreeThreshold !== null
+            ? `再加 ${effectiveFreeThreshold - selectedForDelivery.length} 件可免運`
+            : null
+        }
+        method={{ type: logisticsType, subtype: logisticsType === 'CVS' ? logisticsSubType : null }}
+        methodLabel={
+          logisticsType === 'HOME'
+            ? (hasLargePackage ? '宅配到府（大件）' : '宅配到府')
+            : ({ UNIMART: '7-11 交貨便', FAMI: '全家店到店', HILIFE: '萊爾富店到店', OKMART: 'OK 超商店到店' } as const)[logisticsSubType]
+        }
+        feeOf={(m: DeliveryMethod) => {
+          if (hasLargePackage) return shippingFeeHomeLarge;
+          const th = m.type === 'CVS' ? freeThresholdCvs : freeThresholdHome;
+          if (selectedForDelivery.length >= th) return 0;
+          if (m.type === 'HOME') return shippingFeeHome;
+          switch (m.subtype) {
+            case 'UNIMART': return shippingFeeCvs711;
+            case 'FAMI': return shippingFeeCvsFamily;
+            case 'HILIFE': return shippingFeeCvsHilife;
+            case 'OKMART': return shippingFeeCvsOk;
+            default: return shippingFeeCvs711;
+          }
+        }}
+        grossFee={currentShippingFee}
+        discount={shippingDiscount}
+        lotteryTotal={lotteryPurchaseTotal}
+        payable={currentShippingFee - shippingDiscount + lotteryPurchaseTotal}
+        address={{
+          name: settingsForm.recipientName,
+          phone: settingsForm.recipientPhone,
+          address: settingsForm.recipientAddress,
+        }}
+        store={storeId ? { id: storeId, name: storeName, address: storeAddress } : null}
+        note={deliveryNote}
+        onNoteChange={setDeliveryNote}
+        coupons={shippingCoupons}
+        couponId={deliveryCouponId}
+        onCouponSelect={setDeliveryCouponId}
+        submitting={isSubmittingDelivery}
+        onPickMethod={(m: DeliveryMethod) => {
+          if (hasLargePackage && m.type === 'CVS') { toast.error('內含大型獎品，僅能宅配'); return; }
+          setLogisticsType(m.type);
+          if (m.type === 'CVS' && m.subtype) {
+            const brandChanged = logisticsSubType !== m.subtype;
+            setLogisticsSubType(m.subtype);
+            if (!storeId || brandChanged) {
+              const rid = newStoreMapRequestId();
+              setPendingCvsToken(rid);
+              setCvsTarget('delivery');
+              void openStoreMap({ logisticsSubType: m.subtype, requestId: rid });
+            }
+          }
+        }}
+        onEditAddress={() => setShowEditRecipient(true)}
+        onChangeStore={() => {
+          const rid = newStoreMapRequestId();
+          setPendingCvsToken(rid);
+          setCvsTarget('delivery');
+          void openStoreMap({ logisticsSubType, requestId: rid });
+        }}
+        onSubmit={handleConfirmDelivery}
+        onAbort={() => toast.error('請按住直到光條走完')}
+      />
 
       {/* 頭像裁切器 */}
       {cropperSrc && (

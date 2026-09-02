@@ -11,7 +11,7 @@ import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
  * 改走 service role + 管理員 session 之後才能把 anon 的寫入政策收掉。
  */
 
-const ALLOWED = new Set(['code','title','description','discount_type','discount_value','min_spend','is_active'])
+const ALLOWED = new Set(['code','title','description','discount_type','discount_value','min_spend','is_active','scope'])
 
 const pick = (o: Record<string, unknown>) =>
   Object.fromEntries(Object.entries(o).filter(([k, v]) => ALLOWED.has(k) && v !== undefined))

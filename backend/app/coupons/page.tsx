@@ -2,6 +2,7 @@
 
 import { AdminLayout, Modal, ListTableCard, RowAction, type ListColumn } from '@/components'
 import Switch from '@/components/ui/Switch'
+import Badge from '@/components/ui/Badge'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
@@ -13,6 +14,8 @@ import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import ConfirmDialog from '@/components/ConfirmDialog'
 
 type DiscountType = 'fixed' | 'percentage'
+/** 券的用途：draw 抽獎折價｜shipping 運費折抵（migration 681） */
+type CouponScope = 'draw' | 'shipping'
 
 interface CouponRow {
   id: string
@@ -22,6 +25,7 @@ interface CouponRow {
   discount_type: DiscountType
   discount_value: number
   min_spend: number
+  scope: CouponScope
   is_active: boolean
   created_at: string
 }
@@ -33,6 +37,7 @@ interface CouponFormState {
   discount_type: DiscountType
   discount_value: string
   min_spend: string
+  scope: CouponScope
   is_active: boolean
 }
 
@@ -51,6 +56,7 @@ export default function CouponsPage() {
     discount_type: 'fixed',
     discount_value: '',
     min_spend: '',
+    scope: 'draw',
     is_active: true,
   })
 
@@ -91,6 +97,7 @@ export default function CouponsPage() {
       discount_type: 'fixed',
       discount_value: '',
       min_spend: '',
+      scope: 'draw',
       is_active: true,
     })
   }
@@ -110,6 +117,7 @@ export default function CouponsPage() {
       discount_type: coupon.discount_type,
       discount_value: String(coupon.discount_value),
       min_spend: String(coupon.min_spend),
+      scope: coupon.scope || 'draw',
       is_active: coupon.is_active,
     })
     setIsModalOpen(true)
@@ -173,6 +181,7 @@ export default function CouponsPage() {
       discount_type: formData.discount_type,
       discount_value: discountValue,
       min_spend: minSpend,
+      scope: formData.scope,
       is_active: formData.is_active,
     }
 
@@ -225,10 +234,15 @@ export default function CouponsPage() {
     {
       key: 'discount', label: '折扣(TWD/%)',
       render: c => (
-        <div className="text-sm font-bold text-pink-500">
-          {c.discount_type === 'fixed'
-            ? `折抵 ${c.discount_value} (TWD)`
-            : `折抵 ${c.discount_value}%`}
+        <div className="space-y-1">
+          <div className="text-sm font-bold text-pink-500">
+            {c.scope === 'shipping'
+              ? `折抵運費 ${c.discount_value} G`
+              : c.discount_type === 'fixed'
+                ? `折抵 ${c.discount_value} (TWD)`
+                : `折抵 ${c.discount_value}%`}
+          </div>
+          {c.scope === 'shipping' && <Badge color="blue">運費券</Badge>}
         </div>
       ),
     },
@@ -313,6 +327,22 @@ export default function CouponsPage() {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="h-20"
                 placeholder="例如：首次下單滿 300 元折 50 元"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                券類型
+              </label>
+              <SelectField
+                value={formData.scope}
+                onChange={(e) =>
+                  setFormData({ ...formData, scope: e.target.value as CouponScope })
+                }
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm bg-white"
+              >
+                <option value="draw">抽獎折價券（購買抽獎時折抵）</option>
+                <option value="shipping">運費優惠券（倉庫配送時折抵運費 G）</option>
+              </SelectField>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
