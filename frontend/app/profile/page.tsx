@@ -6707,7 +6707,7 @@ function ProfileContent() {
               <div className="sticky top-0 z-30 bg-inherit">
                             {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
               <PageHeader
-                title="修改個人資訊"
+                title="設定"
                 onBack={() => router.push('/profile', { scroll: false })}
               />
 
