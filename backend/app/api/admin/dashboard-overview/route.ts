@@ -113,6 +113,7 @@ export async function GET(req: NextRequest) {
       rech, prevRech, todayRech, yestRech,
       events, prevEvents,
       users, products, prizes, refunds, prevRefunds,
+      dismantledAll,
     ] = await Promise.all([
       fetchAllRows<any>(() => inR(drawQ(), curStart, curEnd)),
       fetchAllRows<any>(() => inR(drawQ(), prevStart, curStart)),
@@ -130,6 +131,14 @@ export async function GET(req: NextRequest) {
       fetchAllRows<any>(() => db.from('product_prizes').select('product_id, total, remaining')),
       fetchAllRows<any>(() => inR(db.from('refund_requests').select('created_at, amount_twd, status, processed_at'), curStart, curEnd)),
       fetchAllRows<any>(() => inR(db.from('refund_requests').select('created_at, amount_twd, status, processed_at'), prevStart, curStart)),
+      /*
+       * 回收（拆解退 G）＝銷貨退回。發生時間在 dismantled_at（migration 680），
+       * 歷史列沒有就退回抽獎的 created_at —— COALESCE 在 PostgREST 過濾不了，
+       * 而這張表整體量小（STG 855 列），全撈回來 JS 端分期最省事也最不會錯。
+       */
+      fetchAllRows<any>(() => noBot(db.from('draw_records')
+        .select('created_at, dismantled_at, user_id, refund_amount')
+        .eq('status', 'dismantled'))),
     ])
 
     /*
@@ -149,19 +158,32 @@ export async function GET(req: NextRequest) {
     const hasActualFee = feeRows.length > 0
     const feeRate = effectiveFeeRate(rechargeTotal, feeTotal, hasActualFee)
 
-    /*
-     * 總營收＝儲值金額 − 綠界手續費。
-     *
-     * 平台的現金是在「玩家儲值」那一刻進來的，抽獎只是把已經收到的 G 換成商品。
-     * 所以營收看儲值、消費看抽獎，兩者不是同一筆錢也不該相加。
-     */
-    const revenue = Math.round(rechargeTotal - (hasActualFee ? feeTotal : rechargeTotal * feeRate))
-    const prevFeeRows = prevRech.filter(r => r.payment_fee != null)
-    const prevFeeTotal = prevFeeRows.reduce((s, r) => s + (r.payment_fee ?? 0), 0)
-    const prevRevenue = Math.round(prevRechargeTotal - (prevFeeRows.length ? prevFeeTotal : prevRechargeTotal * feeRate))
-
     const spend = sum(draws), prevSpend = sum(prevDraws)
     const drawCount = draws.length, prevDrawCount = prevDraws.length
+
+    /*
+     * 總營收＝期間消費總 G（毛營收，什麼都不扣）。老闆 2026-09-02 定案：
+     * 營收認列在「玩家花掉 G」那一刻 —— 儲值只是預收款（錢還欠著玩家），
+     * 扣手續費是費用的事、扣成本是毛利的事，都不進營收。
+     * 舊定義「儲值 − 金流手續費」改叫**儲值實收**，掛在儲值卡的副行。
+     */
+    const revenue = spend
+    const prevRevenue = prevSpend
+    const rechargeNet = Math.round(rechargeTotal - (hasActualFee ? feeTotal : rechargeTotal * feeRate))
+
+    /*
+     * 回收（拆解退 G）＝銷貨退回，營收的直接沖抵項：淨營收＝營收 − 回收。
+     * 發生時間 COALESCE(dismantled_at, created_at)（migration 680 前的歷史列沒有前者）。
+     */
+    const disAt = (r: any) => new Date(r.dismantled_at ?? r.created_at).getTime()
+    const disRefund = (r: any) => (r.refund_amount ?? 0) as number
+    const recycleIn = (a: Date, b: Date) =>
+      dismantledAll.filter(r => disAt(r) >= a.getTime() && disAt(r) < b.getTime())
+    const sumRecycle = (rows: any[]) => rows.reduce((s, r) => s + disRefund(r), 0)
+    const recycleTotal = sumRecycle(recycleIn(curStart, curEnd))
+    const prevRecycleTotal = sumRecycle(recycleIn(prevStart, curStart))
+    const todayRecycle = sumRecycle(recycleIn(ts, te))
+    const netRevenue = revenue - recycleTotal
 
     // ── 人 ────────────────────────────────────────────────────────────────
     /** 訪客識別：登入前沒有 user_id，只能靠 session_id（實測 7,475 筆事件有 3,093 筆是未登入） */
@@ -241,12 +263,13 @@ export async function GET(req: NextRequest) {
       return dt.toISOString().split('T')[0]
     }
 
-    type Bucket = { recharge: number; spend: number; refund: number }
+    type Bucket = { recharge: number; spend: number; refund: number; recycle: number }
     const bmap: Record<string, Bucket> = {}
-    const touch = (k: string) => (bmap[k] ||= { recharge: 0, spend: 0, refund: 0 })
+    const touch = (k: string) => (bmap[k] ||= { recharge: 0, spend: 0, refund: 0, recycle: 0 })
     rech.forEach(r => { touch(dtKey(r.created_at)).recharge += r.amount ?? 0 })
     draws.forEach(r => { touch(dtKey(r.created_at)).spend += amt(r) })
     refunds.filter(r => r.processed_at).forEach(r => { touch(dtKey(r.created_at)).refund += r.amount_twd ?? 0 })
+    recycleIn(curStart, curEnd).forEach(r => { touch(dtKey(new Date(disAt(r)).toISOString())).recycle += disRefund(r) })
 
     const keys: { key: string; label: string }[] = []
     if (isHourly) {
@@ -278,18 +301,19 @@ export async function GET(req: NextRequest) {
     }
 
     const trend = keys.map(({ key, label }) => {
-      const b = bmap[key] ?? { recharge: 0, spend: 0, refund: 0 }
+      const b = bmap[key] ?? { recharge: 0, spend: 0, refund: 0, recycle: 0 }
       return {
         label,
         recharge: b.recharge,
         spend: b.spend,
         refund: b.refund,
-        // 每一格的營收同樣扣掉手續費，才跟上面 KPI 的總營收對得起來
-        revenue: Math.round(b.recharge * (1 - feeRate)),
+        recycle: b.recycle,
+        // 營收＝當格消費（新定義），跟上面 KPI 的總營收同一套
+        revenue: b.spend,
       }
     })
     const spark = (isHourly ? trend : trend.slice(-14)).map((t, i) => ({
-      x: i, date: t.label, revenue: t.revenue, recharge: t.recharge, spend: t.spend, draws: 0,
+      x: i, date: t.label, revenue: t.revenue, recharge: t.recharge, spend: t.spend, recycle: t.recycle, draws: 0,
     }))
     // sparkline 的抽獎次數要另外數（trend 只帶金額）
     {
@@ -557,11 +581,14 @@ export async function GET(req: NextRequest) {
       hasActualFee,
       feeRatePct: Math.round(feeRate * 10000) / 100,
       kpi: {
-        revenue, recharge: rechargeTotal, spend, draws: drawCount,
+        revenue, netRevenue, recycle: recycleTotal, rechargeNet,
+        recycleRate: ratio(recycleTotal, revenue),
+        recharge: rechargeTotal, spend, draws: drawCount,
         activeUsers, payingUsers, payRate, arppu,
-        todayRevenue: Math.round(sumAmount(todayRech) * (1 - feeRate)),
+        todayRevenue: sum(todayDraws),
         todayRecharge: sumAmount(todayRech),
         todaySpend: sum(todayDraws),
+        todayRecycle,
         todayDraws: todayDraws.length,
         todayActive,
       },
@@ -574,7 +601,8 @@ export async function GET(req: NextRequest) {
         payingUsers: pct(payingUsers, prevPayingUsers),
         payRate: pct(payRate, prevPayRate),
         arppu: pct(arppu, prevArppu),
-        revenueToday: pct(sumAmount(todayRech), sumAmount(yestRech)),
+        recycle: pct(recycleTotal, prevRecycleTotal),
+        revenueToday: pct(sum(todayDraws), sum(yestDraws)),
         drawsToday: pct(todayDraws.length, yestDraws.length),
       },
       spark, trend, health,

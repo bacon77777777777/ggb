@@ -44,13 +44,14 @@ interface Payload {
   hasActualFee: boolean
   feeRatePct: number
   kpi: {
-    revenue: number; recharge: number; spend: number; draws: number
+    revenue: number; netRevenue: number; recycle: number; recycleRate: number; rechargeNet: number
+    recharge: number; spend: number; draws: number; todayRecycle: number
     activeUsers: number; payingUsers: number; payRate: number; arppu: number
     todayRevenue: number; todayRecharge: number; todaySpend: number; todayDraws: number; todayActive: number
   }
   growth: Record<string, number>
-  spark: { x: number; date: string; revenue: number; recharge: number; spend: number; draws: number }[]
-  trend: { label: string; revenue: number; recharge: number; spend: number; refund: number }[]
+  spark: { x: number; date: string; revenue: number; recharge: number; spend: number; recycle: number; draws: number }[]
+  trend: { label: string; revenue: number; recharge: number; spend: number; refund: number; recycle: number }[]
   health: { key: string; label: string; value: string; delta: number; status: HealthStatus; showDelta?: boolean }[]
   systemHealth?: { key: string; label: string; value: string; status: 'ok' | 'warn' | 'bad' }[]
   players: { dau: number; newUsers: number; returning: number; paying: number; payRate: number; arppu: number }
@@ -114,12 +115,11 @@ const ALERT_STYLE: Record<AlertLevel, { bar: string; dot: string }> = {
   green: { bar: 'bg-green-500', dot: 'text-green-600' },
 }
 
-/** 營運趨勢可切換的四條線 */
+/** 營運趨勢可切換的三條線（2026-09-02 老闆定案：營收＝消費、回收＝銷貨退回；退款進對帳報表就好） */
 const TREND_METRICS = [
   { key: 'revenue', label: '營收', color: '#1677ff' },
   { key: 'recharge', label: '儲值', color: '#722ed1' },
-  { key: 'spend', label: '消費', color: '#10b981' },
-  { key: 'refund', label: '退款', color: '#f5222d' },
+  { key: 'recycle', label: '回收', color: '#f59e0b' },
 ] as const
 
 export default function DashboardPage() {
@@ -178,7 +178,7 @@ export default function DashboardPage() {
   const k = data?.kpi
   const g = data?.growth
   const spark = data?.spark ?? []
-  const hasSpark = (f: 'revenue' | 'recharge' | 'spend' | 'draws') => spark.some(s => s[f] > 0)
+  const hasSpark = (f: 'revenue' | 'recharge' | 'spend' | 'recycle' | 'draws') => spark.some(s => s[f] > 0)
   const updatedAt = data?.updatedAt
     ? new Date(data.updatedAt).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false })
     : '—'
@@ -233,7 +233,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-4 gap-6">
               <StatCard
                 title="總營收" loading={loading} skeletonWidth="w-32"
-                titleExtra={<InfoIcon width={300} text={'玩家儲值進來的錢，扣掉金流公司抽走的手續費之後，平台實際收到的金額。\n抽獎不算在這裡 —— 錢是在儲值那一刻進來的，抽獎只是把已經收到的 G 換成商品。'} />}
+                titleExtra={<InfoIcon width={300} text={'這段期間玩家花掉的 G 幣總額（毛營收，什麼都不扣）。\n營收認列在「玩家花掉 G」那一刻；儲值只是預收款，還不算賺到。\n下方淨營收＝營收扣掉回收（拆解退還的 G，等同銷貨退回）。'} />}
                 value={`${(k?.revenue ?? 0).toLocaleString()} G幣`}
                 mid={!loading && hasSpark('revenue') ? (
                   <TinyArea data={spark} xField="x" yField="revenue" height={46} autoFit
@@ -241,11 +241,12 @@ export default function DashboardPage() {
                     axis={false} padding={[2, 0, 0, 0]}
                     tooltip={{ title: (d: any) => d.date, items: [{ channel: 'y', name: '總營收' }] } as any} />
                 ) : <div className="w-full h-full" />}
-                footerLabel="今日" footerValue={(k?.todayRevenue ?? 0).toLocaleString()}
+                footerLabel="淨營收（扣回收）"
+                footerValue={<span>{(k?.netRevenue ?? 0).toLocaleString()} G幣<span className="ml-3 text-neutral-400">今日 {(k?.todayRevenue ?? 0).toLocaleString()}</span></span>}
               />
               <StatCard
                 title="儲值金額" loading={loading} skeletonWidth="w-32"
-                titleExtra={<InfoIcon width={300} text={'這段期間玩家儲值進來的總金額，手續費還沒扣。\n只算付款成功的，已排除機器人帳號。'} />}
+                titleExtra={<InfoIcon width={300} text={'這段期間玩家儲值進來的現金總額（會計上是預收款）。\n只算付款成功的，已排除機器人帳號。\n下方實收＝扣掉綠界金流手續費後真正入袋的金額。'} />}
                 value={`${(k?.recharge ?? 0).toLocaleString()} 元`}
                 mid={!loading && hasSpark('recharge') ? (
                   <TinyArea data={spark} xField="x" yField="recharge" height={46} autoFit
@@ -253,19 +254,21 @@ export default function DashboardPage() {
                     axis={false} padding={[2, 0, 0, 0]}
                     tooltip={{ title: (d: any) => d.date, items: [{ channel: 'y', name: '儲值金額' }] } as any} />
                 ) : <div className="w-full h-full" />}
-                footerLabel="今日" footerValue={(k?.todayRecharge ?? 0).toLocaleString()}
+                footerLabel="實收（扣金流手續費）"
+                footerValue={<span>{(k?.rechargeNet ?? 0).toLocaleString()} 元<span className="ml-3 text-neutral-400">今日 {(k?.todayRecharge ?? 0).toLocaleString()}</span></span>}
               />
               <StatCard
-                title="消費金額" loading={loading} skeletonWidth="w-32"
-                titleExtra={<InfoIcon width={300} text={'玩家實際花在抽獎上的 G 幣（1G = 1 元）。\n跟儲值不一樣：儲值是把錢放進來，這裡是真的花掉。'} />}
-                value={`${(k?.spend ?? 0).toLocaleString()} G幣`}
-                mid={!loading && hasSpark('spend') ? (
-                  <TinyArea data={spark} xField="x" yField="spend" height={46} autoFit
-                    style={{ fill: 'rgba(16,185,129,0.25)', stroke: '#10b981', lineWidth: 2, shape: 'smooth' } as any}
+                title="回收金額" loading={loading} skeletonWidth="w-32"
+                titleExtra={<InfoIcon width={300} text={'玩家把獎品拆解回收、平台退還的 G 幣（等同銷貨退回）。\n回收率＝回收 ÷ 營收：這個比例越高，代表越多生意其實沒有做成。\n2026-09-02 之前的歷史回收沒有記發生時間，會照抽獎當下歸期。'} />}
+                value={`${(k?.recycle ?? 0).toLocaleString()} G幣`}
+                mid={!loading && hasSpark('recycle') ? (
+                  <TinyArea data={spark} xField="x" yField="recycle" height={46} autoFit
+                    style={{ fill: 'rgba(245,158,11,0.25)', stroke: '#f59e0b', lineWidth: 2, shape: 'smooth' } as any}
                     axis={false} padding={[2, 0, 0, 0]}
-                    tooltip={{ title: (d: any) => d.date, items: [{ channel: 'y', name: '消費金額' }] } as any} />
+                    tooltip={{ title: (d: any) => d.date, items: [{ channel: 'y', name: '回收金額' }] } as any} />
                 ) : <div className="w-full h-full" />}
-                footerLabel="今日" footerValue={(k?.todaySpend ?? 0).toLocaleString()}
+                footerLabel="回收率"
+                footerValue={<span>{k?.recycleRate ?? 0}%<span className="ml-3 text-neutral-400">今日 {(k?.todayRecycle ?? 0).toLocaleString()}</span></span>}
               />
               <StatCard
                 title="抽獎次數" loading={loading} skeletonWidth="w-20"
