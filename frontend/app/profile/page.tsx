@@ -5073,7 +5073,7 @@ function ProfileContent() {
         );
       case 'delivery':
         return (
-          <div className="pb-24 md:pb-0">
+          <div className="md:pb-0">
             {/* Mobile Header & Tabs */}
             <div className="md:hidden bg-neutral-50 dark:bg-neutral-950 flex flex-col min-h-[100dvh]">
               {/* 頭部吸頂（window 捲動版）*/}
@@ -5528,7 +5528,7 @@ function ProfileContent() {
         );
       case 'draw-history':
         return (
-          <div className="pb-20 md:pb-0">
+          <div className="md:pb-0">
             {/* Mobile Header & Tabs */}
             <div className="md:hidden bg-neutral-50 dark:bg-neutral-950 flex flex-col min-h-[100dvh]">
               {/* 頭部吸頂（window 捲動版）*/}
@@ -5884,7 +5884,7 @@ function ProfileContent() {
         );
       case 'topup-history':
         return (
-          <div className="pb-24 md:pb-0">
+          <div className="md:pb-0">
             {/* Mobile Header & Tabs */}
             <div className="md:hidden bg-neutral-50 dark:bg-neutral-950 flex flex-col min-h-[100dvh]">
               {/* 頭部吸頂（window 捲動版）*/}
@@ -6372,7 +6372,7 @@ function ProfileContent() {
       }
       case 'coupons':
         return (
-          <div className="pb-24 md:pb-0">
+          <div className="md:pb-0">
             {/* Mobile Header */}
             <div className="md:hidden bg-neutral-50 dark:bg-neutral-950 flex flex-col min-h-[100dvh]">
               {/* 頭部吸頂（window 捲動版）*/}
@@ -6692,7 +6692,7 @@ function ProfileContent() {
         );
       case 'settings':
         return (
-          <div className="pb-24 md:pb-0 bg-neutral-100 dark:bg-neutral-950 min-h-screen">
+          <div className="md:pb-0 bg-neutral-100 dark:bg-neutral-950">
             {/* Mobile Header */}
             <div className="md:hidden bg-neutral-100 dark:bg-neutral-950 flex flex-col min-h-[100dvh]">
               {/* 頭部吸頂（window 捲動版）*/}
@@ -7199,7 +7199,11 @@ function ProfileContent() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-20 transition-colors">
+    <div className={cn(
+      'min-h-screen bg-neutral-50 dark:bg-neutral-950 transition-colors',
+      /* 手機分頁打開時整頁就是分頁本體（min-h-100dvh），底 padding 會多出一段可捲的空白底 */
+      isMobileDetailOpen ? 'pb-0 md:pb-20' : 'pb-20',
+    )}>
       <div className={cn(
         "max-w-7xl mx-auto w-full",
         activeTab === 'settings' ? "p-0" : "px-0 sm:px-6 lg:px-8 pt-0 sm:pt-6"
