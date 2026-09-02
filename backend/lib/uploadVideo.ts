@@ -13,11 +13,18 @@
  * 超過 4MB 的則明確告訴使用者要去開 CORS，而不是丟一句網路錯誤。
  */
 const PROXY_LIMIT = 4 * 1024 * 1024
-const CORS_HINT =
-  '影片直傳被瀏覽器擋下（R2 尚未開放 CORS）。\n'
-  + '請到 Cloudflare → R2 → ggb → Settings → CORS Policy 加入 admin.ggb.com.tw 的 PUT 規則，'
-  + '設定內容見 backend/scripts/r2_set_cors.ts。\n'
-  + '在那之前，4MB 以內的影片可以正常上傳。'
+/*
+ * 錯誤訊息寫給「看到它的人」，不是寫給工程師。
+ * 第一版寫的是「影片直傳被瀏覽器擋下（R2 尚未開放 CORS）…設定內容見
+ * backend/scripts/r2_set_cors.ts」—— 老闆看到只回了「啥意思」。
+ * CORS、R2、檔案路徑對他都不是資訊，他要知道的只有三件事：
+ * 哪裡卡住、現在能怎麼辦、要根治該找誰做什麼。
+ */
+const sizeMB = (bytes: number) => (bytes / 1024 / 1024).toFixed(1)
+const tooBigMessage = (bytes: number) =>
+  `這支影片 ${sizeMB(bytes)}MB，超過目前一次能上傳的 4MB。\n`
+  + '換一支 4MB 以內的影片就能直接上傳。\n'
+  + '想解除這個限制的話，要在雲端儲存（Cloudflare R2）開一次上傳權限，開完就沒有大小限制。'
 
 /** 伺服器代傳：只給小檔用（raw=1 原檔直傳，不會被當成圖片壓成 WebP） */
 async function viaServer(file: File, ext: string): Promise<string> {
@@ -68,6 +75,6 @@ export async function uploadVideo(
       onProgress?.(0)
       return await viaServer(file, ext)
     }
-    throw new Error(blocked ? CORS_HINT : (e instanceof Error ? e.message : '影片上傳失敗'))
+    throw new Error(blocked ? tooBigMessage(file.size) : (e instanceof Error ? e.message : '影片上傳失敗'))
   }
 }
