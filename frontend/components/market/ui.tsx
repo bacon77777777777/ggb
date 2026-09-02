@@ -96,6 +96,15 @@ export function Sheet({ open, title, onClose, children, footer, full }: {
     return () => { cancelAnimationFrame(t); clearTimeout(st); };
   }, [open]);
 
+  // 面板開著時鎖住背景頁捲動（老闆 2026-09-02：面板內容不高時手勢穿透，
+  // 後面的列表頁一直捲、螢幕右緣還冒出它的捲軸）
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
   if (!open) return null;
   return (
     <div id="sheets">

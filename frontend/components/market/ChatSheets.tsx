@@ -158,10 +158,11 @@ export function ChatThreadSheet({ open, onClose, listingId, otherId, otherName, 
 
   useEffect(() => { if (open && loggedIn) load(); }, [open, loggedIn, load]);
 
-  // 新訊息進來捲到底 —— 聊天視窗停在最舊的訊息上等於沒開
+  // 新訊息進來捲到底 —— 聊天視窗停在最舊的訊息上等於沒開。
+  // 捲動的是外層 .sbd（chatbox 已放開不自己捲，見 exchange.css）
   useEffect(() => {
-    const el = boxRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    const sc = boxRef.current?.closest('.sbd') as HTMLElement | null;
+    if (sc) sc.scrollTop = sc.scrollHeight;
   }, [msgs]);
 
   const send = async () => {
@@ -199,41 +200,45 @@ export function ChatThreadSheet({ open, onClose, listingId, otherId, otherName, 
         </div>
       }
     >
-      <div style={{ padding: '12px 12px 0' }}>
-        {context && <CtxCard head="正在聊這件" name={context.name} image={context.image} price={context.price} />}
-      </div>
-
+      {/* 商品卡一律活在訊息流裡（老闆 2026-09-02：固定在頂部的體驗差）：
+          歷史換件處插「聊到這件」；正要問的那件（從商品頁進來）貼在最下面、挨著輸入框 */}
       <div className="chatbox" ref={boxRef}>
         {!loggedIn ? (
           <div className="empty">登入之後才能聊</div>
-        ) : msgs.length === 0 ? (
-          <div className="empty">
-            還沒有訊息
-            <div style={{ marginTop: 8, fontSize: 12 }}>
-              交易所是站內 G 幣交易，成交後東西直接進倉庫 —— 不用談運費也不用留地址
-            </div>
-          </div>
         ) : (
-          /* 一串裡聊到不同商品：換件的地方插那件的小卡（老闆 2026-09-02）。
-             開頭那段若跟頂部「正在聊這件」同一件就不重複插 */
-          msgs.map((m, i) => {
-            const prev = i > 0 ? msgs[i - 1] : null;
-            const changed = prev ? prev.listingId !== m.listingId : m.listingId !== listingId;
-            const showCard = changed && m.listingId != null && !!m.prizeName;
-            return (
-              <Fragment key={m.id}>
-                {showCard && (
-                  <div style={{ margin: '2px 0 11px' }}>
-                    <CtxCard head="聊到這件" name={m.prizeName!} image={m.prizeImage} price={m.price ?? 0} />
+          <>
+            {msgs.map((m, i) => {
+              const prev = i > 0 ? msgs[i - 1] : null;
+              const showCard = m.listingId != null && !!m.prizeName && (!prev || prev.listingId !== m.listingId);
+              return (
+                <Fragment key={m.id}>
+                  {showCard && (
+                    <div style={{ margin: '2px 0 11px' }}>
+                      <CtxCard head="聊到這件" name={m.prizeName!} image={m.prizeImage} price={m.price ?? 0} />
+                    </div>
+                  )}
+                  <div className={`bub${m.fromMe ? ' me' : ''}`}>
+                    <ChatAvatar src={m.fromMe ? (user?.avatar_url ?? null) : otherAvatar} />
+                    <span className="tx">{m.body}</span>
                   </div>
-                )}
-                <div className={`bub${m.fromMe ? ' me' : ''}`}>
-                  <ChatAvatar src={m.fromMe ? (user?.avatar_url ?? null) : otherAvatar} />
-                  <span className="tx">{m.body}</span>
+                </Fragment>
+              );
+            })}
+            {msgs.length === 0 && (
+              <div className="empty" style={{ padding: '18px 0 14px' }}>
+                還沒有訊息
+                <div style={{ marginTop: 8, fontSize: 12 }}>
+                  交易所是站內 G 幣交易，成交後東西直接進倉庫 —— 不用談運費也不用留地址
                 </div>
-              </Fragment>
-            );
-          })
+              </div>
+            )}
+            {context && listingId != null
+              && (msgs.length === 0 || msgs[msgs.length - 1].listingId !== listingId) && (
+              <div style={{ margin: '2px 0 11px' }}>
+                <CtxCard head="正在聊這件" name={context.name} image={context.image} price={context.price} />
+              </div>
+            )}
+          </>
         )}
       </div>
 
