@@ -1,0 +1,77 @@
+[
+ {
+  "src": "garmin:wearables-smartwatches",
+  "type": "custom",
+  "category": "自製賞",
+  "name": "Garmin 運動智慧手錶全系列",
+  "price": 350,
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788350040391-wearables-smartwatches-main.webp",
+  "total_count": 4000,
+  "prizes": [
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "Garmin MARQ 探險者 (Gen 2) - 大馬士革鋼典藏版｜製錶匠旗艦（建議售價 NT$109,900）",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788350040391-wearables-smartwatches-p1.jpg",
+    "qty": 1
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "Garmin Descent Mk3i – 51mm｜潛水電腦錶（建議售價 NT$53,990）",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788350040391-wearables-smartwatches-p2.jpg",
+    "qty": 1
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "Garmin fēnix 8 Pro MicroLED｜戶外旗艦（建議售價 NT$52,990）",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788350040391-wearables-smartwatches-p3.jpg",
+    "qty": 1
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "Garmin tactix 8 – AMOLED Edition｜軍事戰術（建議售價 NT$46,990）",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788350040391-wearables-smartwatches-p4.jpg",
+    "qty": 1
+   },
+   {
+    "level": "E賞",
+    "is_last": false,
+    "name": "Garmin quatix 8｜航海（建議售價 NT$38,990）",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788350040391-wearables-smartwatches-p5.jpg",
+    "qty": 1
+   },
+   {
+    "level": "F賞",
+    "is_last": false,
+    "name": "Garmin fēnix 9 Pro｜戶外全能（建議售價 NT$35,990）",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788350040391-wearables-smartwatches-p6.jpg",
+    "qty": 1
+   },
+   {
+    "level": "G賞",
+    "is_last": false,
+    "name": "Garmin Forerunner 970｜鐵人三項旗艦（建議售價 NT$23,990）",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788350040391-wearables-smartwatches-p7.jpg",
+    "qty": 1
+   },
+   {
+    "level": "H賞",
+    "is_last": false,
+    "name": "Garmin Forerunner 965 系列｜鐵人三項（建議售價 NT$19,990）",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788350040391-wearables-smartwatches-p8.jpg",
+    "qty": 1
+   },
+   {
+    "level": "I賞",
+    "is_last": false,
+    "name": "隨機轉蛋（參加賞）",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788350040391-wearables-smartwatches-p9.webp",
+    "qty": 3992
+   }
+  ],
+  "description": "Garmin 運動智慧手錶全系列。\n\nA 賞到 H 賞是 Garmin 八大系列各一支旗艦：MARQ 製錶匠、Descent 潛水電腦錶、fēnix 戶外旗艦、tactix 軍事戰術、quatix 航海，以及 Forerunner 鐵人三項的 970 與 965；I 賞為隨機轉蛋。抽中的手錶會存進你的倉庫，申請出貨時再寄給你。\n\n錶帶顏色與尺寸以出貨當下的原廠供貨為準，下單後我們會用 LINE 跟你確認。"
+ }
+]

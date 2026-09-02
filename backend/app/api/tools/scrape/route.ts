@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClaude } from '@/lib/aiUsage'
+import { PRIZE_LEVEL_LETTERS } from '@/lib/productSchema'
 
 type Prize = {
   name: string
@@ -267,21 +268,7 @@ const extractCloveDisplayedPrizes = (nextData: any): Prize[] => {
     const image = String(it.imageUrl ?? it.image_url ?? it.image ?? '').trim() || null
     out.push({ name: fullName, level, quantity: qty, image })
   }
-  const order = [
-    'A賞',
-    'B賞',
-    'C賞',
-    'D賞',
-    'E賞',
-    'F賞',
-    'G賞',
-    'H賞',
-    'I賞',
-    'J賞',
-    '最後賞',
-    'SP賞',
-    '隱藏賞',
-  ]
+  const order = [...PRIZE_LEVEL_LETTERS, '最後賞', 'SP賞', '隱藏賞']   // A賞～Z賞
   const buckets = new Map<string, Prize[]>()
   for (const p of out) {
     const key = p.level || ''

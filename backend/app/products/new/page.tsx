@@ -50,6 +50,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { sanitizeImageUrl } from '@/lib/image-utils'
 import { SmallItem } from '@/types/product'
 import { useToast } from '@/contexts/ToastContext'
+import { TICKETED_LEVELS, isLowTierLevel } from '@/lib/productSchema'
 
 export default function NewProductPage() {
   const { toast } = useToast()
@@ -123,19 +124,7 @@ export default function NewProductPage() {
    * 只是前後台都不再產生新的 lottery 商品。
    */
 
-  const ichibanLevels = [
-    { value: 'A賞', label: 'A賞' },
-    { value: 'B賞', label: 'B賞' },
-    { value: 'C賞', label: 'C賞' },
-    { value: 'D賞', label: 'D賞' },
-    { value: 'E賞', label: 'E賞' },
-    { value: 'F賞', label: 'F賞' },
-    { value: 'G賞', label: 'G賞' },
-    { value: 'H賞', label: 'H賞' },
-    { value: 'I賞', label: 'I賞' },
-    { value: 'J賞', label: 'J賞' },
-    { value: '最後賞', label: '最後賞' },
-  ]
+  const ichibanLevels = TICKETED_LEVELS.map(v => ({ value: v, label: v }))
 
   // 預設等級統一存中文「一般版」（migration 514 已把舊值正規化），前後台顯示同名
   const gachaLevels = [
@@ -1117,7 +1106,7 @@ export default function NewProductPage() {
                       </div>
 
                       {/* 低階賞資源庫按鈕 */}
-                      {['E賞', 'F賞', 'G賞', 'H賞', 'I賞', 'J賞'].includes(prize.level) && (
+                      {isLowTierLevel(prize.level) && (
                         <button
                           type="button"
                           onClick={() => {

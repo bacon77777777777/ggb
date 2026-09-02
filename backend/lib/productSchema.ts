@@ -48,9 +48,27 @@ export function normalizeType(raw: unknown): ProductType | null {
  * 各類型的賞等預設值，與 app/products/new/page.tsx 的下拉選單一致。
  * 轉蛋與盒玩沒有「賞等」的概念，這裡放的是款式分類。
  */
+/**
+ * 有籤號的三種玩法（一番賞／抽卡／自製賞）的賞等：**A賞～Z賞**。
+ *
+ * 原本只開到 J賞。日系一番賞多半 A～H 就結束，但**自製賞常常超過** ——
+ * MERIDA 那檔十三台整車＋參加賞用到 N賞，後台下拉選單裡根本挑不到
+ * （老闆 2026-09-02）。
+ *
+ * ⚠️ **上限就是 Z，不要再往上加雙字母。** 前台 `lib/prizeGrade.ts` 的
+ * `gradeStyle()` 是用 `^A`／`^B` 開頭比對配色，「AA賞」會被當成 A賞塗成
+ * 最高階的紅色 —— 排在第 27 位的賞在玩家眼裡會長得像頭獎。
+ * 真的需要超過 26 個賞等，得先把那支的配色規則改成完整比對。
+ */
+export const PRIZE_LEVEL_LETTERS = Array.from(
+  { length: 26 }, (_, i) => `${String.fromCharCode(65 + i)}賞`)
+export const TICKETED_LEVELS = [...PRIZE_LEVEL_LETTERS, '最後賞']
+/** E賞以後視為低階賞（後台「低階賞資源庫」按鈕用這個判斷） */
+export const isLowTierLevel = (level: string) => /^[E-Z]賞$/.test(String(level ?? '').trim())
+
 export const LEVEL_PRESETS: Record<ProductType, string[]> = {
-  ichiban:  ['A賞', 'B賞', 'C賞', 'D賞', 'E賞', 'F賞', 'G賞', 'H賞', 'I賞', 'J賞', '最後賞'],
-  custom:   ['A賞', 'B賞', 'C賞', 'D賞', 'E賞', 'F賞', 'G賞', 'H賞', 'I賞', 'J賞', '最後賞'],
+  ichiban:  TICKETED_LEVELS,
+  custom:   TICKETED_LEVELS,
   card:     ['SSR', 'SR', 'UR', 'HR', 'R', 'N'],
   gacha:    ['Normal / Common', 'Rare', 'Secret', 'Color Variant', 'Effect / Clear', 'Limited', 'Option Parts'],
   blindbox: ['普通款', '稀有款', '隱藏款', '異色款', '夜光款', '透明款', '店鋪限定', '首批限定'],

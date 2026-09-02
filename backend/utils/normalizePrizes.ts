@@ -3,8 +3,9 @@
  */
 
 import { Prize } from '@/types/product'
+import { PRIZE_LEVEL_LETTERS } from '@/lib/productSchema'
 
-const LEVEL_ORDER = ['A賞', 'B賞', 'C賞', 'D賞', 'E賞', 'F賞', 'G賞', 'H賞', 'I賞', 'J賞']
+const LEVEL_ORDER = PRIZE_LEVEL_LETTERS   // A賞～Z賞，見 lib/productSchema
 
 /**
  * 標準化獎項等級

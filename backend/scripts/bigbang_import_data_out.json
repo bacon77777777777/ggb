@@ -1,0 +1,91 @@
+[
+ {
+  "src": "ticketplus:bigbang-2026-taipeidome",
+  "type": "custom",
+  "category": "自製賞",
+  "name": "BIGBANG 2026 台北大巨蛋演唱會門票",
+  "price": 500,
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788351353015-bigbang-2026-taipeidome-main.webp",
+  "total_count": 4000,
+  "prizes": [
+   {
+    "level": "A賞",
+    "is_last": false,
+    "name": "BIGBANG 台北大巨蛋演唱會門票 VIP 站席 NT$9,430",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788351353015-bigbang-2026-taipeidome-p1.jpg",
+    "qty": 2
+   },
+   {
+    "level": "B賞",
+    "is_last": false,
+    "name": "BIGBANG 台北大巨蛋演唱會門票 VIP NT$9,380",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788351353015-bigbang-2026-taipeidome-p2.jpg",
+    "qty": 2
+   },
+   {
+    "level": "C賞",
+    "is_last": false,
+    "name": "BIGBANG 台北大巨蛋演唱會門票 VIP NT$8,880",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788351353015-bigbang-2026-taipeidome-p3.jpg",
+    "qty": 2
+   },
+   {
+    "level": "D賞",
+    "is_last": false,
+    "name": "BIGBANG 台北大巨蛋演唱會門票 一般 NT$8,380",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788351353015-bigbang-2026-taipeidome-p4.jpg",
+    "qty": 2
+   },
+   {
+    "level": "E賞",
+    "is_last": false,
+    "name": "BIGBANG 台北大巨蛋演唱會門票 一般 NT$7,980",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788351353015-bigbang-2026-taipeidome-p5.jpg",
+    "qty": 2
+   },
+   {
+    "level": "F賞",
+    "is_last": false,
+    "name": "BIGBANG 台北大巨蛋演唱會門票 一般 NT$6,980",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788351353015-bigbang-2026-taipeidome-p6.jpg",
+    "qty": 2
+   },
+   {
+    "level": "G賞",
+    "is_last": false,
+    "name": "BIGBANG 台北大巨蛋演唱會門票 一般 NT$6,480",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788351353015-bigbang-2026-taipeidome-p7.jpg",
+    "qty": 2
+   },
+   {
+    "level": "H賞",
+    "is_last": false,
+    "name": "BIGBANG 台北大巨蛋演唱會門票 一般 NT$4,980",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788351353015-bigbang-2026-taipeidome-p8.jpg",
+    "qty": 2
+   },
+   {
+    "level": "I賞",
+    "is_last": false,
+    "name": "BIGBANG 台北大巨蛋演唱會門票 一般 NT$3,980",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788351353015-bigbang-2026-taipeidome-p9.jpg",
+    "qty": 2
+   },
+   {
+    "level": "J賞",
+    "is_last": false,
+    "name": "BIGBANG 台北大巨蛋演唱會門票 一般 NT$2,980",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788351353015-bigbang-2026-taipeidome-p10.jpg",
+    "qty": 2
+   },
+   {
+    "level": "K賞",
+    "is_last": false,
+    "name": "隨機轉蛋（參加賞）",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1788351353015-bigbang-2026-taipeidome-p11.webp",
+    "qty": 3980
+   }
+  ],
+  "description": "BIGBANG 20 週年 2026 台北大巨蛋演唱會，10 月 9 日、10 日、11 日三場，每晚 18:00。\n\nA 賞到 J 賞是十種票價區域，每一區各釋出兩個名額，從 VIP 站席到 2,980 元區都有；K 賞為隨機轉蛋。\n\n門票為實名制，抽中之後我們會用 LINE 跟你確認場次與證件資料，再依主辦單位規定辦理。座位區域以實際出票為準。"
+ }
+]
