@@ -76,13 +76,15 @@ export function useSheetRoute() {
   return { view, open, close };
 }
 
-export function Sheet({ open, title, onClose, children, footer, full }: {
+export function Sheet({ open, title, onClose, children, footer, full, auto }: {
   open: boolean;
   title: string;
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
   full?: boolean;
+  /** 內容多高面板就多高（上限仍 93%）——檢舉這類短面板不要撐一大片空底 */
+  auto?: boolean;
 }) {
   // 掛上之後下一幀才加 .on，transform 才有東西可以動（直接帶 .on 會沒有動畫）
   const [on, setOn] = useState(false);
@@ -110,7 +112,7 @@ export function Sheet({ open, title, onClose, children, footer, full }: {
     <div id="sheets">
       <div className="layer">
         <div className={`scrim${on ? ' on' : ''}`} onClick={onClose} />
-        <div className={`sheet${full ? ' full' : ' tall'}${on ? ' on' : ''}`} style={settled ? { transition: 'none' } : undefined}>
+        <div className={`sheet${full ? ' full' : auto ? '' : ' tall'}${on ? ' on' : ''}`} style={settled ? { transition: 'none' } : undefined}>
           <div className="shd">
             <h3>{title}</h3>
             <button type="button" className="x" onClick={onClose} aria-label="關閉">

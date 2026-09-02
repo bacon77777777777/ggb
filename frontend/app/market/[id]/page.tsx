@@ -381,6 +381,7 @@ export default function MarketItemPage() {
       {/* 檢舉：radio 勾一個預設原因就能送，不用打字 */}
       <Sheet
         open={reportOpen}
+        auto
         title="檢舉這個上架"
         onClose={() => setReportOpen(false)}
         footer={
@@ -421,6 +422,7 @@ export default function MarketItemPage() {
       {/* 編輯價格（只有自己的上架進得來） */}
       <Sheet
         open={editOpen}
+        auto
         title="編輯價格"
         onClose={() => setEditOpen(false)}
         footer={
