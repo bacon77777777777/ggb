@@ -24,6 +24,7 @@ import { useMediaQuery } from '@/hooks/use-media-query';
 import { asset } from '@/lib/asset';
 import { GAmount } from '@/components/shop/PurchaseConfirmationModal';
 import { HoldToConfirmButton } from '@/components/ui/HoldToConfirmButton';
+import { AddressInfo } from '@/components/ui/AddressInfo';
 
 export type ShippingCoupon = {
   id: string;            // user_coupons.id（uuid）
@@ -144,6 +145,7 @@ export function DeliveryCheckout({
   const hasAddress = method.type === 'HOME'
     ? !!(address.name && address.phone && address.address)
     : !!store?.id;
+  const chosenOpt = addressOptions.find(a => a.id === addressId) ?? null;
   const selectedCoupon = coupons.find(c => c.id === couponId) ?? null;
 
   const rowCls = cn('bg-neutral-50 dark:bg-neutral-800/50 rounded-xl', isDesktop ? 'p-4' : 'p-3');
@@ -278,14 +280,13 @@ export function DeliveryCheckout({
                       </button>
                     </div>
                     {hasAddress && (
-                      <div className="mt-2 space-y-0.5">
-                        <p className="text-[15px] md:text-[16px] text-neutral-900 dark:text-neutral-100 leading-snug">
-                          {method.type === 'HOME' ? address.address : `${store!.name}－${store!.address}`}
-                        </p>
-                        <p className="text-[14px] md:text-[15px] text-neutral-600 dark:text-neutral-300">
-                          {address.name}　{address.phone}
-                        </p>
-                      </div>
+                      <AddressInfo
+                        className="mt-2"
+                        name={address.name}
+                        phone={address.phone}
+                        address={method.type === 'HOME' ? address.address : `${store!.name}－${store!.address}`}
+                        isDefault={method.type === 'HOME' && !!chosenOpt?.isDefault}
+                      />
                     )}
                   </div>
 
@@ -408,14 +409,7 @@ export function DeliveryCheckout({
                         )}
                       >
                         <div className="pr-8">
-                          <div className={cn('font-black', active ? 'text-accent-red' : 'text-neutral-900 dark:text-white')}>
-                            {a.name}
-                            <span className="ml-2 text-[13px] font-bold text-neutral-500">{a.phone}</span>
-                            {a.isDefault && (
-                              <span className="ml-2 align-middle inline-block px-1 py-[1px] border border-neutral-300 text-neutral-400 text-[10px] rounded-[2px] font-bold">預設</span>
-                            )}
-                          </div>
-                          <div className="text-[13px] font-bold text-neutral-700 dark:text-neutral-300 mt-1 leading-snug">{a.address}</div>
+                          <AddressInfo name={a.name} phone={a.phone} address={a.address} isDefault={a.isDefault} />
                         </div>
                         {active && (
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 bg-accent-red text-white rounded-full p-1">

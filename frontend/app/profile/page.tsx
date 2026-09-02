@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/Modal';
 import { HoldToConfirmButton } from '@/components/ui/HoldToConfirmButton';
 import { DeliveryCheckout, type ShippingCoupon, type DeliveryMethod } from '@/components/warehouse/DeliveryCheckout';
 import { TW_CITIES, TW_DISTRICTS, splitTwAddress, zip3Of } from '@/lib/twDistricts';
+import { AddressInfo } from '@/components/ui/AddressInfo';
 import { useHideOnScroll } from '@/lib/useHideOnScroll';
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
 import PageHeader from '@/components/ui/PageHeader';
@@ -8046,22 +8047,7 @@ function ProfileContent() {
                 {addresses.length > 0 ? addresses.map(a => (
                   <div key={a.id} className="bg-white dark:bg-neutral-900 mb-3">
                     <div className="p-4 flex gap-3">
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[15px] font-medium text-neutral-900 dark:text-white">{a.name}</span>
-                          <span className="text-[13px] text-neutral-500 border-l border-neutral-300 pl-2 ml-1">
-                            {maskPhoneForDisplay(a.phone)}
-                          </span>
-                        </div>
-                        <p className="text-[13px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
-                          {a.address}
-                        </p>
-                        {a.isDefault && (
-                          <div className="pt-1">
-                            <span className="inline-block px-1 py-[1px] border border-primary text-primary text-[10px] rounded-[2px]">預設</span>
-                          </div>
-                        )}
-                      </div>
+                      <AddressInfo className="flex-1" name={a.name} phone={a.phone} address={a.address} isDefault={a.isDefault} />
                       <button
                         onClick={() => setAddressMenuId(a.id)}
                         className="self-start shrink-0 ml-2 p-1 -mr-1 text-neutral-400 active:text-neutral-600"
@@ -8373,13 +8359,13 @@ function ProfileContent() {
             >
               <button
                 onClick={() => openEditAddress(addressMenuId)}
-                className="w-full py-4 text-center text-[15px] font-bold text-neutral-900 dark:text-white border-b border-neutral-100 dark:border-neutral-800 active:bg-neutral-50 dark:active:bg-neutral-800"
+                className="w-full py-4 text-center text-[17px] text-neutral-900 dark:text-white border-b border-neutral-100 dark:border-neutral-800 active:bg-neutral-50 dark:active:bg-neutral-800"
               >
                 編輯
               </button>
               <button
                 onClick={() => void removeAddress(addressMenuId)}
-                className="w-full py-4 text-center text-[15px] font-bold text-accent-red active:bg-neutral-50 dark:active:bg-neutral-800"
+                className="w-full py-4 text-center text-[17px] text-accent-red active:bg-neutral-50 dark:active:bg-neutral-800"
               >
                 移除
               </button>
