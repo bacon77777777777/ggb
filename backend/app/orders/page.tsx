@@ -527,12 +527,12 @@ export default function OrdersPage() {
   // 匯出CSV功能
   const handleExportCSV = () => {
     const visibleColumnsList = [
+      { key: 'orderId', label: '訂單編號' },
       { key: 'status', label: '狀態' },
-      { key: 'submittedAt', label: '提交時間' },
       { key: 'recipientName', label: '收件地址' },
       { key: 'logistics', label: '配送方式' },
       { key: 'quantity', label: '件數' },
-      { key: 'orderId', label: '訂單編號' },
+      { key: 'submittedAt', label: '提交時間' },
       { key: 'userName', label: '暱稱' },
       { key: 'userId', label: '會員編號' },
       { key: 'trackingNumber', label: '物流單號' },
@@ -847,7 +847,27 @@ export default function OrdersPage() {
           })
         } catch (error: any) {
           console.error('Error generating shipping labels:', error)
-          toast(`生成配送單失敗: ${error.message}`, 'error')
+          /* 失敗改開常駐彈窗（老闆 2026-09-02「按了沒反應」）：
+             toast 一閃而過，綠界拒單的原因要留在畫面上看得到 */
+          setConfirmModal({
+            isOpen: true,
+            title: '生成配送單失敗',
+            content: (
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                  <p className="text-sm text-neutral-700 leading-relaxed pt-2">{String(error?.message || '未知錯誤')}</p>
+                </div>
+              </div>
+            ),
+            onConfirm: () => setConfirmModal(prev => ({ ...prev, isOpen: false })),
+            confirmText: '知道了',
+            cancelText: undefined,
+          })
         }
       },
       onCancel: () => {
@@ -1297,12 +1317,12 @@ export default function OrdersPage() {
             ]}
             showColumnToggle={true}
             columns={[
+              { key: 'orderId', label: '訂單編號', visible: visibleColumns.orderId },
               { key: 'status', label: '狀態', visible: visibleColumns.status },
-              { key: 'submittedAt', label: '提交時間', visible: visibleColumns.submittedAt },
               { key: 'recipientName', label: '收件地址', visible: visibleColumns.recipientName },
               { key: 'logistics', label: '配送方式', visible: visibleColumns.logistics },
               { key: 'quantity', label: '件數', visible: visibleColumns.quantity },
-              { key: 'orderId', label: '訂單編號', visible: visibleColumns.orderId },
+              { key: 'submittedAt', label: '提交時間', visible: visibleColumns.submittedAt },
               { key: 'userName', label: '暱稱', visible: visibleColumns.userName },
               { key: 'userId', label: '會員編號', visible: visibleColumns.userId },
               { key: 'trackingNumber', label: '物流單號', visible: visibleColumns.trackingNumber },
@@ -1374,6 +1394,17 @@ export default function OrdersPage() {
                     </th>
                     {/* 展開箭頭那一格，永遠在，不排序 */}
                     <th className={`${getDensityClasses()} w-8`} />
+                    {visibleColumns.orderId && (
+                      <SortableTableHeader
+                        sortKey="orderId"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        className={getDensityClasses()}
+                      >
+                        訂單編號
+                      </SortableTableHeader>
+                    )}
                     {visibleColumns.status && (
                       <SortableTableHeader
                         sortKey="status"
@@ -1383,17 +1414,6 @@ export default function OrdersPage() {
                         className={getDensityClasses()}
                       >
                         狀態
-                      </SortableTableHeader>
-                    )}
-                    {visibleColumns.submittedAt && (
-                      <SortableTableHeader
-                        sortKey="submittedAt"
-                        currentSortField={sortField}
-                        sortDirection={sortDirection}
-                        onSort={handleSort}
-                        className={getDensityClasses()}
-                      >
-                        提交時間
                       </SortableTableHeader>
                     )}
                     {visibleColumns.recipientName && (
@@ -1421,15 +1441,15 @@ export default function OrdersPage() {
                         件數
                       </SortableTableHeader>
                     )}
-                    {visibleColumns.orderId && (
+                    {visibleColumns.submittedAt && (
                       <SortableTableHeader
-                        sortKey="orderId"
+                        sortKey="submittedAt"
                         currentSortField={sortField}
                         sortDirection={sortDirection}
                         onSort={handleSort}
                         className={getDensityClasses()}
                       >
-                        訂單編號
+                        提交時間
                       </SortableTableHeader>
                     )}
                     {visibleColumns.userName && (
@@ -1538,24 +1558,14 @@ export default function OrdersPage() {
                           狀態→提交時間→收件人→配送方式→件數→訂單編號 落在不用捲就看到的範圍，
                           暱稱／會員編號／單號／運費／出貨時間往右捲，需要才看。
                         */}
+                        {visibleColumns.orderId && (
+                          <td className={`${getDensityClasses()} text-sm text-neutral-700 font-medium whitespace-nowrap`}>
+                            <span className="font-mono whitespace-nowrap">{shipment.orderId}</span>
+                          </td>
+                        )}
                         {visibleColumns.status && (
                           <td className={`${getDensityClasses()} whitespace-nowrap`}>
                             <Badge status={shipment.status}>{getStatusText(shipment.status)}</Badge>
-                          </td>
-                        )}
-                        {visibleColumns.submittedAt && (
-                          <td className={`${getDensityClasses()} whitespace-nowrap`}>
-                            {/* 完整時間戳到秒（老闆 2026-08-26 指定）＋下面一行等待天數，超過 3 天轉紅 */}
-                            <div className="leading-tight">
-                              <p className="font-mono text-sm text-neutral-700 tabular-nums whitespace-nowrap">
-                                {shipment.submittedAt || '-'}
-                              </p>
-                              {shipment.status !== 'delivered' && shipment.status !== 'cancelled' && (
-                                <p className={`text-xs tabular-nums ${shipment.days > 3 ? 'font-semibold text-red-500' : 'text-neutral-400'}`}>
-                                  等 {shipment.days} 天
-                                </p>
-                              )}
-                            </div>
                           </td>
                         )}
                         {visibleColumns.recipientName && (
@@ -1593,9 +1603,19 @@ export default function OrdersPage() {
                             </div>
                           </td>
                         )}
-                        {visibleColumns.orderId && (
-                          <td className={`${getDensityClasses()} text-sm text-neutral-700 font-medium whitespace-nowrap`}>
-                            <span className="font-mono whitespace-nowrap">{shipment.orderId}</span>
+                        {visibleColumns.submittedAt && (
+                          <td className={`${getDensityClasses()} whitespace-nowrap`}>
+                            {/* 完整時間戳到秒（老闆 2026-08-26 指定）＋下面一行等待天數，超過 3 天轉紅 */}
+                            <div className="leading-tight">
+                              <p className="font-mono text-sm text-neutral-700 tabular-nums whitespace-nowrap">
+                                {shipment.submittedAt || '-'}
+                              </p>
+                              {shipment.status !== 'delivered' && shipment.status !== 'cancelled' && (
+                                <p className={`text-xs tabular-nums ${shipment.days > 3 ? 'font-semibold text-red-500' : 'text-neutral-400'}`}>
+                                  等 {shipment.days} 天
+                                </p>
+                              )}
+                            </div>
                           </td>
                         )}
                         {visibleColumns.userName && (

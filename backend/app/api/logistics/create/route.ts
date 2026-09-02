@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateLogisticsParams, toEcpayCvsSubType } from '@/lib/ecpay_logistics'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { zipFromAddress } from '@/lib/twZip'
 import { requireAdminSession } from '@/lib/requireAdmin'
 
 export async function POST(req: NextRequest) {
@@ -55,11 +56,37 @@ export async function POST(req: NextRequest) {
     const HashIV     = process.env.ECPAY_LOGISTICS_HASH_IV     || process.env.ECPAY_HASH_IV!
     const ApiUrl     = process.env.ECPAY_LOGISTICS_API_URL     || 'https://logistics-stage.ecpay.com.tw/Express/Create'
 
-    // 寄件人：優先用廠商的 sender_name，其次 contact_name，最後 env var
-    const senderName      = supplierInfo?.sender_name      || supplierInfo?.contact_name      || process.env.ECPAY_SENDER_NAME       || 'GGB吉吉比'
-    const senderCellPhone = supplierInfo?.contact_phone                                        || process.env.ECPAY_SENDER_CELL_PHONE  || '0900000000'
-    const senderZipCode   = supplierInfo?.sender_zip_code                                      || process.env.ECPAY_SENDER_ZIP_CODE    || ''
-    const senderAddress   = supplierInfo?.sender_address   || supplierInfo?.address            || process.env.ECPAY_SENDER_ADDRESS     || ''
+    /*
+     * 寄件人：廠商欄位 → 平台設定（運費設定頁，2026-09-02 新增）→ env。
+     * 平台是「廠商供貨、平台出貨」，正常情況吃平台設定那組。
+     * ⚠️ 郵遞區號／地址空著就送，綠界會回「SenderZipCode Is Null」拒單 ——
+     * 這裡改成開單前先驗，把「去哪裡補」講清楚，不讓錯誤埋在綠界回覆裡。
+     */
+    const { data: senderRows } = await supabase
+      .from('platform_settings').select('key, value')
+      .in('key', ['shipping_sender_name', 'shipping_sender_phone', 'shipping_sender_zip', 'shipping_sender_address'])
+    const sc = Object.fromEntries((senderRows ?? []).map((r: any) => [r.key, String(r.value ?? '').trim()]))
+
+    const senderName      = supplierInfo?.sender_name    || supplierInfo?.contact_name || sc.shipping_sender_name    || process.env.ECPAY_SENDER_NAME      || 'GGB吉吉比'
+    const senderCellPhone = supplierInfo?.contact_phone                                || sc.shipping_sender_phone   || process.env.ECPAY_SENDER_CELL_PHONE || '0900000000'
+    const senderZipCode   = supplierInfo?.sender_zip_code                              || sc.shipping_sender_zip     || process.env.ECPAY_SENDER_ZIP_CODE   || ''
+    const senderAddress   = supplierInfo?.sender_address || supplierInfo?.address      || sc.shipping_sender_address || process.env.ECPAY_SENDER_ADDRESS    || ''
+
+    /* 收件人郵遞區號：玩家只填地址不填 zip（不該要求玩家背），從地址推（lib/twZip） */
+    const receiverZip = order.zip_code || (logisticsType === 'HOME' ? zipFromAddress(order.address) : null)
+    if (logisticsType === 'HOME' && !receiverZip) {
+      return NextResponse.json(
+        { error: `收件地址推不出郵遞區號（${order.address}），請確認地址含縣市與鄉鎮市區` },
+        { status: 400 },
+      )
+    }
+
+    if (logisticsType === 'HOME' && (!senderZipCode || !senderAddress)) {
+      return NextResponse.json(
+        { error: '寄件人郵遞區號／地址未設定，請到「設定 → 運費設定 → 寄件人資料」填寫後再開單' },
+        { status: 400 },
+      )
+    }
 
     const params = generateLogisticsParams(
       {
@@ -75,7 +102,7 @@ export async function POST(req: NextRequest) {
         ReceiverName:      order.recipient_name,
         ReceiverCellPhone: order.recipient_phone,
         ReceiverStoreID:   order.store_id  || undefined,
-        ReceiverZipCode:   order.zip_code  || undefined,
+        ReceiverZipCode:   receiverZip     || undefined,
         ReceiverAddress:   order.address   || undefined,
         ServerReplyURL:    `${baseUrl}/api/logistics/callback`,
       },

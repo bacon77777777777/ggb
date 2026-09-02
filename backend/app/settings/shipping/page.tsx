@@ -13,6 +13,11 @@ export default function ShippingSettingsPage() {
   const [feeCvsHiLife, setFeeCvsHiLife] = useState('55')
   const [feeCvsOk, setFeeCvsOk] = useState('60')
   const [freeShippingThreshold, setFreeShippingThreshold] = useState('7')
+  // 寄件人（綠界物流開單必填；缺郵遞區號綠界直接拒單 SenderZipCode Is Null，2026-09-02）
+  const [senderName, setSenderName] = useState('')
+  const [senderPhone, setSenderPhone] = useState('')
+  const [senderZip, setSenderZip] = useState('')
+  const [senderAddress, setSenderAddress] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -27,6 +32,10 @@ export default function ShippingSettingsPage() {
         if (d.shipping_fee_cvs_hilife) setFeeCvsHiLife(d.shipping_fee_cvs_hilife)
         if (d.shipping_fee_cvs_ok) setFeeCvsOk(d.shipping_fee_cvs_ok)
         if (d.free_shipping_threshold) setFreeShippingThreshold(d.free_shipping_threshold)
+        if (d.shipping_sender_name) setSenderName(d.shipping_sender_name)
+        if (d.shipping_sender_phone) setSenderPhone(d.shipping_sender_phone)
+        if (d.shipping_sender_zip) setSenderZip(d.shipping_sender_zip)
+        if (d.shipping_sender_address) setSenderAddress(d.shipping_sender_address)
       })
       .finally(() => setIsLoading(false))
   }, [])
@@ -45,6 +54,10 @@ export default function ShippingSettingsPage() {
           shipping_fee_cvs_hilife: feeCvsHiLife,
           shipping_fee_cvs_ok: feeCvsOk,
           free_shipping_threshold: freeShippingThreshold,
+          shipping_sender_name: senderName,
+          shipping_sender_phone: senderPhone,
+          shipping_sender_zip: senderZip,
+          shipping_sender_address: senderAddress,
         }),
       })
       if (!res.ok) throw new Error('儲存失敗')
@@ -113,6 +126,32 @@ export default function ShippingSettingsPage() {
                       ))}
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-neutral-100">
+                <h2 className="text-base font-semibold text-neutral-900 mb-1">寄件人資料</h2>
+                <p className="text-sm text-neutral-500 mb-4">
+                  綠界物流開單用。郵遞區號與地址沒填的話，宅配開單會被綠界直接拒絕。
+                </p>
+                <div className="space-y-3">
+                  {([
+                    ['寄件人名稱', senderName, setSenderName, 'GGB吉吉比'],
+                    ['寄件人手機', senderPhone, setSenderPhone, '09xxxxxxxx'],
+                    ['郵遞區號', senderZip, setSenderZip, '251'],
+                    ['寄件地址', senderAddress, setSenderAddress, '新北市淡水區…'],
+                  ] as [string, string, (v: string) => void, string][]).map(([label, val, setter, ph]) => (
+                    <div key={label}>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">{label}</label>
+                      <input
+                        type="text"
+                        value={val}
+                        onChange={e => setter(e.target.value)}
+                        placeholder={ph}
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent text-sm"
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
 
