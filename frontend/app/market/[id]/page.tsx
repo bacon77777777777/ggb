@@ -331,6 +331,8 @@ export default function MarketItemPage() {
  */
 function DealTrend({ deals }: { deals: DealPoint[] }) {
   const [sel, setSel] = useState<number | null>(null);
+  // 成交列表預設只露兩筆半（限高＋底部淡出），展開才全列（老闆 2026-09-02）
+  const [rowsOpen, setRowsOpen] = useState(false);
   if (deals.length < 2) return null;
 
   const W = 320, H = 88, T = 18, R = 14, B = 20, L = 10;
@@ -384,11 +386,21 @@ function DealTrend({ deals }: { deals: DealPoint[] }) {
         <text x={L} y={H - 6} fontSize="9.5" fill="var(--sub)">{md(deals[0].createdAt)}</text>
         <text x={W - R} y={H - 6} textAnchor="end" fontSize="9.5" fill="var(--sub)">{md(deals[last].createdAt)}</text>
       </svg>
-      <div className="mqrows">
-        {deals.slice(-3).reverse().map((d, i) => (
+      <div className={`mqrows${rowsOpen ? '' : ' mqrows--clip'}`}>
+        {[...deals].reverse().map((d, i) => (
           <div key={i}><span>{md(d.createdAt)} 成交</span><b>{gnum(d.price)} G</b></div>
         ))}
       </div>
+      {deals.length > 2 && (
+        <button className="mqmore" onClick={() => setRowsOpen(o => !o)}>
+          {rowsOpen ? '收起' : `展開全部 ${deals.length} 筆`}
+          <svg
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
+            strokeLinecap="round" strokeLinejoin="round"
+            style={{ width: 12, height: 12, transform: rowsOpen ? 'rotate(180deg)' : undefined }}
+          ><path d="m6 9 6 6 6-6" /></svg>
+        </button>
+      )}
     </div>
   );
 }
