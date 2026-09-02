@@ -16,6 +16,7 @@
  */
 
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { asset } from '@/lib/asset';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,10 +27,14 @@ import { fetchChats, fetchChatThread, sendChatMessage, markChatRead, type Chat, 
 const FALLBACK = asset('/images/item_defaulet.webp');
 const AVATAR_FALLBACK = '/images/avatar/01.webp';
 
-/** 商品小卡（商城的 .chatctx.item）：頂部「正在聊這件」與訊息流裡「聊到這件」共用 */
-function CtxCard({ head, name, image, price }: { head: string; name: string; image: string | null; price: number }) {
+/** 商品小卡（商城的 .chatctx.item）：「聊到這件」與「正在聊這件」共用。
+    點了去商品頁（老闆 2026-09-02） */
+function CtxCard({ head, name, image, price, onClick }: {
+  head: string; name: string; image: string | null; price: number; onClick?: () => void;
+}) {
   return (
-    <div className="chatctx item">
+    <button type="button" className="chatctx item" onClick={onClick} disabled={!onClick}
+      style={{ width: '100%', textAlign: 'left', display: 'block' }}>
       <div className="cchd">{head}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ width: 44, height: 44, borderRadius: 8, overflow: 'hidden', background: '#F2F2F2', flexShrink: 0 }}>
@@ -40,7 +45,7 @@ function CtxCard({ head, name, image, price }: { head: string; name: string; ima
           <div style={{ fontSize: 12, color: 'var(--red)', fontWeight: 700, marginTop: 2 }}>{gnum(price)} G</div>
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -144,7 +149,16 @@ export function ChatThreadSheet({ open, onClose, listingId, otherId, otherName, 
   onSent?: () => void;
 }) {
   const { user } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
   const [msgs, setMsgs] = useState<ChatMessage[]>([]);
+
+  /** 點商品小卡去商品頁（老闆 2026-09-02）；已經在那頁就只關面板 */
+  const goListing = (id: number | null) => {
+    if (!id) return;
+    if (pathname === `/market/${id}`) { onClose(); return; }
+    router.push(`/market/${id}`);
+  };
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState('');
@@ -214,7 +228,8 @@ export function ChatThreadSheet({ open, onClose, listingId, otherId, otherName, 
                 <Fragment key={m.id}>
                   {showCard && (
                     <div style={{ margin: '2px 0 11px' }}>
-                      <CtxCard head="聊到這件" name={m.prizeName!} image={m.prizeImage} price={m.price ?? 0} />
+                      <CtxCard head="聊到這件" name={m.prizeName!} image={m.prizeImage} price={m.price ?? 0}
+                        onClick={() => goListing(m.listingId)} />
                     </div>
                   )}
                   <div className={`bub${m.fromMe ? ' me' : ''}`}>
@@ -235,7 +250,8 @@ export function ChatThreadSheet({ open, onClose, listingId, otherId, otherName, 
             {context && listingId != null
               && (msgs.length === 0 || msgs[msgs.length - 1].listingId !== listingId) && (
               <div style={{ margin: '2px 0 11px' }}>
-                <CtxCard head="正在聊這件" name={context.name} image={context.image} price={context.price} />
+                <CtxCard head="正在聊這件" name={context.name} image={context.image} price={context.price}
+                  onClick={() => goListing(listingId)} />
               </div>
             )}
           </>
