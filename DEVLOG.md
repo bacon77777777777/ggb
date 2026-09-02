@@ -4,6 +4,36 @@
 
 ---
 
+## v2026.09.02m｜2026-09-02｜賞等開放到 Z賞；建立 Garmin／BIGBANG 兩檔自製賞
+
+### 賞等 A賞～Z賞（一番賞／抽卡／自製賞）
+後台下拉原本硬編到 J賞。日系一番賞多半 A～H 就結束，但**自製賞常常超過** ——
+MERIDA 那檔十三台整車＋參加賞用到 N賞，選單裡根本挑不到。
+
+硬編的地方不只選單，共五處，全部收斂到 `lib/productSchema` 的
+`PRIZE_LEVEL_LETTERS`／`TICKETED_LEVELS`／`isLowTierLevel`：
+商品編輯頁與新增頁的下拉、低階賞資源庫按鈕（E～J → E～Z）、
+`utils/normalizePrizes` 的排序表、`api/tools/scrape` 的賞等順序、
+`LEVEL_PRESETS` 的 ichiban／custom（CSV 範本與匯入正規化）。
+
+⚠️ **上限就是 Z，不要再往上加雙字母。** 前台 `lib/prizeGrade.ts` 的 `gradeStyle()`
+用 `^A`／`^B` 開頭比對配色，「AA賞」會被塗成 A賞的紅色 —— 排第 27 位的賞
+在玩家眼裡會長得像頭獎。排序不受影響，`gradeRank` 本來就處理 F～Z。
+
+### 兩檔自製賞（PROD／STG 都建，pending 未上架）
+- **Garmin 運動智慧手錶全系列**（PROD 799／STG 875）：單抽 350G、總數 4,000。
+  A～H 賞為八大系列各一支旗艦（MARQ 製錶匠／Descent 潛水／fēnix 戶外／tactix 戰術／
+  quatix 航海／fēnix 9 Pro／Forerunner 970 與 965 鐵人三項），I 賞隨機轉蛋 3,992。
+  取材：garmin.com.tw 商品頁的 `data-product-id` ＋它自己的公開 JSONP 價格 API
+  （`_js/api_products-promotion`），訪客身分即可取得。
+  ⚠️ 第一版照價格取前八名，八支全是 MARQ、三鐵錶被排到二十名外，改成一系列一支
+- **BIGBANG 2026 台北大巨蛋演唱會門票**（PROD 800／STG 876）：單抽 500G、總數 4,000。
+  A～J 賞為十種票價各 2 個名額（VIP 站席 9,430 至一般 2,980），K 賞隨機轉蛋 3,980。
+  票價取自商周報導；ticketplus 的活動頁本身已無資料（SPA 導向 `/activity/undefined`）。
+  身心障礙優惠席未列入（限身分購買）。主視覺仍是新聞站的圖，上架前要換官方素材
+
+---
+
 ## v2026.09.02l｜2026-09-02｜匯入 MERIDA／HxH 兩檔；`description` 不准寫內部備註
 
 ### 商品
