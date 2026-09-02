@@ -15,7 +15,7 @@
  * 硬要標未讀就得改表 —— 等老闆說要再做。
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { asset } from '@/lib/asset';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,6 +25,24 @@ import { fetchChats, fetchChatThread, sendChatMessage, type Chat, type ChatMessa
 
 const FALLBACK = asset('/images/item_defaulet.webp');
 const AVATAR_FALLBACK = '/images/avatar/01.webp';
+
+/** 商品小卡（商城的 .chatctx.item）：頂部「正在聊這件」與訊息流裡「聊到這件」共用 */
+function CtxCard({ head, name, image, price }: { head: string; name: string; image: string | null; price: number }) {
+  return (
+    <div className="chatctx item">
+      <div className="cchd">{head}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ width: 44, height: 44, borderRadius: 8, overflow: 'hidden', background: '#F2F2F2', flexShrink: 0 }}>
+          <Image src={image || FALLBACK} alt="" width={44} height={44} className="object-contain" unoptimized />
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.35 }}>{name}</div>
+          <div style={{ fontSize: 12, color: 'var(--red)', fontWeight: 700, marginTop: 2 }}>{gnum(price)} G</div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /** 聊天泡泡旁的頭像：吃 DB 的 avatar_url（老闆 2026-09-02，不再用暱稱染色圓點） */
 function ChatAvatar({ src }: { src: string | null }) {
@@ -167,20 +185,7 @@ export function ChatThreadSheet({ open, onClose, listingId, otherId, otherName, 
       }
     >
       <div style={{ padding: '12px 12px 0' }}>
-        {context && (
-          <div className="chatctx item">
-            <div className="cchd">正在聊這件</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 44, height: 44, borderRadius: 8, overflow: 'hidden', background: '#F2F2F2', flexShrink: 0 }}>
-                <Image src={context.image || FALLBACK} alt="" width={44} height={44} className="object-contain" unoptimized />
-              </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.35 }}>{context.name}</div>
-                <div style={{ fontSize: 12, color: 'var(--red)', fontWeight: 700, marginTop: 2 }}>{gnum(context.price)} G</div>
-              </div>
-            </div>
-          </div>
-        )}
+        {context && <CtxCard head="正在聊這件" name={context.name} image={context.image} price={context.price} />}
       </div>
 
       <div className="chatbox" ref={boxRef}>
@@ -194,12 +199,26 @@ export function ChatThreadSheet({ open, onClose, listingId, otherId, otherName, 
             </div>
           </div>
         ) : (
-          msgs.map(m => (
-            <div className={`bub${m.fromMe ? ' me' : ''}`} key={m.id}>
-              <ChatAvatar src={m.fromMe ? (user?.avatar_url ?? null) : otherAvatar} />
-              <span className="tx">{m.body}</span>
-            </div>
-          ))
+          /* 一串裡聊到不同商品：換件的地方插那件的小卡（老闆 2026-09-02）。
+             開頭那段若跟頂部「正在聊這件」同一件就不重複插 */
+          msgs.map((m, i) => {
+            const prev = i > 0 ? msgs[i - 1] : null;
+            const changed = prev ? prev.listingId !== m.listingId : m.listingId !== listingId;
+            const showCard = changed && m.listingId != null && !!m.prizeName;
+            return (
+              <Fragment key={m.id}>
+                {showCard && (
+                  <div style={{ margin: '2px 0 11px' }}>
+                    <CtxCard head="聊到這件" name={m.prizeName!} image={m.prizeImage} price={m.price ?? 0} />
+                  </div>
+                )}
+                <div className={`bub${m.fromMe ? ' me' : ''}`}>
+                  <ChatAvatar src={m.fromMe ? (user?.avatar_url ?? null) : otherAvatar} />
+                  <span className="tx">{m.body}</span>
+                </div>
+              </Fragment>
+            );
+          })
         )}
       </div>
 

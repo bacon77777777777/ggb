@@ -489,6 +489,11 @@ export type ChatMessage = {
   kind: string;
   fromMe: boolean;
   createdAt: string;
+  /** 這則訊息當時聊的商品（migration 678）：換件時前端插商品小卡 */
+  listingId: number | null;
+  prizeName: string | null;
+  prizeImage: string | null;
+  price: number | null;
 };
 
 export async function fetchChats(): Promise<Chat[]> {
@@ -521,6 +526,10 @@ export async function fetchChatThread(otherId: string): Promise<ChatMessage[]> {
     kind: r.kind || 'text',
     fromMe: !!r.from_me,
     createdAt: r.created_at,
+    listingId: r.listing_id != null ? Number(r.listing_id) : null,
+    prizeName: r.prize_name || null,
+    prizeImage: r.prize_image || null,
+    price: r.price != null ? Number(r.price) : null,
   }));
 }
 
