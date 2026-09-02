@@ -4,6 +4,13 @@
 
 ---
 
+## v2026.09.02g｜2026-09-02｜結帳配送商品品項名被裁切
+
+`line-clamp` 本質是 overflow:hidden，行高 `leading-snug`（1.375）撐不住 ⑪ 這類
+佔滿全高的字符，展開列表的品項名被削頭削腳 → 改 `leading-relaxed`。
+
+---
+
 ## v2026.09.02f｜2026-09-02｜倉庫配送結帳大改：購買確認同款彈窗、運費券、地址簿、彈窗統一
 
 ### 配送結帳（frontend/components/warehouse/DeliveryCheckout.tsx，migrations 681/682）
