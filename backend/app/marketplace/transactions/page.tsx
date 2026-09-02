@@ -185,16 +185,18 @@ export default function MarketplaceTransactionsPage() {
         </div>
       ),
     },
+    /* 三個金額各自一欄、一律黑字（老闆 2026-09-02：後台是給管理員看的）；
+       手續費是平台唯一從交易所賺到的東西，放最右邊壓軸 */
     {
-      key: 'price', label: '售價 / 手續費 / 實收', sortable: true,
+      key: 'price', label: '售價(G)', sortable: true,
       render: (d) => (
-        <div className="whitespace-nowrap text-sm tabular-nums">
-          <span className="font-semibold text-amber-600">{d.price.toLocaleString()}</span>
-          <span className="mx-1 text-neutral-300">/</span>
-          <span className="text-red-500">-{d.fee.toLocaleString()}</span>
-          <span className="mx-1 text-neutral-300">/</span>
-          <span className="text-neutral-700">{d.seller_receive.toLocaleString()}</span>
-        </div>
+        <span className="whitespace-nowrap text-sm font-semibold tabular-nums text-neutral-900">{d.price.toLocaleString()}</span>
+      ),
+    },
+    {
+      key: 'seller_receive', label: '賣家實收(G)', sortable: true,
+      render: (d) => (
+        <span className="whitespace-nowrap text-sm tabular-nums text-neutral-900">{d.seller_receive.toLocaleString()}</span>
       ),
     },
     {
@@ -223,6 +225,12 @@ export default function MarketplaceTransactionsPage() {
             {d.seller_email || <MemberNo no={d.seller_member_no} uuid={d.seller_id} />}
           </div>
         </div>
+      ),
+    },
+    {
+      key: 'fee', label: '手續費(G)', sortable: true,
+      render: (d) => (
+        <span className="whitespace-nowrap text-sm font-semibold tabular-nums text-neutral-900">{d.fee.toLocaleString()}</span>
       ),
     },
   ]
