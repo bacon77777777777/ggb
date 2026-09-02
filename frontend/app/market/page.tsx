@@ -294,13 +294,19 @@ export default function MarketPage() {
     <div className="mk mallroot gx">
       <div className="hdr" ref={hdrRef}>
         <div className="srch">
-          <button className="hicon hback" onClick={() => router.push('/')} aria-label="返回">
+          {/* 返回鍵含「交易所」標題（老闆 2026-09-02）：整塊都是點擊範圍。
+              全域 Navbar 在這頁關掉了（兩層頂欄會重複），標題沒人接就沒了 */}
+          <button
+            className="hicon hback"
+            style={{ width: 'auto', display: 'flex', alignItems: 'center' }}
+            onClick={() => router.push('/')}
+            aria-label="返回"
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="m15 18-6-6 6-6" />
             </svg>
+            <span className="htitle">交易所</span>
           </button>
-          {/* 全域 Navbar 在這頁關掉了（兩層頂欄會重複），標題沒人接就沒了 */}
-          <span className="htitle">交易所</span>
           <button className="sbox" onClick={() => { setDraft(search); openSheet('search'); }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BFBFBF" strokeWidth="2.4">
               <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" />
