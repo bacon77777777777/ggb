@@ -22,8 +22,11 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
     { value: 'card_video', label: '過場影片' },
   ],
   custom:   [
-    { value: 'custom_tear', label: '沉浸撕紙' },
-    { value: 'custom_grid', label: '票券網格' },
+    { value: 'custom_tear',  label: '沉浸撕紙' },
+    { value: 'custom_grid',  label: '票券網格' },
+    /* 選了這款要再上傳一支影片（下面的「過場影片」欄位），沒傳的話前台會退回
+       站上內建的 video1.mp4，不會開天窗 */
+    { value: 'custom_video', label: '自製過場影片' },
   ],
   /* 盒玩只留兩款（老闆 2026-08-29：「只留這兩個，其他移除，不需要了」）。
      兔子／叢林／賽璐璐三款的前台程式與圖素都沒有刪，只是後台不再讓人選 ——
@@ -51,6 +54,7 @@ import { sanitizeImageUrl } from '@/lib/image-utils'
 import { SmallItem } from '@/types/product'
 import { useToast } from '@/contexts/ToastContext'
 import { TICKETED_LEVELS, isLowTierLevel } from '@/lib/productSchema'
+import { uploadVideo } from '@/lib/uploadVideo'
 
 export default function NewProductPage() {
   const { toast } = useToast()
@@ -96,6 +100,7 @@ export default function NewProductPage() {
     isPreorder: false,
     preorderAvailableAt: '',
     machineTheme: '',
+    introVideoUrl: '',
     // 一包幾張（1／3／5／10）。migration 666 之後這是純粹的數量，不再是「模式」
     cardsPerPack: '',
     // 卡包樣式：builtin = 內建五款輪流、custom = 用自己上傳的卡包正／背面
@@ -190,6 +195,9 @@ export default function NewProductPage() {
   const packRemainder = isMultiPack ? calculatedTotalCount % cardsPerPack : 0
   // migration 666 拿掉了「單抽不可用撕開封口」的限制，三種模組一律都能選
   const moduleOptions = MODULE_OPTIONS[formData.type] ?? []
+  /* 自製過場影片的上傳進度（0～100 上傳中、null 沒在傳）。跟編輯頁同一套。 */
+  const [videoProgress, setVideoProgress] = useState<number | null>(null)
+  const [videoError, setVideoError] = useState('')
   const calculatedRemaining = normalPrizes.reduce((sum, prize) => sum + prize.remaining, 0)
 
   // 當獎項數量變化時，自動更新機率
@@ -418,6 +426,7 @@ export default function NewProductPage() {
         is_preorder: formData.isPreorder,
         preorder_available_at: formData.preorderAvailableAt ? `${formData.preorderAvailableAt} 00:00:00` : null,
         machine_theme: formData.machineTheme || null,
+        intro_video_url: formData.introVideoUrl || null,
         cards_per_pack: formData.type === 'card' && Number(formData.cardsPerPack) > 1
           ? Number(formData.cardsPerPack)
           : null,
@@ -878,6 +887,51 @@ export default function NewProductPage() {
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </SelectField>
+
+                {/* 自製過場影片：選了才出現。檔案在選檔當下就開始傳，不等按建立 */}
+                {formData.machineTheme === 'custom_video' && (
+                  <div className="mt-2 p-3 rounded-lg bg-neutral-50 border border-neutral-200">
+                    <label className="block text-xs font-medium text-neutral-500 mb-1.5">
+                      過場影片<span className="ml-1 text-neutral-400">MP4／WebM／MOV，200MB 以內</span>
+                    </label>
+                    {formData.introVideoUrl ? (
+                      <div className="flex items-start gap-3">
+                        <video src={formData.introVideoUrl} controls preload="metadata"
+                          className="w-32 h-20 rounded-lg bg-black object-contain" />
+                        <button type="button" className="text-xs text-neutral-400 hover:text-red-500 mt-1"
+                          onClick={() => setFormData(prev => ({ ...prev, introVideoUrl: '' }))}>移除</button>
+                      </div>
+                    ) : videoProgress !== null ? (
+                      <div>
+                        <div className="h-2 rounded-full bg-neutral-200 overflow-hidden">
+                          <div className="h-full bg-primary transition-all" style={{ width: `${videoProgress}%` }} />
+                        </div>
+                        <p className="mt-1 text-xs text-neutral-500">上傳中 {videoProgress}%</p>
+                      </div>
+                    ) : (
+                      <label className="inline-flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">
+                        <input type="file" accept="video/mp4,video/webm,video/quicktime" hidden
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0]
+                            e.target.value = ''
+                            if (!file) return
+                            setVideoError('')
+                            setVideoProgress(0)
+                            try {
+                              const url = await uploadVideo(file, setVideoProgress)
+                              setFormData(prev => ({ ...prev, introVideoUrl: url }))
+                            } catch (err) {
+                              setVideoError(err instanceof Error ? err.message : '影片上傳失敗')
+                            } finally {
+                              setVideoProgress(null)
+                            }
+                          }} />
+                        選擇影片
+                      </label>
+                    )}
+                    {videoError && <p className="mt-2 text-xs text-red-500 whitespace-pre-line">{videoError}</p>}
+                  </div>
+                )}
               </div>}
 
             </div>

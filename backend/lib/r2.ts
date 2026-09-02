@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand, DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 export const r2 = new S3Client({
   region: 'auto',
@@ -24,6 +25,23 @@ export async function r2Upload(key: string, data: Buffer, contentType: string): 
     ContentType: contentType,
   }))
   return r2PublicUrl(key)
+}
+
+/**
+ * 產生一組「瀏覽器可以直接 PUT 上去」的簽名網址。
+ *
+ * **為什麼不走 /api/admin/upload**：那支是把檔案整包收進 serverless function
+ * 再轉手上傳，而 Vercel 的 request body 上限是 4.5MB。站上現有的過場影片
+ * 是 3.9～7MB（video1.mp4 4.1MB、blindbox_op.mp4 7MB），照那條路走一半會失敗。
+ * 簽名直傳是瀏覽器 → R2，完全不經過我們的機器，沒有這個限制。
+ *
+ * 用完記得 bucket 要開 CORS（scripts/r2_set_cors.ts），不然瀏覽器會擋下 PUT。
+ */
+export async function r2PresignPut(key: string, contentType: string, expiresIn = 600) {
+  const url = await getSignedUrl(r2, new PutObjectCommand({
+    Bucket: R2_BUCKET, Key: key, ContentType: contentType,
+  }), { expiresIn })
+  return { uploadUrl: url, publicUrl: r2PublicUrl(key) }
 }
 
 export async function r2DeletePrefix(prefix: string): Promise<number> {

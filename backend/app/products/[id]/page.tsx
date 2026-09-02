@@ -22,8 +22,11 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
     { value: 'card_video', label: '過場影片' },
   ],
   custom:   [
-    { value: 'custom_tear', label: '沉浸撕紙' },
-    { value: 'custom_grid', label: '票券網格' },
+    { value: 'custom_tear',  label: '沉浸撕紙' },
+    { value: 'custom_grid',  label: '票券網格' },
+    /* 選了這款要再上傳一支影片（下面的「過場影片」欄位），沒傳的話前台會退回
+       站上內建的 video1.mp4，不會開天窗 */
+    { value: 'custom_video', label: '自製過場影片' },
   ],
   /* 盒玩只留兩款（老闆 2026-08-29：「只留這兩個，其他移除，不需要了」）。
      兔子／叢林／賽璐璐三款的前台程式與圖素都沒有刪，只是後台不再讓人選 ——
@@ -52,6 +55,7 @@ import { SmallItem } from '@/types/product'
 import { useToast } from '@/contexts/ToastContext'
 import FileInput from '@/components/ui/FileInput'
 import { TICKETED_LEVELS, isLowTierLevel } from '@/lib/productSchema'
+import { uploadVideo } from '@/lib/uploadVideo'
 
 function CategoryMultiSelect({ categories, selected, onChange }: {
   categories: { id: string; name: string }[]
@@ -231,6 +235,7 @@ export default function EditProductPage() {
     series: '',
     supplierId: '' as string,
     machineTheme: '' as string,
+    introVideoUrl: '' as string,
     rarity: 3,
     startedAt: '',
     endedAt: '',
@@ -391,6 +396,10 @@ export default function EditProductPage() {
 
   // migration 666 拿掉了「單抽不可用撕開封口」的限制，三種模組一律都能選
   const moduleOptions = MODULE_OPTIONS[formData.type] ?? []
+  /* 自製過場影片的上傳進度。影片幾 MB 起跳，沒有進度條使用者會以為當掉了。
+     0～100 表示上傳中，null 表示沒有在傳 */
+  const [videoProgress, setVideoProgress] = useState<number | null>(null)
+  const [videoError, setVideoError] = useState('')
 
   // 當獎項數量變化時，自動更新機率
   useEffect(() => {
@@ -506,6 +515,7 @@ export default function EditProductPage() {
             selectedCategoryIds: categoryIds,
             selectedPromotionIds: promotionIds,
             machineTheme: product.machine_theme || '',
+            introVideoUrl: (product as any).intro_video_url || '',
             rarity: product.rarity || 3,
             startedAt: product.started_at ? product.started_at.split('T')[0] : '',
             endedAt: product.ended_at ? product.ended_at.replace('T', ' ').split('.')[0] : '',
@@ -696,6 +706,7 @@ export default function EditProductPage() {
         series: formData.series || null,
         supplier_id: formData.supplierId ? parseInt(formData.supplierId) : null,
         machine_theme: formData.machineTheme || null,
+        intro_video_url: formData.introVideoUrl || null,
         rarity: formData.rarity,
         ended_at: formData.status === 'ended' ? formData.endedAt : null,
         // txid_hash: formData.txidHash || null,
@@ -1070,6 +1081,69 @@ export default function EditProductPage() {
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </SelectField>
+
+                  {/* 自製過場影片：選了這款才出現上傳欄位。
+                      檔案在**選檔的當下**就開始傳，不等按儲存 —— 影片動輒好幾 MB，
+                      壓在存檔那一刻會讓整張表單卡住好幾十秒，看起來像當掉。 */}
+                  {formData.machineTheme === 'custom_video' && (
+                    <div className="mt-2 p-3 rounded-lg bg-neutral-50 border border-neutral-200">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <label className="block text-xs font-medium text-neutral-500">過場影片</label>
+                        <InfoIcon width={300} text={
+                          '抽獎後播這一支影片，播完彈出中獎結果。\n\n'
+                          + '接受 MP4、WebM、MOV，200MB 以內。建議 MP4、直式或方形、10 秒內。\n\n'
+                          + '沒有上傳的話前台會退回站上內建的過場影片。'
+                        } />
+                      </div>
+
+                      {formData.introVideoUrl ? (
+                        <div className="flex items-start gap-3">
+                          <video
+                            src={formData.introVideoUrl}
+                            className="w-32 h-20 rounded-lg bg-black object-contain"
+                            controls preload="metadata"
+                          />
+                          <button type="button"
+                            className="text-xs text-neutral-400 hover:text-red-500 mt-1"
+                            onClick={() => setFormData(prev => ({ ...prev, introVideoUrl: '' }))}>
+                            移除
+                          </button>
+                        </div>
+                      ) : videoProgress !== null ? (
+                        <div>
+                          <div className="h-2 rounded-full bg-neutral-200 overflow-hidden">
+                            <div className="h-full bg-primary transition-all"
+                              style={{ width: `${videoProgress}%` }} />
+                          </div>
+                          <p className="mt-1 text-xs text-neutral-500">上傳中 {videoProgress}%</p>
+                        </div>
+                      ) : (
+                        <label className="inline-flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">
+                          <input type="file" accept="video/mp4,video/webm,video/quicktime" hidden
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0]
+                              e.target.value = ''
+                              if (!file) return
+                              setVideoError('')
+                              setVideoProgress(0)
+                              try {
+                                const url = await uploadVideo(file, setVideoProgress)
+                                setFormData(prev => ({ ...prev, introVideoUrl: url }))
+                              } catch (err) {
+                                setVideoError(err instanceof Error ? err.message : '影片上傳失敗')
+                              } finally {
+                                setVideoProgress(null)
+                              }
+                            }} />
+                          選擇影片
+                        </label>
+                      )}
+
+                      {videoError && (
+                        <p className="mt-2 text-xs text-red-500 whitespace-pre-line">{videoError}</p>
+                      )}
+                    </div>
+                  )}
                 </div>}
                 {!isSlot && <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">上市時間</label>

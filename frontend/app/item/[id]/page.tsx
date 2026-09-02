@@ -2675,6 +2675,45 @@ export default function ProductDetailPage() {
 
         {(() => {
           const effectiveTheme = (product as any).machine_theme || moduleSettings[product.type];
+
+          /*
+           * 自製過場影片：播老闆在後台為這一檔上傳的影片，播完彈中獎結果。
+           *
+           * 其他模組的過場影片都是寫死的靜態檔（video1／card／blindbox_op.mp4），
+           * 每一檔商品長得一模一樣；這款是唯一由 DB 帶網址的。
+           * 沒上傳影片就不走這條 —— 落回下面的 GachaBattleEffect 播內建的，
+           * 而不是開一個黑畫面。
+           */
+          const introVideo = (product as any).intro_video_url as string | undefined;
+          if (effectiveTheme === 'custom_video' && introVideo) {
+            return isGachaOpen ? (
+              <div className="fixed inset-0 z-[2100] bg-black pointer-events-auto flex items-center justify-center">
+                <div className="relative w-full h-full max-w-[560px] bg-black shadow-2xl">
+                  <video
+                    src={introVideo}
+                    className="w-full h-full object-contain"
+                    autoPlay
+                    preload="auto"
+                    muted={isVideoMuted}
+                    playsInline
+                    onEnded={handleBattleEffectComplete}
+                    /* 影片壞掉／格式不支援時不能把玩家鎖在黑畫面裡，
+                       直接當作播完，該給的獎照樣彈出來 */
+                    onError={handleBattleEffectComplete}
+                  />
+                  <SoundToggle safeTop className="absolute top-4 right-4 z-10" />
+                  <button
+                    type="button"
+                    className="absolute bottom-4 right-4 z-10 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em]"
+                    onClick={handleBattleEffectComplete}
+                  >
+                    SKIP
+                  </button>
+                </div>
+              </div>
+            ) : null;
+          }
+
           // custom 型別永遠走 GachaBattleEffect（combo 影片互動），不走 GachaThemeRenderer
           if (product.type !== 'custom' && (effectiveTheme === 'ichiban_grid' || effectiveTheme === 'custom_grid' || effectiveTheme === 'card_pack')) {
             return (
