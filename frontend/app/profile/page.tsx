@@ -3269,6 +3269,8 @@ function ProfileContent() {
                   style={{
                     bottom: 'calc(88px + env(safe-area-inset-bottom))',
                     textShadow: '0 1px 3px rgba(0, 0, 0, 0.35)',
+                    /* font-black 已是 900 上限，再粗只能用同色描邊增厚筆畫 */
+                    WebkitTextStroke: '0.6px #fff',
                     /* 呼吸動畫佔用 transform，按壓回饋改走 brightness */
                     animation: 'fab-breathe 2.8s ease-in-out infinite',
                     /* 玻璃感紅球（老闆 2026-09-02 給的 Figma 樣式） */
