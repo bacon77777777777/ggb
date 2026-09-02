@@ -4,6 +4,8 @@
  * 出貨明細單那支 route 原本自己存了一份，配送管理列表要顯示通路時差點又複製第三份。
  * 收在這裡。
  */
+import { zipFromAddress } from './twZip'
+
 export const LOGISTICS_LABEL: Record<string, string> = {
   UNIMART: '7-11',
   FAMI:    '全家',
@@ -29,9 +31,17 @@ export function logisticsSummary(o: {
   const brand = logisticsLabel(o.logisticsSubtype)
   return {
     channel: isCvs ? (brand || '超商') : (brand ? `宅配・${brand}` : '宅配'),
-    detail:  isCvs ? (o.storeName || '') : (o.address || ''),
+    detail:  isCvs ? (o.storeName || '') : withZip(o.address),
     isCvs,
   }
+}
+
+/** 宅配地址開頭帶 3 碼郵遞區號（老闆 2026-09-02）；推不出行政區就原樣 */
+export function withZip(address?: string | null): string {
+  const addr = (address || '').trim()
+  if (!addr) return ''
+  const zip = zipFromAddress(addr)
+  return zip ? `${zip} ${addr}` : addr
 }
 
 /**
@@ -64,5 +74,5 @@ export function recipientAddressLine(o: {
   if (o.logisticsType === 'CVS' && o.storeName) {
     return addr ? `[${o.storeName}]${addr}` : `[${o.storeName}]`
   }
-  return addr || '—'
+  return withZip(addr) || '—'
 }

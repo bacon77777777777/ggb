@@ -79,7 +79,7 @@ export default function OrdersPage() {
   // 表格工具列狀態
   const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('orders', 'compact', {
     orderId: true, submittedAt: true, status: true, userName: true, userId: true,
-    quantity: true, recipientName: true, logistics: true, trackingNumber: true, shippingFee: true, shippedAt: true, operations: true
+    quantity: true, note: true, recipientName: true, logistics: true, trackingNumber: true, shippingFee: true, shippedAt: true, operations: true
   })
   const [filterStartDate, setFilterStartDate] = useState('')
   const [filterEndDate, setFilterEndDate] = useState('')
@@ -136,6 +136,8 @@ export default function OrdersPage() {
            * 大件：一番賞／自製賞裡總數 ≤3 的賞（跟 DB 的 delivery_has_large_item 同一套判準）。
            * 出貨人員要據此決定拿大箱、走宅配，所以列表就要看得到，不該點進詳情才知道。
            */
+          // 玩家結帳時「留言給出貨人員」的備註（orders.note，migration 681）
+          note: order.note || '',
           hasLarge: (order.items || []).some((it: any) =>
             ['ichiban', 'custom'].includes(it.products?.type) &&
             (it.product_prizes?.total ?? 999) <= 3
@@ -532,6 +534,7 @@ export default function OrdersPage() {
       { key: 'recipientName', label: '收件地址' },
       { key: 'logistics', label: '配送方式' },
       { key: 'quantity', label: '件數' },
+      { key: 'note', label: '備註' },
       { key: 'submittedAt', label: '提交時間' },
       { key: 'userName', label: '暱稱' },
       { key: 'userId', label: '會員編號' },
@@ -546,6 +549,7 @@ export default function OrdersPage() {
       return visibleColumnsList.map(col => {
         switch (col.key) {
           case 'orderId': return shipment.orderId
+          case 'note': return shipment.note || ''
           case 'submittedAt': return formatDateTime(shipment.submittedAt)
           case 'status': {
             const statusMap: Record<string, string> = {
@@ -1322,6 +1326,7 @@ export default function OrdersPage() {
               { key: 'recipientName', label: '收件地址', visible: visibleColumns.recipientName },
               { key: 'logistics', label: '配送方式', visible: visibleColumns.logistics },
               { key: 'quantity', label: '件數', visible: visibleColumns.quantity },
+              { key: 'note', label: '備註', visible: visibleColumns.note },
               { key: 'submittedAt', label: '提交時間', visible: visibleColumns.submittedAt },
               { key: 'userName', label: '暱稱', visible: visibleColumns.userName },
               { key: 'userId', label: '會員編號', visible: visibleColumns.userId },
@@ -1440,6 +1445,11 @@ export default function OrdersPage() {
                       >
                         件數
                       </SortableTableHeader>
+                    )}
+                    {visibleColumns.note && (
+                      <th className={`${getDensityClasses()} text-left text-xs font-medium text-neutral-500`}>
+                        備註
+                      </th>
                     )}
                     {visibleColumns.submittedAt && (
                       <SortableTableHeader
@@ -1601,6 +1611,20 @@ export default function OrdersPage() {
                                 <span className="rounded bg-red-50 px-1.5 py-0.5 text-[11px] font-medium text-red-600">大件</span>
                               )}
                             </div>
+                          </td>
+                        )}
+                        {visibleColumns.note && (
+                          <td className={`${getDensityClasses()} text-sm`}>
+                            {shipment.note ? (
+                              <span
+                                className="block max-w-[160px] truncate text-amber-700"
+                                title={shipment.note}
+                              >
+                                {shipment.note}
+                              </span>
+                            ) : (
+                              <span className="text-neutral-300">–</span>
+                            )}
                           </td>
                         )}
                         {visibleColumns.submittedAt && (

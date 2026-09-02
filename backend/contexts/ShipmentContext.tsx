@@ -32,6 +32,8 @@ export interface Shipment {
   address: string
   trackingNumber: string
   shippingFee: number
+  /** 玩家結帳時留給出貨人員的備註（orders.note） */
+  note?: string
   logisticsType: string
   /** 物流子代號（UNIMART/FAMI/HILIFE/OKMART/TCAT/POST），列表要分辨走哪家通路 */
   logisticsSubtype?: string

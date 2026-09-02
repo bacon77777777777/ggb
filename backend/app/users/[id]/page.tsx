@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import { zipFromAddress } from '@/lib/twZip'
 import Badge from '@/components/ui/Badge'
 import Modal from '@/components/Modal'
 import { useRouter, useParams } from 'next/navigation'
@@ -1149,7 +1150,8 @@ export default function UserDetailPage() {
                   <Field label="收件人電話">
                     <Input value={form.recipient_phone} onChange={e => setField('recipient_phone', e.target.value)} />
                   </Field>
-                  <Field label="收件地址">
+                  {/* 郵遞區號由地址即時推導、只掛在標籤上 —— 輸入值保持乾淨，儲存不會夾帶 */}
+                  <Field label={`收件地址${zipFromAddress(form.address) ? `（${zipFromAddress(form.address)}）` : ''}`}>
                     <Input value={form.address} onChange={e => setField('address', e.target.value)} />
                   </Field>
 
