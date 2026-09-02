@@ -481,6 +481,8 @@ export type Chat = {
   lastBody: string;
   lastAt: string;
   lastFromMe: boolean;
+  /** 對方發給我、還沒讀的則數（migration 679），列表右側紅膠囊 */
+  unreadCount: number;
 };
 
 export type ChatMessage = {
@@ -511,7 +513,13 @@ export async function fetchChats(): Promise<Chat[]> {
     lastBody: r.last_body || '',
     lastAt: r.last_at,
     lastFromMe: !!r.last_from_me,
+    unreadCount: Number(r.unread_count) || 0,
   }));
+}
+
+/** 開對話時把對方發來的整串標已讀（migration 679），失敗就算了不擋畫面 */
+export function markChatRead(otherId: string): void {
+  void createClient().rpc('marketplace_mark_read', { p_other: otherId }).then(() => {}, () => {});
 }
 
 /** 一人一串（migration 677）：對話只認對象；送訊息時才繫 listing */

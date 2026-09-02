@@ -21,7 +21,7 @@ import { asset } from '@/lib/asset';
 import { useAuth } from '@/contexts/AuthContext';
 import { CommentInput } from '@/components/ui/CommentInput';
 import { Sheet, gnum, ago } from './ui';
-import { fetchChats, fetchChatThread, sendChatMessage, type Chat, type ChatMessage } from '@/app/market/data';
+import { fetchChats, fetchChatThread, sendChatMessage, markChatRead, type Chat, type ChatMessage } from '@/app/market/data';
 
 const FALLBACK = asset('/images/item_defaulet.webp');
 const AVATAR_FALLBACK = '/images/avatar/01.webp';
@@ -106,7 +106,21 @@ export function ChatListSheet({ open, onClose, onPick, loggedIn }: {
                   {c.listingStatus !== 'active' && (c.listingStatus === 'sold' ? ' · 已售出' : ' · 已下架')}
                 </span>
               </span>
-              <span className="mact" style={{ fontSize: 12, color: 'var(--sub)' }}>{ago(c.lastAt)}</span>
+              <span className="mact" style={{ fontSize: 12, color: 'var(--sub)', gap: 5 }}>
+                {ago(c.lastAt)}
+                {/* 未讀膠囊（老闆 2026-09-02，跟 LINE 一樣掛在時間下方） */}
+                {c.unreadCount > 0 && (
+                  <span
+                    style={{
+                      minWidth: 19, height: 19, padding: '0 6px', borderRadius: 10,
+                      background: 'var(--red)', color: '#fff',
+                      fontSize: 11.5, fontWeight: 700, lineHeight: '19px', textAlign: 'center',
+                    }}
+                  >
+                    {c.unreadCount > 99 ? '99+' : c.unreadCount}
+                  </span>
+                )}
+              </span>
             </button>
           ))
         )}
@@ -139,6 +153,7 @@ export function ChatThreadSheet({ open, onClose, listingId, otherId, otherName, 
   const load = useCallback(async () => {
     if (!otherId) return;
     try { setMsgs(await fetchChatThread(otherId)); } catch { setMsgs([]); }
+    markChatRead(otherId); // 打開就算讀過，列表的未讀膠囊下次載入就會消
   }, [otherId]);
 
   useEffect(() => { if (open && loggedIn) load(); }, [open, loggedIn, load]);
