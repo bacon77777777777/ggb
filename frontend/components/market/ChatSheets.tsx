@@ -18,16 +18,28 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { asset } from '@/lib/asset';
-import { Sheet, gnum, hue, ago } from './ui';
+import { useAuth } from '@/contexts/AuthContext';
+import { CommentInput } from '@/components/ui/CommentInput';
+import { Sheet, gnum, ago } from './ui';
 import { fetchChats, fetchChatThread, sendChatMessage, type Chat, type ChatMessage } from '@/app/market/data';
 
 const FALLBACK = asset('/images/item_defaulet.webp');
+const AVATAR_FALLBACK = '/images/avatar/01.webp';
+
+/** 聊天泡泡旁的頭像：吃 DB 的 avatar_url（老闆 2026-09-02，不再用暱稱染色圓點） */
+function ChatAvatar({ src }: { src: string | null }) {
+  return (
+    <span style={{ width: 26, height: 26, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#EEE' }}>
+      <Image src={asset(src || AVATAR_FALLBACK)} alt="" width={26} height={26} className="w-full h-full object-cover" unoptimized />
+    </span>
+  );
+}
 
 /** 對話列表 */
 export function ChatListSheet({ open, onClose, onPick, loggedIn }: {
   open: boolean;
   onClose: () => void;
-  onPick: (listingId: number, otherId: string, otherName: string) => void;
+  onPick: (listingId: number, otherId: string, otherName: string, otherAvatar: string | null) => void;
   loggedIn: boolean;
 }) {
   const [rows, setRows] = useState<Chat[]>([]);
@@ -59,7 +71,7 @@ export function ChatListSheet({ open, onClose, onPick, loggedIn }: {
               key={`${c.listingId}-${c.otherId}`}
               className="mrowi"
               style={{ width: '100%', textAlign: 'left' }}
-              onClick={() => onPick(c.listingId, c.otherId, c.otherName)}
+              onClick={() => onPick(c.listingId, c.otherId, c.otherName, c.otherAvatar)}
             >
               <span className="mth" style={{ background: '#F2F2F2', overflow: 'hidden' }}>
                 <Image src={c.prizeImage || FALLBACK} alt="" width={52} height={52} className="object-contain" unoptimized />
@@ -84,17 +96,20 @@ export function ChatListSheet({ open, onClose, onPick, loggedIn }: {
 }
 
 /** 單一對話 */
-export function ChatThreadSheet({ open, onClose, listingId, otherId, otherName, context, loggedIn, onSent }: {
+export function ChatThreadSheet({ open, onClose, listingId, otherId, otherName, otherAvatar = null, context, loggedIn, onSent }: {
   open: boolean;
   onClose: () => void;
   listingId: number | null;
   otherId: string | null;
   otherName: string;
+  /** 對方的 avatar_url（詳情頁給 sellerAvatar、聊聊列表給 other_avatar） */
+  otherAvatar?: string | null;
   /** 這件商品的小卡，讓對話有上下文（商城的 .chatctx.item） */
   context?: { name: string; image: string | null; price: number } | null;
   loggedIn: boolean;
   onSent?: () => void;
 }) {
+  const { user } = useAuth();
   const [msgs, setMsgs] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -135,18 +150,17 @@ export function ChatThreadSheet({ open, onClose, listingId, otherId, otherName, 
       onClose={onClose}
       footer={
         <div className="chatbar" style={{ width: '100%', padding: 0 }}>
-          <input
-            className="fin"
+          {/* 輸入框統一用情報頁留言那組元件（老闆 2026-09-02） */}
+          <CommentInput
             value={draft}
+            onChange={setDraft}
+            onSend={send}
+            canType={loggedIn && !sending}
+            sending={sending}
             maxLength={500}
-            placeholder={loggedIn ? '想問賣家什麼？' : '登入後才能發訊息'}
-            disabled={!loggedIn || sending}
-            onChange={e => setDraft(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') send(); }}
+            placeholder="想問賣家什麼？"
+            placeholderLoggedOut="登入後才能發訊息"
           />
-          <button className="sendbtn" onClick={send} disabled={!loggedIn || sending || !draft.trim()}>
-            {sending ? '送出中' : '送出'}
-          </button>
         </div>
       }
     >
@@ -180,7 +194,7 @@ export function ChatThreadSheet({ open, onClose, listingId, otherId, otherName, 
         ) : (
           msgs.map(m => (
             <div className={`bub${m.fromMe ? ' me' : ''}`} key={m.id}>
-              <span className="dot" style={{ background: m.fromMe ? 'var(--tao2)' : hue(otherName), width: 26, height: 26 }} />
+              <ChatAvatar src={m.fromMe ? (user?.avatar_url ?? null) : otherAvatar} />
               <span className="tx">{m.body}</span>
             </div>
           ))

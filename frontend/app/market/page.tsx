@@ -112,7 +112,7 @@ export default function MarketPage() {
   const [confirmOff, setConfirmOff] = useState<MyListing | null>(null);
 
   /* ── 聊聊 ── */
-  const [chatWith, setChatWith] = useState<{ listingId: number; otherId: string; otherName: string } | null>(null);
+  const [chatWith, setChatWith] = useState<{ listingId: number; otherId: string; otherName: string; otherAvatar: string | null } | null>(null);
 
   /* ── 搜尋紀錄 ── */
   const [history, setHistory] = useState<string[]>([]);
@@ -628,8 +628,8 @@ export default function MarketPage() {
         open={view === 'chats'}
         loggedIn={!!user}
         onClose={closeSheet}
-        onPick={(listingId, otherId, otherName) => {
-          setChatWith({ listingId, otherId, otherName });
+        onPick={(listingId, otherId, otherName, otherAvatar) => {
+          setChatWith({ listingId, otherId, otherName, otherAvatar });
           openSheet('chat');
         }}
       />
@@ -639,6 +639,7 @@ export default function MarketPage() {
         listingId={chatWith?.listingId ?? null}
         otherId={chatWith?.otherId ?? null}
         otherName={chatWith?.otherName ?? ''}
+        otherAvatar={chatWith?.otherAvatar ?? null}
         onClose={closeSheet}
       />
 

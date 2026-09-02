@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { Clock, Tag, Send, ChevronLeft, Share2, X } from 'lucide-react';
 import { TopFadeBlur } from '@/components/ui/TopFadeBlur';
+import { CommentInput } from '@/components/ui/CommentInput';
 import { useQueryClient } from '@tanstack/react-query';
 import { swrLoad } from '@/lib/swr';
 import { cn } from '@/lib/utils';
@@ -229,10 +230,6 @@ function CommentSheet({
     }, 100);
   };
 
-  const handleKey = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
-  };
-
   return (
     <>
       {/* 遮罩 */}
@@ -284,32 +281,15 @@ function CommentSheet({
             <span className="text-[14px] font-black tabular-nums">{articleLikeCount}</span>
           </button>
 
-          {/* 輸入框 */}
-          <div className="flex-1 relative">
-            <input
-              ref={inputRef}
-              type="text"
-              value={text}
-              onChange={e => isLoggedIn && setText(e.target.value)}
-              onKeyDown={handleKey}
-              maxLength={300}
-              readOnly={!isLoggedIn}
-              placeholder={isLoggedIn ? '說點什麼...' : '請先登入才能留言唷'}
-              className={cn(
-                'w-full rounded-full pl-4 pr-14 py-2.5 text-[14px] placeholder-neutral-400 outline-none',
-                isLoggedIn
-                  ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white'
-                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 cursor-not-allowed'
-              )}
-            />
-            <button
-              onClick={handleSend}
-              disabled={!isLoggedIn || !text.trim() || submitting}
-              className="absolute right-2 top-1/2 -translate-y-1/2 transition-opacity duration-150 disabled:opacity-25"
-            >
-              <SendPill />
-            </button>
-          </div>
+          {/* 輸入框：統一元件 ui/CommentInput（交易所聊聊也用同一顆） */}
+          <CommentInput
+            ref={inputRef}
+            value={text}
+            onChange={setText}
+            onSend={handleSend}
+            canType={isLoggedIn}
+            sending={submitting}
+          />
         </div>
       </div>
     </>

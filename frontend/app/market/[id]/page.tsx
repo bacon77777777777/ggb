@@ -260,25 +260,8 @@ export default function MarketItemPage() {
         )}
 
         <div className="abar">
-          <div className="aicon" style={{ width: 'auto', alignItems: 'flex-start', paddingLeft: 4 }}>
-            <span style={{ fontSize: 10 }}>我的 G 幣</span>
-            <b style={{ fontFamily: 'Oswald, sans-serif', fontSize: 15, color: notEnough ? 'var(--red)' : 'var(--txt)' }}>
-              {gnum(balance)}
-            </b>
-          </div>
-          {!isMine && (
-            <button
-              className="aicon"
-              onClick={() => { if (requireLogin('登入後就可以跟賣家聊聊')) openSheet('chat'); }}
-            >
-              <span className="ai">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round">
-                  <path d="M20 12a7.5 7.5 0 01-11 6.6L4 20l1.4-4.2A7.5 7.5 0 1120 12z" />
-                </svg>
-              </span>
-              <span>聊聊</span>
-            </button>
-          )}
+          {/* 餘額與聊聊移除（老闆 2026-09-02）：底欄只留購買鍵。
+              聊聊入口還在賣家列（shoprow）那顆，沒有失去功能 */}
           {isMine ? (
             <button className="buy" disabled style={{ background: '#DDD', color: '#888' }}>你上架的</button>
           ) : notEnough ? (
@@ -308,6 +291,7 @@ export default function MarketItemPage() {
         listingId={item.id}
         otherId={item.sellerId}
         otherName={item.sellerName}
+        otherAvatar={item.sellerAvatar}
         context={{ name: item.prizeName, image: item.prizeImage, price: item.price }}
         onClose={closeSheet}
       />
