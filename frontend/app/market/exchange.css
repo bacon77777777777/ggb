@@ -138,7 +138,9 @@
   width: 62px; height: 62px; border-radius: 8px; overflow: hidden; flex-shrink: 0;
   background: #F2F2F2; display: grid; place-items: center;
 }
-.mk.gx .mkrow .th img { width: 100%; height: 100%; object-fit: contain; display: block; }
+/* contain 的 letterbox 靠左上（老闆 2026-09-02）：直式卡圖置中會左右各留白，
+   整排看起來像內容偏右 */
+.mk.gx .mkrow .th img { width: 100%; height: 100%; object-fit: contain; object-position: left top; display: block; }
 .mk.gx .mkrow .tx { flex: 1; min-width: 0; }
 .mk.gx .mkrow .tx b { display: block; font-size: 13.5px; font-weight: 700; line-height: 1.35; }
 .mk.gx .mkrow .tx span { display: block; font-size: 11.5px; color: var(--sub); margin-top: 3px; }
