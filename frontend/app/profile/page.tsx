@@ -95,7 +95,7 @@ interface WarehouseItem {
   name: string;
   series: string;
   grade: string;
-  status: 'in_warehouse' | 'pending_delivery' | 'shipped' | 'exchanged';
+  status: 'in_warehouse' | 'pending_delivery' | 'shipped' | 'exchanged' | 'listing';
   image: string;
   date: string;
   ticketNo: string;
@@ -531,7 +531,7 @@ function ProfileContent() {
    *   major      ＝ 只看大獎品項（A賞／最後賞那類，用既有的 isMajorGrade 判斷）
    *   delivering ＝ 只看已申請配送、還沒出貨的（status = pending_delivery）
    */
-  type WarehouseFilter = 'latest' | 'major' | 'delivering';
+  type WarehouseFilter = 'latest' | 'major' | 'delivering' | 'listed';
   const [warehouseFilter, setWarehouseFilter] = useState<WarehouseFilter>('latest');
 
   /*
@@ -926,6 +926,8 @@ function ProfileContent() {
       items = items.filter(item => isMajorGrade(item.grade));
     } else if (warehouseFilter === 'delivering') {
       items = items.filter(item => item.status === 'pending_delivery');
+    } else if (warehouseFilter === 'listed') {
+      items = items.filter(item => item.status === 'listing');
     }
 
     // 4. 廠商
@@ -984,10 +986,11 @@ function ProfileContent() {
       });
     }
 
-    // 待配送的沉到最後（不能再操作）—— 但「配送中」篩選下整批都是待配送，不用再沉
-    if (warehouseFilter === 'delivering') return items;
-    const active = items.filter(i => i.status !== 'pending_delivery');
-    const pending = items.filter(i => i.status === 'pending_delivery');
+    // 待配送／上架中的沉到最後（不能再操作）—— 但對應篩選下整批都是同狀態，不用再沉
+    if (warehouseFilter === 'delivering' || warehouseFilter === 'listed') return items;
+    const lockedStatus = (s: string) => s === 'pending_delivery' || s === 'listing';
+    const active = items.filter(i => !lockedStatus(i.status));
+    const pending = items.filter(i => lockedStatus(i.status));
     return [...active, ...pending];
   }, [filteredWarehouseItems, warehouseFilter, warehouseSort]);
 
@@ -1039,6 +1042,10 @@ function ProfileContent() {
           setIsWarehouseSearchOpen(false);
         },
       },
+    ];
+
+    // 狀態獨立一組（老闆 2026-09-02：「賞等與狀態應該要區分開來」）
+    const stateChips = [
       {
         key: 'state:delivering',
         label: '出貨中',
@@ -1046,6 +1053,16 @@ function ProfileContent() {
         active: warehouseFilter === 'delivering',
         onSelect: () => {
           setWarehouseFilter(warehouseFilter === 'delivering' ? 'latest' : 'delivering');
+          setIsWarehouseSearchOpen(false);
+        },
+      },
+      {
+        key: 'state:listed',
+        label: '上架中',
+        count: countBy(i => i.status === 'listing'),
+        active: warehouseFilter === 'listed',
+        onSelect: () => {
+          setWarehouseFilter(warehouseFilter === 'listed' ? 'latest' : 'listed');
           setIsWarehouseSearchOpen(false);
         },
       },
@@ -1066,7 +1083,8 @@ function ProfileContent() {
 
     const groups = [
       { title: '類別', chips: categoryChips },
-      { title: '賞等與狀態', chips: gradeChips },
+      { title: '賞等', chips: gradeChips },
+      { title: '狀態', chips: stateChips },
     ];
     if (supplierChips.length > 1) groups.push({ title: '廠商', chips: supplierChips });
     return groups;
@@ -1098,6 +1116,7 @@ function ProfileContent() {
     }
     if (warehouseFilter === 'major') labels.push('大賞');
     if (warehouseFilter === 'delivering') labels.push('出貨中');
+    if (warehouseFilter === 'listed') labels.push('上架中');
     if (activeWarehouseSubCategory === 'small_prize') labels.push('小賞');
     if (activeWarehouseSubCategory === 'tradable') labels.push('可上架');
     if (activeWarehouseSubCategory === 'preorder') labels.push('預購');
@@ -1124,7 +1143,7 @@ function ProfileContent() {
    */
   const selectAllTarget = React.useMemo(() => {
     const ids = filteredWarehouseItems
-      .filter(i => i.status !== 'pending_delivery')
+      .filter(i => i.status !== 'pending_delivery' && i.status !== 'listing')
       .map(i => i.id);
     return { ids };
   }, [filteredWarehouseItems]);
@@ -1656,7 +1675,7 @@ function ProfileContent() {
                 products ( name, price, type, sale_mode, supplier_id, suppliers ( id, name ) )
               `)
               .eq('user_id', user.id)
-              .in('status', ['in_warehouse', 'pending_delivery'])
+              .in('status', ['in_warehouse', 'pending_delivery', 'listing'])
               .order('created_at', { ascending: false })
               .order('id', { ascending: false })
               .range(from, to),
@@ -3188,6 +3207,7 @@ function ProfileContent() {
                     <div className="grid grid-cols-3 gap-2 p-2">
                       {sortedWarehouseItems.slice(0, mobileWarehouseDisplayCount).map((item) => {
                         const isPending = item.status === 'pending_delivery';
+                        const isListed = item.status === 'listing';
                         return (
                           <WarehouseGridCell
                             key={item.id}
@@ -3197,6 +3217,7 @@ function ProfileContent() {
                             selected={selectedForDeliverySet.has(item.id)}
                             major={isMajorGrade(item.grade)}
                             pending={isPending}
+                            listed={isListed}
                             onToggle={() => toggleDeliverySelection(item.id)}
                           />
                         );

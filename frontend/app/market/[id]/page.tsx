@@ -313,7 +313,7 @@ export default function MarketItemPage() {
           {isMine ? (
             /* 自己的上架（老闆 2026-09-02）：編輯（重開價）＋深灰按住下架 */
             <>
-              <button className="ghostbtn" style={{ padding: '12px 24px', fontSize: 14 }} onClick={openEdit}>編輯</button>
+              <button className="ghostbtn" style={{ padding: '12px 24px', fontSize: 14, borderRadius: 22 }} onClick={openEdit}>編輯</button>
               <HoldToConfirmButton
                 className="buy dark"
                 onConfirm={doOffShelf}
@@ -388,6 +388,13 @@ export default function MarketItemPage() {
                   {gnum(Math.max(0, Math.round(Number(editPrice) || 0) - Math.floor((Number(editPrice) || 0) * settings.feePercent / 100)))} G
                 </b>
               </p>
+            </>
+          )}
+          {/* 開價參考：同一張近 90 天走勢（跟頁面上、上架表單同一個元件） */}
+          {deals.length >= 2 && (
+            <>
+              <div className="mqhd" style={{ marginTop: 12 }}>同款近 90 天成交</div>
+              <DealTrend deals={deals} />
             </>
           )}
         </div>

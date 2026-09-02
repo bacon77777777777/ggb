@@ -25,6 +25,8 @@ export type Listing = {
   prizeImage: string | null;
   productName: string;
   productType: string;
+  /** products.series 的短系列名（寶可夢、三麗鷗…），二級頁籤用（migration 675） */
+  productSeries: string;
   productPrizeId: number | null;
   prizeTotal: number | null;
   createdAt: string;
@@ -104,6 +106,7 @@ const toListing = (r: any): Listing => ({
   prizeImage: r.prize_image || null,
   productName: r.product_name || '',
   productType: r.product_type || '',
+  productSeries: r.product_series || '',
   productPrizeId: r.product_prize_id ?? null,
   prizeTotal: r.prize_total ?? null,
   createdAt: r.created_at,
@@ -137,7 +140,7 @@ export async function fetchFeed(opts: {
   // 賞等比對用前綴：DB 存的是「A賞」，但也有「A賞 限定版」這種寫法
   if (level) q = q.ilike('prize_level', `${level}%`);
   if (type) q = q.eq('product_type', type);
-  if (series) q = q.eq('product_name', series);
+  if (series) q = q.eq('product_series', series);
 
   if (sort === 'cheap') q = q.order('price', { ascending: true });
   else if (sort === 'rich') q = q.order('price', { ascending: false });
@@ -176,14 +179,14 @@ const TYPE_ORDER = ['ichiban', 'blindbox', 'gacha', 'card', 'custom'];
 export async function fetchFacets(): Promise<Facets> {
   const { data } = await createClient()
     .from('public_marketplace_listings')
-    .select('product_type, product_name')
+    .select('product_type, product_series')
     .limit(2000);
 
   const typeCount = new Map<string, number>();
   const seriesMap = new Map<string, Map<string, number>>();
   for (const r of (data || []) as any[]) {
     const t = String(r.product_type || '');
-    const n = String(r.product_name || '');
+    const n = String(r.product_series || '');
     if (!t) continue;
     typeCount.set(t, (typeCount.get(t) || 0) + 1);
     // 每個類別自己一份系列表，另外再存一份「全部」的

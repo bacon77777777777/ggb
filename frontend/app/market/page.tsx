@@ -327,9 +327,10 @@ export default function MarketPage() {
               {(facets?.types.length ?? 0) > 1 && (
                 <Tabs value={type} onValueChange={(val) => { setType(val); setSeries(''); }} className="w-full">
                   <TabsList className="bg-transparent dark:bg-transparent px-0 justify-start mb-0 border-b border-neutral-100 dark:border-neutral-800 pb-0">
-                    <TabsTrigger value="" className={cn('!px-3 !py-2', type === '' ? '!text-primary' : '!text-neutral-500')}>全部</TabsTrigger>
+                    {/* 類別頂多四五個，平均分掉整排寬度（老闆 2026-09-02） */}
+                    <TabsTrigger value="" className={cn('!px-3 !py-2 flex-1', type === '' ? '!text-primary' : '!text-neutral-500')}>全部</TabsTrigger>
                     {facets!.types.map(t => (
-                      <TabsTrigger key={t.key} value={t.key} className={cn('!px-3 !py-2', type === t.key ? '!text-primary' : '!text-neutral-500')}>{t.label}</TabsTrigger>
+                      <TabsTrigger key={t.key} value={t.key} className={cn('!px-3 !py-2 flex-1', type === t.key ? '!text-primary' : '!text-neutral-500')}>{t.label}</TabsTrigger>
                     ))}
                   </TabsList>
                 </Tabs>
@@ -422,11 +423,18 @@ export default function MarketPage() {
             <div className="dban" style={{ margin: '0 0 10px' }}>
               <div>
                 <b>倉庫裡有 {eligible.length} 件可以掛上來</b>
-                <small>
-                  {settings
-                    ? `開放 ${settings.allowedLevels.join('、')}，售價 ${gnum(settings.minPrice)}～${gnum(settings.maxPrice)} G`
-                    : '載入規則中…'}
-                </small>
+                <small>{settings ? `開放 ${settings.allowedLevels.join('、')}` : '載入規則中…'}</small>
+                {/* 售價區間獨立一行，「G」改 G 幣圖標放金額左邊（老闆 2026-09-02） */}
+                {settings && (
+                  <small style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                    售價
+                    <Image src={asset('/images/gcoin.webp')} alt="G" width={12} height={12} className="object-contain" unoptimized />
+                    {gnum(settings.minPrice)}
+                    <span>～</span>
+                    <Image src={asset('/images/gcoin.webp')} alt="G" width={12} height={12} className="object-contain" unoptimized />
+                    {gnum(settings.maxPrice)}
+                  </small>
+                )}
               </div>
               <button className="go" onClick={() => { if (requireLogin('登入後就可以上架')) openSheet('sell'); }}>去上架</button>
             </div>

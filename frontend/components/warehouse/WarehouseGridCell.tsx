@@ -21,6 +21,8 @@ export interface WarehouseGridCellProps {
   major: boolean;
   /** 已申請配送，不能再操作 */
   pending?: boolean;
+  /** 掛在交易所架上，不能再操作（下架才解鎖） */
+  listed?: boolean;
   /** 廠商鎖：一張訂單只能有一家廠商的貨，非鎖定廠商的整格淡掉 */
   disabled?: boolean;
   onToggle: () => void;
@@ -33,10 +35,11 @@ export default function WarehouseGridCell({
   selected,
   major,
   pending = false,
+  listed = false,
   disabled = false,
   onToggle,
 }: WarehouseGridCellProps) {
-  const locked = pending || disabled;
+  const locked = pending || listed || disabled;
   /*
    * 圖還沒載出來時墊預設圖（老闆 2026-08-24）。
    * 原本只有 bg-item-bg 打底，一整格深灰色塊看起來像壞圖；一次載 12 格、
@@ -117,6 +120,11 @@ export default function WarehouseGridCell({
         {pending && (
           <span className="absolute bottom-1 left-1 rounded-md bg-blue-500 px-1.5 py-[3px] text-[10px] font-black leading-none text-white">
             <span className="cjk-optical-center">出貨中</span>
+          </span>
+        )}
+        {listed && (
+          <span className="absolute bottom-1 left-1 rounded-md bg-amber-500 px-1.5 py-[3px] text-[10px] font-black leading-none text-white">
+            <span className="cjk-optical-center">上架中</span>
           </span>
         )}
 
