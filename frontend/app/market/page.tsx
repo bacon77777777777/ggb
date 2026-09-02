@@ -463,7 +463,7 @@ export default function MarketPage() {
                   <span className="tx">
                     <b>{m.prizeLevel ? `${m.prizeLevel} ` : ''}{m.prizeName}</b>
                     <span>{m.productName}</span>
-                    <span>{ago(m.createdAt)}上架 · {m.status === 'active' ? '架上' : m.status === 'sold' ? '已賣出' : '已下架'}</span>
+                    <span>{ago(m.createdAt)}上架　{m.status === 'active' ? '架上' : m.status === 'sold' ? '已賣出' : '已下架'}</span>
                   </span>
                   {/* 右欄：下架文字鈕靠右上、金額在它下面靠右（老闆 2026-09-02） */}
                   <span className="rt">
