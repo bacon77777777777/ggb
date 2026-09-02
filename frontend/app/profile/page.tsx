@@ -628,7 +628,8 @@ function ProfileContent() {
      pointer-events-none），要白字；點進倉庫／出貨那些詳細分頁後頂部換成白色
      sticky 標題列，就要黑字。判斷寫在這裡而不是量測，是因為那層橘底
      pointer-events-none，任何靠命中測試的量測都看不到它。 */
-  useStatusBarText(isMobileDetailOpen ? 'black' : 'white');
+  // 會員中心主畫面是紅底（profile-bubbles），開子分頁（倉庫等）就回白
+  useStatusBarText(isMobileDetailOpen ? 'black' : 'white', isMobileDetailOpen ? undefined : '#EE4D2D');
 
   // UI States
   const [selectedForDelivery, setSelectedForDelivery] = useState<string[]>([]);
@@ -3264,9 +3265,12 @@ function ProfileContent() {
                 <button
                   type="button"
                   onClick={() => router.push('/market?tab=mine&v=sell')}
-                  className="fixed right-4 z-[60] w-14 h-14 text-white text-[13px] font-black active:scale-95 transition-transform flex items-center justify-center"
+                  className="fixed right-4 z-[60] w-14 h-14 text-white text-[14.5px] font-black active:brightness-90 flex items-center justify-center"
                   style={{
                     bottom: 'calc(88px + env(safe-area-inset-bottom))',
+                    textShadow: '0 1px 3px rgba(0, 0, 0, 0.35)',
+                    /* 呼吸動畫佔用 transform，按壓回饋改走 brightness */
+                    animation: 'fab-breathe 2.8s ease-in-out infinite',
                     /* 玻璃感紅球（老闆 2026-09-02 給的 Figma 樣式） */
                     borderRadius: 83,
                     border: '2px solid rgba(255, 255, 255, 0.49)',

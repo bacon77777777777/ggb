@@ -50,10 +50,20 @@ const DEFAULT_TEXT: StatusBarText = 'black';
  * 所以「堆疊最後一項」永遠是當前頁的宣告。用陣列而不是單一變數，是為了讓
  * 巢狀情況（頁面 + 全螢幕彈窗各自宣告）也能在彈窗關掉時自動退回頁面的值。
  */
-const stack: { key: object; text: StatusBarText }[] = [];
+const stack: { key: object; text: StatusBarText; color?: string }[] = [];
 const listeners = new Set<() => void>();
 
+/**
+ * Safari 的 theme-color 也走同一個堆疊（老闆 2026-09-02）。
+ * iOS Safari 只在「載入文件」時取樣頁面頂色來塗它自己的狀態列區，
+ * 站內換頁（SPA）不會重新取樣 —— 從紅頂的會員中心進白頂的倉庫，
+ * 紅色就殘留著，重新整理才會好。由 meta 明講就不用讓它猜。
+ * 沒宣告顏色的頁面落回白（layout 靜態 themeColor 同值）。
+ */
+const DEFAULT_COLOR = '#ffffff';
+
 const currentText = () => (stack.length ? stack[stack.length - 1].text : DEFAULT_TEXT);
+const currentColor = () => (stack.length ? stack[stack.length - 1].color ?? DEFAULT_COLOR : DEFAULT_COLOR);
 const emit = () => { for (const l of listeners) l(); };
 const subscribe = (l: () => void) => {
   listeners.add(l);
@@ -62,29 +72,33 @@ const subscribe = (l: () => void) => {
 
 /**
  * 宣告這一頁（或這個彈窗）底下的狀態列要用什麼顏色的文字。
- * 只在原生 App 生效；瀏覽器分頁呼叫它不會有任何副作用。
+ * 文字黑白只在原生 App 生效；`themeColor`（頁面頂部的底色）則餵給
+ * Safari 的 `<meta name="theme-color">`，有色頂的頁面要一起宣告，
+ * 沒宣告的落回白。
  */
-export function useStatusBarText(text: StatusBarText) {
+export function useStatusBarText(text: StatusBarText, themeColor?: string) {
   // 身分用一個穩定的空物件，不用 index —— 陣列會被別人 splice，index 會錯位
   const keyRef = useRef<object | null>(null);
   if (keyRef.current === null) keyRef.current = {};
   const key = keyRef.current;
 
   useEffect(() => {
-    stack.push({ key, text });
+    stack.push({ key, text, color: themeColor });
     emit();
     return () => {
       const i = stack.findIndex(e => e.key === key);
       if (i >= 0) stack.splice(i, 1);
       emit();
     };
-  }, [key, text]);
+  }, [key, text, themeColor]);
 }
 
 export default function StatusBarStyle() {
   // SSR 沒有堆疊，server snapshot 固定回預設值（給常數，不能每次回新物件）
   const text = useSyncExternalStore(subscribe, currentText, () => DEFAULT_TEXT);
+  const color = useSyncExternalStore(subscribe, currentColor, () => DEFAULT_COLOR);
   const applied = useRef<StatusBarText | null>(null);
+  const appliedColor = useRef<string | null>(null);
 
   useEffect(() => {
     if (!native.isNativePlatform()) return;
@@ -93,6 +107,24 @@ export default function StatusBarStyle() {
     applied.current = text;
     void native.call('StatusBar', 'setStyle', { style: text === 'white' ? 'DARK' : 'LIGHT' });
   }, [text]);
+
+  // Safari／PWA 的 theme-color：layout 靜態 meta 是白，這裡照堆疊即時蓋值。
+  // App 殼內直接跳過 —— WKWebView 的狀態列本來就不看這顆 meta，
+  // 老闆 2026-09-02 指定 App 現況完美、一根手指都不要碰
+  useEffect(() => {
+    if (native.isNativePlatform()) return;
+    if (appliedColor.current === color) return;
+    appliedColor.current = color;
+    const metas = document.querySelectorAll('meta[name="theme-color"]');
+    if (metas.length === 0) {
+      const m = document.createElement('meta');
+      m.name = 'theme-color';
+      m.content = color;
+      document.head.appendChild(m);
+    } else {
+      metas.forEach(m => m.setAttribute('content', color));
+    }
+  }, [color]);
 
   return null;
 }

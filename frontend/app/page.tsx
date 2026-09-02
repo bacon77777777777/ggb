@@ -82,7 +82,7 @@ export default function Home() {
 
   /* 動態島文字：手機端首頁的導航列吃主題色（Navbar 的 surfaceClassName
      `bg-primary`，不隨捲動改變），白字。桌機那條是白底，但 App 只有手機版。 */
-  useStatusBarText('white');
+  useStatusBarText('white', '#EE4D2D');
   const homeStateKey = 'gachago:home_state';
 
   const [allProducts, setAllProducts] = useState<ProductRow[]>([]);

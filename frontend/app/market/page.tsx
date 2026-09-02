@@ -63,8 +63,9 @@ type Tab = 'market' | 'mine' | 'deals';
 
 export default function MarketPage() {
   useFeatureGate('market');
-  // 頂欄是主題色紅、延伸進狀態列 → 動態島那排字要白的（App 內才有作用）
-  useStatusBarText('white');
+  // 頂欄是主題色紅、延伸進狀態列 → 動態島那排字要白的（App 內才有作用）；
+  // theme-color 取 .hdr 漸層（#ff7b00→#ff2d46）的中間色
+  useStatusBarText('white', '#ff5423');
   const router = useRouter();
   const params = useSearchParams();
   const { user, refreshProfile } = useAuth();

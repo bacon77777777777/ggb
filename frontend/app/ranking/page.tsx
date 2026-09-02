@@ -47,7 +47,7 @@ export default function RankingPage() {
 
   /* 動態島文字：整頁是深藍色流體背景（頂欄在頂端時是透明的，深色來自底下
      那層 fixed 的 InkFlowField），一律白字。 */
-  useStatusBarText('white');
+  useStatusBarText('white', '#1b2148');
 
   useLayoutEffect(() => {
     if (window.innerWidth >= 768) router.replace('/');

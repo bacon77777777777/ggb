@@ -697,3 +697,9 @@ canvas {
   user-select: none;
   -webkit-user-select: none;
 }
+
+/* 倉庫「我要賣」懸浮球：緩慢呼吸縮放（老闆 2026-09-02，幅度一點點就好） */
+@keyframes fab-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}

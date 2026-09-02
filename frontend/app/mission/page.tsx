@@ -18,7 +18,7 @@ export default function MissionPage() {
   const { user, refreshProfile, isLoading: authLoading } = useAuth();
 
   /* 動態島文字：整頁底色是 #ff2d14 橘紅，白字。 */
-  useStatusBarText('white');
+  useStatusBarText('white', '#ff2d14');
   const { showToast } = useToast();
   const router = useRouter();
   /*
