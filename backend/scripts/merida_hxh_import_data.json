@@ -1,0 +1,194 @@
+[
+  {
+    "src": "merida:reacto-aero-2027",
+    "type": "custom",
+    "category": "自製賞",
+    "name": "MERIDA 美利達 REACTO 空氣動力公路車",
+    "price": 1500,
+    "image": "https://merida-cdn.m-c-g.net/merida-v2/crud-content-img-big/db-global/2026/taggroups/26-merida-road-race-aero.jpg",
+    "total_count": 4000,
+    "prizes": [
+      {
+        "level": "A賞",
+        "is_last": false,
+        "name": "MERIDA REACTO ONE（建議售價 NT$338,000）",
+        "image": "https://merida-cdn.m-c-g.net/merida-v2/crud-card/master/bikes/2027/REACTO_ONE_redgry_MY27.tif?p1",
+        "qty": 1
+      },
+      {
+        "level": "B賞",
+        "is_last": false,
+        "name": "MERIDA REACTO 10K（建議售價 NT$318,000）",
+        "image": "https://merida-cdn.m-c-g.net/merida-v2/crud-card/master/bikes/2027/REACTO_10K_blkgld_MY27.tif?p1",
+        "qty": 1
+      },
+      {
+        "level": "C賞",
+        "is_last": false,
+        "name": "MERIDA REACTO TEAM（建議售價 NT$318,000）",
+        "image": "https://merida-cdn.m-c-g.net/merida-v2/crud-card/master/bikes/2027/REACTO_TEAM_grnud_MY27.tif?p1",
+        "qty": 1
+      },
+      {
+        "level": "D賞",
+        "is_last": false,
+        "name": "MERIDA REACTO TEAM CH（建議售價 NT$318,000）",
+        "image": "https://merida-cdn.m-c-g.net/merida-v2/crud-card/master/bikes/2027/REACTO_TEAM_grnud_MY27.tif?p1",
+        "qty": 1
+      },
+      {
+        "level": "E賞",
+        "is_last": false,
+        "name": "MERIDA REACTO PRO（建議售價 NT$258,000）",
+        "image": "https://merida-cdn.m-c-g.net/merida-v2/crud-card/master/bikes/2027/REACTO_PRO_vanred_MY27.tif?p1",
+        "qty": 1
+      },
+      {
+        "level": "F賞",
+        "is_last": false,
+        "name": "MERIDA REACTO 9000（建議售價 NT$218,000）",
+        "image": "https://merida-cdn.m-c-g.net/merida-v2/crud-card/master/bikes/2027/REACTO_9000_slvud_MY27.tif?p1",
+        "qty": 1
+      },
+      {
+        "level": "G賞",
+        "is_last": false,
+        "name": "MERIDA REACTO 9000 CH（建議售價 NT$218,000）",
+        "image": "https://merida-cdn.m-c-g.net/merida-v2/crud-card/countries/zh-tw/2026/46303reacto9000ch.jpg?p1",
+        "qty": 1
+      },
+      {
+        "level": "H賞",
+        "is_last": false,
+        "name": "MERIDA REACTO 8000（建議售價 NT$158,000）",
+        "image": "https://merida-cdn.m-c-g.net/merida-v2/crud-card/master/bikes/2027/REACTO_8000_prlblk_MY27.tif?p1",
+        "qty": 1
+      },
+      {
+        "level": "I賞",
+        "is_last": false,
+        "name": "MERIDA REACTO 8000 CH（建議售價 NT$158,000）",
+        "image": "https://merida-cdn.m-c-g.net/merida-v2/crud-card/countries/zh-tw/2026/reacto8000che191b-mei-rui-guo-hong-ka-meng-liang-hei.jpg?p1",
+        "qty": 1
+      },
+      {
+        "level": "J賞",
+        "is_last": false,
+        "name": "MERIDA REACTO 7000（建議售價 NT$155,000）",
+        "image": "https://merida-cdn.m-c-g.net/merida-v2/crud-card/master/bikes/2027/REACTO_7000_grnwht_MY27.tif?p1",
+        "qty": 1
+      },
+      {
+        "level": "K賞",
+        "is_last": false,
+        "name": "MERIDA REACTO 6000（建議售價 NT$128,000）",
+        "image": "https://merida-cdn.m-c-g.net/merida-v2/crud-card/master/bikes/2027/REACTO_6000_redgry_MY27.tif?p1",
+        "qty": 1
+      },
+      {
+        "level": "L賞",
+        "is_last": false,
+        "name": "MERIDA REACTO 5000（建議售價 NT$99,800）",
+        "image": "https://merida-cdn.m-c-g.net/merida-v2/crud-card/master/bikes/2027/REACTO_5000_whttel_MY27.tif?p1",
+        "qty": 1
+      },
+      {
+        "level": "M賞",
+        "is_last": false,
+        "name": "MERIDA REACTO 4000（建議售價 NT$76,000）",
+        "image": "https://merida-cdn.m-c-g.net/merida-v2/crud-card/master/bikes/2027/REACTO_4000_gldblk_MY27.tif?p1",
+        "qty": 1
+      },
+      {
+        "level": "N賞",
+        "is_last": false,
+        "name": "隨機轉蛋（參加賞）",
+        "image": "https://www.ggb.com.tw/images/gacha/pegg.webp",
+        "qty": 3987
+      }
+    ],
+    "description": "MERIDA 美利達 REACTO 全系列空氣動力公路車。\n\nA 賞到 M 賞是 REACTO 十三款車型，從旗艦 REACTO ONE 到 REACTO 4000，每款各一台；N 賞為隨機轉蛋。抽中的車款會存進你的倉庫，申請出貨時再寄給你。\n\n車架尺寸與顏色以出貨當下的原廠供貨為準，下單後我們會用 LINE 跟你確認。"
+  },
+  {
+    "src": "1kuji:hxh8",
+    "type": "ichiban",
+    "category": "一番賞",
+    "name": "一番賞 HUNTER×HUNTER 嵌合蟻篇 ②",
+    "price": 175,
+    "image": "https://assets.1kuji.com/uploads/product/top_banner/10490/cadc9e9b-4ea7-494a-a069-24ed54382be3.jpg",
+    "total_count": 80,
+    "prizes": [
+      {
+        "level": "A賞",
+        "is_last": false,
+        "name": "梅路艾姆 MASTERLISE",
+        "image": "https://assets.1kuji.com/uploads/product_item/image/104710/ff969cdf-938e-4b82-8712-900e5d879c07.jpg",
+        "qty": 1
+      },
+      {
+        "level": "B賞",
+        "is_last": false,
+        "name": "尼特羅 MASTERLISE",
+        "image": "https://assets.1kuji.com/uploads/product_item/image/104711/89a0a802-7059-4cd7-8e49-6d6b720d5582.jpg",
+        "qty": 1
+      },
+      {
+        "level": "C賞",
+        "is_last": false,
+        "name": "小傑 MASTERLISE",
+        "image": "https://assets.1kuji.com/uploads/product_item/image/104712/68cd8094-a760-4bf4-ab04-7e84ad0e608d.jpg",
+        "qty": 1
+      },
+      {
+        "level": "D賞",
+        "is_last": false,
+        "name": "奇犽 MASTERLISE",
+        "image": "https://assets.1kuji.com/uploads/product_item/image/104713/2667883b-08fd-4a90-8b55-ebdb3cf71bc6.jpg",
+        "qty": 1
+      },
+      {
+        "level": "E賞",
+        "is_last": false,
+        "name": "尼飛彼多 MASTERLISE",
+        "image": "https://assets.1kuji.com/uploads/product_item/image/104714/fbd9c5d1-1c7d-47bf-ba2f-1cd890e9ad0a.jpg",
+        "qty": 1
+      },
+      {
+        "level": "F賞",
+        "is_last": false,
+        "name": "沙屋阿普夫／孟德多多矢 MASTERLISE（全2種隨機）",
+        "image": "https://assets.1kuji.com/uploads/product_item/image/104715/2c8f36d0-9175-495d-ad5c-cba1bee98cb1.jpg",
+        "qty": 2
+      },
+      {
+        "level": "G賞",
+        "is_last": false,
+        "name": "橡膠吊飾收藏（全10種）",
+        "image": "https://assets.1kuji.com/uploads/product_item/image/104716/a9f32126-f2bc-46a5-b90c-acae0708ad62.jpg",
+        "qty": 20
+      },
+      {
+        "level": "H賞",
+        "is_last": false,
+        "name": "文具組合（全10種）",
+        "image": "https://assets.1kuji.com/uploads/product_item/image/104717/eac4ba92-fe04-4040-9765-35ae60da25d5.jpg",
+        "qty": 25
+      },
+      {
+        "level": "I賞",
+        "is_last": false,
+        "name": "手機扣環吊飾／頸掛繩＆貼紙組（全10種）",
+        "image": "https://assets.1kuji.com/uploads/product_item/image/104718/8a0c7cd4-b006-4736-a923-3b89f7ec5498.jpg",
+        "qty": 28
+      },
+      {
+        "level": "最後賞",
+        "is_last": true,
+        "name": "小傑～成長ver.～ MASTERLISE EXTRA",
+        "image": "https://assets.1kuji.com/uploads/product_item/image/104719/a72e4576-e2b1-499f-b851-f653e98c68b9.jpg",
+        "qty": 1
+      }
+    ],
+    "description": "一番賞 HUNTER×HUNTER 嵌合蟻篇 ②。\n\nA 賞到 E 賞為 MASTERLISE 系列公仔：梅路艾姆、尼特羅、小傑、奇犽、尼飛彼多；F 賞為沙屋阿普夫與孟德多多矢兩種隨機。G 賞橡膠吊飾、H 賞文具組合、I 賞手機扣環吊飾與頸掛繩貼紙組，各為全十種。\n\n抽走最後一支籤的人另外獲得最後賞「小傑～成長 ver.～ MASTERLISE EXTRA」。"
+  }
+]

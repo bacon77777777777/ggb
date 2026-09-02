@@ -21,7 +21,8 @@
  *   cards_per_pack  抽卡一包幾張（1／3／5／10，migration 666）
  *   pack_style      卡包樣式 builtin／custom
  *   machine_theme   個別指定開包演出；留空＝跟著全站預設走
- *   description     自己的商品說明；沒帶才用下面依來源套的預設文案
+ *   description     商品說明。**這是玩家看得到的欄位**（商品頁內文＋分享卡的 OG
+ *                   description），沒帶就留空，不會自動塞任何字。
  */
 
 import fs from 'fs'
@@ -52,10 +53,17 @@ if (!inPath) {
 
 const items: Item[] = JSON.parse(fs.readFileSync(inPath, 'utf8'))
 
-const description = (it: Item) => it.description
-  ?? (it.src.startsWith('fc:')
-    ? '匯入自 fortune-cookie（fortune-cookie.tokyo）公開商品頁，名稱／文案／圖片待替換'
-    : '匯入自潮玩家公開商品頁，圖片與文案待替換')
+/**
+ * 商品說明。
+ *
+ * ⚠️ **絕對不要在這裡塞內部備註。** 舊版沒帶 description 時會自動填
+ * 「匯入自◯◯公開商品頁，圖片與文案待替換」，2026-09-02 老闆把剛建好的商品網址
+ * 貼進 LINE，那段字就變成分享卡的說明文出現在對話裡 —— `description` 同時是
+ * 商品頁內文與 OG description，玩家看得到。
+ *
+ * 要提醒老闆的事寫在對話與 DEVLOG，不要寫進 DB。沒有成品文案就留空。
+ */
+const description = (it: Item) => it.description ?? ''
 
 async function run(db: typeof DBS[number]) {
   const c = new Client({ connectionString: db.url })

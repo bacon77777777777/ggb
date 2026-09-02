@@ -393,6 +393,19 @@ Playwright 走 `frontend/node_modules/playwright`（後台沒裝）。
 
 已匯入批次的資料留在 `backend/scripts/*_import_data*.json`，可回溯每件商品的來源 id。
 
+**⚠️ `products.description` 是玩家看得到的欄位 —— 不准寫給自己看的備註。**
+
+2026-09-02 匯入 MERIDA 與 HxH 兩檔時，我把「【素材匯入，上架前必須覆核】獎品資料取自
+MERIDA 官方 zh-tw 網站…」寫進 `description`。老闆一上架、把商品網址貼到 LINE，
+**那段字就變成分享卡的說明文出現在對話裡**（`description` 同時是商品頁內文與 OG description）。
+
+- 匯入時 `description` 一律寫**成品文案**：這是什麼、有哪些賞、抽到之後怎麼拿。
+  照「前台文案原則」那一節寫，不出現路徑、欄位名、內部代號、「匯入」「覆核」「待替換」。
+- 要提醒老闆的事（品名待改、價格待覆核、佔位圖要換）**寫在對話與 DEVLOG，不要寫進 DB**。
+  真的要留在資料裡就放 `products.metadata`（jsonb，前台不讀）。
+- 同一條適用所有玩家看得到的欄位：`products.name`、`product_prizes.name/level`。
+  **佔位內容要能直接見人** —— 商品建進去的下一秒就可能被上架。
+
 ## Environment Variables
 
 後台（`backend/.env.local`）關鍵變數：
@@ -682,6 +695,7 @@ npm run brand:sync            # 等同 node scripts/brand_sync.mjs
 | `前往挑戰：/challenge` | `[前往挑戰機台](/challenge)` |
 | 「按下的瞬間由伺服器決定並寫入紀錄」 | 「按下去的那一刻結果就定了，斷線也算你的」 |
 | 「購買進入權」 | 「買一張入場券」 |
+| 「【素材匯入，上架前必須覆核】…」 | 寫成品文案；提醒的話寫在對話與 DEVLOG |
 
 **公告內文的連結寫法**：`[顯示文字](/path)`。
 公告內頁（`frontend/app/announcements/[id]/page.tsx` 的 `linkify`）會渲染成
