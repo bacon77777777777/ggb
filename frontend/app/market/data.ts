@@ -509,9 +509,9 @@ export async function fetchChats(): Promise<Chat[]> {
   }));
 }
 
-export async function fetchChatThread(listingId: number, otherId: string): Promise<ChatMessage[]> {
+/** 一人一串（migration 677）：對話只認對象；送訊息時才繫 listing */
+export async function fetchChatThread(otherId: string): Promise<ChatMessage[]> {
   const { data, error } = await createClient().rpc('marketplace_chat_thread', {
-    p_listing_id: listingId,
     p_other: otherId,
   });
   if (error) throw error;

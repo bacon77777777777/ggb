@@ -119,9 +119,9 @@ export function ChatThreadSheet({ open, onClose, listingId, otherId, otherName, 
   const boxRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
-    if (!listingId || !otherId) return;
-    try { setMsgs(await fetchChatThread(listingId, otherId)); } catch { setMsgs([]); }
-  }, [listingId, otherId]);
+    if (!otherId) return;
+    try { setMsgs(await fetchChatThread(otherId)); } catch { setMsgs([]); }
+  }, [otherId]);
 
   useEffect(() => { if (open && loggedIn) load(); }, [open, loggedIn, load]);
 

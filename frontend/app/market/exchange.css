@@ -158,10 +158,18 @@
 }
 .mk.gx .mkrow .rt .act.danger { border-color: #FFD3D9; color: var(--red); }
 
-/* 聊聊列表（老闆 2026-09-02：字太小、內容沒置中）。.mrowi 是商城共用列，只在交易所改 */
-.mk.gx .mrowi { align-items: center; }
-.mk.gx .mrowi .mt { font-size: 15px; font-weight: 700; }
-.mk.gx .mrowi .ms { font-size: 13px; }
+/* 聊聊列表照 LINE 的規格（老闆 2026-09-02）：
+   頭像置中、名稱 16px 粗體、預覽 13.5px 灰字單行截尾、時間 12px 釘右上、間距放寬 */
+.mk.gx .mrowi { align-items: center; gap: 12px; padding: 13px 0; }
+.mk.gx .mrowi .mt {
+  font-size: 16px; font-weight: 700; line-height: 1.3;
+  display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-line-clamp: unset;
+}
+.mk.gx .mrowi .ms {
+  font-size: 13.5px; margin-top: 3px; line-height: 1.35;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mk.gx .mrowi .mact { align-self: flex-start; margin-top: 3px; }
 
 /* 交易紀錄＝帳戶明細（老闆 2026-09-02）：買進紅 -、賣出綠 +（實收），右上角紅／綠標 */
 .mk.gx .mkrow.deal { position: relative; }
