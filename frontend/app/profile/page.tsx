@@ -1693,8 +1693,11 @@ function ProfileContent() {
     setSettingsForm(f => ({ ...f, recipientName: updates.recipient_name, recipientPhone: updates.recipient_phone, recipientAddress: updates.address }));
   };
 
+  /** 表單呈現方式：結帳裡開＝底部彈窗；我的地址開＝全頁 push（老闆 2026-09-02 兩者並存） */
+  const [editRecipientSheet, setEditRecipientSheet] = useState(false);
   const openNewAddress = () => {
     if (addresses.length >= 3) { toast.error('最多儲存三筆地址'); return; }
+    setEditRecipientSheet(showDeliveryModal);
     setEditingAddressId(null);
     setEditAddrName(''); setEditAddrPhone('');
     setAddrCity(''); setAddrDist(''); setAddrRest('');
@@ -1705,6 +1708,7 @@ function ProfileContent() {
   const openEditAddress = (id: string) => {
     const a = addresses.find(x => x.id === id);
     if (!a) return;
+    setEditRecipientSheet(false);
     setEditingAddressId(id);
     setEditAddrName(a.name); setEditAddrPhone(a.phone);
     const parts = splitTwAddress(a.address);
@@ -1765,6 +1769,103 @@ function ProfileContent() {
       setAddressMenuId(null);
     }
   };
+
+  /*
+   * 編輯地址的表單內容 —— 全頁版與結帳裡的底部彈窗版共用同一份，
+   * 只在外殼與留白上不同（inSheet）。
+   */
+  const renderAddressForm = (inSheet: boolean) => (
+    <>
+      <div className={cn('bg-white dark:bg-neutral-900', inSheet ? '' : 'mt-3 px-4')}>
+        <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+          <div className="py-1">
+            <input
+              value={editAddrName}
+              onChange={e => setEditAddrName(e.target.value)}
+              maxLength={30}
+              placeholder="例：王吉比"
+              className="w-full bg-transparent border-none py-3 px-0 text-[15px] text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:ring-0"
+            />
+          </div>
+          <div className="py-1">
+            <input
+              value={editAddrPhone}
+              onChange={e => setEditAddrPhone(e.target.value)}
+              onBlur={e => setEditAddrPhone(normalizePhone(e.target.value))}
+              type="tel"
+              inputMode="numeric"
+              pattern="^09\d{8}$"
+              placeholder={PHONE_PLACEHOLDER}
+              className="w-full bg-transparent border-none py-3 px-0 text-[15px] text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:ring-0"
+            />
+          </div>
+          {/* 台灣格式：郵遞區號自動帶入（唯讀三碼）｜縣市／區用原生選單（iOS 滾輪），剩下打門牌 */}
+          <div className="py-1 flex items-center gap-3">
+            <span className={cn(
+              'w-10 shrink-0 py-3 text-[15px] tabular-nums',
+              zip3Of(addrCity, addrDist) ? 'text-neutral-900 dark:text-white' : 'text-neutral-300 dark:text-neutral-600'
+            )}>
+              {zip3Of(addrCity, addrDist) || '000'}
+            </span>
+            <select
+              value={addrCity}
+              onChange={e => applyAddr(e.target.value, '', addrRest)}
+              className={cn(
+                'flex-1 bg-transparent border-none py-3 px-0 text-[15px] focus:ring-0 appearance-none',
+                addrCity ? 'text-neutral-900 dark:text-white' : 'text-neutral-400'
+              )}
+            >
+              <option value="" disabled>選擇縣市</option>
+              {TW_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select
+              value={addrDist}
+              onChange={e => applyAddr(addrCity, e.target.value, addrRest)}
+              disabled={!addrCity}
+              className={cn(
+                'flex-1 bg-transparent border-none py-3 px-0 text-[15px] focus:ring-0 appearance-none disabled:opacity-40',
+                addrDist ? 'text-neutral-900 dark:text-white' : 'text-neutral-400'
+              )}
+            >
+              <option value="" disabled>選擇鄉鎮市區</option>
+              {(TW_DISTRICTS[addrCity] ?? []).map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+          <div className="py-1">
+            <input
+              value={addrRest}
+              onChange={e => applyAddr(addrCity, addrDist, e.target.value)}
+              className="w-full bg-transparent border-none py-3 px-0 text-[15px] text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:ring-0"
+              placeholder="街道、巷弄、門牌號碼、樓層"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 預設開關：預設那筆會鏡像回 users.recipient_*（出貨、後台都讀它） */}
+      <button
+        type="button"
+        onClick={() => setEditAddrDefault(v => !v)}
+        className={cn(
+          'w-full bg-white dark:bg-neutral-900 flex items-center justify-between',
+          inSheet ? 'py-3 border-t border-neutral-100 dark:border-neutral-800' : 'mt-3 px-4 py-3'
+        )}
+      >
+        <span className="text-[15px] text-neutral-900 dark:text-white">設為預設地址</span>
+        <div className={cn(
+          'w-11 h-6 rounded-full relative transition-colors',
+          editAddrDefault ? 'bg-accent-emerald' : 'bg-neutral-200 dark:bg-neutral-700'
+        )}>
+          <div className={cn(
+            'absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all',
+            editAddrDefault ? 'right-1' : 'left-1'
+          )} />
+        </div>
+      </button>
+    </>
+  );
+
+  const addressSaveDisabled = isUpdatingProfile || !editAddrName.trim() || !editAddrPhone.trim() || !addrCity || !addrDist || !addrRest.trim();
 
   /** 本次配送實際使用的地址（選了用選的，沒選用預設） */
   const deliveryAddress = React.useMemo(() => {
@@ -7786,12 +7887,6 @@ function ProfileContent() {
             ))}
           </div>
         )}
-        <button
-          onClick={() => setShowTitlePicker(false)}
-          className="w-full bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 h-[44px] rounded-lg font-bold text-[15px] active:scale-[0.98] transition-all"
-        >
-          關閉
-        </button>
       </BottomModal>
 
       {/* 頭像選擇彈窗（老闆 2026-08-29）—— 一排五個、全部圓形，第一格是上傳 */}
@@ -8177,9 +8272,10 @@ function ProfileContent() {
         </button>
       </BottomModal>
 
-      {/* Edit Recipient Modal (Slide-in) */}
+      {/* Edit Recipient Modal —— 兩種殼共用同一份表單：
+          我的地址進來＝全頁 push；結帳裡開＝底部彈窗（老闆 2026-09-02） */}
       <AnimatePresence>
-        {showEditRecipient && (
+        {showEditRecipient && !editRecipientSheet && (
           <motion.div 
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
@@ -8187,102 +8283,18 @@ function ProfileContent() {
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="fixed inset-0 z-[100] bg-neutral-100 dark:bg-neutral-950 flex flex-col"
           >
-            {/* Header */}
             {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
             <PageHeader title={editingAddressId ? '編輯地址' : '新增地址'} onBack={() => setShowEditRecipient(false)} />
 
-            {/* Content */}
             <div className="flex-1 overflow-y-auto">
-              <div className="bg-white dark:bg-neutral-900 mt-3 px-4">
-                <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                  <div className="py-1">
-                    <input
-                      value={editAddrName}
-                      onChange={e => setEditAddrName(e.target.value)}
-                      maxLength={30}
-                      placeholder="例：王吉比"
-                      className="w-full bg-transparent border-none py-3 px-0 text-[15px] text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:ring-0"
-                    />
-                  </div>
-                  <div className="py-1">
-                    <input
-                      value={editAddrPhone}
-                      onChange={e => setEditAddrPhone(e.target.value)}
-                      onBlur={e => setEditAddrPhone(normalizePhone(e.target.value))}
-                      type="tel"
-                      inputMode="numeric"
-                      pattern="^09\d{8}$"
-                      placeholder={PHONE_PLACEHOLDER}
-                      className="w-full bg-transparent border-none py-3 px-0 text-[15px] text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:ring-0"
-                    />
-                  </div>
-                  {/* 台灣格式：郵遞區號自動帶入（唯讀三碼）｜縣市／區用原生選單（iOS 滾輪），剩下打門牌 */}
-                  <div className="py-1 flex items-center gap-3">
-                    <span className={cn(
-                      "w-10 shrink-0 py-3 text-[15px] tabular-nums",
-                      zip3Of(addrCity, addrDist) ? "text-neutral-900 dark:text-white" : "text-neutral-300 dark:text-neutral-600"
-                    )}>
-                      {zip3Of(addrCity, addrDist) || '000'}
-                    </span>
-                    <select
-                      value={addrCity}
-                      onChange={e => applyAddr(e.target.value, '', addrRest)}
-                      className={cn(
-                        "flex-1 bg-transparent border-none py-3 px-0 text-[15px] focus:ring-0 appearance-none",
-                        addrCity ? "text-neutral-900 dark:text-white" : "text-neutral-400"
-                      )}
-                    >
-                      <option value="" disabled>選擇縣市</option>
-                      {TW_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                    <select
-                      value={addrDist}
-                      onChange={e => applyAddr(addrCity, e.target.value, addrRest)}
-                      disabled={!addrCity}
-                      className={cn(
-                        "flex-1 bg-transparent border-none py-3 px-0 text-[15px] focus:ring-0 appearance-none disabled:opacity-40",
-                        addrDist ? "text-neutral-900 dark:text-white" : "text-neutral-400"
-                      )}
-                    >
-                      <option value="" disabled>選擇鄉鎮市區</option>
-                      {(TW_DISTRICTS[addrCity] ?? []).map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </div>
-                  <div className="py-1">
-                    <input
-                      value={addrRest}
-                      onChange={e => applyAddr(addrCity, addrDist, e.target.value)}
-                      className="w-full bg-transparent border-none py-3 px-0 text-[15px] text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:ring-0"
-                      placeholder="街道、巷弄、門牌號碼、樓層"
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              {/* 預設開關：預設那筆會鏡像回 users.recipient_*（出貨、後台都讀它） */}
-              <button
-                type="button"
-                onClick={() => setEditAddrDefault(v => !v)}
-                className="w-full bg-white dark:bg-neutral-900 mt-3 px-4 py-3 flex items-center justify-between"
-              >
-                <span className="text-[15px] text-neutral-900 dark:text-white">設為預設地址</span>
-                <div className={cn(
-                  "w-11 h-6 rounded-full relative transition-colors",
-                  editAddrDefault ? "bg-accent-emerald" : "bg-neutral-200 dark:bg-neutral-700"
-                )}>
-                  <div className={cn(
-                    "absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all",
-                    editAddrDefault ? "right-1" : "left-1"
-                  )} />
-                </div>
-              </button>
+              {renderAddressForm(false)}
             </div>
 
             {/* Footer —— 同購買確認的主鈕；App 無瀏海列，安全區高度要自己留 */}
             <div className="bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
               <button
                 onClick={() => void saveAddress()}
-                disabled={isUpdatingProfile || !editAddrName.trim() || !editAddrPhone.trim() || !addrCity || !addrDist || !addrRest.trim()}
+                disabled={addressSaveDisabled}
                 className="w-full rounded-xl font-black shadow-xl transition-all h-[44px] text-base bg-accent-red text-white shadow-accent-red/20 active:scale-[0.98] disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
               >
                 {isUpdatingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : '儲存'}
@@ -8291,6 +8303,22 @@ function ProfileContent() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 結帳裡開的版本：底部彈窗（BottomModal，跟其他小彈窗同一套殼） */}
+      <BottomModal
+        open={showEditRecipient && editRecipientSheet}
+        onClose={() => setShowEditRecipient(false)}
+        title={editingAddressId ? '編輯地址' : '新增地址'}
+      >
+        {renderAddressForm(true)}
+        <button
+          onClick={() => void saveAddress()}
+          disabled={addressSaveDisabled}
+          className="mt-4 w-full rounded-xl font-black shadow-xl transition-all h-[44px] text-base bg-accent-red text-white shadow-accent-red/20 active:scale-[0.98] disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
+        >
+          {isUpdatingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : '儲存'}
+        </button>
+      </BottomModal>
 
       {/* 地址列的點點點：黑遮罩＋底部兩個選項（老闆 2026-09-02） */}
       <AnimatePresence>
