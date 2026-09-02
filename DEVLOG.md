@@ -4,6 +4,59 @@
 
 ---
 
+## v2026.09.02b｜2026-09-02｜交易所整輪打磨：行情走勢／集氣操作／聊聊重構／檢舉
+
+### 詳情頁（/market/<id>）
+- 價格條「G」字改 G 幣圖標放金額左邊；上架時間 13px 實色；賞等移到品項名右側（通用 GradeBadge）
+- **成交行情獨立區塊**：三格數字＋近 90 天走勢折線（DealTrend，按住看逐筆、
+  列表兩筆半限高＋展開）。migration 673 `public_marketplace_recent_deals`（只露價格與時間）
+- 底部「賣家其他上架」改**相關品項**：同品項（便宜在前）→ 同商品 → 同類型三層遞補；
+  賣家列改「全部商品(N)」膠囊開面板，「另外還掛了 N 件」移除
+- 購買改**按住集氣**直接成交（HoldToConfirmButton，商城 bindHold 的 React 版），確認彈窗移除；
+  自己的上架分「編輯」（migration 674 `update_listing_price`，面板帶走勢）＋深灰「按住下架」
+- 底欄餘額與聊聊鍵移除；分享右邊加「⋯」→ 檢舉（radio 預設原因，
+  migration 676 `marketplace_reports` 表＋RPC，重複檢舉同筆更新不疊）
+
+### 列表頁（/market）
+- 頁籤換首頁 ui/Tabs＋膠囊列（`.mk button` reset 用 `!` 修飾符壓過）、一級頁籤 flex-1 平均分寬、
+  左右滑切頁（useSwipeTabs）、兩排吸頂（top 用 ResizeObserver 量 .hdr）、底部導航下滑收起
+- 系列膠囊改吃 `products.series` 短名（migration 675 view 補 `product_series`）
+- 我的上架：點卡進詳情、金額 G 幣圖標化、已下架不再列；banner 只留件數＋售價區間（獨立行帶圖標）
+- 交易紀錄改帳戶明細式：買進紅 -🪙、賣出綠 +🪙（實收）、右上角紅／綠標，買進點了去倉庫
+- 上架表單：「實際拿到」獨立行、開價下帶同款走勢
+- 頂欄主題色延伸進動態島（safe-area）＋狀態列文字宣告白
+
+### 聊聊
+- 頭像吃 DB avatar_url（自己＝AuthContext、對方＝other_avatar）；輸入框抽成統一元件
+  `ui/CommentInput`（情報頁留言同款，情報頁一併改用）
+- **一人一串**（migration 677，LINE 心智模型）；訊息逐則帶商品（migration 678），
+  換件處插「聊到這件」小卡、正要問的那件貼輸入框上方（固定頂卡移除）
+- 未讀數膠囊（migration 679：`read_at`＋`marketplace_mark_read`＋列表回 unread_count），
+  開對話整串標已讀
+- 體驗修正：chatbox 44vh 小框放開、.sbd 單一捲動容器、面板開著鎖背景捲動、
+  開場動畫完關過渡；列表照 LINE 規格（16px 粗體名稱／13.5px 預覽／時間釘右上）
+
+### 倉庫（/profile）
+- 配送彈窗確認改按住集氣、金額 G 幣圖標化
+- 「我要賣」懸浮球（玻璃紅、呼吸縮放、字描邊）→ 直達交易所上架表單；
+  倉庫兩顆舊上架入口隱藏（兩套上架彈窗強碰，留交易所那套）
+- 搜尋面板「賞等與狀態」拆成「賞等／狀態」，補**上架中**：倉庫會列 listing 品項
+  （鎖定＋琥珀標），下架自動解禁
+- Safari 頂色殘留根治：useStatusBarText 加 themeColor 參數餵 `<meta name=theme-color>`
+  （SPA 換頁 Safari 不重新取樣頂色）；App 殼內跳過不動原生行為。
+  ⚠️ meta 要「拔舊插新」不能只改 content —— WebKit 對屬性變更的 chrome 重繪不可靠
+- 會員中心「交易所管理」入口移除（上架走倉庫「我要賣」、紀錄在交易所分頁）
+
+### 後台
+- 交易所品項管理：只列上架中（下架那列直接消失），狀態欄／篩選／統計卡簡化
+- 交易紀錄：金額拆三欄全黑字（售價／實收／手續費），手續費放最右欄
+
+### Migrations（673–679，STG＋PROD 已套）
+673 recent_deals view｜674 update_listing_price｜675 listings view 補 series｜
+676 reports 表＋RPC｜677 聊聊一人一串｜678 訊息帶商品｜679 未讀
+
+---
+
 ## v2026.09.02a｜2026-09-02｜蓄力黃線改吃新的 mask.svg，光暈加強
 
 ### 外框線換形狀

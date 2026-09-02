@@ -7444,17 +7444,8 @@ function ProfileContent() {
                   onClick: () => handleTabChange('delivery'),
                 },
                 // 商城管理入口已移除（老闆 2026-08-20）：首頁懸浮選單已有商城入口
-                ...(flags.market && !inApp
-                  ? ([
-                      {
-                        id: 'market',
-                        label: '交易所管理',
-                        icon: Store,
-                        color: 'text-purple-500',
-                        onClick: () => handleTabChange('market'),
-                      },
-                    ] as any[])
-                  : []),
+                // 交易所管理入口已移除（老闆 2026-09-02）：上架走倉庫「我要賣」、
+                // 紀錄在交易所自己的分頁，這裡不用再放一個門
                 ...(flags.exchange && !inApp
                   ? ([
                       {
@@ -7740,28 +7731,7 @@ function ProfileContent() {
 
               <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 overflow-hidden">
                 <div className="space-y-1">
-                  {flags.market && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isGuest) {
-                          router.push(loginHref);
-                          return;
-                        }
-                        handleTabChange('market');
-                      }}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black transition-all group text-left",
-                        activeTab === 'market'
-                          ? "bg-primary text-white shadow-lg shadow-primary/20"
-                          : "text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white"
-                      )}
-                    >
-                      <Store className={cn("w-5 h-5 stroke-[2.5]", activeTab === 'market' ? "text-white" : "text-neutral-300 group-hover:text-primary transition-colors")} />
-                      <span className="truncate">交易所管理</span>
-                      <ChevronRight className={cn("ml-auto w-4 h-4 transition-transform hidden sm:block", activeTab === 'market' ? "text-white/50" : "text-neutral-200 group-hover:text-neutral-400")} />
-                    </button>
-                  )}
+                  {/* 交易所管理入口已移除（老闆 2026-09-02） */}
 
                   {flags.exchange && !inApp && (
                     <button

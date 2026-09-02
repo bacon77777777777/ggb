@@ -115,15 +115,14 @@ export default function StatusBarStyle() {
     if (native.isNativePlatform()) return;
     if (appliedColor.current === color) return;
     appliedColor.current = color;
-    const metas = document.querySelectorAll('meta[name="theme-color"]');
-    if (metas.length === 0) {
-      const m = document.createElement('meta');
-      m.name = 'theme-color';
-      m.content = color;
-      document.head.appendChild(m);
-    } else {
-      metas.forEach(m => m.setAttribute('content', color));
-    }
+    // ⚠️ 一定要「拔舊插新」，不能只改 content 屬性 —— WebKit 對屬性變更的
+    // chrome 重繪不可靠（老闆 2026-09-02 實測：同一份 DOM，配送管理會變白、
+    // 我的倉庫卻停在紅），插入新節點才每次都吃
+    document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.remove());
+    const m = document.createElement('meta');
+    m.name = 'theme-color';
+    m.content = color;
+    document.head.appendChild(m);
   }, [color]);
 
   return null;
