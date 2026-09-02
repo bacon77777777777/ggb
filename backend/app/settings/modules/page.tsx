@@ -122,6 +122,7 @@ const CATEGORIES: { key: string; label: string; info: string; rows: Row[] }[] = 
            這裡原本寫 custom_combo，但那個值 DB 裡從來沒存過
            （PROD 是 custom_battle、STG 是 custom_grid），選單永遠顯示未選中 */
         { value: 'custom_battle', label: '影片互動', desc: '全畫面影片播放，互動點擊揭曉最大賞' },
+        { value: 'custom_tear',   label: '沉浸撕紙', desc: '一番賞那套撕紙券，逐張撕開揭曉' },
         /* 這一款要在**個別商品**上傳影片才有東西可播，所以放第二個 ——
            排第一就等於變成全站預設，而沒傳影片的商品會全部退回內建影片 */
         { value: 'custom_video', label: '自製過場影片', desc: '播放該檔商品自己上傳的影片，播完彈出中獎結果' },

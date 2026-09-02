@@ -32,6 +32,9 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
    */
   custom:   [
     { value: 'custom_battle', label: '影片互動' },
+    /* 一番賞那套 FigmaTearScene 搬過來，逐張撕（老闆 2026-09-02）。
+       這一款是真的有實作的，跟先前被拿掉的同名死選項不一樣 */
+    { value: 'custom_tear',   label: '沉浸撕紙' },
     /* 選了這款要再上傳一支影片（下面的「過場影片」欄位），沒傳的話前台會退回
        站上內建的 video1.mp4，不會開天窗 */
     { value: 'custom_video',  label: '自製過場影片' },

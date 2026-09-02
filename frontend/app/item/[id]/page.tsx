@@ -31,6 +31,10 @@ import GachaMachine, { Prize } from '@/components/GachaMachine';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { GachaThemeRenderer, type MachineTheme } from '@/components/gacha-themes';
 import { PrizeResultModal } from '@/components/shop/PrizeResultModal';
+const FigmaTearScene = dynamic(
+  () => import('@/components/shop/FigmaTearScene'),
+  { ssr: false },
+);
 const TicketSelectionFlow = dynamic(
   () => import('@/components/shop/TicketSelectionFlow').then(m => m.TicketSelectionFlow),
   { ssr: false },
@@ -524,6 +528,10 @@ export default function ProductDetailPage() {
   const [isGachaOpen, setIsGachaOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [wonPrizes, setWonPrizes] = useState<Prize[]>([]);
+  /* 自製賞的沉浸撕紙：現在撕到第幾張，以及重新掛載用的 session
+     （同一張撕完再抽一次，key 不變的話 FigmaTearScene 會停在撕開的狀態） */
+  const [customTearIndex, setCustomTearIndex] = useState(0);
+  const [customTearSession, setCustomTearSession] = useState(0);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   /** 選籤彈窗是否為試玩（試試看）：試玩不扣款、直接進撕紙 */
   const [isTicketTrial, setIsTicketTrial] = useState(false);
@@ -1057,6 +1065,8 @@ export default function ProductDetailPage() {
       setIsPurchaseModalOpen(false);
       setWonPrizes([]);
       setIsGachaLoading(true);
+      setCustomTearIndex(0);
+      setCustomTearSession(n => n + 1);
       setIsGachaOpen(true);
     }
 
@@ -2712,6 +2722,42 @@ export default function ProductDetailPage() {
                 </div>
               </div>
             ) : null;
+          }
+
+          /*
+           * 自製賞的沉浸撕紙：一番賞那套 FigmaTearScene 原封不動搬過來，逐張撕。
+           *
+           * 一番賞走的是 TicketSelectionFlow（要先選籤號，撕紙掛在那條流程裡），
+           * 自製賞沒有選籤畫面、買完直接開演出，所以撕紙要接在這裡而不是那支元件。
+           * 外層那兩層容器（黑底置中＋393:844 letterbox）跟 TicketSelectionFlow
+           * 完全一致 —— 撕紙的座標是照 393 寬算的，換一個容器整張券就會歪掉。
+           */
+          if (effectiveTheme === 'custom_tear' && wonPrizes.length > 0) {
+            if (!isGachaOpen) return null;
+            const idx = Math.min(customTearIndex, wonPrizes.length - 1);
+            const cur = wonPrizes[idx] as Prize & { is_last_one?: boolean };
+            const isLastCard = idx >= wonPrizes.length - 1;
+            const letter = cur?.is_last_one
+              ? 'LAST'
+              : String(cur?.grade ?? 'F').replace('賞', '').trim().toUpperCase();
+            return (
+              <div className="fixed inset-0 z-[3000] bg-black flex items-center justify-center">
+                <div
+                  className="relative overflow-hidden w-screen md:w-[min(100vw,_calc(100dvh_*_393_/_844))]"
+                  style={{ height: '100dvh' }}
+                >
+                  <FigmaTearScene
+                    key={`${customTearSession}-${idx}`}
+                    prizeTierLetter={letter}
+                    initialDone={false}
+                    isLast={isLastCard}
+                    onNext={() => setCustomTearIndex(idx + 1)}
+                    onOpenAll={handleBattleEffectComplete}
+                    onBack={handleBattleEffectComplete}
+                  />
+                </div>
+              </div>
+            );
           }
 
           // custom 型別永遠走 GachaBattleEffect（combo 影片互動），不走 GachaThemeRenderer
