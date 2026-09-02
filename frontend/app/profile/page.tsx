@@ -3294,23 +3294,8 @@ function ProfileContent() {
                             <button onClick={handleDismantleClick} className="flex-1 bg-accent-red text-white h-[44px] rounded-xl text-base font-black">回收</button>
                             {selectedForDelivery.length <= 10 && canDeliverSelection && (
                               <>
-                                {/* 這顆按鈕寫的是交易所（marketplace）的資料，
-                                    旗標卻掛在卡牌交換上 —— 關掉卡牌交換會連帶讓
-                                    交易所不能上架，關掉交易所反而按鈕還在 */}
-                                {flags.market && selectedForDelivery.length === 1 && warehouseItems.find(i => i.id === selectedForDelivery[0] && isMajorGrade(i.grade)) && (
-                                  (() => {
-                                    const item = warehouseItems.find(i => i.id === selectedForDelivery[0])!;
-                                    return (
-                                      <button
-                                        onClick={() => handleSellClick(item)}
-                                        disabled={Boolean(item?.isPreorder && item?.preorderAvailableAt && new Date(item.preorderAvailableAt).getTime() > Date.now())}
-                                        className="flex-1 bg-accent-yellow text-neutral-800 h-[44px] rounded-xl text-base font-black disabled:opacity-50 disabled:cursor-not-allowed"
-                                      >
-                                        上架
-                                      </button>
-                                    );
-                                  })()
-                                )}
+                                {/* 倉庫的上架彈窗與交易所的上架表單強碰，老闆 2026-09-02 拍板留交易所那個：
+                                倉庫這顆上架入口隱藏，上架一律走 /market「我的上架 → 去上架」 */}
                                 <button
                                   onClick={() => { trackEvent('delivery_modal_open', { path: '/profile', meta: { count: selectedForDelivery.length } }); setShowDeliveryModal(true); }}
                                   disabled={Boolean(selectedForDelivery.some(id => {
@@ -3361,22 +3346,8 @@ function ProfileContent() {
                           >
                             回收 ({selectedForDelivery.length})
                           </button>
-                          {flags.market && !inApp && (() => {
-                            if (selectedForDelivery.length > 10) return null;
-                            if (selectedForDelivery.length !== 1) return null;
-                            const item = warehouseItems.find(i => i.id === selectedForDelivery[0]);
-                            if (!item || !isMajorGrade(item.grade)) return null;
-                            return (
-                              <button
-                                type="button"
-                                onClick={() => handleSellClick(item)}
-                                disabled={Boolean(item?.isPreorder && item?.preorderAvailableAt && new Date(item.preorderAvailableAt).getTime() > Date.now())}
-                                className="h-9 px-3 rounded-lg bg-accent-yellow text-neutral-900 text-[13px] font-black disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                上架市集
-                              </button>
-                            );
-                          })()}
+                          {/* 倉庫的上架彈窗與交易所的上架表單強碰，老闆 2026-09-02 拍板留交易所那個：
+                                倉庫這顆上架入口隱藏，上架一律走 /market「我的上架 → 去上架」 */}
                           {selectedForDelivery.length <= 10 ? (
                             <button
                               type="button"

@@ -72,6 +72,8 @@ export type Sellable = {
   prizeImage: string | null;
   productName: string;
   ticketNumber: number | null;
+  /** 上架表單要畫「同款成交走勢」用（老闆 2026-09-02） */
+  productPrizeId: number | null;
 };
 
 export type MarketSettings = {
@@ -386,7 +388,7 @@ export async function fetchMyDeals(): Promise<Deal[]> {
 export async function fetchSellable(userId: string): Promise<Sellable[]> {
   const { data, error } = await createClient()
     .from('draw_records')
-    .select('id, ticket_number, prize_level, prize_name, product_prizes ( name, level, image_url ), products ( name, sale_mode, is_preorder, preorder_available_at )')
+    .select('id, ticket_number, prize_level, prize_name, product_prize_id, product_prizes ( name, level, image_url ), products ( name, sale_mode, is_preorder, preorder_available_at )')
     .eq('user_id', userId)
     .eq('status', 'in_warehouse')
     .order('created_at', { ascending: false })
@@ -408,6 +410,7 @@ export async function fetchSellable(userId: string): Promise<Sellable[]> {
       prizeImage: r.product_prizes?.image_url || null,
       productName: r.products?.name || '',
       ticketNumber: r.ticket_number ?? null,
+      productPrizeId: r.product_prize_id ?? null,
     }));
 }
 

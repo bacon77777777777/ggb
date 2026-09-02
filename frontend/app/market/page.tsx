@@ -45,11 +45,13 @@ import { asset } from '@/lib/asset';
 import PrizeCard from '@/components/market/PrizeCard';
 import { Sheet, Dialog, Toast, useMarketToast, useSheetRoute, gnum, ago } from '@/components/market/ui';
 import { ChatListSheet, ChatThreadSheet } from '@/components/market/ChatSheets';
+import { DealTrend } from '@/components/market/DealTrend';
 import {
-  fetchFeed, fetchFacets, fetchSettings, fetchMyListings, fetchMyDeals, fetchSellable,
+  fetchFeed, fetchFacets, fetchSettings, fetchMyListings, fetchMyDeals, fetchSellable, fetchRecentDeals,
   createListing, cancelListing, levelAllowed,
   PAGE_SIZE, SORTS,
   type Listing, type MyListing, type Deal, type Sellable, type MarketSettings, type SortKey, type Facets,
+  type DealPoint,
 } from './data';
 
 export const dynamic = 'force-dynamic';
@@ -186,6 +188,18 @@ export default function MarketPage() {
     () => (settings ? sellable.filter(s => levelAllowed(s.prizeLevel, settings.allowedLevels)) : []),
     [sellable, settings],
   );
+
+  /* 上架表單：選中品項的同款近 90 天成交（開價的參考，跟詳情頁同一張走勢圖） */
+  const [pickDeals, setPickDeals] = useState<DealPoint[]>([]);
+  useEffect(() => {
+    const s = eligible.find(x => x.drawRecordId === pick);
+    if (!s?.productPrizeId) { setPickDeals([]); return; }
+    let dead = false;
+    fetchRecentDeals(s.productPrizeId)
+      .then(rows => { if (!dead) setPickDeals(rows); })
+      .catch(() => { if (!dead) setPickDeals([]); });
+    return () => { dead = true; };
+  }, [pick, eligible]);
 
   const submitSearch = (q: string) => {
     const v = q.trim();
@@ -406,7 +420,7 @@ export default function MarketPage() {
                 <b>倉庫裡有 {eligible.length} 件可以掛上來</b>
                 <small>
                   {settings
-                    ? `開放 ${settings.allowedLevels.join('、')}，售價 ${gnum(settings.minPrice)}～${gnum(settings.maxPrice)} G，成交收 ${settings.feePercent}% 手續費`
+                    ? `開放 ${settings.allowedLevels.join('、')}，售價 ${gnum(settings.minPrice)}～${gnum(settings.maxPrice)} G`
                     : '載入規則中…'}
                 </small>
               </div>
@@ -419,7 +433,15 @@ export default function MarketPage() {
               <div className="empty">你還沒有上架任何東西</div>
             ) : (
               mine.map(m => (
-                <div className="mkrow" key={m.id}>
+                /* 點小卡進詳情頁（老闆 2026-09-02）；已售出／下架的會落在詳情頁的「已下架」畫面 */
+                <div
+                  className="mkrow"
+                  key={m.id}
+                  role="button"
+                  tabIndex={0}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => { rememberScroll(); router.push(`/market/${m.id}`); }}
+                >
                   <span className="th">
                     <Image src={m.prizeImage || FALLBACK} alt="" width={62} height={62} className="object-contain" unoptimized />
                   </span>
@@ -431,7 +453,7 @@ export default function MarketPage() {
                   <span className="rt">
                     <span className={`p${m.status === 'active' ? '' : ' minus'}`}>{gnum(m.price)} G</span>
                     {m.status === 'active' && (
-                      <button className="act danger" onClick={() => setConfirmOff(m)}>下架</button>
+                      <button className="act danger" onClick={(e) => { e.stopPropagation(); setConfirmOff(m); }}>下架</button>
                     )}
                   </span>
                 </div>
@@ -447,31 +469,40 @@ export default function MarketPage() {
             ) : deals.length === 0 ? (
               <div className="empty">還沒有成交紀錄</div>
             ) : (
-              deals.map(d => (
-                <div className="mkrow" key={`${d.side}-${d.id}`}>
-                  <span className="th">
-                    <Image src={d.prizeImage || FALLBACK} alt="" width={62} height={62} className="object-contain" unoptimized />
-                  </span>
-                  <span className="tx">
-                    <b>{d.prizeLevel ? `${d.prizeLevel} ` : ''}{d.prizeName}</b>
-                    <span>{d.productName}</span>
-                    <span>
-                      {d.side === 'buy' ? `向 ${d.counterparty} 買` : `賣給 ${d.counterparty}`} · {ago(d.createdAt)}
+              /* 帳戶明細式（老闆 2026-09-02）：買進紅 -、賣出綠 +（實收，手續費已扣）；
+                 右上角紅／綠標，買進的點了帶去倉庫看品項 */
+              deals.map(d => {
+                const buy = d.side === 'buy';
+                return (
+                  <div
+                    className="mkrow deal"
+                    key={`${d.side}-${d.id}`}
+                    role={buy ? 'button' : undefined}
+                    tabIndex={buy ? 0 : undefined}
+                    style={buy ? { cursor: 'pointer' } : undefined}
+                    onClick={buy ? () => router.push('/profile?tab=warehouse') : undefined}
+                  >
+                    <span className={`dtag${buy ? '' : ' sell'}`}>{buy ? '買進' : '賣出'}</span>
+                    <span className="th">
+                      <Image src={d.prizeImage || FALLBACK} alt="" width={62} height={62} className="object-contain" unoptimized />
                     </span>
-                  </span>
-                  <span className="rt">
-                    {/* 賣出看的是「實收」不是售價 —— 手續費已經扣掉，寫售價會對不上錢包 */}
-                    <span className={`p${d.side === 'buy' ? ' minus' : ''}`}>
-                      {d.side === 'buy' ? `-${gnum(d.price)}` : `+${gnum(d.sellerReceive)}`} G
-                    </span>
-                    {d.side === 'sell' && d.fee > 0 && (
-                      <span style={{ display: 'block', fontSize: 11, color: 'var(--sub)', marginTop: 3 }}>
-                        手續費 {gnum(d.fee)}
+                    <span className="tx">
+                      <b>{d.prizeLevel ? `${d.prizeLevel} ` : ''}{d.prizeName}</b>
+                      <span>{d.productName}</span>
+                      <span>
+                        {buy ? `向 ${d.counterparty} 買` : `賣給 ${d.counterparty}`} · {ago(d.createdAt)}
                       </span>
-                    )}
-                  </span>
-                </div>
-              ))
+                    </span>
+                    <span className="rt">
+                      <span className={`amt${buy ? ' out' : ' in'}`}>
+                        {buy ? '-' : '+'}
+                        <Image src={asset('/images/gcoin.webp')} alt="G" width={15} height={15} className="object-contain" unoptimized />
+                        {gnum(buy ? d.price : d.sellerReceive)}
+                      </span>
+                    </span>
+                  </div>
+                );
+              })
             )}
           </div>
         )}
@@ -612,10 +643,24 @@ export default function MarketPage() {
             <span className="u">G</span>
           </div>
           {settings && (
-            <p className="hint">
-              可填 {gnum(settings.minPrice)} ~ {gnum(settings.maxPrice)} G。成交時平台收 {settings.feePercent}% 手續費，
-              你實際拿到 <b>{gnum(Math.max(0, Math.round(Number(priceInput) || 0) - Math.floor((Number(priceInput) || 0) * settings.feePercent / 100)))} G</b>。
-            </p>
+            <>
+              <p className="hint">
+                可填 {gnum(settings.minPrice)} ~ {gnum(settings.maxPrice)} G。成交時平台收 {settings.feePercent}% 手續費。
+              </p>
+              {/* 實際拿到獨立一行（老闆 2026-09-02），開價時最想知道的就是這個數字 */}
+              <p className="hint" style={{ marginTop: 4 }}>
+                你實際拿到 <b style={{ color: 'var(--red)', fontSize: 14 }}>
+                  {gnum(Math.max(0, Math.round(Number(priceInput) || 0) - Math.floor((Number(priceInput) || 0) * settings.feePercent / 100)))} G
+                </b>
+              </p>
+            </>
+          )}
+          {/* 選中品項的成交趨勢（老闆 2026-09-02：「開價下面多一個商品成交趨勢圖表，跟商品頁面裡的一樣」） */}
+          {pick != null && pickDeals.length >= 2 && (
+            <>
+              <div className="mqhd" style={{ marginTop: 12 }}>同款近 90 天成交</div>
+              <DealTrend deals={pickDeals} />
+            </>
           )}
           <p className="hint">
             掛上去之後這件東西會鎖在架上，不能申請配送也不能分解 —— 想拿回來就先下架。

@@ -153,6 +153,23 @@
 }
 .mk.gx .mkrow .rt .act.danger { border-color: #FFD3D9; color: var(--red); }
 
+/* 交易紀錄＝帳戶明細（老闆 2026-09-02）：買進紅 -、賣出綠 +（實收），右上角紅／綠標 */
+.mk.gx .mkrow.deal { position: relative; }
+.mk.gx .mkrow .dtag {
+  position: absolute; top: 0; right: 0;
+  background: var(--red); color: #fff;
+  font-size: 10px; font-weight: 700; line-height: 1;
+  padding: 4px 9px 4px 10px; border-radius: 0 10px 0 9px;
+}
+.mk.gx .mkrow .dtag.sell { background: #16A34A; }
+.mk.gx .mkrow .amt {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: "Oswald", sans-serif; font-weight: 600; font-size: 17px;
+}
+.mk.gx .mkrow .amt.out { color: var(--red); }
+.mk.gx .mkrow .amt.in { color: #16A34A; }
+.mk.gx .mkrow .amt img { display: block; }
+
 /* 上架表單：選一件倉庫裡的東西 → 填價格 */
 .mk.gx .pickrow {
   display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
