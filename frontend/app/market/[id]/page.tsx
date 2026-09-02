@@ -26,12 +26,13 @@ import { useFeatureGate } from '@/lib/useFeatureGate';
 import { useRequireLogin } from '@/hooks/useRequireLogin';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { asset } from '@/lib/asset';
-import { Toast, useMarketToast, useSheetRoute, gnum, hue, ago } from '@/components/market/ui';
+import { Sheet, Toast, useMarketToast, useSheetRoute, gnum, hue, ago } from '@/components/market/ui';
 import { HoldToConfirmButton } from '@/components/ui/HoldToConfirmButton';
+import PrizeCard from '@/components/market/PrizeCard';
 import { ChatThreadSheet } from '@/components/market/ChatSheets';
 import { GradeBadge } from '@/components/ui/GradeBadge';
 import {
-  fetchListing, fetchPriceStats, fetchRecentDeals, fetchSellerOthers, fetchSettings, buyListing,
+  fetchListing, fetchPriceStats, fetchRecentDeals, fetchRelated, fetchSellerOthers, fetchSettings, buyListing,
   type Listing, type PriceStats, type MarketSettings, type DealPoint,
 } from '../data';
 
@@ -53,6 +54,8 @@ export default function MarketItemPage() {
   const [stats, setStats] = useState<PriceStats | null>(null);
   const [deals, setDeals] = useState<DealPoint[]>([]);
   const [others, setOthers] = useState<Listing[]>([]);
+  const [related, setRelated] = useState<Listing[]>([]);
+  const [sellerAllOpen, setSellerAllOpen] = useState(false);
   const [settings, setSettings] = useState<MarketSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [gone, setGone] = useState(false);
@@ -70,6 +73,7 @@ export default function MarketItemPage() {
       fetchPriceStats(row.productPrizeId).then(setStats).catch(() => {});
       fetchRecentDeals(row.productPrizeId).then(setDeals).catch(() => {});
       fetchSellerOthers(row.sellerId, row.id).then(setOthers).catch(() => {});
+      fetchRelated(row).then(setRelated).catch(() => {});
     } catch {
       setGone(true);
     } finally {
@@ -190,10 +194,11 @@ export default function MarketItemPage() {
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="unm"><b>{item.sellerName}</b>{isMine && <span className="lvl">你自己</span>}</div>
-              <div style={{ fontSize: 11.5, color: 'var(--sub)', marginTop: 2 }}>
-                {others.length > 0 ? `另外還掛了 ${others.length} 件` : '目前只掛了這一件'}
-              </div>
             </div>
+            {/* 賣家全部上架（老闆 2026-09-02：取代「另外還掛了 N 件」那行字） */}
+            <button className="ghostbtn" onClick={() => setSellerAllOpen(true)}>
+              全部商品({others.length + 1})
+            </button>
             {/* 自己的東西沒有人可以聊 */}
             {!isMine && (
               <button
@@ -242,11 +247,13 @@ export default function MarketItemPage() {
           </p>
         </div>
 
-        {others.length > 0 && (
+        {/* 相關品項（老闆 2026-09-02，原「這位賣家的其他上架」）：
+            相同品項的其他上架優先（便宜在前）→ 同一檔商品 → 同類型遞補 */}
+        {related.length > 0 && (
           <div className="strip">
-            <div className="striphd"><b>這位賣家的其他上架</b></div>
+            <div className="striphd"><b>相關品項</b></div>
             <div className="srow">
-              {others.map(o => (
+              {related.map(o => (
                 <button className="scard" key={o.id} onClick={() => router.replace(`/market/${o.id}`)}>
                   <div className="si" style={{ background: '#F7F7F7', position: 'relative' }}>
                     <Image src={o.prizeImage || FALLBACK} alt="" fill sizes="104px" className="object-contain" unoptimized />
@@ -295,6 +302,22 @@ export default function MarketItemPage() {
         context={{ name: item.prizeName, image: item.prizeImage, price: item.price }}
         onClose={closeSheet}
       />
+
+      {/* 賣家全部上架（含這一件），點卡片換頁 */}
+      <Sheet open={sellerAllOpen} title={`${item.sellerName} 的全部商品`} onClose={() => setSellerAllOpen(false)}>
+        <div className="grid" style={{ paddingBottom: 16 }}>
+          {[item, ...others].map(l => (
+            <PrizeCard
+              key={l.id}
+              item={l}
+              onClick={() => {
+                setSellerAllOpen(false);
+                if (l.id !== item.id) router.replace(`/market/${l.id}`);
+              }}
+            />
+          ))}
+        </div>
+      </Sheet>
 
       <Toast text={toastText} />
     </div>

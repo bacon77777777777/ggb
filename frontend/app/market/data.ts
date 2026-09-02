@@ -264,6 +264,47 @@ export async function fetchSellerOthers(sellerId: string, exceptId: number): Pro
 }
 
 /**
+ * 相關品項（詳情頁底部，老闆 2026-09-02：「賣家上架改成相關品項，相同商品優先」）。
+ * 三層遞補、去重、湊滿 limit 就停：
+ *   ① 同一個品項（product_prize_id）的其他上架 —— 直接替代品，便宜的排前面
+ *   ② 同一檔商品（product_name）的其他品項 —— 玩家在收同一套，新上的排前面
+ *   ③ 同類型（product_type）遞補 —— 湊不滿才用，讓區塊不要空
+ */
+export async function fetchRelated(cur: Listing, limit = 12): Promise<Listing[]> {
+  const sb = createClient();
+  const out: Listing[] = [];
+  const seen = new Set<number>([cur.id]);
+  const take = (rows: unknown[] | null) => {
+    for (const r of rows || []) {
+      const l = toListing(r);
+      if (seen.has(l.id) || out.length >= limit) continue;
+      seen.add(l.id);
+      out.push(l);
+    }
+  };
+
+  if (cur.productPrizeId) {
+    const { data } = await sb.from('public_marketplace_listings').select('*')
+      .eq('product_prize_id', cur.productPrizeId).neq('id', cur.id)
+      .order('price', { ascending: true }).limit(limit);
+    take(data);
+  }
+  if (out.length < limit && cur.productName) {
+    const { data } = await sb.from('public_marketplace_listings').select('*')
+      .eq('product_name', cur.productName).neq('id', cur.id)
+      .order('created_at', { ascending: false }).limit(limit);
+    take(data);
+  }
+  if (out.length < limit && cur.productType) {
+    const { data } = await sb.from('public_marketplace_listings').select('*')
+      .eq('product_type', cur.productType).neq('id', cur.id)
+      .order('created_at', { ascending: false }).limit(limit);
+    take(data);
+  }
+  return out;
+}
+
+/**
  * 交易所規則（migration 669 起存在 platform_settings，前台讀得到）。
  * 取不到就回預設，不要讓整頁掛掉 —— DB 端一樣會擋，前台只是先講清楚。
  */
