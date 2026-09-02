@@ -213,22 +213,14 @@ export default function MarketItemPage() {
             <path d="m15 18-6-6 6-6" />
           </svg>
         </button>
-        <button className="floatshare" style={{ right: 54 }} onClick={share} aria-label="分享">
+        <button className="floatshare" onClick={share} aria-label="分享">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="18" cy="5" r="2.6" /><circle cx="6" cy="12" r="2.6" /><circle cx="18" cy="19" r="2.6" />
             <path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3" />
           </svg>
         </button>
-        {/* 更多（檢舉）：radio 選預設原因，不開放填字（老闆 2026-09-02） */}
-        <button
-          className="floatshare"
-          onClick={() => { if (requireLogin('登入後才能檢舉')) { setReportReason(''); setReportOpen(true); } }}
-          aria-label="更多"
-        >
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
-          </svg>
-        </button>
+        {/* 「⋯」檢舉入口隱藏（老闆 2026-09-02）：品項都是抽獎來的真貨，用不到。
+            檢舉面板與 RPC（migration 676）留著，要開回來把這顆鈕放回來就好 */}
       </div>
 
       <div className="screen">
