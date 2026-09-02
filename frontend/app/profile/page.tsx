@@ -3264,8 +3264,18 @@ function ProfileContent() {
                 <button
                   type="button"
                   onClick={() => router.push('/market?tab=mine&v=sell')}
-                  className="fixed right-4 z-[60] w-14 h-14 rounded-full bg-primary text-white text-[13px] font-black shadow-lg shadow-black/25 active:scale-95 transition-transform flex items-center justify-center"
-                  style={{ bottom: 'calc(88px + env(safe-area-inset-bottom))' }}
+                  className="fixed right-4 z-[60] w-14 h-14 text-white text-[13px] font-black active:scale-95 transition-transform flex items-center justify-center"
+                  style={{
+                    bottom: 'calc(88px + env(safe-area-inset-bottom))',
+                    /* 玻璃感紅球（老闆 2026-09-02 給的 Figma 樣式） */
+                    borderRadius: 83,
+                    border: '2px solid rgba(255, 255, 255, 0.49)',
+                    background:
+                      'radial-gradient(138.49% 66.88% at 36.14% 16.67%, rgba(255, 115, 115, 0.23) 0%, rgba(94, 46, 46, 0.00) 86.18%), ' +
+                      'radial-gradient(83.94% 83.94% at 26.39% 20.83%, rgba(255, 255, 255, 0.41) 0%, rgba(255, 255, 255, 0.00) 69.79%, rgba(255, 255, 255, 0.00) 100%), ' +
+                      '#EC0E52',
+                    boxShadow: '-3px -4px 7px 0 rgba(255, 255, 255, 0.15) inset, 4px 38px 62px 0 rgba(0, 0, 0, 0.50)',
+                  }}
                 >
                   我要賣
                 </button>
