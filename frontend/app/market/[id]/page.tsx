@@ -33,7 +33,8 @@ import { DealTrend } from '@/components/market/DealTrend';
 import { ChatThreadSheet } from '@/components/market/ChatSheets';
 import { GradeBadge } from '@/components/ui/GradeBadge';
 import {
-  fetchListing, fetchPriceStats, fetchRecentDeals, fetchRelated, fetchSellerOthers, fetchSettings, buyListing,
+  fetchListing, fetchPriceStats, fetchRecentDeals, fetchRelated, fetchSellerOthers, fetchSettings,
+  buyListing, cancelListing, updateListingPrice,
   type Listing, type PriceStats, type MarketSettings, type DealPoint,
 } from '../data';
 
@@ -61,6 +62,10 @@ export default function MarketItemPage() {
   const [loading, setLoading] = useState(true);
   const [gone, setGone] = useState(false);
   const [busy, setBusy] = useState(false);
+  // 自己的上架：編輯價格小面板
+  const [editOpen, setEditOpen] = useState(false);
+  const [editPrice, setEditPrice] = useState('');
+  const [editBusy, setEditBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!Number.isFinite(id) || id <= 0) { setGone(true); setLoading(false); return; }
@@ -126,6 +131,41 @@ export default function MarketItemPage() {
     if (!requireLogin('登入後就可以在交易所買東西')) return;
     if (isMine) return;
     doBuy();
+  };
+
+  /** 自己的上架：按住下架。下架後品項回倉庫（cancel_listing 會還原 in_warehouse），這頁就離開 */
+  const doOffShelf = async () => {
+    if (!item) return;
+    setBusy(true);
+    const res = await cancelListing(item.id);
+    setBusy(false);
+    if (!res.success) { toast(res.message || '下架失敗'); return; }
+    toast('已下架，東西回到你的倉庫');
+    refreshProfile?.();
+    router.replace('/market?tab=mine');
+  };
+
+  const openEdit = () => {
+    if (!item) return;
+    setEditPrice(String(item.price));
+    setEditOpen(true);
+  };
+
+  const doEditPrice = async () => {
+    if (!item) return;
+    const p = Math.round(Number(editPrice));
+    if (!Number.isFinite(p) || p <= 0) { toast('填一個售價'); return; }
+    if (settings && (p < settings.minPrice || p > settings.maxPrice)) {
+      toast(`售價要在 ${gnum(settings.minPrice)} ~ ${gnum(settings.maxPrice)} G 之間`);
+      return;
+    }
+    setEditBusy(true);
+    const res = await updateListingPrice(item.id, p);
+    setEditBusy(false);
+    if (!res.success) { toast(res.message || '改價失敗'); return; }
+    setEditOpen(false);
+    toast('價格已更新');
+    load();
   };
 
   if (loading) return <ProductLoadingScreen />;
@@ -271,7 +311,18 @@ export default function MarketItemPage() {
           {/* 餘額與聊聊移除（老闆 2026-09-02）：底欄只留購買鍵。
               聊聊入口還在賣家列（shoprow）那顆，沒有失去功能 */}
           {isMine ? (
-            <button className="buy" disabled style={{ background: '#DDD', color: '#888' }}>你上架的</button>
+            /* 自己的上架（老闆 2026-09-02）：編輯（重開價）＋深灰按住下架 */
+            <>
+              <button className="ghostbtn" style={{ padding: '12px 24px', fontSize: 14 }} onClick={openEdit}>編輯</button>
+              <HoldToConfirmButton
+                className="buy dark"
+                onConfirm={doOffShelf}
+                onAbort={() => toast('請按住直到光條走完')}
+                disabled={busy}
+              >
+                {busy ? '處理中…' : '按住下架'}
+              </HoldToConfirmButton>
+            </>
           ) : notEnough ? (
             <button className="buy" onClick={() => toast('G 幣不足，先去儲值')}>G 幣不足</button>
           ) : (
@@ -303,6 +354,44 @@ export default function MarketItemPage() {
         context={{ name: item.prizeName, image: item.prizeImage, price: item.price }}
         onClose={closeSheet}
       />
+
+      {/* 編輯價格（只有自己的上架進得來） */}
+      <Sheet
+        open={editOpen}
+        title="編輯價格"
+        onClose={() => setEditOpen(false)}
+        footer={
+          <button className="buy" onClick={doEditPrice} disabled={editBusy}>
+            {editBusy ? '處理中…' : '確認修改'}
+          </button>
+        }
+      >
+        <div className="blk first">
+          <div className="secttl">開價</div>
+          <div className="gin">
+            <input
+              type="number"
+              inputMode="numeric"
+              placeholder="0"
+              value={editPrice}
+              onChange={e => setEditPrice(e.target.value)}
+            />
+            <span className="u">G</span>
+          </div>
+          {settings && (
+            <>
+              <p className="hint">
+                可填 {gnum(settings.minPrice)} ~ {gnum(settings.maxPrice)} G。成交時平台收 {settings.feePercent}% 手續費。
+              </p>
+              <p className="hint" style={{ marginTop: 4 }}>
+                你實際拿到 <b style={{ color: 'var(--red)', fontSize: 14 }}>
+                  {gnum(Math.max(0, Math.round(Number(editPrice) || 0) - Math.floor((Number(editPrice) || 0) * settings.feePercent / 100)))} G
+                </b>
+              </p>
+            </>
+          )}
+        </div>
+      </Sheet>
 
       {/* 賣家全部上架（含這一件），點卡片換頁 */}
       <Sheet open={sellerAllOpen} title={`${item.sellerName} 的全部商品`} onClose={() => setSellerAllOpen(false)}>

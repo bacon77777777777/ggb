@@ -427,6 +427,9 @@ export const buyListing = (listingId: number) => callRpc('buy_listing', { p_list
 export const createListing = (drawRecordId: number, price: number) =>
   callRpc('create_listing', { p_record_id: drawRecordId, p_price: price });
 export const cancelListing = (listingId: number) => callRpc('cancel_listing', { p_listing_id: listingId });
+/** 賣家改自己架上那件的售價（migration 674） */
+export const updateListingPrice = (listingId: number, price: number) =>
+  callRpc('update_listing_price', { p_listing_id: listingId, p_price: price });
 
 /**
  * 賞等正規化 —— 跟 DB 的 marketplace_norm_level 同一套規則。
