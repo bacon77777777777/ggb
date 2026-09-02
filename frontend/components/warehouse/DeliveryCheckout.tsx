@@ -44,12 +44,15 @@ const METHOD_OPTIONS: { key: string; type: 'HOME' | 'CVS'; subtype: DeliveryMeth
   { key: 'HOME',    type: 'HOME', subtype: null,      label: '宅配到府', sub: '收件地址' },
 ];
 
+export type AddressOption = { id: string; name: string; phone: string; address: string; isDefault: boolean };
+
 export function DeliveryCheckout({
   open, onClose,
   items = [], itemCount, freeHint,
   method, methodLabel,
   feeOf, grossFee, discount, lotteryTotal, payable,
   address, store,
+  addressOptions = [], addressId = null, onPickAddress, canAddAddress = true,
   note, onNoteChange,
   coupons, couponId, onCouponSelect,
   submitting,
@@ -73,6 +76,12 @@ export function DeliveryCheckout({
   payable: number;
   address: { name: string; phone: string; address: string };
   store: { id: string; name: string; address: string } | null;
+  /** 地址簿（最多三筆）；空陣列時只剩「新增」 */
+  addressOptions?: AddressOption[];
+  /** 本次配送選用的那筆（user_addresses.id） */
+  addressId?: string | null;
+  onPickAddress?: (id: string) => void;
+  canAddAddress?: boolean;
   note: string;
   onNoteChange: (v: string) => void;
   coupons: ShippingCoupon[];
@@ -381,34 +390,50 @@ export function DeliveryCheckout({
                 </div>
               )}
 
-              {/* 收件地址子頁 —— 跟配送方式同一套卡片，不開滿版頁 */}
+              {/* 收件地址子頁 —— 地址簿（最多三筆）當選項卡，跟配送方式同一套 */}
               {view === 'address' && (
                 <div className="p-4 space-y-3">
-                  {hasAddress && (
+                  {addressOptions.map(a => {
+                    const active = a.id === addressId;
+                    return (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => { onPickAddress?.(a.id); setView('confirm'); }}
+                        className={cn(
+                          'w-full p-4 rounded-xl border-2 text-left transition-all relative overflow-hidden',
+                          active
+                            ? 'border-accent-red bg-accent-red/5'
+                            : 'border-neutral-200 bg-white md:hover:border-accent-red/50 dark:border-neutral-800 dark:bg-neutral-900'
+                        )}
+                      >
+                        <div className="pr-8">
+                          <div className={cn('font-black', active ? 'text-accent-red' : 'text-neutral-900 dark:text-white')}>
+                            {a.name}
+                            <span className="ml-2 text-[13px] font-bold text-neutral-500">{a.phone}</span>
+                            {a.isDefault && (
+                              <span className="ml-2 align-middle inline-block px-1 py-[1px] border border-neutral-300 text-neutral-400 text-[10px] rounded-[2px] font-bold">預設</span>
+                            )}
+                          </div>
+                          <div className="text-[13px] font-bold text-neutral-700 dark:text-neutral-300 mt-1 leading-snug">{a.address}</div>
+                        </div>
+                        {active && (
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2 bg-accent-red text-white rounded-full p-1">
+                            <Check className="w-4 h-4" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                  {canAddAddress && (
                     <button
                       type="button"
-                      onClick={() => setView('confirm')}
-                      className="w-full p-4 rounded-xl border-2 text-left transition-all relative overflow-hidden border-accent-red bg-accent-red/5"
+                      onClick={onEditAddress}
+                      className="w-full p-4 rounded-xl border-2 border-dashed text-center transition-all border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 font-bold text-neutral-500"
                     >
-                      <div className="pr-8">
-                        <div className="font-black text-accent-red">
-                          {address.name}
-                          <span className="ml-2 text-[13px] font-bold text-neutral-500">{address.phone}</span>
-                        </div>
-                        <div className="text-[13px] font-bold text-neutral-700 dark:text-neutral-300 mt-1 leading-snug">{address.address}</div>
-                      </div>
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 bg-accent-red text-white rounded-full p-1">
-                        <Check className="w-4 h-4" />
-                      </div>
+                      ＋ 新增收件地址
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={onEditAddress}
-                    className="w-full p-4 rounded-xl border-2 border-dashed text-center transition-all border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 font-bold text-neutral-500"
-                  >
-                    {hasAddress ? '編輯收件地址' : '＋ 新增收件地址'}
-                  </button>
                 </div>
               )}
 

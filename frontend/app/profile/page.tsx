@@ -3,11 +3,11 @@
 import React, { useState, useEffect, useLayoutEffect, Suspense, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Box, Truck, Trophy, Settings, LogOut, ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, HelpCircle, Info, FileText, Shield, RefreshCcw, RefreshCw, Wallet, Heart, User, ChevronDown, X, Loader2, CreditCard, Copy, Ticket, Store, History, MessageCircle, Star, UserPlus, Search, Plus } from 'lucide-react';
+import { Box, Truck, Trophy, Settings, LogOut, ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, HelpCircle, Info, FileText, Shield, RefreshCcw, RefreshCw, Wallet, Heart, User, ChevronDown, X, Loader2, CreditCard, Copy, Ticket, Store, History, MessageCircle, Star, UserPlus, Search, Plus, MoreHorizontal } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { HoldToConfirmButton } from '@/components/ui/HoldToConfirmButton';
 import { DeliveryCheckout, type ShippingCoupon, type DeliveryMethod } from '@/components/warehouse/DeliveryCheckout';
-import { TW_CITIES, TW_DISTRICTS, splitTwAddress } from '@/lib/twDistricts';
+import { TW_CITIES, TW_DISTRICTS, splitTwAddress, zip3Of } from '@/lib/twDistricts';
 import { useHideOnScroll } from '@/lib/useHideOnScroll';
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
 import PageHeader from '@/components/ui/PageHeader';
@@ -1648,22 +1648,131 @@ function ProfileContent() {
   const [addrCity, setAddrCity] = useState('');
   const [addrDist, setAddrDist] = useState('');
   const [addrRest, setAddrRest] = useState('');
-  const [isNewAddress, setIsNewAddress] = useState(false);
-  React.useEffect(() => {
-    if (!showEditRecipient) return;
-    // 開啟當下判斷新增／編輯，打字過程不變（老闆：按「新增」進來標題不能是「編輯」）
-    setIsNewAddress(!(settingsForm.recipientName && settingsForm.recipientPhone && settingsForm.recipientAddress));
-    const parts = splitTwAddress(settingsForm.recipientAddress);
-    setAddrCity(parts.city);
-    setAddrDist(parts.district);
-    setAddrRest(parts.rest);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showEditRecipient]);
   const applyAddr = (city: string, dist: string, rest: string) => {
     setAddrCity(city); setAddrDist(dist); setAddrRest(rest);
-    const composed = city && dist && rest.trim() ? `${city}${dist}${rest.trim()}` : '';
-    setSettingsForm(f => ({ ...f, recipientAddress: composed }));
   };
+  /*
+   * 地址簿（user_addresses，migration 683）：最多三筆、單一預設。
+   * users.recipient_* 維持「預設地址」鏡像 —— 出貨、後台等既有讀取路徑不用動，
+   * 這裡每次增刪改後把預設那筆同步回 users。
+   */
+  const [addresses, setAddresses] = useState<{ id: string; name: string; phone: string; address: string; isDefault: boolean }[]>([]);
+  const [addressMenuId, setAddressMenuId] = useState<string | null>(null);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [editAddrName, setEditAddrName] = useState('');
+  const [editAddrPhone, setEditAddrPhone] = useState('');
+  const [editAddrDefault, setEditAddrDefault] = useState(false);
+  /** 本次配送選用的地址（僅這張單，不動預設）；null＝跟預設 */
+  const [deliveryAddrId, setDeliveryAddrId] = useState<string | null>(null);
+
+  const fetchAddresses = React.useCallback(async () => {
+    if (!user) return [] as typeof addresses;
+    const { data } = await supabase
+      .from('user_addresses')
+      .select('id, recipient_name, recipient_phone, address, is_default')
+      .eq('user_id', user.id)
+      .order('is_default', { ascending: false })
+      .order('created_at', { ascending: true });
+    const list = ((data ?? []) as any[]).map(r => ({
+      id: String(r.id), name: String(r.recipient_name), phone: String(r.recipient_phone),
+      address: String(r.address), isDefault: !!r.is_default,
+    }));
+    setAddresses(list);
+    return list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+  React.useEffect(() => { void fetchAddresses(); }, [fetchAddresses]);
+
+  /** 把預設地址鏡像回 users.recipient_*（沒半筆就清空），設定頁顯示同步更新 */
+  const syncDefaultAddress = async (list: typeof addresses) => {
+    const d = list.find(a => a.isDefault) ?? list[0] ?? null;
+    const updates = { recipient_name: d?.name ?? '', recipient_phone: d?.phone ?? '', address: d?.address ?? '' };
+    await supabase.from('users').update(updates).eq('id', user!.id);
+    setSettingsForm(f => ({ ...f, recipientName: updates.recipient_name, recipientPhone: updates.recipient_phone, recipientAddress: updates.address }));
+  };
+
+  const openNewAddress = () => {
+    if (addresses.length >= 3) { toast.error('最多儲存三筆地址'); return; }
+    setEditingAddressId(null);
+    setEditAddrName(''); setEditAddrPhone('');
+    setAddrCity(''); setAddrDist(''); setAddrRest('');
+    setEditAddrDefault(addresses.length === 0);
+    setShowEditRecipient(true);
+  };
+
+  const openEditAddress = (id: string) => {
+    const a = addresses.find(x => x.id === id);
+    if (!a) return;
+    setEditingAddressId(id);
+    setEditAddrName(a.name); setEditAddrPhone(a.phone);
+    const parts = splitTwAddress(a.address);
+    setAddrCity(parts.city); setAddrDist(parts.district); setAddrRest(parts.rest);
+    setEditAddrDefault(a.isDefault);
+    setAddressMenuId(null);
+    setShowEditRecipient(true);
+  };
+
+  const saveAddress = async () => {
+    const name = editAddrName.trim();
+    const phone = editAddrPhone.trim();
+    const composed = addrCity && addrDist && addrRest.trim() ? `${addrCity}${addrDist}${addrRest.trim()}` : '';
+    if (name.length < 2 || name.length > 10) { toast.error('收件人姓名請填 2～10 個字'); return; }
+    if (!/^09\d{8}$/.test(phone)) { toast.error('聯絡電話請填 09 開頭的 10 碼手機號碼'); return; }
+    if (composed.length < 8 || composed.length > 60) { toast.error('地址請填完整（含街道與門牌）'); return; }
+    setIsUpdatingProfile(true);
+    try {
+      if (editingAddressId) {
+        const { error } = await supabase.from('user_addresses')
+          .update({ recipient_name: name, recipient_phone: phone, address: composed, is_default: editAddrDefault, updated_at: new Date().toISOString() })
+          .eq('id', editingAddressId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('user_addresses')
+          .insert({ user_id: user!.id, recipient_name: name, recipient_phone: phone, address: composed, is_default: editAddrDefault || addresses.length === 0 });
+        if (error) throw error;
+      }
+      const list = await fetchAddresses();
+      await syncDefaultAddress(list);
+      toast.success(editingAddressId ? '地址已更新' : '地址已新增');
+      setShowEditRecipient(false);
+    } catch (e) {
+      const msg = (e as { message?: string }).message || '';
+      toast.error(msg.includes('MAX_ADDRESSES') ? '最多儲存三筆地址' : '儲存失敗，請再試一次');
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
+
+  const removeAddress = async (id: string) => {
+    try {
+      const { error } = await supabase.from('user_addresses').delete().eq('id', id);
+      if (error) throw error;
+      let list = await fetchAddresses();
+      // 預設被移掉時，讓最舊的一筆遞補，出貨路徑永遠有預設可用
+      if (list.length > 0 && !list.some(a => a.isDefault)) {
+        await supabase.from('user_addresses').update({ is_default: true }).eq('id', list[0].id);
+        list = list.map((a, i) => (i === 0 ? { ...a, isDefault: true } : a));
+        setAddresses(list);
+      }
+      await syncDefaultAddress(list);
+      if (deliveryAddrId === id) setDeliveryAddrId(null);
+      toast.success('地址已移除');
+    } catch {
+      toast.error('移除失敗，請再試一次');
+    } finally {
+      setAddressMenuId(null);
+    }
+  };
+
+  /** 本次配送實際使用的地址（選了用選的，沒選用預設） */
+  const deliveryAddress = React.useMemo(() => {
+    const chosen = addresses.find(a => a.id === deliveryAddrId)
+      ?? addresses.find(a => a.isDefault)
+      ?? addresses[0];
+    return chosen
+      ? { id: chosen.id, name: chosen.name, phone: chosen.phone, address: chosen.address }
+      : { id: null as string | null, name: settingsForm.recipientName, phone: settingsForm.recipientPhone, address: settingsForm.recipientAddress };
+  }, [addresses, deliveryAddrId, settingsForm.recipientName, settingsForm.recipientPhone, settingsForm.recipientAddress]);
   const [showAddressBook, setShowAddressBook] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [showTitlePicker, setShowTitlePicker] = useState(false);
@@ -2552,9 +2661,9 @@ function ProfileContent() {
     }
 
     // 收件資料格式（migration 606 的 create_delivery_order 也驗同一套；這裡先擋是為了給看得懂的訊息）
-    const recipientName = settingsForm.recipientName.trim();
-    const recipientPhone = settingsForm.recipientPhone.trim();
-    const recipientAddress = settingsForm.recipientAddress.trim();
+    const recipientName = deliveryAddress.name.trim();
+    const recipientPhone = deliveryAddress.phone.trim();
+    const recipientAddress = deliveryAddress.address.trim();
     if (recipientName.length < 2 || recipientName.length > 10) {
       toast.error('收件人姓名請填 2～10 個字');
       return;
@@ -6498,8 +6607,14 @@ function ProfileContent() {
       case 'settings':
         return (
           <div className="md:pb-0 bg-neutral-100 dark:bg-neutral-950">
-            {/* Mobile Header */}
-            <div className="md:hidden bg-neutral-100 dark:bg-neutral-950 flex flex-col min-h-[100dvh]">
+            {/* Mobile Header。子頁推入時本頁往左滑出 28%（iOS push），不是死板被蓋住 */}
+            <div
+              className="md:hidden bg-neutral-100 dark:bg-neutral-950 flex flex-col min-h-[100dvh]"
+              style={{
+                transform: (showAddressBook || showEditRecipient) ? 'translateX(-28%)' : 'translateX(0)',
+                transition: 'transform .35s cubic-bezier(.32,.72,0,1)',
+              }}
+            >
               {/* 頭部吸頂（window 捲動版）*/}
               <div className="sticky top-0 z-30 bg-inherit">
                             {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
@@ -7880,7 +7995,7 @@ function ProfileContent() {
         {showAddressBook && (
           <motion.div 
             initial={{ x: '100%' }}
-            animate={{ x: 0 }}
+            animate={{ x: showEditRecipient ? '-28%' : 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="fixed inset-0 z-[100] bg-neutral-100 dark:bg-neutral-950 flex flex-col"
@@ -7927,57 +8042,55 @@ function ProfileContent() {
             {/* Address List */}
             <div className="flex-1 overflow-y-auto overscroll-y-none pt-3">
               
-              {/* Only show Home Address */}
-                {(settingsForm.recipientName && settingsForm.recipientPhone && settingsForm.recipientAddress) ? (
-                  <div className="bg-white dark:bg-neutral-900 mb-3">
+              {/* 地址簿：最多三筆（migration 683），列尾動作收進點點點 */}
+                {addresses.length > 0 ? addresses.map(a => (
+                  <div key={a.id} className="bg-white dark:bg-neutral-900 mb-3">
                     <div className="p-4 flex gap-3">
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-[15px] font-medium text-neutral-900 dark:text-white">{settingsForm.recipientName}</span>
+                          <span className="text-[15px] font-medium text-neutral-900 dark:text-white">{a.name}</span>
                           <span className="text-[13px] text-neutral-500 border-l border-neutral-300 pl-2 ml-1">
-                            {maskPhoneForDisplay(settingsForm.recipientPhone)}
+                            {maskPhoneForDisplay(a.phone)}
                           </span>
                         </div>
                         <p className="text-[13px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
-                          {settingsForm.recipientAddress}
+                          {a.address}
                         </p>
-                        <div className="pt-1">
-                          <span className="inline-block px-1 py-[1px] border border-primary text-primary text-[10px] rounded-[2px]">預設</span>
-                        </div>
+                        {a.isDefault && (
+                          <div className="pt-1">
+                            <span className="inline-block px-1 py-[1px] border border-primary text-primary text-[10px] rounded-[2px]">預設</span>
+                          </div>
+                        )}
                       </div>
-                      <button 
-                        onClick={() => setShowEditRecipient(true)}
-                        className="text-[13px] font-medium text-primary self-start shrink-0 ml-2"
+                      <button
+                        onClick={() => setAddressMenuId(a.id)}
+                        className="self-start shrink-0 ml-2 p-1 -mr-1 text-neutral-400 active:text-neutral-600"
                       >
-                        編輯
+                        <MoreHorizontal className="w-5 h-5" />
                       </button>
                     </div>
                     <div className="h-[1px] bg-neutral-100 dark:bg-neutral-800 mx-4" />
                   </div>
-                ) : (
+                )) : (
                   <div className="p-8 text-center text-neutral-400 text-sm">
                     尚未設定收件地址
                   </div>
                 )}
 
-              {/* 新增地址：跟在最後一筆下面、灰色（老闆 2026-09-02：不放底部、不用主題色） */}
-              <div className="px-4">
-                <button
-                  onClick={() => {
-                     if (!settingsForm.recipientName) {
-                       setShowEditRecipient(true);
-                     } else {
-                       toast.error('目前僅支援設定一組地址');
-                     }
-                  }}
-                  className="w-full h-[44px] border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400 rounded-[4px] flex items-center justify-center gap-2 text-[15px] font-medium active:bg-neutral-50 dark:active:bg-neutral-800 transition-colors"
-                >
-                  <div className="w-4 h-4 rounded-full border border-neutral-400 flex items-center justify-center">
-                    <span className="text-sm leading-none -mt-0.5">+</span>
-                  </div>
-                  新增地址
-                </button>
-              </div>
+              {/* 新增地址：跟在最後一筆下面、灰色；滿三筆隱藏 */}
+              {addresses.length < 3 && (
+                <div className="px-4">
+                  <button
+                    onClick={openNewAddress}
+                    className="w-full h-[44px] border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400 rounded-[4px] flex items-center justify-center gap-2 text-[15px] font-medium active:bg-neutral-50 dark:active:bg-neutral-800 transition-colors"
+                  >
+                    <div className="w-4 h-4 rounded-full border border-neutral-400 flex items-center justify-center">
+                      <span className="text-sm leading-none -mt-0.5">+</span>
+                    </div>
+                    新增地址
+                  </button>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -8137,7 +8250,7 @@ function ProfileContent() {
           >
             {/* Header */}
             {/* 統一頁頭：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */}
-            <PageHeader title={isNewAddress ? '新增地址' : '編輯地址'} onBack={() => setShowEditRecipient(false)} />
+            <PageHeader title={editingAddressId ? '編輯地址' : '新增地址'} onBack={() => setShowEditRecipient(false)} />
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto">
@@ -8145,8 +8258,8 @@ function ProfileContent() {
                 <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
                   <div className="py-1">
                     <input
-                      value={settingsForm.recipientName}
-                      onChange={e => setSettingsForm({...settingsForm, recipientName: e.target.value})}
+                      value={editAddrName}
+                      onChange={e => setEditAddrName(e.target.value)}
                       maxLength={30}
                       placeholder="例：王吉比"
                       className="w-full bg-transparent border-none py-3 px-0 text-[15px] text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:ring-0"
@@ -8154,9 +8267,9 @@ function ProfileContent() {
                   </div>
                   <div className="py-1">
                     <input
-                      value={settingsForm.recipientPhone}
-                      onChange={e => setSettingsForm({...settingsForm, recipientPhone: e.target.value})}
-                      onBlur={e => setSettingsForm({...settingsForm, recipientPhone: normalizePhone(e.target.value)})}
+                      value={editAddrPhone}
+                      onChange={e => setEditAddrPhone(e.target.value)}
+                      onBlur={e => setEditAddrPhone(normalizePhone(e.target.value))}
                       type="tel"
                       inputMode="numeric"
                       pattern="^09\d{8}$"
@@ -8164,8 +8277,14 @@ function ProfileContent() {
                       className="w-full bg-transparent border-none py-3 px-0 text-[15px] text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:ring-0"
                     />
                   </div>
-                  {/* 台灣格式：縣市／區用原生選單（iOS 滾輪），剩下打門牌 */}
-                  <div className="py-1 flex gap-3">
+                  {/* 台灣格式：郵遞區號自動帶入（唯讀三碼）｜縣市／區用原生選單（iOS 滾輪），剩下打門牌 */}
+                  <div className="py-1 flex items-center gap-3">
+                    <span className={cn(
+                      "w-10 shrink-0 py-3 text-[15px] tabular-nums",
+                      zip3Of(addrCity, addrDist) ? "text-neutral-900 dark:text-white" : "text-neutral-300 dark:text-neutral-600"
+                    )}>
+                      {zip3Of(addrCity, addrDist) || '000'}
+                    </span>
                     <select
                       value={addrCity}
                       onChange={e => applyAddr(e.target.value, '', addrRest)}
@@ -8201,20 +8320,30 @@ function ProfileContent() {
                 </div>
               </div>
               
-              {/* Default Toggle (Visual only for now) */}
-              <div className="bg-white dark:bg-neutral-900 mt-3 px-4 py-3 flex items-center justify-between">
+              {/* 預設開關：預設那筆會鏡像回 users.recipient_*（出貨、後台都讀它） */}
+              <button
+                type="button"
+                onClick={() => setEditAddrDefault(v => !v)}
+                className="w-full bg-white dark:bg-neutral-900 mt-3 px-4 py-3 flex items-center justify-between"
+              >
                 <span className="text-[15px] text-neutral-900 dark:text-white">設為預設地址</span>
-                <div className="w-11 h-6 bg-accent-emerald rounded-full relative">
-                  <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm" />
+                <div className={cn(
+                  "w-11 h-6 rounded-full relative transition-colors",
+                  editAddrDefault ? "bg-accent-emerald" : "bg-neutral-200 dark:bg-neutral-700"
+                )}>
+                  <div className={cn(
+                    "absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all",
+                    editAddrDefault ? "right-1" : "left-1"
+                  )} />
                 </div>
-              </div>
+              </button>
             </div>
 
             {/* Footer —— 同購買確認的主鈕；App 無瀏海列，安全區高度要自己留 */}
             <div className="bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
               <button
-                onClick={() => handleUpdateProfile('recipient', '')}
-                disabled={isUpdatingProfile || !settingsForm.recipientName || !settingsForm.recipientPhone || !settingsForm.recipientAddress}
+                onClick={() => void saveAddress()}
+                disabled={isUpdatingProfile || !editAddrName.trim() || !editAddrPhone.trim() || !addrCity || !addrDist || !addrRest.trim()}
                 className="w-full rounded-xl font-black shadow-xl transition-all h-[44px] text-base bg-accent-red text-white shadow-accent-red/20 active:scale-[0.98] disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
               >
                 {isUpdatingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : '儲存'}
@@ -8224,7 +8353,42 @@ function ProfileContent() {
         )}
       </AnimatePresence>
 
-      {/* 配送結帳（商城結帳複製版，老闆 2026-09-02）。資料源：users 收件欄位＝設定頁同一份 */}
+      {/* 地址列的點點點：黑遮罩＋底部兩個選項（老闆 2026-09-02） */}
+      <AnimatePresence>
+        {addressMenuId && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setAddressMenuId(null)}
+              className="fixed inset-0 bg-black/60 z-[110]"
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+              className="fixed bottom-0 left-0 right-0 z-[111] bg-white dark:bg-neutral-900 rounded-t-2xl overflow-hidden pb-[calc(env(safe-area-inset-bottom)+8px)]"
+            >
+              <button
+                onClick={() => openEditAddress(addressMenuId)}
+                className="w-full py-4 text-center text-[15px] font-bold text-neutral-900 dark:text-white border-b border-neutral-100 dark:border-neutral-800 active:bg-neutral-50 dark:active:bg-neutral-800"
+              >
+                編輯
+              </button>
+              <button
+                onClick={() => void removeAddress(addressMenuId)}
+                className="w-full py-4 text-center text-[15px] font-bold text-accent-red active:bg-neutral-50 dark:active:bg-neutral-800"
+              >
+                移除
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* 配送結帳（商城結帳複製版，老闆 2026-09-02）。資料源：user_addresses 地址簿 */}
       <DeliveryCheckout
         open={showDeliveryModal}
         onClose={() => { if (!isSubmittingDelivery) setShowDeliveryModal(false); }}
@@ -8258,11 +8422,11 @@ function ProfileContent() {
         discount={shippingDiscount}
         lotteryTotal={lotteryPurchaseTotal}
         payable={currentShippingFee - shippingDiscount + lotteryPurchaseTotal}
-        address={{
-          name: settingsForm.recipientName,
-          phone: settingsForm.recipientPhone,
-          address: settingsForm.recipientAddress,
-        }}
+        address={{ name: deliveryAddress.name, phone: deliveryAddress.phone, address: deliveryAddress.address }}
+        addressOptions={addresses}
+        addressId={deliveryAddress.id}
+        onPickAddress={setDeliveryAddrId}
+        canAddAddress={addresses.length < 3}
         store={storeId ? { id: storeId, name: storeName, address: storeAddress } : null}
         note={deliveryNote}
         onNoteChange={setDeliveryNote}
@@ -8284,7 +8448,7 @@ function ProfileContent() {
             }
           }
         }}
-        onEditAddress={() => setShowEditRecipient(true)}
+        onEditAddress={openNewAddress}
         onChangeStore={() => {
           const rid = newStoreMapRequestId();
           setPendingCvsToken(rid);
