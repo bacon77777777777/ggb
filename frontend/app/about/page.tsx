@@ -61,8 +61,8 @@ export default function AboutPage() {
                 中途改過一個字，算出來的驗證碼就對不上。
               </p>
               <p className="text-neutral-500 dark:text-neutral-500">
-                轉蛋與盒玩沒有籤號、是每一抽即時決定結果，所以走的是機率公開而不是對照表驗證。
-                每一檔的獎品數量都寫在商品頁上。
+                轉蛋與盒玩沒有籤號、是每一抽即時決定結果，所以走的是數量公開而不是對照表驗證：
+                每一檔有哪些獎品、各剩幾個都寫在商品頁上，抽走一個就少一個。
                 <Link href="/faq" className="text-primary font-bold underline underline-offset-2 ml-1">
                   看常見問題的詳細說明
                 </Link>

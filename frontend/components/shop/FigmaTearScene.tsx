@@ -11,7 +11,7 @@ import {
   startTearMusic, stopTearMusic, setTearDucking,
 } from '@/lib/tearSfx';
 import { isSoundMuted } from '@/lib/soundPrefs';
-import { hapticHeavy, hapticLight } from '@/lib/haptics';
+import { hapticLight, hapticMedium, hapticTick } from '@/lib/haptics';
 import { asset } from '@/lib/asset';
 
 declare global {
@@ -175,72 +175,30 @@ export default function FigmaTearScene({
   };
 
   /*
-   * 按著不放的持續震動 —— **照抄蓄力開包那條曲線**（老闆 2026-09-01）。
+   * 震動：**跟著音效走，而且只輕輕點一下**（老闆 2026-09-02）。
    *
-   * 第一版做成固定 70ms 的平拍、而且用最輕的 `hapticTick`（Taptic 的
-   * selectionChanged），老闆回報手感跟蓄力開包不一樣。差在兩件事：
+   * 上一版是照蓄力開包移植的「按著不放就持續震」鋪底 —— 一條由疏到密的節拍
+   * （140ms → 42ms）疊在拖曳的顆粒感上。老闆回報「震動太大」：手指壓著不動
+   * 也一直嗡嗡震，密起來之後整支手機像在響，撕紙本身的細碎感反而被蓋掉。
    *
-   *   ① **強度**：蓄力用的是 `hapticLight`（impact LIGHT），明顯比 tick 重。
-   *      網頁端的差別更大 —— tick 只 vibrate(6)，light 是 vibrate(12)。
-   *   ② **節奏**：蓄力的震動節點是 [0.2, 0.38, 0.52, 0.64, 0.74, 0.82, 0.89, 0.95]，
-   *      間隔由 140ms 一路縮到 42ms —— 等距的話手感是平的，密起來才有
-   *      「快滿了」的蓄力感。這裡取同樣的頭尾。
+   * 改成兩條規則：
+   *   ① **有聲音才震**：撕紙每裂開一格虛線孔會響一次 crackle，震動就跟著那一刻；
+   *      捏住＝sfxGrab、彈回＝sfxBounceBack、撕開＝bigRip 同理。按著不動沒有聲音
+   *      就不震 —— 那時候本來也沒有東西在裂。
+   *   ② **強度降一級**：`hapticLight`（impact LIGHT／網頁 vibrate 12）全部換成
+   *      `hapticTick`（selectionChanged／vibrate 6），撕開那一下由 heavy 降成 medium。
    *
-   * 差別只在「進度」是什麼。蓄力是固定 700ms 的時間軸；撕紙沒有時限，
-   * 所以取**時間與拉開距離兩條進度的較大者**：
-   *   ・按著不動 → 照蓄力同樣的 700ms 由疏到密，滿了就維持最密（＝真的一直震）
-   *   ・往外拉   → 拉得越開節拍越急，拉得快就早一點到最密
-   * 兩條都算，手感才不會比蓄力弱。撕開的瞬間交給既有的 `hapticHeavy()` 收尾
-   * ——跟蓄力滿格時那一下 `hapticMedium()` 是同一個位置。
-   *
-   * 拖曳時每 8px 的顆粒感仍然照舊，只是跟鋪底**共用同一個節流時鐘**，
-   * 而且最快不超過 GAP_TIGHT —— 不然快速拖動時兩套疊在一起會糊成一團嗡嗡聲。
+   * `MIN_GAP` 只防一件事：拖很快時一次跨過好幾格，震動疊在一起會糊成嗡嗡聲。
    */
-  const GAP_LOOSE = 140;   // 蓄力第一拍的間隔
-  const GAP_TIGHT = 42;    // 蓄力最後一拍的間隔（也是整體的最快上限）
-  const RAMP_MS = 700;     // 蓄力從第一拍到最後一拍的長度，這裡照用
-  const holdBuzzTimer = useRef<number | null>(null);
+  const MIN_GAP = 55;
   const lastBuzzAt = useRef(0);
-  /** 這一次拖曳離「撕開」還有多遠，0~1。pointermove 更新，決定節拍多密 */
-  const tearProgress = useRef(0);
-  /** 撕開所需的拖曳距離（px），按下時算好 */
-  const tearNeed = useRef(0);
-  /** 這一次按下的時間，時間那條進度用 */
-  const holdStartAt = useRef(0);
-
-  const gapNow = () => {
-    const byTime = Math.min(1, (performance.now() - holdStartAt.current) / RAMP_MS);
-    const p = Math.max(byTime, tearProgress.current);
-    return GAP_LOOSE + (GAP_TIGHT - GAP_LOOSE) * p;
-  };
-  /** 震一下，但不會比 GAP_TIGHT 更密（拖曳顆粒與按住鋪底共用這個時鐘） */
-  const buzz = (minGap = GAP_TIGHT) => {
+  /** 震一下（跟著音效那一刻），兩次之間至少隔 MIN_GAP */
+  const buzz = () => {
     const now = performance.now();
-    if (now - lastBuzzAt.current < minGap) return;
+    if (now - lastBuzzAt.current < MIN_GAP) return;
     lastBuzzAt.current = now;
-    hapticLight();
+    hapticTick();
   };
-  const scheduleHoldBuzz = () => {
-    const gap = gapNow();
-    holdBuzzTimer.current = window.setTimeout(() => {
-      buzz(gap - 10);          // 剛剛才因為拖曳震過就跳過這一拍
-      scheduleHoldBuzz();      // 下一拍的間隔重算，才跟得上進度
-    }, gap);
-  };
-  const startHoldBuzz = () => {
-    if (holdBuzzTimer.current !== null) return;
-    tearProgress.current = 0;
-    holdStartAt.current = performance.now();
-    scheduleHoldBuzz();
-  };
-  const stopHoldBuzz = () => {
-    if (holdBuzzTimer.current === null) return;
-    window.clearTimeout(holdBuzzTimer.current);
-    holdBuzzTimer.current = null;
-    tearProgress.current = 0;
-  };
-  // 元件收掉時一定要停：不然離開這一張券之後手機還在震
-  useEffect(() => stopHoldBuzz, []);
 
   /*
    * 背景音樂（懸念感）與券落定的聲音。
@@ -344,8 +302,6 @@ export default function FigmaTearScene({
       // 撕完一整張要拖 TEAR_SCREEN_RATIO 個畫面寬；過半即撕開，所以實際門檻是一半
       const need = Math.max(60, (containerRef.current?.clientWidth || window.innerWidth) * TEAR_SCREEN_RATIO);
       dragRef.current = { active: true, cornerX, cornerY, gain: pageW / need, pageW, pageH };
-      // 過半即撕開 → 手指真正要走的距離是 need 的一半，震動節拍就照這個算進度
-      tearNeed.current = need / 2;
 
       api.handlers.touchStart(fakeEvt(cornerX, cornerY));
       inGrabZone.current = true;
@@ -356,9 +312,8 @@ export default function FigmaTearScene({
         sfxGrab();                       // 捏到了 —— 沒有這一聲玩家不知道自己抓住了
       }
       /* 震動不看靜音開關：靜音是為了不吵到別人，震動本來就是靜的（其他頁也是這樣） */
-      hapticLight();                     // 捏到了的手感，跟 sfxGrab 同一刻
+      hapticTick();                      // 捏到了的手感，跟 sfxGrab 同一刻
       lastBuzzAt.current = performance.now();
-      startHoldBuzz();                   // 之後只要手指還壓著就一直震
     };
 
     const onCapturePointerMove = (e: PointerEvent) => {
@@ -369,16 +324,21 @@ export default function FigmaTearScene({
 
       // 左滑右滑都算（老闆指定）—— 撕開的程度只看離按下點多遠
       const dx = Math.abs(e.clientX - pressStartX.current);
-      // 拉得越開節拍越急，跟蓄力的 charge% 是同一回事
-      tearProgress.current = tearNeed.current > 0 ? Math.min(1, dx / tearNeed.current) : 0;
       /*
        * 餵給 turn.js 的摺紙點。
        * X 決定「撕多開」，Y 決定「往哪個方向摺」—— 兩軸都要餵，只餵 X 摺線永遠是水平的。
-       * 兩軸都夾住：超過券的尺寸再多也算不出有意義的角度，只會讓紙抖。
+       *
+       * 兩軸仍然要夾住（放到無限大 turn.js 算出的角度會亂跳、紙會抖），但**上限不能
+       * 卡在畫面裡**。舊值 X 是 `pageW * 1.15`：券的左緣在畫面 107/393 處、券寬約
+       * 225，摺線最遠只能走到 365 —— 幾乎就是螢幕右緣。老闆回報「翻起的紙張到螢幕
+       * 邊界就出不去了」講的就是這個：手指還在往右走，紙卻停在邊上不動了。
+       *
+       * 改成 2.6 倍（摺線可以整條走出畫面外），紙就會一路被掀出去，
+       * 手指跟紙不再脫節。Y 同理放寬到 2 倍券高，往上／往下拖也不會提早卡住。
        */
       const dy = pressStartY.current === null ? 0 : e.clientY - pressStartY.current;
-      const foldX = d.cornerX + Math.min(dx * d.gain, d.pageW * 1.15);
-      const foldY = d.cornerY + Math.max(-d.pageH, Math.min(dy * d.gain, d.pageH));
+      const foldX = d.cornerX + Math.min(dx * d.gain, d.pageW * 2.6);
+      const foldY = d.cornerY + Math.max(-d.pageH * 2, Math.min(dy * d.gain, d.pageH * 2));
       turnApi.current?.handlers.touchMove(fakeEvt(foldX, foldY));
 
       if (dx > 3) {
@@ -405,13 +365,12 @@ export default function FigmaTearScene({
         if (!isSoundMuted()) crackle(Math.min(1, 0.25 + speed * 0.5));
         /* 每一格都頓一下 —— 這一下才是「紙在我手上裂開」的來源，
            節流跟聲音共用同一個 8px 門檻，快撕就密、慢撕就疏 */
-        buzz();   // 最快 GAP_TIGHT 一次，不會跟鋪底疊成一團
+        buzz();   // 跟 crackle 同一刻，最快 MIN_GAP 一次
         lastCrackle.current = dx;
       }
     };
 
     const onPointerUp = () => {
-      stopHoldBuzz();
       lastCrackle.current = 0;
       inGrabZone.current = false;
 
@@ -495,8 +454,7 @@ export default function FigmaTearScene({
           turned: (_e: Event, page: number) => {
             if (page === 2) {
               tearCompleted.current = true;
-              stopHoldBuzz();         // 撕開了就不用再鋪底，重的那一下自己來
-              hapticHeavy();          // 撕開的那一下，跟 bigRip 同一刻
+              hapticMedium();         // 撕開的那一下，跟 bigRip 同一刻
               if (!isSoundMuted()) {
                 /*
                  * 張力曲線的後半段：撕開（爆）→ 紙片飄落 → **靜半拍** → 揭曉（亮）。
@@ -520,7 +478,7 @@ export default function FigmaTearScene({
               }
               setTimeout(() => setDone(true), 300);
             } else if (page === 1) {
-              hapticLight();          // 沒撕開、彈回去了，手上也要知道
+              hapticTick();           // 沒撕開、彈回去了，手上也要知道
               if (!isSoundMuted()) sfxBounceBack();
               // 彈回時清除拖曳狀態
               wrapperRef.current?.classList.remove('tearing');

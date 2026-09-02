@@ -171,7 +171,7 @@ export default function PrizeDetailSheet({ prize, onClose, sealed = false, showc
 
             {/* name */}
             <div className="px-5 pb-2 text-center">
-              <p className="font-black text-sm text-neutral-900 dark:text-neutral-100 leading-snug">{prize?.name}</p>
+              <p className="font-black text-sm text-neutral-900 dark:text-neutral-100 leading-relaxed">{prize?.name}</p>
             </div>
 
             {/* detail rows */}
