@@ -4,6 +4,48 @@
 
 ---
 
+## v2026.09.02o｜2026-09-02｜新欄位漏 GRANT 讓全站商品載不出來；自製賞模組整頓＋沉浸撕紙
+
+### ⚠️ 新增欄位一定要補 GRANT —— `products` 的前台讀取是**逐欄授權**
+v2026.09.02n 的 migration 685 加了 `products.intro_video_url`，欄位建了、
+`PRODUCT_PUBLIC_COLUMNS` 也加了，但**沒有 GRANT**。這張表的 `anon`／`authenticated`
+是逐欄 SELECT（各 52 欄），不是整張表 GRANT，於是 PostgREST 只要 select 到那一欄
+就整個請求回 `42501 permission denied for table products` ——
+本地／STG／PROD 三邊的首頁同時「無法載入商品列表」。
+
+- 兩環境已補 `GRANT SELECT (intro_video_url) ON products TO anon, authenticated`，
+  migration 685 也補上這段與說明
+- 這個坑比 42703 更難查：`productColumns.ts` 的註解只警告「欄位不存在」，
+  而欄位**存在卻沒授權**是另一個錯誤碼，訊息完全看不出是哪一欄造成的
+- 順帶發現 STG 的 anon 多授權了 `end_time`／`release_date`／`start_time` 三欄，
+  目前沒有前台查詢用到，先不動
+
+### 自製賞模組整頓
+老闆：「怎麼有兩個不是自製賞的模組選項」。`custom_tear`／`custom_grid`
+**前台從來沒實作過** —— item 頁的判斷是 `product.type !== 'custom' && (…)`，
+自製賞被排除在 `GachaThemeRenderer` 外，選哪個值都走 `GachaBattleEffect`。
+
+- 模組設定頁的值從 `custom_combo` 改成 `custom_battle`（前者 DB 從來沒存過，
+  PROD 是 `custom_battle`、STG 是 `custom_grid`，那一項永遠顯示未選中）
+- `module_settings` 兩環境統一成 `custom_battle`
+- 查過 PROD＋STG 共 54 檔自製賞全是「未設定」，移除不會產生孤兒
+
+### 自製賞新增沉浸撕紙（這次是真的有實作）
+一番賞那套 `FigmaTearScene` 原封不動搬過來，逐張撕。接的位置不同：一番賞走
+`TicketSelectionFlow`（先選籤號、撕紙掛在那條流程裡），自製賞沒有選籤畫面、
+買完直接開演出，所以撕紙接在 item 頁的演出分支。外層兩層容器
+（黑底置中＋393:844 letterbox）必須跟 `TicketSelectionFlow` 一致 ——
+撕紙座標是照 393 寬算的，換容器整張券會歪。每次新的一抽把進度歸零並讓
+key 換一個，否則第二次抽會停在上一張撕開後的畫面。
+
+自製賞現在三款：影片互動 `custom_battle`｜沉浸撕紙 `custom_tear`｜自製過場影片 `custom_video`。
+
+### 自製過場影片改滿版高度
+`object-contain` → `object-cover`（老闆：滿版高度，寬度被裁切沒關係）。
+過場影片的重點在畫面中央，上下留黑邊比左右被切難看。
+
+---
+
 ## v2026.09.02n｜2026-09-02｜自製賞新增「自製過場影片」模組，可上傳自己的影片
 
 抽獎後播該檔商品自己上傳的影片，播完彈中獎結果。站上原本的過場影片是寫死的
