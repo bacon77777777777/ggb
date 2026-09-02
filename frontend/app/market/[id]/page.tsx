@@ -167,8 +167,8 @@ export default function MarketItemPage() {
         </div>
 
         <div className="pricebar">
+          <Image src={asset('/images/gcoin.webp')} alt="G" width={24} height={24} className="gc object-contain" unoptimized />
           <span className="n">{gnum(item.price)}</span>
-          <span className="s unit">G</span>
           <span className="r">
             {item.prizeLevel || '品項'}<br />{ago(item.createdAt)}上架
           </span>

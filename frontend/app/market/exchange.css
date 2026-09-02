@@ -34,8 +34,9 @@
   font-size: 24px; line-height: 1; font-weight: 900;
   color: rgb(var(--amount, 255 0 54)); letter-spacing: -.02em;
 }
-/* 詳情頁的漸層價格條與橫捲小卡沿用商城的 .pricebar / .sp，只把單位挪到數字後面 */
-.mk.gx .pricebar .s.unit { margin-left: 4px; }
+/* 詳情頁的漸層價格條沿用商城的 .pricebar，「G」字改成 G 幣圖標放金額左邊（老闆 2026-09-02）。
+   價格條是 align-items:flex-end，圖標墊 2px 對齊 31px Oswald 數字的視覺中線。 */
+.mk.gx .pricebar .gc { width: 24px; height: 24px; flex-shrink: 0; display: block; margin-bottom: 2px; }
 .mk.gx .scard .sp .u { font-size: 11px; margin-left: 2px; }
 
 /* ════════ ③ 交易所特有 ════════ */
