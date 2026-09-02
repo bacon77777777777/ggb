@@ -38,6 +38,14 @@ export interface HideOnScrollOptions {
   showAfter?: number;
   /** 單次位移超過這個值視為程式跳轉，不列入累積 */
   maxDelta?: number;
+  /** 捲動容器（預設 window）。倉庫這種 fixed 覆蓋層是內部捲動，window.scrollY 不會動 */
+  targetRef?: { current: HTMLElement | null };
+  /**
+   * 捲動容器選擇器 —— 比 targetRef 穩：renderTabContent 這類「同一份內容渲染兩個版位
+   * （手機＋桌機）」的頁面，ref 會落在後渲染的隱藏那份上，selector 每次讀值
+   * 都挑「當下可見」的那顆（2026-09-02 倉庫踩過）
+   */
+  targetSelector?: string;
 }
 
 export function useHideOnScroll(options: HideOnScrollOptions = {}): boolean {
@@ -48,6 +56,8 @@ export function useHideOnScroll(options: HideOnScrollOptions = {}): boolean {
     hideAfter = 8,
     showAfter = 2,
     maxDelta = 400,
+    targetRef,
+    targetSelector,
   } = options;
 
   const [hidden, setHidden] = useState(false);
@@ -67,14 +77,41 @@ export function useHideOnScroll(options: HideOnScrollOptions = {}): boolean {
         return;
       }
 
-      let last = window.scrollY;
+      /*
+       * 指名容器時**不能把節點抓死**：loading 早退、資料進來重建容器，
+       * ref.current 會換人，綁在舊節點上的監聽器就聾了（2026-09-02 踩過）。
+       * 改成：監聽掛在 window 的捕獲階段（scroll 不冒泡但捕獲收得到所有元素的捲動），
+       * 每次讀值都從 ref.current 取當下那顆 —— 節點怎麼換都跟得上。
+       */
+      const useContainer = !!(targetSelector || targetRef);
+      const resolve = (): HTMLElement | null => {
+        if (targetSelector) {
+          const list = document.querySelectorAll<HTMLElement>(targetSelector);
+          for (const el of list) if (el.offsetParent !== null) return el; // 挑可見的那顆
+          return list[0] ?? null;
+        }
+        return targetRef?.current ?? null;
+      };
+      const getY = () => {
+        if (useContainer) return resolve()?.scrollTop ?? 0;
+        return window.scrollY;
+      };
+      const getMax = () => {
+        if (useContainer) {
+          const t = resolve();
+          return t ? Math.max(0, t.scrollHeight - t.clientHeight) : 0;
+        }
+        return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      };
+
+      let last = getY();
       let acc = 0;
       let raf = 0;
 
       const read = () => {
         raf = 0;
-        const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-        const y = Math.min(Math.max(window.scrollY, 0), max);   // ① 夾住橡皮筋
+        const max = getMax();
+        const y = Math.min(Math.max(getY(), 0), max);   // ① 夾住橡皮筋
         const delta = y - last;
         last = y;
         if (delta === 0) return;
@@ -94,9 +131,12 @@ export function useHideOnScroll(options: HideOnScrollOptions = {}): boolean {
       const onScroll = () => {
         if (!raf) raf = requestAnimationFrame(read);
       };
-      window.addEventListener('scroll', onScroll, { passive: true });
+      const opts: AddEventListenerOptions = useContainer
+        ? { capture: true, passive: true }
+        : { passive: true };
+      window.addEventListener('scroll', onScroll, opts);
       detach = () => {
-        window.removeEventListener('scroll', onScroll);
+        window.removeEventListener('scroll', onScroll, opts);
         if (raf) cancelAnimationFrame(raf);
       };
     };

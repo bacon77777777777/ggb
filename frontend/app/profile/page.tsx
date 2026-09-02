@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Box, Truck, Trophy, Settings, LogOut, ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, HelpCircle, Info, FileText, Shield, RefreshCcw, RefreshCw, Wallet, Heart, User, ChevronDown, X, Loader2, CreditCard, Copy, Ticket, Store, History, MessageCircle, Star, UserPlus, Search, Plus } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { HoldToConfirmButton } from '@/components/ui/HoldToConfirmButton';
+import { useHideOnScroll } from '@/lib/useHideOnScroll';
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
 import PageHeader from '@/components/ui/PageHeader';
 import { TopFadeBlur } from '@/components/ui/TopFadeBlur';
@@ -691,6 +692,14 @@ function ProfileContent() {
   const [mobileWarehouseDisplayCount, setMobileWarehouseDisplayCount] = useState(WAREHOUSE_PAGE);
   const mobileWarehouseSentinelRef = useRef<HTMLDivElement>(null);
   const mobileWarehouseScrollRef = useRef<HTMLDivElement>(null);
+  // 倉庫清單下滑時收起底部「全選」bar（老闆 2026-09-02，同首頁底部導航）。
+  // 倉庫是 fixed 覆蓋層、捲動在容器裡；renderTabContent 會渲染手機＋桌機兩份，
+  // ref 會落在隱藏那份上，所以用 selector 讓 hook 每次挑可見的那顆
+  const warehouseBarHidden = useHideOnScroll({
+    enabled: activeTab === 'warehouse',
+    targetSelector: '[data-warehouse-scroll]',
+    topThreshold: 40,
+  });
   const [mobileDeliveryDisplayCount, setMobileDeliveryDisplayCount] = useState(10);
   const mobileDeliveryScrollRef = useRef<HTMLDivElement>(null);
   const [mobileDrawDisplayCount, setMobileDrawDisplayCount] = useState(10);
@@ -3157,6 +3166,7 @@ function ProfileContent() {
               {/* Content List */}
               <div
                 ref={mobileWarehouseScrollRef}
+                data-warehouse-scroll
                 className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950"
                 onScroll={(e) => {
                   const el = e.currentTarget;
@@ -3308,9 +3318,12 @@ function ProfileContent() {
                 </button>
               )}
 
-              {/* Mobile Fixed Bottom Bar (Only for Warehouse Tab) */}
+              {/* Mobile Fixed Bottom Bar (Only for Warehouse Tab)；下滑收起、往回撥出現（同首頁） */}
               {activeWarehouseTab === 'all' && (
-                <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] z-[60] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] flex items-center px-3">
+                <div
+                  className="fixed bottom-0 left-0 right-0 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] z-[60] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] flex items-center px-3 transition-transform duration-300"
+                  style={warehouseBarHidden ? { transform: 'translateY(100%)' } : undefined}
+                >
                   {selectedForDelivery.length === 0 ? (
                     <button
                       onClick={() => setSelectedForDelivery(selectAllTarget.ids)}
