@@ -10,3 +10,10 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS intro_video_url text;
 
 COMMENT ON COLUMN products.intro_video_url IS
   '自製過場影片的網址（machine_theme = custom_video 時使用）。R2 直傳，見 backend/app/api/admin/upload/presign';
+
+-- ⚠️ 這張表的前台讀取權限是**逐欄授權**的（anon／authenticated 各 52 欄，
+-- 不是整張表 GRANT SELECT）。新增欄位不補 GRANT，PostgREST 只要被 select 到
+-- 這一欄就整個請求回 42501 permission denied for table products ——
+-- 前台首頁「無法載入商品列表」，而且錯誤訊息完全看不出是哪一欄造成的。
+-- 2026-09-02 就是這樣把 PROD／STG 的商品列表一起弄掛的。
+GRANT SELECT (intro_video_url) ON public.products TO anon, authenticated;
