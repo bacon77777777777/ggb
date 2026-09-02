@@ -456,7 +456,7 @@ export default function MarketPage() {
               mine.map(m => (
                 /* 點小卡進詳情頁（老闆 2026-09-02）；已售出／下架的會落在詳情頁的「已下架」畫面 */
                 <div
-                  className="mkrow mine"
+                  className="mkrow mkrow--mine"
                   key={m.id}
                   role="button"
                   tabIndex={0}

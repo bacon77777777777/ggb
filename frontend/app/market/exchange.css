@@ -160,9 +160,16 @@
 }
 .mk.gx .mkrow .rt .act.danger { border-color: #FFD3D9; color: var(--red); }
 
+/* 面板底色全白（老闆 2026-09-02：內容不滿時白塊＋灰底雙色很醜）。
+   區塊間的 8px 灰縫沒了，改細分隔線保持區隔 */
+.mk.gx .sheet { background: var(--card); }
+.mk.gx .sheet .blk { margin-bottom: 0; }
+.mk.gx .sheet .blk + .blk { border-top: 1px solid var(--line); }
+
 /* 對話視窗（老闆 2026-09-02：「畫面短、右邊灰條」）：商城原型的 .chatbox 是 44vh
-   小框自己捲，跟 .sbd 疊成雙捲動。放開讓 .sbd 當唯一捲動容器 */
-.mk.gx .chatbox { max-height: none; min-height: 0; overflow: visible; }
+   小框自己捲，跟 .sbd 疊成雙捲動。放開讓 .sbd 當唯一捲動容器。
+   min-height 100%：灰畫布撐滿整個面板身體，訊息少時不會下半截變白 */
+.mk.gx .chatbox { max-height: none; min-height: 100%; overflow: visible; }
 /* 面板捲到底不要把手勢鏈給背景頁（配合 Sheet 開著時鎖 body） */
 .mk.gx .sbd { overscroll-behavior: contain; }
 
@@ -181,19 +188,19 @@
 
 /* 我的上架列改版（老闆 2026-09-02）：
    圖靠左上、品項名／商品名各夾兩行、下架改文字鈕靠右上、金額在它下面靠右 */
-.mk.gx .mkrow.mine { align-items: flex-start; }
-.mk.gx .mkrow.mine .tx b,
-.mk.gx .mkrow.mine .tx > span {
+.mk.gx .mkrow.mkrow--mine { align-items: flex-start; }
+.mk.gx .mkrow.mkrow--mine .tx b,
+.mk.gx .mkrow.mkrow--mine .tx > span {
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 /* 右欄撐滿列高：下架釘右上、金額沉右下（老闆 2026-09-02）；金額黑字、下架不加粗 */
-.mk.gx .mkrow.mine .rt {
+.mk.gx .mkrow.mkrow--mine .rt {
   display: flex; flex-direction: column; align-items: flex-end;
   justify-content: space-between; align-self: stretch; gap: 6px;
 }
-.mk.gx .mkrow.mine .rt .p { color: var(--txt); margin-top: auto; }
-.mk.gx .mkrow.mine .rt .p.minus { color: var(--sub); }
-.mk.gx .mkrow.mine .rt .act {
+.mk.gx .mkrow.mkrow--mine .rt .p { color: var(--txt); margin-top: auto; }
+.mk.gx .mkrow.mkrow--mine .rt .p.minus { color: var(--sub); }
+.mk.gx .mkrow.mkrow--mine .rt .act {
   margin: 0; border: 0; background: none; padding: 0;
   font-size: 13px; font-weight: 400; color: var(--red);
 }
