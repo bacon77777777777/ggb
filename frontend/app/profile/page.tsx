@@ -624,6 +624,13 @@ function ProfileContent() {
   const [isRedeemingCoupon, setIsRedeemingCoupon] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
+  // 廣播給全域底部導航（globals.css 靠這個屬性藏它）：分頁視圖與 URL 可能不同步
+  //（重設密碼回跳那類旁門是 state-only），所以不能只靠 ?tab= 判斷
+  useEffect(() => {
+    if (isMobileDetailOpen) document.body.dataset.profileDetail = '1';
+    else delete document.body.dataset.profileDetail;
+    return () => { delete document.body.dataset.profileDetail; };
+  }, [isMobileDetailOpen]);
 
   /* 動態島文字：手機端主畫面的頂部是橘紅色動態背景（.profile-bubbles，fixed 且
      pointer-events-none），要白字；點進倉庫／出貨那些詳細分頁後頂部換成白色
@@ -2263,9 +2270,10 @@ function ProfileContent() {
       if (action === 'reset_password') {
         setActiveTab('settings');
         toast.info('請設定您的新密碼');
-        // Clean URL
+        // Clean URL（順便補上 tab=settings：URL 與畫面同步，底部導航才判斷得準）
         const newUrl = new URL(window.location.href);
         newUrl.searchParams.delete('action');
+        newUrl.searchParams.set('tab', 'settings');
         window.history.replaceState({}, '', newUrl.toString());
       }
       if (action === 'update_profile_cvs') {

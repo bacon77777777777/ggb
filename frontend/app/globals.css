@@ -703,3 +703,7 @@ canvas {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.06); }
 }
+
+/* 會員中心手機分頁開著時，全域底部導航無條件隱藏（2026-09-02 分頁改 window 捲動後
+   蓋不住它了；連 URL 沒帶 ?tab 的旁門路徑——如重設密碼回跳——也要蓋到） */
+body[data-profile-detail="1"] [data-testid="mobile-tabbar"] { display: none; }
