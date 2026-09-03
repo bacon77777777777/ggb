@@ -18,14 +18,23 @@ import { hapticMedium } from '@/lib/haptics';
  */
 export const MARKET_POP_MIN = 100;
 
+/**
+ * 本地開發用隨機值（老闆 2026-09-03：本地要看得到效果）。dev server 上每次翻牌從四個等級裡
+ * 隨機抽一個，不管品項有沒有行情，四種分級都看得到。正式環境（NODE_ENV=production）照真實行情。
+ */
+const DEV_RANDOM = process.env.NODE_ENV !== 'production';
+const DEV_SAMPLES = [350, 1500, 8800, 26000];
+const pickDevValue = () => DEV_SAMPLES[Math.floor(Math.random() * DEV_SAMPLES.length)];
+
 export default function MarketValuePop({ value, trigger }: { value: number | null | undefined; trigger: string | number | null }) {
   const [shot, setShot] = useState<{ key: string; value: number } | null>(null);
 
   useEffect(() => {
     if (trigger === null || trigger === undefined) return;
-    if (typeof value !== 'number' || value < MARKET_POP_MIN) return;
-    setShot({ key: String(trigger), value });
-    if (value >= 20000) hapticMedium();
+    const v = DEV_RANDOM ? pickDevValue() : value;
+    if (typeof v !== 'number' || v < MARKET_POP_MIN) return;
+    setShot({ key: String(trigger), value: v });
+    if (v >= 20000) hapticMedium();
     const t = setTimeout(() => setShot(s => (s?.key === String(trigger) ? null : s)), 2200);
     return () => clearTimeout(t);
   }, [trigger, value]);
