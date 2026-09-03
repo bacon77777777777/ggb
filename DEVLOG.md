@@ -80,6 +80,30 @@ PROD 的 `banners`／`site_promos` 都沒有連到 `/announcements` 的（各 0 
 - Playwright 用 iPhone 視口驗過三個狀態：剛進不顯示 → 下滑降到底（bottom 6px）
   → 往上撥升回警語列上面（bottom 103px）
 
+### 抽卡翻牌「+10,000」體感數字：每日抓第三方行情（老闆 2026-09-03 拍板）
+老闆要的是**體感**，不是回收價：翻開卡片時畫面中上方跳一個數字（不帶單位），抽卡規則頁寫明是
+第三方行情換算的參考值。來源討論過四個站：huca 是同業二手資料（只當抽查對照）、pokeprice 是美規卡、
+snkrdunk 有防爬不繞、eBay 網頁 403 但有官方 API（需要時再接）；主來源定**遊々亭日圓標價**
+（帶 UA 可抓、無反爬、跟我們的日版商品一致）。
+
+- **資料**（migration 686，STG 已套、PROD 推正時補）：`products.card_set`（遊々亭 vers 代碼，
+  如 sv10、m02）、`product_prizes.card_no`（名稱前綴 3 位卡號，已回填 599 個）、
+  `product_prizes.market_display_value`（顯示值快取）、`card_market_prices`（每日歷史）。
+  8 檔寶可夢商品對上 5 個系列（超級勇氣 m01l／烈獄狂火X m02／深淵之瞳 m05／火箭隊的榮耀 sv10／
+  綠寶石風暴＆風暴翡翠 m06）；三檔「戰術牌組」遊々亭沒有對應系列，先空著不抓
+- **抓價** `lib/cardPrices.ts` ＋ `api/cron/card-price-daily`（手動：`scripts/card_prices_run.ts`）：
+  匯率用 open.er-api.com（免費免金鑰；台灣銀行 CSV 有 Cloudflare 驗證，不繞）。
+  **顯示值不吃匯率**：日圓 × 0.22 取 5 的倍數（跟匯入定價同一把尺），數字才不會每天跟匯率跳；
+  匯率只用來算台幣參考值存歷史。同卡號多版本取**最低價**（保守）。
+  跑一次：5 系列、533 個品項有值（≥100 的 86 張、≥1,000 的 16 張、≥5,000 的 8 張，
+  最高 198,000 円 → 43,560）。排程 migration 687（PROD 每天 04:00；STG 沒有 pg_cron）
+- **前台**：`PRIZE_PUBLIC_COLUMNS` 加欄；真抽結果靠名稱對回品項、試玩本來就從品項挑。
+  `components/card/MarketValuePop.tsx`：<100 不跳；<1,000 小字白、≥1,000 大字白、≥5,000 金色光暈、
+  ≥20,000 金色＋震動；數字滾動後上飄淡出。接在三處：撕包演出 `GgbPackRip`（card_peel，
+  現在抽卡商品用的；它只收圖片網址，另傳一個對齊的 `cardValues` 陣列，`flipTop` 翻開時跳）、
+  卡包開包 `CardDrawAnimation`（card_pack，每張輪到最上面）、格狀翻牌 `CardFlipDirect`（翻開）。
+  規則頁 `/card/rules` 加「翻牌數字」一段
+
 ### 小卡圖片「今天之前都很絲滑」的退化與整套加速（老闆 2026-09-03 下午）
 老闆回報：App 開圖絲滑、Safari／PWA 卻卡，切頁籤每次都先顯示預設圖、滑回推薦頁也是。
 **這是上午「墊預設圖」那一版改出來的退化**：以前真圖直接放，快取命中時瀏覽器同步畫出來；

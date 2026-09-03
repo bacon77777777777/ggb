@@ -32,4 +32,4 @@
  */
 export const PRODUCT_PUBLIC_COLUMNS = 'id, product_code, name, description, image_url, category, type, status, price, total_count, remaining, remaining_count, is_hot, txid_hash, sealed_at, is_preorder, preorder_available_at, distributor, series, barcode, supplier_id, machine_theme, cards_per_pack, pack_style, pack_front_image_url, pack_back_image_url, card_back_image_url, box_image_url, intro_video_url, created_at, feed_boost'
 
-export const PRIZE_PUBLIC_COLUMNS = 'id, product_id, level, name, image_url, total, remaining, probability, display_mode, created_at'
+export const PRIZE_PUBLIC_COLUMNS = 'id, product_id, level, name, image_url, total, remaining, probability, display_mode, created_at, market_display_value'

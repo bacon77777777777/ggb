@@ -448,6 +448,15 @@ export default function ProductDetailPage() {
     isCategoryHidden(product?.type, flagStates, isFlagsLoading) ||
     isCategoryUnderMaintenance(product?.type, flagStates, isFlagsLoading);
   const [prizes, setPrizes] = useState<Database['public']['Tables']['product_prizes']['Row'][]>([]);
+  /* 抽卡翻牌的「+N」體感數字：品項上的 market_display_value（cron 每天更新）。
+     真抽結果 API 只回名稱／賞等，靠名稱對回品項；試玩本來就是從品項挑的。
+     用 helper 讀是因為 Database 型別還沒重產、沒有這一欄 */
+  const marketValueOf = (row: unknown): number | null => {
+    const v = (row as { market_display_value?: number | null } | null | undefined)?.market_display_value;
+    return typeof v === 'number' ? v : null;
+  };
+  const marketValueByName = (name: string): number | null =>
+    marketValueOf(prizes.find(z => z.name === name));
   const [supplierName, setSupplierName] = useState<string | null>(null);
   const [productCategories, setProductCategories] = useState<Array<{ id: string; name: string }>>([]);
   // 進行中的促銷：商品資訊第一列（紅色膠囊），全類別跟轉蛋頁同一套樣式
@@ -978,6 +987,7 @@ export default function ProductDetailPage() {
       image_url: best?.image_url || asset('/images/card/00001.webp'),
       grade: rarity,
       is_last_one: false,
+      market_display_value: marketValueOf(best),
     }
   };
 
@@ -1014,6 +1024,7 @@ export default function ProductDetailPage() {
           rarity: String(pick?.level ?? ''),
           grade: String(pick?.level ?? ''),
           image_url: pick?.image_url ?? undefined,
+          market_display_value: marketValueOf(pick),
         } as Prize;
       });
       setWonPrizes([...filler, trialPrize]);
@@ -1110,7 +1121,8 @@ export default function ProductDetailPage() {
         image_url: item.image_url,
         grade: item.grade,
         is_last_one: item.is_last_one,
-        ticket_number: item.ticket_number
+        ticket_number: item.ticket_number,
+        market_display_value: marketValueByName(item.name),
       }));
 
       console.log('[GA] event: purchase', { 
@@ -2121,6 +2133,7 @@ export default function ProductDetailPage() {
                 packImage={packFaceImage}
                 cardBack={(product as any).card_back_image_url || asset('/images/card/back.webp')}
                 cards={ordered.map(p => p.image_url || asset('/images/card/00004.webp'))}
+                cardValues={ordered.map(p => p.market_display_value ?? null)}
                 prizeTier={packTiers[0] ?? 'blue'}
                 prizeTiers={packTiers}
                 soundDefault={!isVideoMuted}

@@ -13,6 +13,7 @@
  */
 
 import React, { useState, useRef, useEffect } from "react";
+import MarketValuePop from "./MarketValuePop";
 import { SoundToggle, RAISED_STYLE, RAISED_STYLE_GOLD } from "@/components/ui/SoundToggle";
 import useSoundMuted from "@/hooks/useSoundMuted";
 import { createClient } from "@/lib/supabase/client";
@@ -180,6 +181,8 @@ export default function GGBPackRip({
   packImage,
   cardBack,
   cards: cardsProp,
+  /** 每張卡翻開時跳的「+N」體感數字（跟 cards 對齊；null 或 <100 不跳）。見 MarketValuePop */
+  cardValues = /** @type {(number|null)[] | null} */ (null),
   prizeTier: prizeTierProp = "blue",
   /**
    * 每一包各自的特效等級，例如買十包就是十個元素。
@@ -284,6 +287,7 @@ export default function GGBPackRip({
   const [dealing, setDealing] = useState(false); // 發牌動畫進行中（才用階梯延遲）
   const [settled, setSettled] = useState(true);  // 新頂牌是否已從堆疊位滑到頂位
   const [flipped, setFlipped] = useState(false); // 最上張已翻正面
+  const [pop, setPop] = useState(null);           // MarketValuePop 的 {value, trigger}
   const [auraOn, setAuraOn] = useState(false);
   const [flash, setFlash] = useState(false);
   const [cfg, setCfg] = useState(PARAM_DEFAULTS);
@@ -497,6 +501,8 @@ export default function GGBPackRip({
   const flipTop = (idx) => {
     if (phaseRef.current !== "cards") return;
     setFlipped(true);
+    // 翻牌體感數字：這張卡有行情就跳（trigger = idx，同一張只跳一次）
+    setPop({ value: Array.isArray(cardValues) ? cardValues[idx] ?? null : null, trigger: idx });
     sfx.current.stopHype(); // 翻下去的瞬間收掉醞釀音，讓中獎音接手
     sfx.current.flip();
     // 每包的最後一張都要有收尾，不是只有整筆的最後一張
@@ -974,6 +980,8 @@ export default function GGBPackRip({
       onPointerDown={onStageDown} onPointerMove={onStageMove}
       onPointerUp={onStageUp} onPointerCancel={onStageUp}>
       <style>{CSS_KEYFRAMES}</style>
+      {/* 翻牌體感數字（老闆 2026-09-03）：flipTop 時設定，畫面中上方跳「+N」 */}
+      <MarketValuePop value={pop?.value} trigger={pop?.trigger ?? null} />
 
       {/* 背景流星（老闆 2026-08-29）。z-0 壓在所有演出元素底下 —— 這頁的內容
           最低是 z-2，所以它永遠在最後面；canvas 本身是透明的，S.stage 的暗紫

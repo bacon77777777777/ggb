@@ -16,6 +16,8 @@ export interface Prize {
   is_last_one?: boolean;
   /** 一番賞才有：籤號。中獎彈窗有這欄才顯示籤號 */
   ticket_number?: number;
+  /** 抽卡才有：翻牌時跳的「+N」體感數字（第三方行情換算，非回收價；<100 不跳）。見 lib/cardPrices.ts */
+  market_display_value?: number | null;
 }
 
 interface GachaMachineProps {
