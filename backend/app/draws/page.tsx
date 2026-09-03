@@ -20,7 +20,7 @@ interface DrawRecord {
   /** 這一抽實際收的 G（促銷/優惠券折抵後；migration 512）。舊資料 null → fallback 單價 */
   tokens_spent?: number | null
   user?: { name: string; email: string; id: string }
-  product?: { name: string; image_url: string; price?: number; type?: string }
+  product?: { name: string; image_url: string; price?: number; type?: string; cards_per_pack?: number | null }
   /** 品項（轉蛋紀錄的 prize_name/prize_level 快照為空，靠這個 join 補） */
   prize?: { name: string; level: string } | null
   slot_log?: {
@@ -38,7 +38,12 @@ interface DrawTx {
   user?: DrawRecord['user']
   product?: DrawRecord['product']
   records: DrawRecord[]
+  /** draw_records 筆數（抽卡商品是「張數」） */
   count: number
+  /** 玩家實際買了幾次（抽卡商品是「包數」，其他商品等於 count） */
+  units: number
+  /** 一包幾張；非抽卡商品為 1 */
+  packSize: number
   cost: number
   pointsUsed: number
   promoDiscount: number
@@ -103,6 +108,15 @@ const slotMachineLabel = (r: DrawRecord) => {
 /** 這一抽實收：老虎機看 bet；一般抽獎看 tokens_spent（舊資料 fallback 單價） */
 const recordCost = (r: DrawRecord) =>
   slotLogOf(r)?.bet ?? r.tokens_spent ?? r.product?.price ?? 0
+
+/*
+ * 抽卡商品一「抽」是一整包：一包 cards_per_pack 張、每張各寫一筆 draw_records，
+ * 但只有第一張帶 tokens_spent（整包的價錢），其餘幾張是 0。
+ * 所以筆數 ≠ 抽數，拿「筆數 × 單價」當定價會憑空多出折扣 ——
+ * 老闆 2026-09-04 截圖到的「共 50 抽 5,500 G 已折 22,000」其實是 10 包 × 550，沒有任何促銷。
+ */
+const packSizeOf = (p?: DrawRecord['product']) =>
+  p?.type === 'card' && (p.cards_per_pack ?? 0) > 1 ? (p.cards_per_pack as number) : 1
 
 export default function DrawsPage() {
   const [records, setRecords] = useState<DrawRecord[]>([])
@@ -192,7 +206,7 @@ export default function DrawsPage() {
         tx = {
           key, id: r.id, created_at: r.created_at,
           user: r.user, product: r.product,
-          records: [], count: 0, cost: 0, pointsUsed: 0, promoDiscount: 0, statuses: [],
+          records: [], count: 0, units: 0, packSize: 1, cost: 0, pointsUsed: 0, promoDiscount: 0, statuses: [],
         }
         map.set(key, tx)
       }
@@ -205,8 +219,16 @@ export default function DrawsPage() {
     }
     for (const tx of map.values()) {
       tx.records.sort((a, b) => a.id - b.id)
-      // 有促銷/優惠券折抵時（實收 < 單價×筆數）標出折了多少
-      const nominal = (tx.product?.price ?? 0) * tx.count
+      // 抽卡：筆數換算成包數。cards_per_pack 沒設的抽卡商品退而用「有收錢的筆數」當包數
+      //（促銷送整包的那種會少算一包 —— 寧可漏標折扣，不要誤標）
+      tx.packSize = packSizeOf(tx.product)
+      tx.units = tx.packSize > 1
+        ? Math.max(1, Math.round(tx.count / tx.packSize))
+        : tx.product?.type === 'card'
+          ? Math.max(1, tx.records.filter(r => recordCost(r) > 0).length)
+          : tx.count
+      // 有促銷/優惠券折抵時（實收 < 單價×抽數）標出折了多少
+      const nominal = (tx.product?.price ?? 0) * tx.units
       const isSlot = tx.records.some(r => slotLogOf(r))
       if (!isSlot && tx.pointsUsed === 0 && nominal > tx.cost) tx.promoDiscount = nominal - tx.cost
     }
@@ -236,8 +258,8 @@ export default function DrawsPage() {
           bValue = b.cost
           break
         case 'count':
-          aValue = a.count
-          bValue = b.count
+          aValue = a.units
+          bValue = b.units
           break
         default:
           aValue = a.id
@@ -314,7 +336,12 @@ export default function DrawsPage() {
       key: 'count',
       label: '抽數',
       sortable: true,
-      render: (tx) => <span className="tabular-nums text-neutral-700">共 {tx.count} 抽</span>
+      render: (tx) => (
+        <span className="tabular-nums text-neutral-700 whitespace-nowrap">
+          共 {tx.units} 抽
+          {tx.units !== tx.count && <span className="ml-1 text-xs text-neutral-400">{tx.count} 張</span>}
+        </span>
+      )
     },
     {
       key: 'cost',
@@ -380,7 +407,12 @@ export default function DrawsPage() {
                 </td>
                 <td className="py-1.5 pr-4 text-right tabular-nums text-neutral-600">
                   {r.points_used ? `${(r.points_used * 4).toLocaleString()} 積分` : cost.toLocaleString()}
-                  {!r.points_used && cost === 0 && <span className="ml-1 text-xs text-red-500">（促銷贈送）</span>}
+                  {/* 抽卡同一包的其他幾張本來就是 0，不是贈品 */}
+                  {!r.points_used && cost === 0 && (
+                    tx.packSize > 1
+                      ? <span className="ml-1 text-xs text-neutral-400">（同包）</span>
+                      : <span className="ml-1 text-xs text-red-500">（促銷贈送）</span>
+                  )}
                 </td>
                 <td className="py-1.5">
                   <span className={`px-2 py-0.5 rounded text-xs ${info.className}`}>{info.label}</span>
