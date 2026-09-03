@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import Image from 'next/image';
 import MarketValuePop from '@/components/card/MarketValuePop';
+import { createClient } from '@/lib/supabase/client';
 import type { Prize } from '@/components/GachaMachine';
 import BoosterPackOpenEffect from './BoosterPackOpenEffect';
 import SoundToggle from '@/components/ui/SoundToggle';
@@ -307,6 +308,12 @@ export default function CardDrawAnimation({
      但這疊卡是靠索引在讀的，任何一條沒想到的路徑都不該讓整頁掛掉 */
   const topIndex = prizes.length ? Math.min(Math.max(swipeIndex, 0), prizes.length - 1) : 0;
   const [pop, setPop] = useState<{ value: number | null; trigger: string; grade?: string } | null>(null);
+  /* 後台模組參數（machine_theme_params.card_pack）的「翻牌市價數字」開關；讀不到就當開 */
+  const [marketPopOn, setMarketPopOn] = useState(true);
+  useEffect(() => {
+    createClient().from('machine_theme_params').select('params').eq('theme', 'card_pack').maybeSingle()
+      .then(({ data }) => { const v = (data?.params as { marketPop?: boolean } | null)?.marketPop; if (v === false) setMarketPopOn(false); }, () => {});
+  }, []);
 
   /*
    * 整疊卡共用一個尺寸，由「目前最上面那張」的圖片比例決定。
@@ -419,7 +426,7 @@ export default function CardDrawAnimation({
           </motion.div>
         )}
 
-        <MarketValuePop value={pop?.value} trigger={pop?.trigger ?? null} grade={pop?.grade} />
+        <MarketValuePop value={pop?.value} trigger={pop?.trigger ?? null} grade={pop?.grade} enabled={marketPopOn} />
         {/* ── Phase 2: Immersive card reveal ── */}
         {phase === 'swipe' && prizes.length > 0 && (
           <motion.div

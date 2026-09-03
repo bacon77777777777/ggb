@@ -32,10 +32,11 @@ const devValueFor = (grade?: string | null) => {
   return 350;
 };
 
-export default function MarketValuePop({ value, trigger, grade }: { value: number | null | undefined; trigger: string | number | null; grade?: string | null }) {
+export default function MarketValuePop({ value, trigger, grade, enabled = true }: { value: number | null | undefined; trigger: string | number | null; grade?: string | null; /** 後台模組參數「翻牌市價數字」（machine_theme_params.marketPop），關掉完全不跳 */ enabled?: boolean }) {
   const [shot, setShot] = useState<{ key: string; value: number } | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     if (trigger === null || trigger === undefined) return;
     const v = DEV_FAKE ? devValueFor(grade) : value;
     if (typeof v !== 'number' || v < MARKET_POP_MIN) return;
@@ -44,14 +45,15 @@ export default function MarketValuePop({ value, trigger, grade }: { value: numbe
     const t = setTimeout(() => setShot(s => (s?.key === String(trigger) ? null : s)), 2200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trigger, value]);
+  }, [trigger, value, enabled]);
 
   return (
     <AnimatePresence>
       {shot && (
         <motion.div
           key={shot.key}
-          className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+18%)] z-[1300] flex justify-center"
+          /* 位置：卡牌上緣（老闆 2026-09-03：太不明顯，往上移到稍微壓到卡牌與背景） */
+          className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+13%)] z-[1300] flex justify-center"
           initial={{ opacity: 0, y: 16, scale: 0.8 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -40, scale: 1.05 }}
@@ -81,12 +83,14 @@ function CountUp({ value }: { value: number }) {
   const tier = value >= 20000 ? 'legend' : value >= 5000 ? 'gold' : value >= 1000 ? 'big' : 'small';
   return (
     <span
+      /* 粗黑邊（老闆 2026-09-03：壓在卡面上要看得清楚）：-webkit-text-stroke ＋ paint-order stroke fill，
+         描邊畫在填色底下才不會把字吃細；等級越高邊越粗 */
       className={cn(
-        'font-amount font-black tabular-nums tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]',
-        tier === 'small' && 'text-[28px] text-white',
-        tier === 'big' && 'text-[40px] text-white',
-        tier === 'gold' && 'text-[46px] text-[#ffd54a] drop-shadow-[0_0_18px_rgba(255,200,60,0.85)]',
-        tier === 'legend' && 'text-[56px] text-[#ffd54a] drop-shadow-[0_0_28px_rgba(255,200,60,1)] animate-pulse',
+        'font-amount font-black tabular-nums tracking-tight [paint-order:stroke_fill] drop-shadow-[0_3px_10px_rgba(0,0,0,0.7)]',
+        tier === 'small' && 'text-[34px] text-white [-webkit-text-stroke:3px_#000]',
+        tier === 'big' && 'text-[46px] text-white [-webkit-text-stroke:4px_#000]',
+        tier === 'gold' && 'text-[54px] text-[#ffd54a] [-webkit-text-stroke:4px_#000] drop-shadow-[0_0_18px_rgba(255,200,60,0.85)]',
+        tier === 'legend' && 'text-[64px] text-[#ffd54a] [-webkit-text-stroke:5px_#000] drop-shadow-[0_0_28px_rgba(255,200,60,1)] animate-pulse',
       )}
     >
       +{n.toLocaleString()}

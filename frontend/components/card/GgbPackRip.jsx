@@ -24,6 +24,7 @@ import { PACK_RATIO } from '@/components/card/packSpec';
 /* 後台「抽獎模組設定 → 卡包模式 → 撕開封口」可調的參數，
    讀不到就用這組預設（跟 backend/app/settings/modules/machineParams.ts 的 default 一致） */
 const PARAM_DEFAULTS = {
+  marketPop: true,   // 翻牌市價數字（後台模組參數可關）
   vortexScale: 100, vortexOffsetY: 0,
   energyScale: 100, energyOffsetY: 0,
   fxOpacity: 0.9,
@@ -978,12 +979,12 @@ export default function GGBPackRip({
   const tiltTransform = flipped ? `rotateX(${tilt.x.toFixed(1)}deg) rotateY(${tilt.y.toFixed(1)}deg)` : "none";
 
   return (
-    <div id="ggb-stage" style={S.stage}
+    <div id="ggb-stage" style={S.stage} data-market-pop={String(cfg.marketPop !== false)}
       onPointerDown={onStageDown} onPointerMove={onStageMove}
       onPointerUp={onStageUp} onPointerCancel={onStageUp}>
       <style>{CSS_KEYFRAMES}</style>
       {/* 翻牌體感數字（老闆 2026-09-03）：flipTop 時設定，畫面中上方跳「+N」 */}
-      <MarketValuePop value={pop?.value} trigger={pop?.trigger ?? null} grade={pop?.grade} />
+      <MarketValuePop value={pop?.value} trigger={pop?.trigger ?? null} grade={pop?.grade} enabled={cfg.marketPop !== false} />
 
       {/* 背景流星（老闆 2026-08-29）。z-0 壓在所有演出元素底下 —— 這頁的內容
           最低是 z-2，所以它永遠在最後面；canvas 本身是透明的，S.stage 的暗紫

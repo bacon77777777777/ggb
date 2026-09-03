@@ -55,7 +55,13 @@ export const MACHINE_PARAM_SPECS: Record<string, ParamSpec[]> = {
   ],
 
   /* 撕開封口（卡包模式的開包演出）。閃電粗細先前只能改程式碼，開成可調 */
+  card_pack: [
+    { key: 'marketPop', label: '翻牌市價數字', group: '翻牌數字', type: 'toggle', default: true,
+      hint: '翻開卡片時畫面上方跳「+N」：第三方卡牌行情換算的參考值（每天更新），不是回收價，抽卡規則頁有寫明。關掉就完全不跳。' },
+  ],
   card_peel: [
+    { key: 'marketPop', label: '翻牌市價數字', group: '翻牌數字', type: 'toggle', default: true,
+      hint: '翻開卡片時畫面上方跳「+N」：第三方卡牌行情換算的參考值（每天更新），不是回收價，抽卡規則頁有寫明。關掉就完全不跳。' },
     // 兩支影片都是正方形素材、置中疊在卡片上，大小一律以**卡牌高度**為基準：
     // 100% = 跟卡牌一樣高（素材是正方形，所以寬也等於卡牌高）。
     // 先前拿卡牌寬度當基準，數字看起來不大、算出來卻遠大於卡牌，電弧會甩到畫面邊緣。

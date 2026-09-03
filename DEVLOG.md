@@ -103,6 +103,15 @@ snkrdunk 有防爬不繞、eBay 網頁 403 但有官方 API（需要時再接）
   現在抽卡商品用的；它只收圖片網址，另傳一個對齊的 `cardValues` 陣列，`flipTop` 翻開時跳）、
   卡包開包 `CardDrawAnimation`（card_pack，每張輪到最上面）、格狀翻牌 `CardFlipDirect`（翻開）。
   規則頁 `/card/rules` 加「翻牌數字」一段
+- **後台可開關**（老闆同日）：模組設定 → 抽卡 → 撕開封口／蓄力開包各自的「參數設定」多一個
+  「翻牌市價數字」toggle（`machine_theme_params.marketPop`，預設開）。`GgbPackRip` 本來就讀
+  card_peel 參數、`CardDrawAnimation` 新加讀 card_pack 參數，關掉就完全不跳。
+  驗證時踩到一個坑：商品 869 是**個別指定** card_pack 模組，關 card_peel 當然沒效——
+  跟模組走，個別商品用哪個模組就看哪一列的開關
+- 本地開發模式不看行情、照賞等給假值（A/SSR 26,000、B/SR 8,800、C/R 1,500、其他 350），
+  四個等級都看得到；正式環境照真實行情
+- 樣式（老闆：太不明顯）：往上移到壓住卡牌上緣，字放大、加粗黑描邊（paint-order stroke fill，
+  邊畫在填色底下才不會把字吃細），等級越高邊越粗
 
 ### 小卡圖片「今天之前都很絲滑」的退化與整套加速（老闆 2026-09-03 下午）
 老闆回報：App 開圖絲滑、Safari／PWA 卻卡，切頁籤每次都先顯示預設圖、滑回推薦頁也是。
