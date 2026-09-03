@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { hapticMedium } from '@/lib/haptics';
+import { isSoundMuted } from '@/lib/soundPrefs';
 
 /**
  * 抽卡翻牌時畫面中上方跳的「+10,000」（老闆 2026-09-03）
@@ -17,6 +18,49 @@ import { hapticMedium } from '@/lib/haptics';
  * 用法：<MarketValuePop value={n} trigger={key} />，trigger 一換就重新跳一次（同一張卡不重跳）。
  */
 export const MARKET_POP_MIN = 100;
+
+/**
+ * 進帳音（老闆 2026-09-03：要有進帳的聲音）。音效庫沒有現成的收銀機／金幣聲，
+ * 這裡用 WebAudio 合成：先一聲金屬「叮」（兩個高頻正弦快速衰減＋一點噪音當敲擊），
+ * 接著一串金幣叮噹（高頻短音、音高微亂數），等級越高金幣越多聲：
+ * <1,000 兩聲、≥1,000 四聲、≥5,000 七聲、≥20,000 十聲。吃全站靜音鈕（lib/soundPrefs）。
+ * AudioContext 只建一顆、每次用前 resume（iOS 要在手勢裡才能出聲，翻牌本來就是點的）。
+ */
+let audioCtx: AudioContext | null = null;
+function playCashIn(value: number) {
+  if (typeof window === 'undefined' || isSoundMuted()) return;
+  try {
+    const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AC) return;
+    if (!audioCtx) audioCtx = new AC();
+    const ctx = audioCtx;
+    if (ctx.state === 'suspended') void ctx.resume();
+    const t0 = ctx.currentTime;
+    const master = ctx.createGain(); master.gain.value = 0.28; master.connect(ctx.destination);
+
+    // 「叮」：金屬鐘聲（兩個不諧和的高頻分音）＋敲擊噪音
+    const bell = (freq: number, gainV: number, dur: number, at: number) => {
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(gainV, at + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+      o.connect(g); g.connect(master); o.start(at); o.stop(at + dur + 0.02);
+    };
+    bell(2640, 0.9, 0.55, t0); bell(3960, 0.5, 0.35, t0); bell(5280, 0.25, 0.22, t0);
+    const noiseLen = 0.04; const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * noiseLen), ctx.sampleRate);
+    const data = buf.getChannelData(0); for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    const noise = ctx.createBufferSource(); noise.buffer = buf; const ng = ctx.createGain(); ng.gain.value = 0.35;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3000;
+    noise.connect(hp); hp.connect(ng); ng.connect(master); noise.start(t0);
+
+    // 金幣叮噹：等級越高越多聲，音高微亂數、間隔 70ms 起跳
+    const coins = value >= 20000 ? 10 : value >= 5000 ? 7 : value >= 1000 ? 4 : 2;
+    for (let i = 0; i < coins; i++) {
+      const at = t0 + 0.12 + i * (0.07 + Math.random() * 0.02);
+      const base = 3800 + Math.random() * 1800;
+      bell(base, 0.35, 0.16, at); bell(base * 1.5, 0.18, 0.12, at);
+    }
+  } catch { /* 沒有 WebAudio 就安靜，不影響演出 */ }
+}
 
 /**
  * 本地開發用假值（老闆 2026-09-03：本地要看得到效果，照賞等給）。dev server 上不看行情，
@@ -41,6 +85,7 @@ export default function MarketValuePop({ value, trigger, grade, enabled = true }
     const v = DEV_FAKE ? devValueFor(grade) : value;
     if (typeof v !== 'number' || v < MARKET_POP_MIN) return;
     setShot({ key: String(trigger), value: v });
+    playCashIn(v);
     if (v >= 20000) hapticMedium();
     const t = setTimeout(() => setShot(s => (s?.key === String(trigger) ? null : s)), 2200);
     return () => clearTimeout(t);
