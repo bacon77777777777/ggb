@@ -15,9 +15,10 @@ import { cn } from '@/lib/utils';
  *       顯示與否由 MobileTabbar 判（它才知道底欄收起了沒、玩家有沒有滑過）。
  * 樣式：黑色半透明膠囊、積分圖標、一句話、綠黃漸層「立即登入」。
  *
- * 定位靠兩個既有變數：`--promo-notice-h`（警語列高度，NoticeBar 發佈）與
- * `--bottom-nav-shift`（底欄收起的距離，MobileTabbar 發佈）。底欄收起時 shift
- * 剛好等於「底欄＋警語列」的高度，所以同一條算式自然就降到底。
+ * 定位分兩種（`lowered` 由 MobileTabbar 傳，＝底欄收起了沒）：
+ *   底欄在 —— 安全區 + 6px + 底欄 60px + 警語列高度（`--promo-notice-h`，NoticeBar 發佈）
+ *   底欄收起 —— 貼近底邊：安全區 − 10px（老闆 2026-09-03：再往下一點；iPhone 上離底邊 24px），
+ *              沒有安全區的網頁保底 8px，不然會切到
  *
  * 自己再發佈 `--guest-login-bar-h`：首頁那兩顆懸浮按鈕（扇形選單、商城上架）
  * 本來坐在警語列上緣，這條插進來它們要再往上讓一段，不然會壓在膠囊上。
@@ -26,7 +27,7 @@ import { cn } from '@/lib/utils';
 /** 膠囊 52px ＋ 跟警語列的間隙 6px */
 const BAR_H = '58px';
 
-export default function GuestLoginBar({ visible }: { visible: boolean }) {
+export default function GuestLoginBar({ visible, lowered }: { visible: boolean; lowered: boolean }) {
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty('--guest-login-bar-h', visible ? BAR_H : '0px');
@@ -41,7 +42,9 @@ export default function GuestLoginBar({ visible }: { visible: boolean }) {
         visible ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0 pointer-events-none',
       )}
       style={{
-        bottom: 'calc(env(safe-area-inset-bottom) + 6px + 3.75rem + var(--promo-notice-h, 0px) - var(--bottom-nav-shift, 0px))',
+        bottom: lowered
+          ? 'max(env(safe-area-inset-bottom) - 10px, 8px)'
+          : 'calc(env(safe-area-inset-bottom) + 6px + 3.75rem + var(--promo-notice-h, 0px))',
       }}
       aria-hidden={!visible}
       data-testid="guest-login-bar"

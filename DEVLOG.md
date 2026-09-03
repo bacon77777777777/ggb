@@ -56,8 +56,9 @@ PROD 的 `banners`／`site_promos` 都沒有連到 `/announcements` 的（各 0 
   「警語在不在」讀 NoticeBar 發佈的 `--promo-notice-h`，新 hook `lib/useRootCssVar.ts`
   用 MutationObserver 盯 <html> 的 style，變數一動就重算
 - 只給未登入看；auth 還在判定時不算未登入，已登入的人一滑不會先閃一下「立即登入」
-- 定位只用兩個既有變數：`--promo-notice-h`（警語列高度）與 `--bottom-nav-shift`
-  （底欄收起距離）。底欄收起時 shift 剛好等於「底欄＋警語列」，同一條算式自然降到底
+- 定位分兩種：底欄在 → 安全區 + 6px + 底欄 60px + 警語列高度（`--promo-notice-h`）；
+  底欄收起 → 貼近底邊 `max(安全區 − 10px, 8px)`（老闆：再往下一點；iPhone 上離底邊 24px，
+  沒安全區的網頁保底 8px 不切到）
 - 它自己發佈 `--guest-login-bar-h`（58px）：首頁那兩顆懸浮按鈕（扇形選單、商城上架）
   本來坐在警語列上緣，這條插進來它們要再往上讓一段，不然會壓在膠囊上
 - 字 13px 是算過的：iPhone SE（375px）扣掉邊距、幣、按鈕只剩約 200px 給字，

@@ -237,7 +237,7 @@ function MobileTabbarInner() {
         </div>
       </div>
     </div>
-    <GuestLoginBar visible={showGuestBar} />
+    <GuestLoginBar visible={showGuestBar} lowered={collapsed} />
     </>
   );
 }
