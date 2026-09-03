@@ -13,8 +13,7 @@ import SelectField from '@/components/ui/SelectField'
 import SortableTableHeader from '@/components/SortableTableHeader'
 import { DataTable, type Column } from '@/components'
 import { logExport } from '@/lib/logExport'
-import UserCell from '@/components/UserCell'
-import { realEmail } from '@/lib/syntheticEmail'
+import MemberNo from '@/components/MemberNo'
 
 type ReportType = 'overview' | 'products' | 'recharge' | 'consumption' | 'behavior'
 
@@ -130,10 +129,16 @@ export default function ReportPage() {
       render: (r) => (<>{r.order_number}</>),
     },
     {
-      key: "c2",
-      label: "用戶",
+      key: "c2a",
+      label: "會員編號",
       className: "whitespace-nowrap",
-      render: (r) => <UserCell memberNo={r.user?.member_no} uuid={r.user?.id} name={r.user?.name} email={r.user?.email} />,
+      render: (r) => <MemberNo no={r.user?.member_no} uuid={r.user?.id} />,
+    },
+    {
+      key: "c2",
+      label: "暱稱",
+      className: "whitespace-nowrap",
+      render: (r) => <>{r.user?.name ?? '—'}</>,
     },
     {
       key: "c4",
@@ -170,10 +175,16 @@ export default function ReportPage() {
       render: (d) => (<>{formatDateTime(d.created_at)}</>),
     },
     {
-      key: "c1",
-      label: "用戶",
+      key: "c1a",
+      label: "會員編號",
       className: "whitespace-nowrap",
-      render: (d) => <UserCell memberNo={d.user?.member_no} uuid={d.user?.id} name={d.user?.name} email={d.user?.email} />,
+      render: (d) => <MemberNo no={d.user?.member_no} uuid={d.user?.id} />,
+    },
+    {
+      key: "c1",
+      label: "暱稱",
+      className: "whitespace-nowrap",
+      render: (d) => <>{d.user?.name ?? '—'}</>,
     },
     {
       key: "c3",
@@ -328,13 +339,13 @@ export default function ReportPage() {
   const handleExport = () => {
     if (reportType === 'recharge') {
       exportCSV(`儲值明細_${start}_${end}.csv`,
-        ['日期', '訂單編號', '用戶姓名', 'Email', '金額(TWD)', '贈點', '付款方式', '狀態'],
-        rechargeData.map(r => [formatDateTime(r.created_at), r.order_number ?? '', r.user?.name ?? '', realEmail(r.user?.email) ?? '', String(r.amount ?? 0), String(r.bonus ?? 0), r.payment_method ?? '', STATUS_LABEL[r.status] ?? r.status])
+        ['日期', '訂單編號', '暱稱', '會員編號', '金額(TWD)', '贈點', '付款方式', '狀態'],
+        rechargeData.map(r => [formatDateTime(r.created_at), r.order_number ?? '', r.user?.name ?? '', (r.user?.member_no ? String(r.user.member_no) : ''), String(r.amount ?? 0), String(r.bonus ?? 0), r.payment_method ?? '', STATUS_LABEL[r.status] ?? r.status])
       )
     } else if (reportType === 'consumption') {
       exportCSV(`消費明細_${start}_${end}.csv`,
-        ['日期', '用戶姓名', 'Email', '商品', '消耗代幣(G)', '獎品等級', '獎品名稱', '狀態'],
-        consumptionData.map(d => [formatDateTime(d.created_at), d.user?.name ?? '', realEmail(d.user?.email) ?? '', d.product?.name ?? '', String(d.product?.price ?? 0), d.prize_level ?? '', d.prize_name ?? '', STATUS_LABEL[d.status] ?? d.status])
+        ['日期', '暱稱', '會員編號', '商品', '消耗代幣(G)', '獎品等級', '獎品名稱', '狀態'],
+        consumptionData.map(d => [formatDateTime(d.created_at), d.user?.name ?? '', (d.user?.member_no ? String(d.user.member_no) : ''), d.product?.name ?? '', String(d.product?.price ?? 0), d.prize_level ?? '', d.prize_name ?? '', STATUS_LABEL[d.status] ?? d.status])
       )
     } else if (reportType === 'products') {
       exportCSV(`消費明細_${start}_${end}.csv`,

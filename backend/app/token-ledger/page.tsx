@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import { TableEmpty } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { DataTable, type Column } from '@/components'
-import UserCell from '@/components/UserCell'
+import MemberNo from '@/components/MemberNo'
 
 const IconSearch = ({ size = 16 }: { size?: number }) => <svg width={size} height={size} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
 const IconCoin = ({ size = 18 }: { size?: number }) => <svg width={size} height={size} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -173,7 +173,10 @@ export default function TokenLedgerPage() {
               onClick={() => loadLedger(u)}
               className="w-full flex items-center justify-between px-4 py-3 hover:bg-neutral-50 text-left border-b last:border-b-0"
             >
-              <UserCell memberNo={u.member_no} uuid={u.id} name={u.name || '（未命名）'} email={u.email} />
+              <div>
+                <p className="text-sm font-medium text-neutral-900">{u.name || '（未命名）'}</p>
+                <MemberNo no={u.member_no} uuid={u.id} plain className="text-xs text-neutral-500" />
+              </div>
               <div className="flex items-center gap-1 text-sm font-semibold text-violet-700">
                 <IconCoin size={14} />
                 {(u.tokens ?? 0).toLocaleString()}
@@ -188,7 +191,10 @@ export default function TokenLedgerPage() {
         <div className="space-y-4">
           {/* 用戶資訊列 */}
           <div className="flex items-center justify-between bg-violet-50 border border-violet-200 rounded-lg px-4 py-3">
-            <UserCell memberNo={selectedUser.member_no} uuid={selectedUser.id} name={selectedUser.name || '（未命名）'} email={selectedUser.email} />
+            <div>
+              <p className="font-semibold text-neutral-900">{selectedUser.name || '（未命名）'}</p>
+              <MemberNo no={selectedUser.member_no} uuid={selectedUser.id} className="text-sm" />
+            </div>
             <div className="text-right">
               <p className="text-xs text-neutral-500">目前餘額</p>
               <p className="text-xl font-bold text-violet-700 flex items-center gap-1">

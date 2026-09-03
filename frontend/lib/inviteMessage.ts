@@ -1,3 +1,5 @@
+import { formatMemberNo } from '@/lib/memberNo'
+
 /**
  * 邀請碼的分享文案 —— 全站唯一的定義處
  *
@@ -7,5 +9,5 @@
  * 獎勵改動時，這個檔案要跟著改，不能寫沒有的東西。
  */
 export function buildInviteMessage(code: string, origin: string): string {
-  return `用我的邀請碼 ${code} 加入吉吉比，綁定 LINE 就送 300 積分，免費抽一次！\n${origin}/login?invite=${code}`
+  return `用我的邀請碼 ${formatMemberNo(code)} 加入吉吉比，綁定 LINE 就送 300 積分，免費抽一次！\n${origin}/login?invite=${code}`
 }

@@ -23,6 +23,7 @@ import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import { ActionMenu, Tooltip } from '@/components/ui'
 import { realEmail } from '@/lib/syntheticEmail'
+import { normalizeMemberNo } from '@/lib/memberNo'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { useToast } from '@/contexts/ToastContext'
@@ -97,7 +98,7 @@ function UsersPage() {
   const [filterStartDate, setFilterStartDate] = useState(() => searchParams.get('startDate') || '')
   const [filterEndDate, setFilterEndDate] = useState(() => searchParams.get('endDate') || '')
   const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('users', 'compact', {
-    userId: true, inviteCode: true, name: true, email: true, phone: true,
+    userId: true, name: true, email: true, phone: true,
     tokens: true, points: true, totalDraws: true, totalSpent: true, totalRecharge: true,
     status: true, registerDate: true, lastLoginDate: true, lastLoginIp: true, operations: true
   })
@@ -331,9 +332,8 @@ function UsersPage() {
       const query = searchQuery.toLowerCase()
       result = result.filter(u =>
         u.userId.includes(query) ||
-        // 搜尋支援 100042 或 #100042 兩種打法
-        (u.memberNo != null && String(u.memberNo).includes(query.replace(/^#/, ''))) ||
-        (u.inviteCode && u.inviteCode.toLowerCase().includes(query)) ||
+        // 會員編號（= 邀請碼，migration 693）：2841 7063 / 28417063 / #28417063 都認
+        (u.memberNo != null && normalizeMemberNo(query) !== '' && String(u.memberNo).includes(normalizeMemberNo(query))) ||
         u.name.toLowerCase().includes(query) ||
         (realEmail(u.email) ?? '').toLowerCase().includes(query) ||
         u.phone.includes(query)
@@ -611,13 +611,6 @@ function UsersPage() {
       render: (user) => <span className="font-mono whitespace-nowrap">{user.lastLoginIp || '-'}</span>
     },
     {
-      key: 'inviteCode',
-      label: '邀請碼',
-      sortable: true,
-      visible: visibleColumns.inviteCode,
-      render: (user) => <span className="font-mono font-bold text-primary">{user.inviteCode || '-'}</span>
-    },
-    {
       key: 'operations',
       label: '操作',
       visible: visibleColumns.operations,
@@ -810,7 +803,6 @@ function UsersPage() {
               { key: 'registerDate', label: '註冊時間', visible: visibleColumns.registerDate },
               { key: 'lastLoginDate', label: '最後登入', visible: visibleColumns.lastLoginDate },
               { key: 'lastLoginIp', label: '最後IP', visible: visibleColumns.lastLoginIp },
-              { key: 'inviteCode', label: '邀請碼', visible: visibleColumns.inviteCode },
               { key: 'operations', label: '操作', visible: visibleColumns.operations }
             ]}
             onColumnToggle={(key, visible) => setVisibleColumns(prev => ({ ...prev, [key]: visible }))}

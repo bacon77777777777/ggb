@@ -6,6 +6,7 @@ import { ChevronRight, Loader2 } from 'lucide-react';
 import { BottomModal } from '@/components/ui/BottomModal';
 import { useToast } from '@/components/ui/Toast';
 import { useSettingsStatus } from '@/components/auth/useSettingsStatus';
+import { formatMemberNo } from '@/lib/memberNo';
 
 /**
  * 會員中心「邀請碼」列 —— 事後填寫朋友的邀請碼
@@ -41,7 +42,7 @@ export function InviteCodeRow() {
     const fromLink = searchParams.get('invite');
     if (!fromLink || !invite || claimed) return;
     autoOpened.current = true;
-    setCodeInput(fromLink.toUpperCase());
+    setCodeInput(formatMemberNo(fromLink));
     setOpen(true);
     const url = new URL(window.location.href);
     url.searchParams.delete('invite');
@@ -96,10 +97,11 @@ export function InviteCodeRow() {
         <div className="mb-2">
           <input
             type="text"
-            placeholder="例：AB12CD34"
+            placeholder="例：2841 7063"
+            inputMode="numeric"
             className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium uppercase tracking-widest text-neutral-900 dark:text-white placeholder:text-neutral-400 placeholder:normal-case placeholder:tracking-normal focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
             value={codeInput}
-            onChange={e => setCodeInput(e.target.value.toUpperCase())}
+            onChange={e => setCodeInput(e.target.value.replace(/[^\d\s]/g, ''))}
             autoFocus
           />
         </div>

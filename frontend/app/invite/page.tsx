@@ -12,6 +12,7 @@ import { buildInviteMessage } from '@/lib/inviteMessage';
 import { createClient } from '@/lib/supabase/client';
 import { MissionService, type UserMission } from '@/services/mission';
 import { asset } from '@/lib/asset';
+import { formatMemberNo } from '@/lib/memberNo';
 
 /**
  * 邀請好友頁 —— 滿版主視覺＋循環獎進度區
@@ -182,12 +183,12 @@ export default function InvitePage() {
       ctx.textBaseline = 'middle';
       const label = '邀請碼 ';
       const wLabel = ctx.measureText(label).width;
-      const startX = (W - wLabel - ctx.measureText(code).width) / 2;
+      const startX = (W - wLabel - ctx.measureText(formatMemberNo(code)).width) / 2;
       const textY = H * RIBBON_CENTER_Y + 2;
       ctx.fillStyle = '#ffffff';
       ctx.fillText(label, startX, textY);
       ctx.fillStyle = CODE_YELLOW;
-      ctx.fillText(code, startX + wLabel, textY);
+      ctx.fillText(formatMemberNo(code), startX + wLabel, textY);
     }
 
     return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
@@ -347,7 +348,7 @@ export default function InvitePage() {
             style={{ top: `${RIBBON_CENTER_Y * 100}%` }}
           >
             <span className="text-[3.5vw] font-bold text-white md:text-[16px]">
-              邀請碼 <span style={{ color: CODE_YELLOW }}>{code}</span>
+              邀請碼 <span style={{ color: CODE_YELLOW }}>{formatMemberNo(code)}</span>
             </span>
             <Copy className="h-[3vw] w-[3vw] text-white/90 md:h-3.5 md:w-3.5" />
           </button>

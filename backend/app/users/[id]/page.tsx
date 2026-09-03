@@ -1158,7 +1158,7 @@ export default function UserDetailPage() {
 
                   <div className="pt-2 text-sm font-medium text-neutral-900">系統資料</div>
                   <div className="grid grid-cols-2 gap-4">
-                    <Field label="邀請碼"><Input value={user.inviteCode ?? '—'} disabled /></Field>
+                    <Field label="會員編號（同邀請碼）"><Input value={user.inviteCode ?? '—'} disabled /></Field>
                     <Field label="成功邀請數"><Input value={String(user.totalReferrals ?? 0)} disabled /></Field>
                   </div>
                   <Field label="用戶 ID"><Input value={user.userId} disabled className="font-mono text-xs" /></Field>

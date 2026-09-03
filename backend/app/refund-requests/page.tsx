@@ -5,7 +5,7 @@ import Badge from '@/components/ui/Badge'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import { useState, useEffect, useCallback } from 'react'
-import UserCell from '@/components/UserCell'
+import MemberNo from '@/components/MemberNo'
 import { userMatches } from '@/lib/userSearch'
 
 interface RefundRequest {
@@ -99,12 +99,18 @@ export default function RefundRequestsPage() {
       render: r => <>#{r.id}</>,
     },
     {
-      key: 'user', label: '會員',
+      key: 'memberNo', label: '會員編號',
+      sortValue: r => r.user?.member_no ?? 0,
+      render: r => <MemberNo no={r.user?.member_no} uuid={r.user?.id} />,
+    },
+    {
+      key: 'user', label: '暱稱',
       sortValue: r => r.user?.name ?? '',
       render: r => (
-        <UserCell memberNo={r.user?.member_no} uuid={r.user?.id} name={r.user?.name} email={r.user?.email}>
+        <>
+          <div className="font-medium text-neutral-800">{r.user?.name || '(未命名)'}</div>
           <div className="text-xs text-violet-600">餘額 {(r.user?.tokens ?? 0).toLocaleString()} G</div>
-        </UserCell>
+        </>
       ),
     },
     {

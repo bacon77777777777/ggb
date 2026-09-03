@@ -25,6 +25,7 @@ import { useAlert } from '@/components/ui/AlertDialog'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { translateAuthError } from '@/lib/authErrors'
+import { normalizeMemberNo } from '@/lib/memberNo';
 
 /**
  * 登入頁 —— 全站唯一的一頁，沒有「註冊」這個概念
@@ -97,7 +98,7 @@ function AuthContent() {
   // sessionStorage 每個分頁一份，邀請碼會在回程時直接消失（同 line_login_state 的教訓）
   useEffect(() => {
     const invite = searchParams.get('invite')
-    if (invite) localStorage.setItem('pending_invite', invite.toUpperCase())
+    if (invite) localStorage.setItem('pending_invite', normalizeMemberNo(invite))
   }, [searchParams])
 
   useEffect(() => {

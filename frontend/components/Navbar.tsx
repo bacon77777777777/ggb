@@ -19,6 +19,7 @@ import { useRequireLogin } from '@/hooks/useRequireLogin';
 import { asset } from '@/lib/asset';
 import { cameFromAnnouncementsList } from '@/lib/announcementsView';
 import { makeListViewMemory } from '@/lib/listViewMemory';
+import { formatMemberNo } from '@/lib/memberNo';
 
 /* 個人中心「抽獎紀錄」那份瀏覽記憶 —— key 要跟 app/profile/page.tsx 的 drawView 一致 */
 const drawHistoryView = makeListViewMemory('ggb:profile:draws');
@@ -1125,7 +1126,7 @@ function NavbarInner() {
                         }}
                       >
                         <span className="text-[13px] font-black text-neutral-400">邀請碼：</span>
-                        <span className="text-[13px] font-mono font-black text-primary group-hover/invite:text-primary/80 transition-colors">{user.invite_code || '-'}</span>
+                        <span className="text-[13px] font-mono font-black text-primary group-hover/invite:text-primary/80 transition-colors">{formatMemberNo(user.invite_code) || '-'}</span>
                         <Copy className="w-3.5 h-3.5 text-neutral-300 group-hover/invite:text-primary transition-colors" />
                       </div>
                     </div>

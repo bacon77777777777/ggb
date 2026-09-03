@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient as createSessionClient } from '@/lib/supabase/server'
 import { serviceClient } from '@/lib/lineAuth'
+import { normalizeMemberNo, isValidMemberNo } from '@/lib/memberNo'
 
 /**
  * 邀請碼 —— 事後填寫
@@ -57,9 +58,13 @@ export async function POST(request: Request) {
     if (claimed) return NextResponse.json({ error: '已經填過邀請碼了' }, { status: 409 })
 
     const { code } = await request.json()
-    const normalized = String(code ?? '').trim().toUpperCase()
+    // 邀請碼 = 會員編號（8 位數，migration 693）。空白、# 都吞掉；檢查碼不對就是抄錯，不用查 DB
+    const normalized = normalizeMemberNo(String(code ?? ''))
     if (!normalized) return NextResponse.json({ error: '請輸入邀請碼' }, { status: 400 })
-    if (normalized === String(me.invite_code ?? '').toUpperCase()) {
+    if (!isValidMemberNo(normalized)) {
+      return NextResponse.json({ error: '邀請碼格式不對，請再確認一次（8 位數字）' }, { status: 400 })
+    }
+    if (normalized === String(me.invite_code ?? '')) {
       return NextResponse.json({ error: '不能填自己的邀請碼' }, { status: 400 })
     }
 

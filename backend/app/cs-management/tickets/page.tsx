@@ -4,7 +4,7 @@ import { AdminLayout, ListTableCard, type ListColumn } from '@/components'
 import Badge from '@/components/ui/Badge'
 import { useState, useEffect, useCallback } from 'react'
 import Textarea from '@/components/ui/Textarea'
-import UserCell from '@/components/UserCell'
+import MemberNo from '@/components/MemberNo'
 import { userMatches } from '@/lib/userSearch'
 import { realEmail } from '@/lib/syntheticEmail'
 
@@ -90,9 +90,14 @@ export default function CsTicketsPage() {
       render: t => <span className="text-[13px] font-semibold text-neutral-700">{t.category}</span>,
     },
     {
-      key: 'user', label: '用戶',
+      key: 'memberNo', label: '會員編號',
+      sortValue: t => t.user?.member_no ?? 0,
+      render: t => <MemberNo no={t.user?.member_no} uuid={t.user?.id} />,
+    },
+    {
+      key: 'user', label: '暱稱',
       sortValue: t => t.user?.name ?? '',
-      render: t => <UserCell memberNo={t.user?.member_no} uuid={t.user?.id} name={t.user?.name} email={t.user?.email} />,
+      render: t => <span className="text-[13px] font-medium text-neutral-800">{t.user?.name || '—'}</span>,
     },
     {
       key: 'content', label: '問題摘要',

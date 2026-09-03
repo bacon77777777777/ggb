@@ -9,7 +9,7 @@ import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
 import { ECPAY_FEE_RULES } from '@/lib/ecpayFees'
 import { logExport } from '@/lib/logExport'
-import UserCell from '@/components/UserCell'
+import MemberNo from '@/components/MemberNo'
 import { userMatches } from '@/lib/userSearch'
 import { realEmail } from '@/lib/syntheticEmail'
 
@@ -103,7 +103,7 @@ export default function RechargesPage() {
   const [sortField, setSortField] = useState('created_at')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('recharges', 'compact', {
-    created_at: true, order_number: true, trade_no: false, user: true, amount: true, bonus: true, payment_method: true, status: true
+    created_at: true, order_number: true, trade_no: false, memberNo: true, user: true, amount: true, bonus: true, payment_method: true, status: true
   })
 
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
@@ -241,8 +241,12 @@ export default function RechargesPage() {
       render: (record) => <span className="font-mono text-xs text-neutral-500">{record.trade_no || '—'}</span>
     },
     {
-      key: 'user', label: '用戶', sortable: true,
-      render: (record) => <UserCell memberNo={record.user?.member_no} uuid={record.user?.id} name={record.user?.name} email={record.user?.email} />
+      key: 'memberNo', label: '會員編號',
+      render: (record) => <MemberNo no={record.user?.member_no} uuid={record.user?.id} />
+    },
+    {
+      key: 'user', label: '暱稱', sortable: true,
+      render: (record) => <span className="font-medium text-neutral-900">{record.user?.name || '未知用戶'}</span>
     },
     {
       key: 'amount', label: '儲值金額(TWD)', sortable: true,

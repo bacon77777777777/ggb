@@ -2,7 +2,7 @@
 
 import { AdminLayout, PageCard, SearchToolbar, DataTable, FilterTags, DateRangePicker, type Column } from '@/components'
 import Badge from '@/components/ui/Badge'
-import UserCell from '@/components/UserCell'
+import MemberNo from '@/components/MemberNo'
 import { userMatches } from '@/lib/userSearch'
 import { realEmail } from '@/lib/syntheticEmail'
 import { useState, useEffect, useMemo } from 'react'
@@ -131,7 +131,7 @@ export default function DrawsPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [expandedIds, setExpandedIds] = useState<Set<number | string>>(new Set())
   const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('draws', 'compact', {
-    created_at: true, user: true, product: true, count: true, cost: true, status: true
+    created_at: true, memberNo: true, user: true, product: true, count: true, cost: true, status: true
   })
 
   // 篩選與欄位顯示狀態
@@ -310,11 +310,17 @@ export default function DrawsPage() {
       sortable: true,
       render: (tx) => <span className="text-neutral-500 font-mono whitespace-nowrap">{formatDateTime(tx.created_at)}</span>
     },
+    /* 會員編號｜暱稱 兩欄（老闆 2026-09-04）：編號獨立一欄才對得齊、點了直接進會員詳情；信箱只在會員管理看 */
+    {
+      key: 'memberNo',
+      label: '會員編號',
+      render: (tx) => <MemberNo no={tx.user?.member_no} uuid={tx.user?.id} />
+    },
     {
       key: 'user',
-      label: '用戶',
+      label: '暱稱',
       sortable: true,
-      render: (tx) => <UserCell memberNo={tx.user?.member_no} uuid={tx.user?.id} name={tx.user?.name} email={tx.user?.email} />
+      render: (tx) => <span className="font-medium text-neutral-900">{tx.user?.name || '未知用戶'}</span>
     },
     {
       key: 'product',
@@ -424,12 +430,12 @@ export default function DrawsPage() {
 
   const handleExportCSV = () => {
     const BOM = '﻿'
-    const headers = ['交易編號', '時間', '用戶姓名', '用戶Email', '商品', '賞等', '品項名稱', '籤號', '消費(G)', '狀態']
+    const headers = ['交易編號', '時間', '會員編號', '暱稱', '商品', '賞等', '品項名稱', '籤號', '消費(G)', '狀態']
     const rows = sortedTransactions.flatMap(tx => tx.records.map(r => [
       formatDrawId(tx.id, tx.created_at),
       formatDateTime(r.created_at),
+      r.user?.member_no ? String(r.user.member_no) : '',
       r.user?.name || '',
-      realEmail(r.user?.email) || '',
       slotMachineLabel(r) || r.product?.name || '',
       r.prize_level || r.prize?.level || '一般版',
       r.prize_name || r.prize?.name || '',
@@ -518,7 +524,8 @@ export default function DrawsPage() {
             showColumnToggle={true}
             columns={[
               { key: 'created_at', label: '時間', visible: visibleColumns.created_at },
-              { key: 'user', label: '用戶', visible: visibleColumns.user },
+              { key: 'memberNo', label: '會員編號', visible: visibleColumns.memberNo },
+              { key: 'user', label: '暱稱', visible: visibleColumns.user },
               { key: 'product', label: '商品', visible: visibleColumns.product },
               { key: 'count', label: '抽數', visible: visibleColumns.count },
               { key: 'cost', label: '消費', visible: visibleColumns.cost },

@@ -767,6 +767,17 @@ SFSafariViewController）**跟 webview 不共用 cookie**，所以交接不能�
 本機預設是 20，用 `nvm use 22`）；改 `capacitor.config.ts` 的 `appendUserAgent`
 前台的判斷會跟著失效，兩邊要一起改。
 
+## 會員編號 ＝ 邀請碼（migration 693，2026-09-04）
+
+- `users.member_no`：**隨機 8 位數**（首位 1–9 + 6 位隨機 + 1 位 Luhn 檢查碼），DB trigger `trg_users_member_no` 配號；
+  `users.invite_code` 永遠等於 `member_no::text`，欄位留著只是因為很多地方在讀
+- **不是流水號**（老闆指定：不能讓人從邀請連結看出會員數），所以也不能拿它排註冊順序
+- 前後台各一份同算法的 `lib/memberNo.ts`：`normalizeMemberNo`（吞空白／#）、`isValidMemberNo`、`formatMemberNo`（顯示 `2841 7063`）；
+  DB 端是 `is_valid_member_no()`。收玩家輸入的邀請碼先過這兩關再查表
+- 後台表格一律 `MemberNo` 元件（藍字、點了進會員詳情）＋暱稱兩欄；**信箱只在會員管理顯示**，
+  LINE 快速帳號的合成信箱（`lib/syntheticEmail.ts`）任何地方都不印
+- 客服話術：請玩家提供**會員編號**（前台會員頁／設定頁／邀請頁都看得到）
+
 ## 重要慣例
 
 - 所有 migration 執行後 commit 並 push（不需詢問）

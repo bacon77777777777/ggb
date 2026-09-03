@@ -59,6 +59,7 @@ import { trackEvent, trackPageView } from '@/lib/trackEvent';
 import Button from '@/components/ui/Button';
 import ImageCropper from '@/components/ImageCropper';
 import { asset } from '@/lib/asset';
+import { formatMemberNo } from '@/lib/memberNo';
 
 // --- Interfaces ---
 interface MarketListing {
@@ -7375,7 +7376,7 @@ function ProfileContent() {
                         }}
                       >
                         <span className="text-[12px] text-white/90">推薦碼</span>
-                        <span className="text-[14px] font-bold text-[#ffe600]">{user.invite_code || '-'}</span>
+                        <span className="text-[14px] font-bold text-[#ffe600]">{formatMemberNo(user.invite_code) || '-'}</span>
                         <Copy className="w-3 h-3 text-white/70" />
                       </div>
                     )}
@@ -7691,7 +7692,7 @@ function ProfileContent() {
                           >
                             <span className="text-[13px] font-black text-neutral-400 uppercase tracking-wider">邀請碼</span>
                             <span className="text-[13px] font-mono font-black text-primary group-hover/invite:text-primary/80 transition-colors">
-                              {user.invite_code || '-'}
+                              {formatMemberNo(user.invite_code) || '-'}
                             </span>
                             <Copy className="w-3.5 h-3.5 text-neutral-300 group-hover/invite:text-primary transition-colors" />
                           </div>

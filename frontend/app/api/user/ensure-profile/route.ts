@@ -37,8 +37,6 @@ export async function POST() {
     return NextResponse.json({ success: true, created: false })
   }
 
-  const { data: inviteCode } = await admin.rpc('generate_invite_code')
-
   /*
    * 預設暱稱：metadata 有名字（LINE 顯示名）就用它；沒有就交給 DB 的 BEFORE INSERT
    * trigger（migration 607 的隨機詞庫：形容詞×名詞，例「幸運的水豚」）。
@@ -50,7 +48,7 @@ export async function POST() {
     id: user.id,
     email: user.email,
     name: metaName || null,
-    invite_code: inviteCode,
+    // member_no／invite_code 由 DB 的 trg_users_member_no 配（migration 693）
   })
 
   if (error) {

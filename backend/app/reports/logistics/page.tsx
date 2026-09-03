@@ -6,7 +6,7 @@ import { formatDateTime } from '@/utils/dateFormat'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { DataTable, type Column } from '@/components'
 import { logExport } from '@/lib/logExport'
-import UserCell from '@/components/UserCell'
+import MemberNo from '@/components/MemberNo'
 import { userMatches } from '@/lib/userSearch'
 import { realEmail } from '@/lib/syntheticEmail'
 
@@ -73,10 +73,16 @@ export default function LogisticsReportPage() {
       render: (r) => (<>{r.order_number}</>),
     },
     {
-      key: "c2",
-      label: "用戶",
+      key: "c2a",
+      label: "會員編號",
       className: "whitespace-nowrap",
-      render: (r) => <UserCell memberNo={r.user?.member_no} uuid={r.user?.id} name={r.user?.name} email={r.user?.email} />,
+      render: (r) => <MemberNo no={r.user?.member_no} uuid={r.user?.id} />,
+    },
+    {
+      key: "c2",
+      label: "暱稱",
+      className: "whitespace-nowrap",
+      render: (r) => <span className="font-medium text-neutral-900">{r.user?.name || '—'}</span>,
     },
     {
       key: "c3",
