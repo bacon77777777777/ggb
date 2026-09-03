@@ -18,6 +18,7 @@ import type { Column } from '@/components'
 import { Badge, Button } from '@/components/ui'
 import { useToast } from '@/contexts/ToastContext'
 import { formatDateTime } from '@/utils/dateFormat'
+import { realEmail } from '@/lib/syntheticEmail'
 
 interface Deal {
   id: number
@@ -194,7 +195,7 @@ export default function MarketplaceTransactionsPage() {
             {d.buyer_is_bot && <Badge variant="default" size="sm">機器人</Badge>}
           </div>
           <div className="truncate text-xs text-neutral-500">
-            {d.buyer_email || <MemberNo no={d.buyer_member_no} uuid={d.buyer_id} />}
+            {realEmail(d.buyer_email) || <MemberNo no={d.buyer_member_no} uuid={d.buyer_id} />}
           </div>
         </div>
       ),
@@ -208,7 +209,7 @@ export default function MarketplaceTransactionsPage() {
             {d.seller_is_bot && <Badge variant="default" size="sm">機器人</Badge>}
           </div>
           <div className="truncate text-xs text-neutral-500">
-            {d.seller_email || <MemberNo no={d.seller_member_no} uuid={d.seller_id} />}
+            {realEmail(d.seller_email) || <MemberNo no={d.seller_member_no} uuid={d.seller_id} />}
           </div>
         </div>
       ),

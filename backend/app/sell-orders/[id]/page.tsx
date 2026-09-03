@@ -8,6 +8,7 @@ import CopyableID from '@/components/CopyableID'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
 import { CardSkeleton } from '@/components/ui/Skeleton'
+import { realEmail } from '@/lib/syntheticEmail'
 
 type OrderPayload = {
   id: number
@@ -346,7 +347,7 @@ export default function SellOrderDetailPage() {
             <div className="text-sm font-bold text-neutral-900">買家</div>
             <div className="mt-3 space-y-1 text-sm">
               <div className="text-neutral-900 font-bold">{String(order.buyer?.name || '未知會員')}</div>
-              <div className="text-xs text-neutral-500 break-all">{String(order.buyer?.email || '') || '—'}</div>
+              <div className="text-xs text-neutral-500 break-all">{realEmail(order.buyer?.email) || '—'}</div>
               <div className="text-xs text-neutral-500">
                 <MemberNo no={(order.buyer as any)?.member_no ?? null} uuid={String(order.buyer_id)} />
               </div>
@@ -356,7 +357,7 @@ export default function SellOrderDetailPage() {
             <div className="text-sm font-bold text-neutral-900">賣家</div>
             <div className="mt-3 space-y-1 text-sm">
               <div className="text-neutral-900 font-bold">{String(order.seller?.name || '未知會員')}</div>
-              <div className="text-xs text-neutral-500 break-all">{String(order.seller?.email || '') || '—'}</div>
+              <div className="text-xs text-neutral-500 break-all">{realEmail(order.seller?.email) || '—'}</div>
               <div className="text-xs text-neutral-500">
                 <MemberNo no={(order.seller as any)?.member_no ?? null} uuid={String(order.seller_id)} />
               </div>

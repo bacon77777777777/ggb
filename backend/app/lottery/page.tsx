@@ -441,7 +441,7 @@ export default function LotteryPage() {
                   <tr key={en.id} className="border-b border-neutral-50">
                     <td className="py-2 font-mono">{en.rank ?? '—'}</td>
                     <td className="font-mono text-neutral-500">#{en.entry_no}</td>
-                    <td className="truncate">{en.user?.name ?? en.user?.email ?? '—'}</td>
+                    <td className="truncate">{en.user?.name || (en.user?.member_no ? `#${en.user.member_no}` : '—')}</td>
                     <td>{en.status}</td>
                     <td className="font-mono text-xs text-neutral-500">{fmt(en.pay_deadline)}</td>
                   </tr>

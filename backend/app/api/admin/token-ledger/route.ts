@@ -20,8 +20,13 @@ export async function GET(req: NextRequest) {
   if (query && !userId) {
     const { data: users } = await supabase
       .from('users')
-      .select('id, name, email, tokens')
-      .or(`email.ilike.%${query}%,name.ilike.%${query}%`)
+      .select('id, member_no, name, email, tokens')
+      // 會員編號可直接搜（#100222 或 100222）；LINE 合成信箱照樣比對得到，但畫面不印
+      .or([
+        `email.ilike.%${query}%`,
+        `name.ilike.%${query}%`,
+        ...(/^#?\d+$/.test(query.trim()) ? [`member_no.eq.${query.trim().replace(/^#/, '')}`] : []),
+      ].join(','))
       .eq('is_bot', false)
       .limit(20)
     return NextResponse.json({ users: users ?? [] })
@@ -33,7 +38,7 @@ export async function GET(req: NextRequest) {
     { data: user },
     { data: rows, count },
   ] = await Promise.all([
-    supabase.from('users').select('id, name, email, tokens').eq('id', userId).single(),
+    supabase.from('users').select('id, member_no, name, email, tokens').eq('id', userId).single(),
     supabase
       .from('token_ledger')
       .select('*', { count: 'exact' })

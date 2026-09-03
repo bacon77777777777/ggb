@@ -29,7 +29,7 @@ export async function GET(request: Request) {
         recipient_phone,
         address,
         store_name,
-        user:users(id, name, email),
+        user:users(id, member_no, name, email),
         items:draw_records(
           id,
           product_prizes(name, level),

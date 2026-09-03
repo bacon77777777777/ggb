@@ -4,6 +4,9 @@ import { AdminLayout, ListTableCard, type ListColumn } from '@/components'
 import Badge from '@/components/ui/Badge'
 import { useState, useEffect, useCallback } from 'react'
 import Textarea from '@/components/ui/Textarea'
+import UserCell from '@/components/UserCell'
+import { userMatches } from '@/lib/userSearch'
+import { realEmail } from '@/lib/syntheticEmail'
 
 /**
  * 客服工單 —— 定版樣板（ListTableCard）＋展開列。
@@ -19,7 +22,7 @@ interface CsTicket {
   status: 'open' | 'in_progress' | 'resolved' | 'closed'
   admin_note: string | null
   created_at: string
-  user: { id: string; name: string; email: string; tokens: number } | null
+  user: { id: string; member_no?: number | null; name: string; email: string; tokens: number } | null
 }
 
 const STATUS_LABEL: Record<CsTicket['status'], string> = {
@@ -71,8 +74,8 @@ export default function CsTicketsPage() {
     if (!search.trim()) return true
     const q = search.toLowerCase()
     return t.content.toLowerCase().includes(q)
-      || (t.user?.name ?? '').toLowerCase().includes(q)
-      || (t.email ?? '').toLowerCase().includes(q)
+      || userMatches(q, t.user)
+      || (realEmail(t.email) ?? '').toLowerCase().includes(q)
   })
 
   const columns: ListColumn<CsTicket>[] = [
@@ -89,12 +92,7 @@ export default function CsTicketsPage() {
     {
       key: 'user', label: '用戶',
       sortValue: t => t.user?.name ?? '',
-      render: t => (
-        <div>
-          <p className="text-[13px] font-medium text-neutral-800">{t.user?.name || '—'}</p>
-          <p className="text-[11px] text-neutral-400">{t.user?.email || '—'}</p>
-        </div>
-      ),
+      render: t => <UserCell memberNo={t.user?.member_no} uuid={t.user?.id} name={t.user?.name} email={t.user?.email} />,
     },
     {
       key: 'content', label: '問題摘要',
@@ -151,7 +149,7 @@ export default function CsTicketsPage() {
               <div className="grid grid-cols-2 gap-6 text-[13px]">
                 <div>
                   <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-neutral-400">聯絡資訊</p>
-                  <p className="text-neutral-700">{t.email}</p>
+                  <p className="text-neutral-700">{realEmail(t.email) || '—'}</p>
                   <p className="text-neutral-500">{t.phone}</p>
                 </div>
                 <div>

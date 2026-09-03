@@ -9,6 +9,9 @@ import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
 import { ECPAY_FEE_RULES } from '@/lib/ecpayFees'
 import { logExport } from '@/lib/logExport'
+import UserCell from '@/components/UserCell'
+import { userMatches } from '@/lib/userSearch'
+import { realEmail } from '@/lib/syntheticEmail'
 
 interface RechargeRecord {
   id: number
@@ -21,7 +24,7 @@ interface RechargeRecord {
   payment_fee?: number | null
   status: string
   created_at: string
-  user?: { id: string; name: string; email: string }
+  user?: { id: string; name: string; email: string; member_no?: number | null }
 }
 
 // ─── 綠界 ───────────────────────────────────────────────
@@ -138,8 +141,7 @@ export default function RechargesPage() {
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
       result = result.filter(r =>
-        r.user?.name?.toLowerCase().includes(q) ||
-        r.user?.email?.toLowerCase().includes(q) ||
+        userMatches(q, r.user) ||
         r.order_number?.toLowerCase().includes(q)
       )
     }
@@ -240,12 +242,7 @@ export default function RechargesPage() {
     },
     {
       key: 'user', label: '用戶', sortable: true,
-      render: (record) => (
-        <div>
-          <div className="font-medium text-neutral-900">{record.user?.name || '未知用戶'}</div>
-          <div className="text-xs text-neutral-500">{record.user?.email}</div>
-        </div>
-      )
+      render: (record) => <UserCell memberNo={record.user?.member_no} uuid={record.user?.id} name={record.user?.name} email={record.user?.email} />
     },
     {
       key: 'amount', label: '儲值金額(TWD)', sortable: true,
@@ -293,7 +290,7 @@ export default function RechargesPage() {
         r.order_number || '',
         r.trade_no || '',
         r.user?.name || '',
-        r.user?.email || '',
+        realEmail(r.user?.email) || '',
         r.amount,
         r.bonus,
         getPaymentMethodLabel(r.payment_method),

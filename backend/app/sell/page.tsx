@@ -15,6 +15,7 @@ import { useToast } from '@/contexts/ToastContext'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { TableEmpty } from '@/components/ui/EmptyState'
+import { realEmail } from '@/lib/syntheticEmail'
 
 interface SellListing {
   id: number
@@ -704,7 +705,7 @@ export default function SellAdminPage() {
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div className="text-sm text-neutral-700">
                                   <div className="text-xs text-neutral-400 mb-1">賣家 Email</div>
-                                  <div className="font-mono text-xs break-all">{item.seller_email || '-'}</div>
+                                  <div className="font-mono text-xs break-all">{realEmail(item.seller_email) || '-'}</div>
                                 </div>
                                 <div className="text-sm text-neutral-700">
                                   <div className="text-xs text-neutral-400 mb-1">賣家編號</div>

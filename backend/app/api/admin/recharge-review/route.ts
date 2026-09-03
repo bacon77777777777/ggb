@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
       review_note,
       created_at,
       user_id,
-      user:users(id, name, email, tokens)
+      user:users(id, member_no, name, email, tokens)
     `)
     .order('created_at', { ascending: true })
     .limit(100)

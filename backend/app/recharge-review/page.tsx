@@ -5,6 +5,8 @@ import Badge from '@/components/ui/Badge'
 import Input from '@/components/ui/Input'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import UserCell from '@/components/UserCell'
+import { userMatches } from '@/lib/userSearch'
 
 interface RechargeRecord {
   id: number
@@ -17,7 +19,7 @@ interface RechargeRecord {
   review_note: string | null
   created_at: string
   user_id: string
-  user: { id: string; name: string | null; email: string | null; tokens: number } | null
+  user: { id: string; member_no?: number | null; name: string | null; email: string | null; tokens: number } | null
 }
 
 function ageLabel(created_at: string): string {
@@ -68,8 +70,7 @@ export default function RechargeReviewPage() {
     if (!searchQuery.trim()) return true
     const q = searchQuery.toLowerCase()
     return (r.order_number ?? `#${r.id}`).toLowerCase().includes(q)
-      || (r.user?.name ?? '').toLowerCase().includes(q)
-      || (r.user?.email ?? '').toLowerCase().includes(q)
+      || userMatches(q, r.user)
   })
 
   const columns: ListColumn<RechargeRecord>[] = [
@@ -83,11 +84,9 @@ export default function RechargeReviewPage() {
       key: 'user', label: '會員',
       sortValue: r => r.user?.name ?? '',
       render: r => (
-        <>
-          <div className="font-medium text-neutral-800">{r.user?.name || '(未命名)'}</div>
-          <div className="text-xs text-neutral-400">{r.user?.email}</div>
+        <UserCell memberNo={r.user?.member_no} uuid={r.user?.id} name={r.user?.name} email={r.user?.email}>
           <div className="text-xs text-violet-600">餘額 {(r.user?.tokens ?? 0).toLocaleString()} G</div>
-        </>
+        </UserCell>
       ),
     },
     {

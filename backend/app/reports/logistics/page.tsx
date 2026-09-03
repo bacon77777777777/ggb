@@ -6,6 +6,9 @@ import { formatDateTime } from '@/utils/dateFormat'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { DataTable, type Column } from '@/components'
 import { logExport } from '@/lib/logExport'
+import UserCell from '@/components/UserCell'
+import { userMatches } from '@/lib/userSearch'
+import { realEmail } from '@/lib/syntheticEmail'
 
 interface LogisticsRecord {
   id: number
@@ -21,7 +24,7 @@ interface LogisticsRecord {
   recipient_phone: string
   address: string
   store_name: string | null
-  user: { name: string; email: string } | null
+  user: { id?: string; member_no?: number | null; name: string; email: string } | null
   items: Array<{
     id: number
     product_prizes: { name: string; level: string } | null
@@ -73,10 +76,7 @@ export default function LogisticsReportPage() {
       key: "c2",
       label: "用戶",
       className: "whitespace-nowrap",
-      render: (r) => (<>
-                          <div className="font-medium text-neutral-900">{r.user?.name || '—'}</div>
-                          <div className="text-xs text-neutral-400">{r.user?.email || ''}</div>
-                        </>),
+      render: (r) => <UserCell memberNo={r.user?.member_no} uuid={r.user?.id} name={r.user?.name} email={r.user?.email} />,
     },
     {
       key: "c3",
@@ -165,8 +165,7 @@ export default function LogisticsReportPage() {
       const q = searchQuery.toLowerCase()
       r = r.filter(x =>
         x.order_number.toLowerCase().includes(q) ||
-        x.user?.name?.toLowerCase().includes(q) ||
-        x.user?.email?.toLowerCase().includes(q) ||
+        userMatches(q, x.user) ||
         (x.tracking_number || '').toLowerCase().includes(q)
       )
     }
@@ -181,7 +180,7 @@ export default function LogisticsReportPage() {
         formatDateTime(r.submitted_at),
         r.order_number,
         r.user?.name || '',
-        r.user?.email || '',
+        realEmail(r.user?.email) || '',
         LOGISTICS_TYPE_TEXT[r.logistics_type] || r.logistics_type,
         r.tracking_number || '',
         r.total_amount || 0,

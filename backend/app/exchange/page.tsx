@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { TableEmpty } from '@/components/ui/EmptyState'
 import SelectField from '@/components/ui/SelectField'
+import { realEmail } from '@/lib/syntheticEmail'
 
 type OfferStatus = 'active' | 'paused' | 'deleted'
 
@@ -351,7 +352,7 @@ export default function ExchangeOffersAdminPage() {
                         </td>
                         <td className="py-3 px-4 text-sm text-neutral-700">
                           <div className="font-medium">{offer.owner_name || '未知會員'}</div>
-                          <div className="text-xs text-neutral-500">{offer.owner_email}</div>
+                          <div className="text-xs text-neutral-500">{realEmail(offer.owner_email)}</div>
                           <div className="mt-1">
                             <MemberNo no={offer.owner_member_no} uuid={offer.owner_id} />
                           </div>

@@ -19,7 +19,7 @@ export async function GET() {
       .select(
         `
         *,
-        user:users (id, name, email)
+        user:users (id, member_no, name, email)
       `
       )
       .order('created_at', { ascending: false })

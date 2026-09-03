@@ -18,7 +18,7 @@ export async function GET() {
       .select(
         `
           *,
-          user:users (id, name, email),
+          user:users (id, member_no, name, email),
           product:products (name, image_url, price, type, cards_per_pack),
           prize:product_prizes (name, level),
           slot_log:slot_spin_logs (bet, kind, machine:slot_machines (machine_number, theme:slot_themes (name)))

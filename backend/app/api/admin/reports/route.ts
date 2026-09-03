@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     // ── 儲值明細 ────────────────────────────────────────────────────────────
     if (tab === 'recharge') {
       const data = await fetchAllRows<any>(() => applyDateFilter(
-        excBot(supabase.from('recharge_records').select('*, user:users(id, name, email)').order('created_at', { ascending: false }))
+        excBot(supabase.from('recharge_records').select('*, user:users(id, member_no, name, email)').order('created_at', { ascending: false }))
       ))
       return NextResponse.json({ data })
     }
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     // ── 消費明細 ────────────────────────────────────────────────────────────
     if (tab === 'consumption') {
       const data = await fetchAllRows<any>(() => applyDateFilter(
-        excBot(supabase.from('draw_records').select('*, user:users(id, name, email), product:products(id, name, price)').order('created_at', { ascending: false }))
+        excBot(supabase.from('draw_records').select('*, user:users(id, member_no, name, email), product:products(id, name, price)').order('created_at', { ascending: false }))
       ))
       return NextResponse.json({ data })
     }

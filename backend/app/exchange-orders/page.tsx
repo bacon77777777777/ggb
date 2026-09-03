@@ -10,6 +10,7 @@ import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useEffect, useMemo, useState } from 'react'
 import SelectField from '@/components/ui/SelectField'
+import { realEmail } from '@/lib/syntheticEmail'
 
 type DoneFilter = 'all' | 'in_progress' | 'done'
 
@@ -323,14 +324,14 @@ export default function ExchangeOrdersAdminPage() {
                       </td>
                       <td className="py-3 px-4 text-sm text-neutral-700">
                         <div className="font-medium">{order.owner_name || '未知會員'}</div>
-                        <div className="text-xs text-neutral-500">{order.owner_email}</div>
+                        <div className="text-xs text-neutral-500">{realEmail(order.owner_email)}</div>
                         <div className="mt-1">
                           <MemberNo no={order.owner_member_no} uuid={order.owner_id} />
                         </div>
                       </td>
                       <td className="py-3 px-4 text-sm text-neutral-700">
                         <div className="font-medium">{order.initiator_name || '未知會員'}</div>
-                        <div className="text-xs text-neutral-500">{order.initiator_email}</div>
+                        <div className="text-xs text-neutral-500">{realEmail(order.initiator_email)}</div>
                         <div className="mt-1">
                           <MemberNo no={order.initiator_member_no} uuid={order.initiator_id} />
                         </div>

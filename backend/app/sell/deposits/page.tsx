@@ -8,6 +8,7 @@ import { TableEmpty } from '@/components/ui/EmptyState'
 import { useToast } from '@/contexts/ToastContext'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useEffect, useState } from 'react'
+import { realEmail } from '@/lib/syntheticEmail'
 
 /*
  * 保證金查帳（唯讀）。
@@ -130,7 +131,7 @@ export default function SellDepositsPage() {
                         </td>
                         <td className="px-3 py-2 text-sm">
                           <div>{r.seller_name}</div>
-                          <div className="text-xs text-neutral-400">{r.seller_email}</div>
+                          <div className="text-xs text-neutral-400">{realEmail(r.seller_email)}</div>
                         </td>
                         <td className="px-3 py-2 text-sm">{r.buyer_name}</td>
                         <td className="px-3 py-2 text-sm font-semibold">{r.amount.toLocaleString()}</td>

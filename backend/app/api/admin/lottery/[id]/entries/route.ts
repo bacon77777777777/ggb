@@ -17,7 +17,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     supabase.from('lottery_events').select('*').eq('id', id).single(),
     supabase
       .from('lottery_entries')
-      .select('*, user:users(id, name, email, avatar_url)')
+      .select('*, user:users(id, member_no, name, email, avatar_url)')
       .eq('event_id', id)
       // 未開獎時 rank 是 NULL，PostgREST 預設 NULL 排最後，改用登記序號當第二鍵
       .order('rank', { ascending: true, nullsFirst: false })

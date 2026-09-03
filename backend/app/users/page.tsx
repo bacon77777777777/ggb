@@ -335,7 +335,7 @@ function UsersPage() {
         (u.memberNo != null && String(u.memberNo).includes(query.replace(/^#/, ''))) ||
         (u.inviteCode && u.inviteCode.toLowerCase().includes(query)) ||
         u.name.toLowerCase().includes(query) ||
-        u.email.toLowerCase().includes(query) ||
+        (realEmail(u.email) ?? '').toLowerCase().includes(query) ||
         u.phone.includes(query)
       )
     }

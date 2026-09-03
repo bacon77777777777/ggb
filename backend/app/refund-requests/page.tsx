@@ -5,6 +5,8 @@ import Badge from '@/components/ui/Badge'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import { useState, useEffect, useCallback } from 'react'
+import UserCell from '@/components/UserCell'
+import { userMatches } from '@/lib/userSearch'
 
 interface RefundRequest {
   id: number
@@ -16,7 +18,7 @@ interface RefundRequest {
   created_at: string
   reviewed_at: string | null
   processed_at: string | null
-  user: { id: string; name: string; email: string; tokens: number } | null
+  user: { id: string; member_no?: number | null; name: string; email: string; tokens: number } | null
   recharge: { id: number; order_number: string; amount: number; status: string } | null
 }
 
@@ -84,8 +86,7 @@ export default function RefundRequestsPage() {
   const filtered = requests.filter(r => {
     if (!searchQuery.trim()) return true
     const q = searchQuery.toLowerCase()
-    return (r.user?.name ?? '').toLowerCase().includes(q)
-      || (r.user?.email ?? '').toLowerCase().includes(q)
+    return userMatches(q, r.user)
       || (r.recharge?.order_number ?? '').toLowerCase().includes(q)
       || r.reason.toLowerCase().includes(q)
   })
@@ -101,11 +102,9 @@ export default function RefundRequestsPage() {
       key: 'user', label: '會員',
       sortValue: r => r.user?.name ?? '',
       render: r => (
-        <>
-          <div className="font-medium text-neutral-800">{r.user?.name || '(未命名)'}</div>
-          <div className="text-xs text-neutral-400">{r.user?.email}</div>
+        <UserCell memberNo={r.user?.member_no} uuid={r.user?.id} name={r.user?.name} email={r.user?.email}>
           <div className="text-xs text-violet-600">餘額 {(r.user?.tokens ?? 0).toLocaleString()} G</div>
-        </>
+        </UserCell>
       ),
     },
     {

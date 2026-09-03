@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     .from('cs_tickets')
     .select(`
       id, category, email, phone, content, status, admin_note, created_at, updated_at,
-      user:users!cs_tickets_user_id_fkey(id, name, email, tokens)
+      user:users!cs_tickets_user_id_fkey(id, member_no, name, email, tokens)
     `)
     .order('created_at', { ascending: false })
     .limit(limit)

@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   if (userIds.length) {
     const { data: users } = await supabase
       .from('users')
-      .select('id, name, email, tokens')
+      .select('id, member_no, name, email, tokens')
       .in('id', userIds)
     userMap = Object.fromEntries((users ?? []).map((u: any) => [u.id, u]))
   }

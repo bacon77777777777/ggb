@@ -2,6 +2,9 @@
 
 import { AdminLayout, PageCard, SearchToolbar, DataTable, FilterTags, DateRangePicker, type Column } from '@/components'
 import Badge from '@/components/ui/Badge'
+import UserCell from '@/components/UserCell'
+import { userMatches } from '@/lib/userSearch'
+import { realEmail } from '@/lib/syntheticEmail'
 import { useState, useEffect, useMemo } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { formatDateTime } from '@/utils/dateFormat'
@@ -19,7 +22,7 @@ interface DrawRecord {
   points_used?: number
   /** 這一抽實際收的 G（促銷/優惠券折抵後；migration 512）。舊資料 null → fallback 單價 */
   tokens_spent?: number | null
-  user?: { name: string; email: string; id: string }
+  user?: { name: string; email: string; id: string; member_no?: number | null }
   product?: { name: string; image_url: string; price?: number; type?: string; cards_per_pack?: number | null }
   /** 品項（轉蛋紀錄的 prize_name/prize_level 快照為空，靠這個 join 補） */
   prize?: { name: string; level: string } | null
@@ -163,8 +166,7 @@ export default function DrawsPage() {
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
       result = result.filter(r =>
-        r.user?.name?.toLowerCase().includes(q) ||
-        r.user?.email?.toLowerCase().includes(q) ||
+        userMatches(q, r.user) ||
         r.product?.name?.toLowerCase().includes(q) ||
         slotMachineLabel(r)?.toLowerCase().includes(q) ||
         String(r.ticket_number).includes(q)
@@ -312,12 +314,7 @@ export default function DrawsPage() {
       key: 'user',
       label: '用戶',
       sortable: true,
-      render: (tx) => (
-        <div>
-          <div className="font-medium text-neutral-900">{tx.user?.name || '未知用戶'}</div>
-          <div className="text-xs text-neutral-500">{tx.user?.email}</div>
-        </div>
-      )
+      render: (tx) => <UserCell memberNo={tx.user?.member_no} uuid={tx.user?.id} name={tx.user?.name} email={tx.user?.email} />
     },
     {
       key: 'product',
@@ -432,7 +429,7 @@ export default function DrawsPage() {
       formatDrawId(tx.id, tx.created_at),
       formatDateTime(r.created_at),
       r.user?.name || '',
-      r.user?.email || '',
+      realEmail(r.user?.email) || '',
       slotMachineLabel(r) || r.product?.name || '',
       r.prize_level || r.prize?.level || '一般版',
       r.prize_name || r.prize?.name || '',

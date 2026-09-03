@@ -7,6 +7,7 @@ import { useAdmin } from '@/contexts/AdminContext'
 import { useShipment } from '@/contexts/ShipmentContext'
 import { useLog } from '@/contexts/LogContext'
 import { useProduct } from '@/contexts/ProductContext'
+import { realEmail } from '@/lib/syntheticEmail'
 
 interface Breadcrumb {
   /*
@@ -190,7 +191,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         id: order.id,
         orderId: order.order_number,
         userId: order.user_id || '',
-        user: order.user?.email || '',
+        user: realEmail(order.user?.email) || '',
         userName: order.user?.name || '',
         recipientName: order.recipient_name || '',
         recipientPhone: order.recipient_phone || '',
