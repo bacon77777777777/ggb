@@ -60,11 +60,11 @@ export default function GuestLoginBar({ visible, lowered }: { visible: boolean; 
           unoptimized
           className="h-[18px] w-[18px] shrink-0 object-contain"
         />
-        {/* 字級是量過的：這句 17 個字在 13px 約 221px 寬，393pt 機型剛好放滿；
+        {/* 字級是量過的：這句 16 個字（老闆 2026-09-03 拿掉開頭的「新」）在 13px 約 208px 寬，393pt 機型剛好放滿；
             375pt（SE 2/3、mini）只剩約 205px，所以 385pt 以下降到 12px，按鈕內距也縮 2px。
             「300積分」跟登入頁紅膠囊同一個數字 */}
         <span className="min-w-0 flex-1 truncate text-[13px] max-[385px]:text-[12px] font-black text-white cjk-optical-center">
-          新用戶使用
+          用戶使用
           {/* 「LINE登入」與「300積分」再粗（老闆）：字重已到 PingFang 的上限，
               補同色描邊撐粗，跟「立即登入」同一招；前者維持白、後者亮黃 */}
           <span className="[-webkit-text-stroke:0.5px_currentColor]">LINE登入</span>
