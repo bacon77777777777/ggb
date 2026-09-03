@@ -107,6 +107,11 @@ function NavbarInner() {
   
   // Define page types
   const isHomePage = pathname === '/';
+  /* 會員頁底下那排資訊頁（老闆 2026-09-03：這幾頁不需要登入鈕）——
+     常見問題／關於我們／會員條款／隱私權政策／退換貨資訊，看資料的頁，
+     頂部不擺「登入拿積分」。只管手機那顆，桌機那條維持 */
+  const NO_LOGIN_BUTTON_PATHS = ['/faq', '/about', '/terms', '/privacy', '/return-policy'];
+  const hideMobileLoginButton = isHomePage || NO_LOGIN_BUTTON_PATHS.includes(pathname);
   const isMainTab =
     pathname === '/' ||
     pathname === '/exchange' ||
@@ -1175,8 +1180,9 @@ function NavbarInner() {
                       未登入不放搜尋鈕（老闆 2026-08-21：其他頁面不相關不需放）。 */}
                   {/* Mobile login button: 細膠囊線框。
                       首頁不放（老闆 2026-09-03：移除）—— 首頁的搜尋框要吃滿整條，
-                      未登入要登入走底部導航的「會員」。其他頁維持 */}
-                  {!isHomePage && (
+                      未登入要登入走底部導航的「會員」。資訊頁也不放（見 NO_LOGIN_BUTTON_PATHS）。
+                      其他頁維持 */}
+                  {!hideMobileLoginButton && (
                     <Link
                       href="/login"
                       className="md:hidden px-3 h-8 flex items-center rounded-full border border-primary text-primary text-[12px] font-black active:scale-95 transition-transform whitespace-nowrap"

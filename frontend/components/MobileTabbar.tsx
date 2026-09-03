@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
@@ -80,33 +80,32 @@ function MobileTabbarInner() {
   const collapsed = useHideOnScroll({ enabled: HIDE_ON_SCROLL_PATHS.includes(pathname) });
 
   /*
-   * 未登入時底欄收起的那一刻，換一條滿寬的登入提示接在同一個位置（老闆 2026-09-03）。
+   * 訪客的底部登入條（老闆 2026-09-03）：剛進首頁不顯示，**第一次往下滑就出現、
+   * 之後一直在**（底欄收起它只是往下降，不收）。所以這裡記的是「這次在首頁有沒有滑過」，
+   * 離開首頁就歸零，下次進來又是先不顯示。
    * auth 還在判定時不算未登入 —— 不然已登入的人一滑就先閃一下「立即登入」。
    */
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const showGuestBar = collapsed && !authLoading && !isAuthenticated && pathname === '/';
+  const [guestBarRevealed, setGuestBarRevealed] = useState(false);
+  useEffect(() => { if (collapsed) setGuestBarRevealed(true); }, [collapsed]);
+  useEffect(() => { if (pathname !== '/') setGuestBarRevealed(false); }, [pathname]);
+  const showGuestBar = guestBarRevealed && !authLoading && !isAuthenticated && pathname === '/';
 
   /*
    * 把收起的距離發佈成 `--bottom-nav-shift`，讓首頁那兩顆懸浮按鈕（扇形選單、
    * 商城上架）跟著往下坐 —— 底欄走了它們還浮在原位，下面會空一塊。
    * 這裡不含安全區：那兩顆自己的算式已經有 env(safe-area-inset-bottom)。
    * 變數沒設時是 0px，也就是完全照舊，所以其他頁不受影響。
-   *
-   * 訪客的登入提示條跟底欄一樣高（3.75rem），所以它在的時候只把警語列那段扣掉：
-   * 懸浮按鈕坐到提示條上緣，而不是壓在它上面。
+   * （訪客登入條也吃這個變數往下降；它自己另外發佈 `--guest-login-bar-h` 讓懸浮按鈕讓位）
    */
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty(
       '--bottom-nav-shift',
-      !collapsed
-        ? '0px'
-        : showGuestBar
-          ? 'var(--promo-notice-h, 0px)'
-          : 'calc(3.75rem + var(--promo-notice-h, 0px))',
+      collapsed ? 'calc(3.75rem + var(--promo-notice-h, 0px))' : '0px',
     );
     return () => { root.style.removeProperty('--bottom-nav-shift'); };
-  }, [collapsed, showGuestBar]);
+  }, [collapsed]);
 
   /*
    * 按下就預取（老闆 2026-08-22 頁面加載優化 ⑤）：touchstart 時先把目標頁的主資料

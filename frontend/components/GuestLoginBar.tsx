@@ -1,52 +1,70 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { asset } from '@/lib/asset';
 import { cn } from '@/lib/utils';
 
 /**
- * 未登入時，底部導航往下滑收起後浮出來的登入提示（老闆 2026-09-03，參考同業）
+ * 訪客的底部登入條（老闆 2026-09-03 定案，參考同業）
  *
- * 底欄收起是為了把畫面還給商品列表，但對訪客來說那也是把「會員」入口收掉了。
- * 這條接在底欄原本的位置：深色半透明膠囊、左邊吉祥物、中間一句話、右邊亮綠色「立即登入」
- * —— 顏色照老闆給的參考圖。底欄一回來（往上撥）它就退場，兩個不會同時在。
+ * 位置：貼在公平性警語列上面（警語列又貼在底欄上面）。
+ * 行為：剛進首頁**不顯示**；第一次往下滑就出現，之後就一直在 ——
+ *       底欄收起時它不收，只是跟著往下降到畫面底；底欄回來它就再升回警語列上面。
+ *       顯示與否由 MobileTabbar 判（它才知道底欄收起了沒、玩家有沒有滑過）。
+ * 樣式：黑色半透明膠囊、積分圖標、一句話、綠黃漸層「立即登入」。
  *
- * 顯示與否由 MobileTabbar 決定（它才知道自己有沒有收起），這裡只管長相與進出場。
- * 高度刻意跟底欄一樣是 60px（52px 膠囊＋上下各 4px）：MobileTabbar 發佈的
- * `--bottom-nav-shift` 是拿這個高度算的，首頁那兩顆懸浮按鈕才會剛好坐在膠囊上緣。
+ * 定位靠兩個既有變數：`--promo-notice-h`（警語列高度，NoticeBar 發佈）與
+ * `--bottom-nav-shift`（底欄收起的距離，MobileTabbar 發佈）。底欄收起時 shift
+ * 剛好等於「底欄＋警語列」的高度，所以同一條算式自然就降到底。
+ *
+ * 自己再發佈 `--guest-login-bar-h`：首頁那兩顆懸浮按鈕（扇形選單、商城上架）
+ * 本來坐在警語列上緣，這條插進來它們要再往上讓一段，不然會壓在膠囊上。
  */
-export const GUEST_LOGIN_BAR_HEIGHT = '3.75rem';
+
+/** 膠囊 52px ＋ 跟警語列的間隙 6px */
+const BAR_H = '58px';
 
 export default function GuestLoginBar({ visible }: { visible: boolean }) {
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--guest-login-bar-h', visible ? BAR_H : '0px');
+    return () => { root.style.removeProperty('--guest-login-bar-h'); };
+  }, [visible]);
+
   return (
     <div
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-50 md:hidden px-3 py-1 pb-[calc(env(safe-area-inset-bottom)+4px)]',
-        'transition-transform duration-200 ease-out',
-        !visible && 'translate-y-full pointer-events-none',
+        'fixed left-0 right-0 z-40 md:hidden px-3',
+        'transition-[bottom,transform,opacity] duration-200 ease-out',
+        visible ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0 pointer-events-none',
       )}
+      style={{
+        bottom: 'calc(env(safe-area-inset-bottom) + 6px + 3.75rem + var(--promo-notice-h, 0px) - var(--bottom-nav-shift, 0px))',
+      }}
       aria-hidden={!visible}
       data-testid="guest-login-bar"
     >
-      <div className="flex h-[52px] items-center gap-2.5 rounded-full bg-neutral-900/85 backdrop-blur-md pl-1.5 pr-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.25)]">
-        {/* 吉祥物：底欄「首頁」那顆膠囊柴犬，圓形正好塞進圓框；圓框底色照參考圖的暗紅 */}
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#7b1f2c]">
-          <Image
-            src={asset('/images/topbar/1b.png')}
-            alt=""
-            width={36}
-            height={36}
-            className="h-9 w-9 object-contain"
-          />
+      <div className="flex h-[52px] items-center gap-2 rounded-full bg-black/75 backdrop-blur-md pl-3 pr-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.3)]">
+        <Image
+          src={asset('/images/gcoin.webp')}
+          alt=""
+          width={28}
+          height={28}
+          unoptimized
+          className="h-7 w-7 shrink-0 object-contain"
+        />
+        {/* 13px 是算過的：iPhone SE（375px）扣掉邊距、幣、按鈕只剩約 200px 給字，
+            這句 15 個字在 14px 就會被截掉。「300積分」跟登入頁紅膠囊同一個數字 */}
+        <span className="min-w-0 flex-1 truncate text-[13px] font-black text-white cjk-optical-center">
+          新用戶使用LINE登入即領300積分
         </span>
-        {/* 「拿 300 積分」跟登入頁 LINE 鈕上的紅膠囊同一句，不要兩邊說不同數字 */}
-        <span className="min-w-0 flex-1 truncate text-[15px] font-black text-white cjk-optical-center">
-          使用 LINE 登入，拿 300 積分
-        </span>
+        {/* 「再粗一點」（老闆 2026-09-03）：中文字型是系統 PingFang，最粗只到 600、
+            font-black 已經是天花板，所以補 0.6px 的同色描邊把筆畫撐粗，字級也放到 16px */}
         <Link
           href="/login"
-          className="flex h-9 shrink-0 items-center rounded-full bg-[#b9f04a] px-4 text-[14px] font-black text-neutral-900 active:scale-95 transition-transform"
+          className="flex h-10 shrink-0 items-center rounded-full bg-gradient-to-r from-[#d8f552] to-[#5ee266] px-3.5 text-[16px] font-black text-neutral-900 [-webkit-text-stroke:0.6px_#171717] shadow-[0_2px_8px_rgba(94,226,102,0.45)] active:scale-95 transition-transform"
         >
           <span className="cjk-optical-center">立即登入</span>
         </Link>
