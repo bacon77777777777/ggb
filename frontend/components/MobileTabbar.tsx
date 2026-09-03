@@ -19,6 +19,7 @@ import { rankingKey, fetchRanking } from '@/lib/queries/ranking';
 import { useHideOnScroll } from '@/lib/useHideOnScroll';
 import { useAuth } from '@/contexts/AuthContext';
 import GuestLoginBar from '@/components/GuestLoginBar';
+import { useRootCssVarPx } from '@/lib/useRootCssVar';
 
 /**
  * 往下滑會把底部欄收起來的頁面（老闆 2026-08-29：先只有首頁，那裡才是長長的商品列表）。
@@ -89,7 +90,16 @@ function MobileTabbarInner() {
   const [guestBarRevealed, setGuestBarRevealed] = useState(false);
   useEffect(() => { if (collapsed) setGuestBarRevealed(true); }, [collapsed]);
   useEffect(() => { if (pathname !== '/') setGuestBarRevealed(false); }, [pathname]);
-  const showGuestBar = guestBarRevealed && !authLoading && !isAuthenticated && pathname === '/';
+  /*
+   * 公平性警語列在畫面上時登入條不顯示（老闆 2026-09-03）。警語列掛在底欄上緣、
+   * 跟底欄一起收起，所以「在畫面上」＝警語列有高度**且**底欄沒收起；
+   * 玩家按叉叉關掉警語列後，底欄在的時候登入條就直接坐在底欄上面。
+   * 高度讀 NoticeBar 發佈的 `--promo-notice-h`（沒掛、關掉都是 0）。
+   */
+  const noticeH = useRootCssVarPx('--promo-notice-h');
+  const noticeOnScreen = noticeH > 0 && !collapsed;
+  const showGuestBar =
+    guestBarRevealed && !authLoading && !isAuthenticated && pathname === '/' && !noticeOnScreen;
 
   /*
    * 把收起的距離發佈成 `--bottom-nav-shift`，讓首頁那兩顆懸浮按鈕（扇形選單、
