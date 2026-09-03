@@ -1016,7 +1016,11 @@ function NavbarInner() {
               <Link
                 href="/announcements"
                 className={cn(
-                  "relative p-2 rounded-xl active:scale-90 transition-transform md:flex md:items-center",
+                  /* 手機端跟會員頁頂部的設定齒輪同一套（老闆 2026-09-03）：32px 黑色 10% 圓底
+                     ＋毛玻璃、白色圖標，按下加深；那組樣式在 app/profile/page.tsx 的
+                     Settings 鈕。桌機那條是白底，維持原本無底的 p-2 圖標 */
+                  "relative flex items-center justify-center w-8 h-8 rounded-full bg-black/10 backdrop-blur-sm active:bg-black/20 active:scale-90 transition-[background-color,transform]",
+                  "md:w-auto md:h-auto md:p-2 md:rounded-xl md:bg-transparent md:backdrop-blur-none md:active:bg-transparent",
                   pathname === '/announcements' || pathname.startsWith('/announcements/')
                     ? "text-primary"
                     // 手機端只在首頁出現（見下一行的 hidden），所以白色只會壓在主題色上
@@ -1027,11 +1031,10 @@ function NavbarInner() {
                 aria-label="通知"
               >
                 <Bell className="w-5 h-5 stroke-[2]" />
-                {/* 尺寸/位置對齊會員頁的設定齒輪。手機端首頁壓在主題色上，紅點會糊進底色
-                    → 改成**亮黃點**（老闆 2026-08-29，先前是白點），不描邊：
-                    描邊會讓它看起來像個圈。桌機那條是白底，維持紅點＋白邊 */}
+                {/* 未讀點也照設定齒輪：貼圓底的右上角、亮黃、白 20% 描邊（黑圓底上黃點不會糊）。
+                    桌機那條是白底，維持紅點＋白邊、縮回圖標角落 */}
                 {bellUnread && (
-                  <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-accent-yellow md:bg-accent-red md:border-2 md:border-white md:dark:border-neutral-950" />
+                  <span className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-accent-yellow border-2 border-white/20 md:top-1 md:right-1 md:bg-accent-red md:border-white md:dark:border-neutral-950" />
                 )}
               </Link>
             )}
