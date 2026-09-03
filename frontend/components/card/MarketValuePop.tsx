@@ -81,17 +81,26 @@ function CountUp({ value }: { value: number }) {
     return () => cancelAnimationFrame(raf);
   }, [value]);
   const tier = value >= 20000 ? 'legend' : value >= 5000 ? 'gold' : value >= 1000 ? 'big' : 'small';
+  /*
+   * 字要粗、邊要黑（老闆 2026-09-03：太不明顯、文字加粗）。
+   * font-amount（DIN Alternate）只有一個粗細，所以用**同色描邊**把筆畫撐粗；
+   * 黑邊不能再用 text-stroke（一個元素只能一種描邊色），改用八方向的 text-shadow 畫出來。
+   * 等級越高邊越粗。
+   */
+  const outline = tier === 'legend' ? 5 : tier === 'gold' || tier === 'big' ? 4 : 3;
+  const dirs = [[-1, -1], [1, -1], [-1, 1], [1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]];
+  const textShadow = dirs.map(([x, y]) => `${x * outline}px ${y * outline}px 0 #000`).join(', ')
+    + (tier === 'gold' ? ', 0 0 18px rgba(255,200,60,0.85)' : tier === 'legend' ? ', 0 0 28px rgba(255,200,60,1)' : ', 0 4px 12px rgba(0,0,0,0.7)');
   return (
     <span
-      /* 粗黑邊（老闆 2026-09-03：壓在卡面上要看得清楚）：-webkit-text-stroke ＋ paint-order stroke fill，
-         描邊畫在填色底下才不會把字吃細；等級越高邊越粗 */
       className={cn(
-        'font-amount font-black tabular-nums tracking-tight [paint-order:stroke_fill] drop-shadow-[0_3px_10px_rgba(0,0,0,0.7)]',
-        tier === 'small' && 'text-[34px] text-white [-webkit-text-stroke:3px_#000]',
-        tier === 'big' && 'text-[46px] text-white [-webkit-text-stroke:4px_#000]',
-        tier === 'gold' && 'text-[54px] text-[#ffd54a] [-webkit-text-stroke:4px_#000] drop-shadow-[0_0_18px_rgba(255,200,60,0.85)]',
-        tier === 'legend' && 'text-[64px] text-[#ffd54a] [-webkit-text-stroke:5px_#000] drop-shadow-[0_0_28px_rgba(255,200,60,1)] animate-pulse',
+        'font-amount font-black tabular-nums tracking-tight',
+        tier === 'small' && 'text-[34px] text-white',
+        tier === 'big' && 'text-[46px] text-white',
+        tier === 'gold' && 'text-[54px] text-[#ffd54a]',
+        tier === 'legend' && 'text-[64px] text-[#ffd54a] animate-pulse',
       )}
+      style={{ textShadow, WebkitTextStroke: `${tier === 'small' ? 1.5 : 2.5}px currentColor` }}
     >
       +{n.toLocaleString()}
     </span>
