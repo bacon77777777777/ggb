@@ -402,6 +402,13 @@ export default function CardDrawAnimation({
       {/* 掛在最外層而不是各 phase 裡面：開卡包與滑卡是兩個會互相切換的區塊，
           放進去會跟著 AnimatePresence 一起淡出淡入，位置也會被裡層的 transform 帶跑 */}
       <SoundToggle safeTop className="absolute top-4 right-4 z-[1300]" />
+      {/* 翻牌數字只在揭曉階段掛，卡包還沒開的畫面不可能跳（老闆 2026-09-03）。
+          ⚠️ 要放在 AnimatePresence **外面**：mode="wait" 會等卡包那層淡出完才掛新的子元件，
+          那時第一張的 pop 早就設好了，數字元件一掛上來看到的就是「現成的」trigger ——
+          它把掛載時的 trigger 當基準不跳，第一張就永遠沒有 +N（老闆回報：第一張出現沒有 +N）。 */}
+      {phase === 'swipe' && (
+        <MarketValuePop value={pop?.value} trigger={pop?.trigger ?? null} grade={pop?.grade} enabled={marketPopOn} />
+      )}
       <AnimatePresence mode="wait">
         {/* ── Phase 1: Pack opening ── */}
         {phase === 'pack' && (
@@ -430,10 +437,6 @@ export default function CardDrawAnimation({
           </motion.div>
         )}
 
-        {/* 只在揭曉階段掛，卡包還沒開的畫面不可能跳數字（老闆 2026-09-03） */}
-        {phase === 'swipe' && (
-          <MarketValuePop value={pop?.value} trigger={pop?.trigger ?? null} grade={pop?.grade} enabled={marketPopOn} />
-        )}
         {/* ── Phase 2: Immersive card reveal ── */}
         {phase === 'swipe' && prizes.length > 0 && (
           <motion.div
