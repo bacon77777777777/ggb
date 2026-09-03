@@ -440,10 +440,10 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
             )}
           </motion.div>
 
-          {/* 今日不再顯示：放在卡片與叉叉之間。
+          {/* 今日不再顯示：放在卡片下方。
               勾了之後按叉叉才會存起來 —— 只是勾一下就生效的話，
               玩家還沒決定要不要關就已經被記住了 */}
-          {/* 間距（老闆 2026-09-03：卡片、勾選、叉叉上下拉開一點）：卡片→勾選 32px、勾選→叉叉 28px */}
+          {/* 間距（老闆 2026-09-03：卡片與勾選拉開一點）：卡片→勾選 32px；叉叉已移到畫面右上角 */}
           <label className="mt-8 flex items-center gap-2 text-[13px] text-white/85 select-none cursor-pointer">
             <span
               className={`w-[18px] h-[18px] rounded-[5px] border flex items-center justify-center transition-colors ${
@@ -465,7 +465,10 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
             type="button"
             onClick={close}
             aria-label="關閉"
-            className="mt-7 w-10 h-10 rounded-full border border-white/50 flex items-center justify-center text-white/90 active:scale-95 transition-transform"
+            /* 叉叉放畫面右上角（老闆 2026-09-03），脫離垂直排版 —— 卡片與「今日不再顯示」
+               才會真的在畫面正中。不貼卡片的角：最新上架那張的禮物盒就長在卡片右上角外面。
+               top 扣掉瀏海／動態島的安全區，App 滿版模式下才不會被蓋住 */
+            className="absolute right-4 top-[calc(env(safe-area-inset-top)+14px)] w-10 h-10 rounded-full border border-white/50 flex items-center justify-center text-white/90 active:scale-95 transition-transform"
           >
             <X className="w-5 h-5" />
           </button>
