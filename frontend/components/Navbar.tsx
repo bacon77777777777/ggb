@@ -737,10 +737,6 @@ function NavbarInner() {
         )}
         isSticky={!isProductDetailPage}
         leftClassName={(isProductDetailPage || isAnnouncementInnerPage) ? "flex-1" : "flex-1 md:flex-none md:w-auto"}
-        /* 首頁未登入的手機端 right slot 是空的（登入鈕拿掉了、鈴鐺只給登入者），
-           但它預設帶 pl-2 —— 搜尋框會離右緣 16px、logo 卻離左緣 8px，兩邊不對稱。
-           空的時候把那 8px 收掉；桌機那條右邊有登入鈕，維持原樣 */
-        rightClassName={isHomePage && !isAuthenticated ? "pl-0 md:pl-2" : undefined}
         left={
           <>
             {(isProductDetailPage || isAnnouncementInnerPage) ? (
@@ -1036,6 +1032,30 @@ function NavbarInner() {
                   <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-accent-yellow md:bg-accent-red md:border-2 md:border-white md:dark:border-neutral-950" />
                 )}
               </Link>
+            )}
+
+            {/* 手機首頁搜尋框右邊的圓形頭像（老闆 2026-09-03）：
+                會員 → 自己的頭像、進會員中心；訪客 → 站上統一的預設頭像、進登入頁。
+                auth 還在判定時放一顆半透明圓佔位，不然會先閃訪客頭像再換成會員的。
+                白色細框是因為壓在主題色底上，頭像多半是淺色，沒框會糊成一團。桌機不放 */}
+            {isHomePage && (
+              isLoading || (isAuthenticated && !user) ? (
+                <div className="md:hidden ml-0.5 h-8 w-8 rounded-full bg-white/30 animate-pulse" />
+              ) : (
+                <Link
+                  href={user ? '/profile' : '/login'}
+                  aria-label={user ? '會員中心' : '登入'}
+                  className="md:hidden ml-0.5 relative h-8 w-8 shrink-0 overflow-hidden rounded-full border-2 border-white/90 bg-white active:scale-90 transition-transform"
+                >
+                  <Image
+                    src={user?.avatar_url || asset('/images/avatar.webp')}
+                    alt=""
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </Link>
+              )
             )}
 
             {/* 未登入的通知頁是登入提示，沒有列表可以標已讀 */}
