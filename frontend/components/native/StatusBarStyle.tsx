@@ -93,6 +93,41 @@ export function useStatusBarText(text: StatusBarText, themeColor?: string) {
   }, [key, text, themeColor]);
 }
 
+/** #rrggbb 混 alpha 比例的黑：遮罩是 bg-black/60，頂色照同比例壓暗才接得起來 */
+function blendWithBlack(hex: string, alpha: number) {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return '#000000';
+  const n = parseInt(m[1], 16);
+  const ch = (shift: number) => Math.round(((n >> shift) & 0xff) * (1 - alpha));
+  return `#${[ch(16), ch(8), ch(0)].map(v => v.toString(16).padStart(2, '0')).join('')}`;
+}
+
+/**
+ * 全螢幕遮罩（首頁彈窗這類）開著時，把狀態列跟著壓暗（老闆 2026-09-03）。
+ *
+ * App 殼是全出血，網頁的 `fixed inset-0` 遮罩本來就蓋得到動態島那一條；
+ * 但 **Safari 與 PWA** 的狀態列是瀏覽器拿 `theme-color` 自己塗的，網頁層蓋不到 ——
+ * 遮罩把整頁壓暗、只有最上面那條還是亮紅色，很怪。
+ * 做法：往同一個宣告堆疊推一筆「當前頂色混 60% 黑、白字」，遮罩關掉就 pop 回原值。
+ * 顏色在推入的當下取堆疊裡它下面那一筆算，所以哪一頁開的彈窗都對得上那一頁的頂色。
+ */
+export function useStatusBarDim(active: boolean, alpha = 0.6) {
+  const keyRef = useRef<object | null>(null);
+  if (keyRef.current === null) keyRef.current = {};
+  const key = keyRef.current;
+
+  useEffect(() => {
+    if (!active) return;
+    stack.push({ key, text: 'white', color: blendWithBlack(currentColor(), alpha) });
+    emit();
+    return () => {
+      const i = stack.findIndex(e => e.key === key);
+      if (i >= 0) stack.splice(i, 1);
+      emit();
+    };
+  }, [active, alpha, key]);
+}
+
 export default function StatusBarStyle() {
   // SSR 沒有堆疊，server snapshot 固定回預設值（給常數，不能每次回新物件）
   const text = useSyncExternalStore(subscribe, currentText, () => DEFAULT_TEXT);

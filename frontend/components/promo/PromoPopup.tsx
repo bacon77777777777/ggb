@@ -18,6 +18,7 @@ import Image from 'next/image';
 import { Check, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePromos, type SitePromo, type NewArrivalProduct } from './usePromos';
+import { useStatusBarDim } from '@/components/native/StatusBarStyle';
 import { hideForToday } from '@/lib/promoDismiss';
 import { useRouteTransition } from '@/components/ui/RouteTransition';
 import { categoryFlagKey } from '@/lib/categoryFlags';
@@ -112,6 +113,9 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
   const [closedIds, setClosedIds] = useState<string[]>([]);
   const [current, setCurrent] = useState<SitePromo | null>(null);
   const [visible, setVisible] = useState(false);
+  /* 遮罩開著時把 Safari／PWA 的狀態列一起壓暗（App 全出血本來就蓋得到），
+     見 StatusBarStyle 的 useStatusBarDim 說明 */
+  useStatusBarDim(visible);
   /** 「今日不再顯示」的勾選狀態。每換一則就歸零，不要沿用上一則的選擇 */
   const [hideToday, setHideToday] = useState(false);
   /** 最新上架清單目前露出幾筆，捲到底再加一頁 */
@@ -254,8 +258,11 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
              遮罩本身要吃掉 touchmove；卡片內文那塊需要捲動，故不用 touch-action:none */
           onTouchMove={e => { if (e.target === e.currentTarget) e.preventDefault(); }}
         >
+          {/* relative 包一層：叉叉要貼卡片右上角（老闆 2026-09-03：離太遠）。
+              不能直接放進 motion.div —— 純圖版那層 overflow-hidden 會把伸出去的叉叉切掉 */}
+          <div className="relative w-full max-w-[330px]">
           <motion.div
-            className={`w-full max-w-[330px] ${isImageOnly ? 'rounded-3xl overflow-hidden' : ''}`}
+            className={`w-full ${isImageOnly ? 'rounded-3xl overflow-hidden' : ''}`}
             initial={{ scale: 0.88, y: 12 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.94, opacity: 0 }}
@@ -439,6 +446,17 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
               </div>
             )}
           </motion.div>
+          <button
+            type="button"
+            onClick={close}
+            aria-label="關閉"
+            /* 貼卡片（aspect 框）右上角外側一點點：最新上架那張的禮物盒在框內右上 66%～90% 寬，
+               叉叉落在 92% 之外不會壓到它；公告卡片版的喇叭在左上，也不衝突 */
+            className="absolute -right-2 -top-2 z-20 w-9 h-9 rounded-full border border-white/50 bg-black/30 backdrop-blur-sm flex items-center justify-center text-white/90 active:scale-95 transition-transform"
+          >
+            <X className="w-[18px] h-[18px]" />
+          </button>
+          </div>
 
           {/* 今日不再顯示：放在卡片下方。
               勾了之後按叉叉才會存起來 —— 只是勾一下就生效的話，
@@ -461,17 +479,6 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
             今日不再顯示
           </label>
 
-          <button
-            type="button"
-            onClick={close}
-            aria-label="關閉"
-            /* 叉叉放畫面右上角（老闆 2026-09-03），脫離垂直排版 —— 卡片與「今日不再顯示」
-               才會真的在畫面正中。不貼卡片的角：最新上架那張的禮物盒就長在卡片右上角外面。
-               top 扣掉瀏海／動態島的安全區，App 滿版模式下才不會被蓋住 */
-            className="absolute right-4 top-[calc(env(safe-area-inset-top)+14px)] w-10 h-10 rounded-full border border-white/50 flex items-center justify-center text-white/90 active:scale-95 transition-transform"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </motion.div>
       )}
     </AnimatePresence>
