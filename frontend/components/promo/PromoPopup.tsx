@@ -395,8 +395,8 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                 />
 
                 {/* 文字區：米白內板往內縮，下緣停在按鈕上方。
-                    標題固定不捲動，內文吃剩餘高度並自行捲動 ——
-                    整塊一起捲的話，標題會被捲出畫面，玩家就不知道在講什麼 */}
+                    標題與內文放在**同一個捲動區**一起捲（老闆 2026-09-03：標題不要固定）。
+                    以前標題固定、只有內文捲，老闆不要 —— 長公告時標題佔掉一截高度，內文更擠 */}
                 <div
                   className="absolute flex flex-col transition-opacity duration-300"
                   /* top 用百分比而非固定 24px：卡片在小螢幕會等比縮小，
@@ -404,23 +404,25 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                   style={{ left: '9%', right: '9%', top: '27.9%', bottom: '17.5%', opacity: bgReady ? 1 : 0 }}
                   aria-hidden={!bgReady}
                 >
-                  {promo.title && (
-                    <h2
-                      /* 不用 text-balance：它會為了讓每行等長而提早斷行，
-                         右側明明還有空間卻換行。標題要盡量填滿一行 */
-                      className="flex-shrink-0 text-[20px] font-black leading-[1.35] text-[#0b3b8c] overflow-hidden"
-                      style={{
-                        display: '-webkit-box',
-                        WebkitBoxOrient: 'vertical',
-                        WebkitLineClamp: 3,   // 超過三行以刪節號收尾
-                      }}
-                    >
-                      {promo.title}
-                    </h2>
-                  )}
-                  <p className="mt-2.5 flex-1 min-h-0 overflow-y-auto text-[15px] leading-[1.6] text-neutral-700 whitespace-pre-line">
-                    {promo.body}
-                  </p>
+                  <div className="flex-1 min-h-0 overflow-y-auto">
+                    {promo.title && (
+                      <h2
+                        /* 不用 text-balance：它會為了讓每行等長而提早斷行，
+                           右側明明還有空間卻換行。標題要盡量填滿一行 */
+                        className="text-[20px] font-black leading-[1.35] text-[#0b3b8c] overflow-hidden"
+                        style={{
+                          display: '-webkit-box',
+                          WebkitBoxOrient: 'vertical',
+                          WebkitLineClamp: 3,   // 超過三行以刪節號收尾
+                        }}
+                      >
+                        {promo.title}
+                      </h2>
+                    )}
+                    <p className="mt-2.5 text-[15px] leading-[1.6] text-neutral-700 whitespace-pre-line">
+                      {promo.body}
+                    </p>
+                  </div>
                 </div>
 
                 {/* 按鈕文字疊在底圖已經畫好的橘色藥丸上 */}
