@@ -166,7 +166,9 @@ export default function InvitePage() {
       im.onload = () => ok(im); im.onerror = err; im.src = src;
     });
     const [hero, qrImg] = await Promise.all([load(HERO_SRC), load(qr)]);
-    const W = 800, H = 1200;
+    // 畫布照主視覺的原始長寬比（老闆 2026-09-04：下載圖高度被壓扁）——
+    // 之前寫死 800×1200（2:3），9/1 換的新圖不是這個比例，drawImage 直接把它壓進去
+    const W = 800, H = Math.round(W * hero.naturalHeight / hero.naturalWidth);
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d')!;
