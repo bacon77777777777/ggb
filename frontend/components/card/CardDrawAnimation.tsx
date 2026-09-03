@@ -290,11 +290,16 @@ export default function CardDrawAnimation({
    * 會丟掉這次的輸出重跑，壞掉的畫面根本不會被 commit。
    */
   const [session, setSession] = useState<Prize[] | null>(null);
+  // 翻牌數字（MarketValuePop）的來源；宣告在歸零區塊前面，歸零時才拿得到 setPop
+  const [pop, setPop] = useState<{ value: number | null; trigger: string; grade?: string } | null>(null);
   if (isOpen && session !== prizes) {
     setSession(prizes);
     setPhase('pack');
     setSwipeIndex(0);
     setIsLoading(true);
+    // 上一場最後一張的翻牌數字也要清掉：元件跨場常駐，留著會在下一場的卡包畫面被當成新的一次跳出來
+    // （老闆 2026-09-03：深淵之瞳試試看，剛進卡包畫面就跳 +5.98）
+    setPop(null);
   } else if (!isOpen && session !== null) {
     setSession(null);
   }
@@ -307,7 +312,6 @@ export default function CardDrawAnimation({
   /* 保險用的夾範圍索引：上面的 render 期歸零已經擋掉已知的越界，
      但這疊卡是靠索引在讀的，任何一條沒想到的路徑都不該讓整頁掛掉 */
   const topIndex = prizes.length ? Math.min(Math.max(swipeIndex, 0), prizes.length - 1) : 0;
-  const [pop, setPop] = useState<{ value: number | null; trigger: string; grade?: string } | null>(null);
   /* 後台模組參數（machine_theme_params.card_pack）的「翻牌市價數字」開關；讀不到就當開 */
   const [marketPopOn, setMarketPopOn] = useState(true);
   useEffect(() => {

@@ -33,14 +33,19 @@
 - `GgbPackRip` 掛上來再保險一次：前三張一起抓、其餘一張接一張；`flipTop` 改成那張沒到就
   等它到（最多 1.5 秒）再翻，等待中重複點擊不重複排隊。
 
-### 「卡包還沒開就跳 +5.98」（老闆 2026-09-03 正式站截圖）
-翻牌數字只在 `flipTop` 設定、而 `flipTop` 只在發牌階段放行，撕包畫面本身不可能觸發；
-本機兩輪試玩重現不出來。能解釋的只有 `MarketValuePop` 帶著舊 trigger 重新掛載
-（它的 effect 一掛上來就跳）或別的實例殘留，所以直接把路堵死：
+### 「卡包還沒開就跳 +5.98」（老闆 2026-09-03 正式站截圖：深淵之瞳、三張一包、試試看、蓄力開包）
+截圖那隻手指與「按住或右滑撕開」是**蓄力開包**（`CardDrawAnimation`）的卡包畫面，不是撕開封口。
+根因：這支元件跨場常駐（商品頁一直掛著、用 `isOpen` 開關），關閉時整個 `return null`，
+所以裡面的 `MarketValuePop` 每一場都會**重新掛載**；而翻牌數字的來源 `pop` 是外層的 state，
+上一場最後一張的 trigger 還留著 —— 重掛那一刻 `MarketValuePop` 的 effect 看到非空的 trigger，
+就把上一場的數字（連進帳音）在這一場的卡包畫面再跳一次。試玩第二次起必現。
+- `CardDrawAnimation` 新一場歸零時（render 期那段）連 `pop` 一起清掉；`pop` 的宣告搬到歸零區塊前面
 - `MarketValuePop` 只在 **trigger 換了**才跳：第一次掛上來只記住當下的 trigger、不跳；
-  `enabled`／`value` 變了而 trigger 沒變也不重跳（依賴拿掉 `value`）。
-- `GgbPackRip` 只在 `phase === "cards"`、`CardDrawAnimation` 只在揭曉階段才掛 `MarketValuePop`，
-  卡包還沒開的畫面上根本沒有這個元件。
+  `enabled`／`value` 變了而 trigger 沒變也不重跳（依賴拿掉 `value`）
+- `CardDrawAnimation` 只在揭曉階段、`GgbPackRip` 只在發牌階段才掛 `MarketValuePop`，
+  卡包還沒開的畫面上根本沒有這個元件
+- 本機照老闆的步驟重現（深淵之瞳試試看連跑兩場）：兩場的卡包畫面都沒有數字，
+  數字只在翻到那張時跳（+350／+1,500／+26,000 示範值）
 
 ## v2026.09.03a｜2026-09-03｜通知頁只給登入玩家看：鈴鐺未登入隱藏、開網址給登入提示
 
