@@ -98,10 +98,15 @@ snkrdunk 有防爬不繞、eBay 網頁 403 但有官方 API（需要時再接）
   跑一次：5 系列、533 個品項有值（≥100 的 86 張、≥1,000 的 16 張、≥5,000 的 8 張，
   最高 198,000 円 → 43,560）。排程 migration 687（PROD 每天 04:00；STG 沒有 pg_cron）
 - **推正踩到的坑**：遊々亭擋美國機房的 IP —— Vercel 預設華盛頓機房打過去 5 個系列全部 403
-  （本機台灣 IP 任何標頭都是 200，robots 也沒限制）。cron route 加 `preferredRegion = 'hnd1'`
-  改跑東京機房，請求也帶完整瀏覽器標頭。等部署期間先用 `scripts/card_prices_run_pg.ts`
-  從本機（台灣 IP）抓、直接以 postgres 連線寫進 PROD（`CARD_PRICES_DB_URL=… npx tsx …`），
-  PROD 當天就有值（533 個品項、86 張 ≥100、最高 43,560）
+  （本機台灣 IP 任何標頭都是 200，robots 也沒限制）。cron route 加 `preferredRegion = 'hnd1'`，
+  **但 Hobby 方案不吃**（等了 12 分鐘 `x-vercel-id` 的函式段一直是 iad1），Vercel 這條每日排程
+  在正式站等於跑不動。先用 `scripts/card_prices_run_pg.ts` 從本機（台灣 IP）抓、批次以 postgres
+  連線寫進 PROD（`CARD_PRICES_DB_URL=… npx tsx …`，8 秒跑完），每日更新的路另外決定
+- **定案改成「換算台幣、兩位小數、不設門檻」**（老闆同日：30～80 円的普卡也要換算、100 以下也要跳、
+  有查到價值的都要跳、都是體感）：migration 688 把 `market_display_value`／`display_value` 改成
+  numeric(12,2)（STG／PROD 都套），顯示值 = 日圓 × 當日匯率（open.er-api）；前台門檻拿掉、
+  數字顯示到小數兩位（+6.58、+1,094.63）；規則頁文案改成「以當日匯率換算成新台幣」。
+  STG／PROD 各重抓一次：533 張全部有小數，5.98～39,479.62
 - **前台**：`PRIZE_PUBLIC_COLUMNS` 加欄；真抽結果靠名稱對回品項、試玩本來就從品項挑。
   `components/card/MarketValuePop.tsx`：<100 不跳；<1,000 小字白、≥1,000 大字白、≥5,000 金色光暈、
   ≥20,000 金色＋震動；數字滾動後上飄淡出。接在三處：撕包演出 `GgbPackRip`（card_peel，

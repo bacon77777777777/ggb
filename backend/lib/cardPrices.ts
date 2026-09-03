@@ -3,9 +3,8 @@
  *
  * 來源：遊々亭（yuyu-tei.jp）各系列的日圓**標價**（不是成交價；穩、每日可抓、無反爬，帶 UA 即可）。
  * 匯率：open.er-api.com（免費、免金鑰、每日更新）。台灣銀行的 CSV 端點有 Cloudflare 驗證，
- *       照公司規則不繞。匯率只用來算台幣參考值存檔，**顯示值不吃匯率**：
- *       顯示值 = 日圓 × 0.22 取 5 的倍數，跟匯入商品定價同一把尺（CLAUDE.md 的日圓換算慣例），
- *       數字才不會每天跟著匯率跳。
+ *       照公司規則不繞。**顯示值 = 日圓 × 當日匯率的台幣，保留小數兩位**（老闆 2026-09-03 定案：
+ *       30～80 円的普卡也要換算、也要跳，所以不取 5 的倍數、不設門檻）。抓不到匯率就跳過這一輪。
  * 對應：商品 `card_set`（遊々亭 vers 代碼，如 sv10、m02）＋ 品項 `card_no`（3 位卡號）。
  *       同一個卡號有多個版本（鏡面／異版）時取**最低價**，寧可保守也不要誇大體感。
  * 顯示：`product_prizes.market_display_value`，前台 <100 不跳。歷史寫 `card_market_prices`。
@@ -13,9 +12,8 @@
 import { getSupabaseAdmin } from './supabaseAdmin'
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
-const JPY_TO_G = 0.22
-
-export const toDisplayValue = (jpy: number) => Math.round((jpy * JPY_TO_G) / 5) * 5
+/** 日圓 × 匯率 → 台幣，小數兩位 */
+export const toDisplayValue = (jpy: number, fx: number) => Math.round(jpy * fx * 100) / 100
 
 export async function fetchJpyTwd(): Promise<number | null> {
   try {
@@ -74,6 +72,7 @@ export interface RunSummary {
 export async function runCardPriceUpdate(): Promise<RunSummary> {
   const supabase = getSupabaseAdmin()
   const fx = await fetchJpyTwd()
+  if (!fx) throw new Error('抓不到 JPY→TWD 匯率，這一輪跳過')
   const { data: products, error: pErr } = await supabase
     .from('products').select('id, card_set').eq('type', 'card').not('card_set', 'is', null)
   if (pErr) throw pErr
@@ -105,10 +104,10 @@ export async function runCardPriceUpdate(): Promise<RunSummary> {
     for (const z of prizes ?? []) {
       const jpy = minByNo.get(String(z.card_no))
       if (jpy === undefined) continue
-      const display = toDisplayValue(jpy)
+      const display = toDisplayValue(jpy, fx)
       history.push({
         prize_id: z.id, source: 'yuyu-tei', card_set: set, card_no: z.card_no, jpy,
-        fx_jpy_twd: fx, twd: fx ? Math.round(jpy * fx) : null, display_value: display, fetched_at: fetchedAt,
+        fx_jpy_twd: fx, twd: Math.round(jpy * fx), display_value: display, fetched_at: fetchedAt,
       })
       const { error: uErr } = await supabase.from('product_prizes').update({ market_display_value: display }).eq('id', z.id)
       if (!uErr) summary.updatedPrizes++

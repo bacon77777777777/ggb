@@ -15,6 +15,7 @@ async function main() {
   const c = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } })
   await c.connect()
   const fx = await fetchJpyTwd()
+  if (!fx) throw new Error('抓不到 JPY→TWD 匯率')
   const { rows: products } = await c.query<{ id: number; card_set: string }>("SELECT id, card_set FROM products WHERE type='card' AND card_set IS NOT NULL")
   const bySet = new Map<string, number[]>()
   for (const p of products) { const s = p.card_set.trim().toLowerCase(); bySet.set(s, [...(bySet.get(s) ?? []), Number(p.id)]) }
@@ -26,13 +27,15 @@ async function main() {
     const minByNo = new Map<string, number>()
     for (const k of cards) minByNo.set(k.no, Math.min(minByNo.get(k.no) ?? Infinity, k.jpy))
     const { rows: prizes } = await c.query<{ id: number; card_no: string }>('SELECT id, card_no FROM product_prizes WHERE product_id = ANY($1) AND card_no IS NOT NULL', [ids])
-    let matched = 0
-    for (const z of prizes) {
-      const jpy = minByNo.get(String(z.card_no)); if (jpy === undefined) continue
-      const display = toDisplayValue(jpy)
-      await c.query('UPDATE product_prizes SET market_display_value = $1 WHERE id = $2', [display, z.id]); updated++
-      await c.query('INSERT INTO card_market_prices (prize_id, source, card_set, card_no, jpy, fx_jpy_twd, twd, display_value, fetched_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-        [z.id, 'yuyu-tei', set, z.card_no, jpy, fx, fx ? Math.round(jpy * fx) : null, display, fetchedAt]); history++; matched++
+    // 批次寫（逐筆對 Seoul 來回 1000 多趟會跑超過 10 分鐘）
+    const rows = prizes.flatMap(z => { const jpy = minByNo.get(String(z.card_no)); return jpy === undefined ? [] : [{ id: z.id, no: z.card_no, jpy, display: toDisplayValue(jpy, fx) }] })
+    const matched = rows.length
+    if (rows.length) {
+      await c.query('UPDATE product_prizes AS pp SET market_display_value = v.val::numeric FROM (SELECT unnest($1::bigint[]) AS id, unnest($2::numeric[]) AS val) v WHERE pp.id = v.id',
+        [rows.map(r => r.id), rows.map(r => r.display)]); updated += rows.length
+      await c.query(`INSERT INTO card_market_prices (prize_id, source, card_set, card_no, jpy, fx_jpy_twd, twd, display_value, fetched_at)
+        SELECT unnest($1::bigint[]), 'yuyu-tei', $2, unnest($3::text[]), unnest($4::int[]), $5, unnest($6::int[]), unnest($7::numeric[]), $8`,
+        [rows.map(r => r.id), set, rows.map(r => r.no), rows.map(r => r.jpy), fx, rows.map(r => Math.round(r.jpy * fx)), rows.map(r => r.display), fetchedAt]); history += rows.length
     }
     console.log(`  ${set}: cards ${cards.length}, matched ${matched}`)
     await new Promise(r => setTimeout(r, 800))

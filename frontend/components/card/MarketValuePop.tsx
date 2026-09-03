@@ -9,15 +9,16 @@ import { isSoundMuted } from '@/lib/soundPrefs';
 /**
  * 抽卡翻牌時畫面中上方跳的「+10,000」（老闆 2026-09-03）
  *
- * 純體感：數字是第三方行情（遊々亭日圓標價 × 0.22）換算的參考值，**不帶單位、不是回收價**，
- * 抽卡規則頁有寫明。<100 不跳（30 円的卡換出來是 5，每張都跳就沒感覺了）。
+ * 純體感：數字是第三方行情（遊々亭日圓標價 × 當日匯率）換算的台幣參考值，保留小數兩位，
+ * **不帶單位、不是回收價**，抽卡規則頁有寫明。有查到價值的每一張都跳（老闆：100 以下也要）。
  *
  * 分級（老闆核准）：<1,000 小字白；≥1,000 大字白；≥5,000 金色帶光暈；≥20,000 金色＋震動。
  * 數字用滾動（0 → N）給它一點時間感，之後上飄淡出。
  *
  * 用法：<MarketValuePop value={n} trigger={key} />，trigger 一換就重新跳一次（同一張卡不重跳）。
  */
-export const MARKET_POP_MIN = 100;
+/** 有查到價值就跳（老闆 2026-09-03：100 以下也要、都是體感），只擋 0 與沒資料 */
+export const MARKET_POP_MIN = 0.01;
 
 /**
  * 進帳音（老闆 2026-09-03：要有進帳的聲音）。音效庫沒有現成的收銀機／金幣聲，
@@ -126,7 +127,7 @@ function CountUp({ value }: { value: number }) {
     const tick = (t: number) => {
       const k = Math.min(1, (t - t0) / dur);
       const eased = 1 - Math.pow(1 - k, 3);
-      setN(Math.round(value * eased));
+      setN(Math.round(value * eased * 100) / 100);
       if (k < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -158,7 +159,7 @@ function CountUp({ value }: { value: number }) {
       )}
       style={{ textShadow, WebkitTextStroke: `${tier === 'small' ? 1.5 : 2.5}px currentColor` }}
     >
-      +{n.toLocaleString()}
+      +{n.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
     </span>
   );
 }
