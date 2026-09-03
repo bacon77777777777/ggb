@@ -307,18 +307,20 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                               先鋪預設圖、真圖載完才蓋上去 —— 見 ProductThumb 的說明 */}
                           <ProductThumb src={p.image_url} alt={p.name} />
                           <span className="min-w-0 flex-1">
-                            {/* 類別膠囊擺在商品名上面、與名稱切齊左緣（老闆指定）。
-                                固定寬 46px：兩字（抽卡）與三字（自製賞）等寬，
-                                一排看下來邊緣才是一直線。
-                                顏色走商品小卡的同一顆 ProductBadge（老闆 2026-08-24：
-                                要跟小卡上的標籤同色）—— 這裡只覆蓋尺寸與圓角，配色不自己另開一套 */}
-                            {cat && (
-                              <ProductBadge
-                                type={cat}
-                                className="mb-0.5 inline-flex h-auto w-[46px] justify-center rounded-md px-1 py-0.5 text-[10px] font-black normal-case tracking-normal leading-none backdrop-blur-none shadow-none"
-                              />
-                            )}
-                            <span className="block truncate text-[13px] font-bold leading-[1.25] text-neutral-900">{p.name}</span>
+                            {/* 類別膠囊放商品名左邊、同一行（老闆 2026-09-03：跟商品小卡一樣，
+                                每列少一層高度）。照小卡的寫法：膠囊必須是**純 inline**、高度用 py 撐 ——
+                                inline-flex／backdrop-filter 這類原子行內盒會讓 Safari 的截行誤判，
+                                名稱明明放得下也硬加刪節號（ProductCard 那段註解）。
+                                顏色走小卡同一顆 ProductBadge，不自己另開一套 */}
+                            <span className="block truncate text-[13px] font-bold leading-[1.25] text-neutral-900">
+                              {cat && (
+                                <ProductBadge
+                                  type={cat}
+                                  className="inline align-[2px] mr-1 py-[3px] backdrop-blur-none"
+                                />
+                              )}
+                              {p.name}
+                            </span>
                             {/* 金額比照商品小卡：G 幣圖示 ＋ font-amount ＋ 主題色。
                                 小卡是 24px，這裡是列表所以縮到 15px，其餘一致 */}
                             {p.price != null && (
