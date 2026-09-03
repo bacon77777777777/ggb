@@ -86,28 +86,46 @@ export async function GET() {
       orderCountMap.set(row.user_id, prev + 1)
     }
 
-    let draws: Array<{ user_id: string | null }> = []
-    {
-      const { data, error } = await supabaseAdmin
-        .from('draw_records')
-        .select('user_id')
-
-      if (error) {
-        const message = String(error.message || '')
-        const isMissingTable =
-          message.includes("Could not find the table 'public.draw_records'") ||
-          message.includes('relation "public.draw_records" does not exist')
-        if (!isMissingTable) throw error
-      } else {
-        draws = (data as Array<{ user_id: string | null }>) ?? []
-      }
-    }
+    /*
+     * 抽獎數與總消費(G)都從 draw_records 算。
+     * 一定要 fetchAllRows：之前沒分頁，PostgREST 1000 列一到就靜默截斷 ——
+     * test003 有 1,368 筆卻顯示 1000，其他人根本分不到列、退回 users.total_draws 的舊值。
+     * 總消費的算法跟會員詳情頁上方那張卡一致：tokens_spent 是實收（促銷／折價券後），
+     * 舊資料沒有才退回商品定價；積分抽獎 4 P = 1 G。
+     */
+    const draws = await fetchAllRows<{
+      user_id: string | null
+      tokens_spent: number | null
+      points_used: number | null
+      product: { price: number | null } | null
+    }>(() => supabaseAdmin.from('draw_records').select('user_id, tokens_spent, points_used, product:products(price)'))
 
     const drawCountMap = new Map<string, number>()
-    for (const row of draws ?? []) {
+    const spentGMap = new Map<string, number>()
+    for (const row of draws) {
       if (!row.user_id) continue
-      const prev = drawCountMap.get(row.user_id) ?? 0
-      drawCountMap.set(row.user_id, prev + 1)
+      drawCountMap.set(row.user_id, (drawCountMap.get(row.user_id) ?? 0) + 1)
+      const pts = Number(row.points_used ?? 0)
+      const g = pts > 0
+        ? pts / 4
+        : row.tokens_spent != null ? Number(row.tokens_spent) : Number(row.product?.price ?? 0)
+      spentGMap.set(row.user_id, (spentGMap.get(row.user_id) ?? 0) + g)
+    }
+
+    /*
+     * 總儲值(TWD)：綠界真錢。跟 token_ledger 的分類一致 —— test 是內部測試、
+     * promotion／compensation 是行銷贈點，都不是玩家付的錢；bonus 是送的 G 也不算。
+     * `users.total_spent` 那欄不能用：只有機器人排行榜腳本（migration 547）在寫，真人永遠 0。
+     */
+    const recharges = await fetchAllRows<{ user_id: string | null; amount: number | null }>(() => supabaseAdmin
+      .from('recharge_records')
+      .select('user_id, amount')
+      .eq('status', 'success')
+      .not('payment_method', 'in', '(test,promotion,compensation)'))
+    const rechargeMap = new Map<string, number>()
+    for (const row of recharges) {
+      if (!row.user_id) continue
+      rechargeMap.set(row.user_id, (rechargeMap.get(row.user_id) ?? 0) + Number(row.amount ?? 0))
     }
 
     // 停用操作者的顯示名。admins 很少，一次撈完比逐列查快得多
@@ -154,8 +172,9 @@ export async function GET() {
       disabledBy: adminNameOf(u.disabled_by),
       isBot: u.is_bot === true,
       totalOrders: orderCountMap.get(u.id) ?? 0,
-      totalSpent: Number(u.total_spent ?? 0),
-      totalDraws: drawCountMap.get(u.id) ?? (typeof u.total_draws === 'number' ? u.total_draws : 0),
+      totalSpent: Math.round(spentGMap.get(u.id) ?? 0),
+      totalRecharge: Math.round(rechargeMap.get(u.id) ?? 0),
+      totalDraws: drawCountMap.get(u.id) ?? 0,
       address: u.address ?? ''
     }))
 
@@ -284,6 +303,7 @@ export async function POST(request: Request) {
         status: createdUser.status === 'inactive' ? 'inactive' : 'active',
         totalOrders: 0,
         totalSpent: 0,
+        totalRecharge: 0,
         totalDraws: 0,
         address: createdUser.address ?? '',
       },

@@ -50,7 +50,10 @@ interface User {
   disabledBy?: string | null
   isBot: boolean
   totalOrders: number
+  /** 抽獎花掉的 G（積分已換算），跟會員詳情上方的「總消費」同一個算法 */
   totalSpent: number
+  /** 綠界真錢儲值加總（TWD），不含測試／行銷贈點／bonus */
+  totalRecharge: number
   totalDraws: number
   address?: string
 }
@@ -95,7 +98,7 @@ function UsersPage() {
   const [filterEndDate, setFilterEndDate] = useState(() => searchParams.get('endDate') || '')
   const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('users', 'compact', {
     userId: true, inviteCode: true, name: true, email: true, phone: true,
-    tokens: true, points: true, totalDraws: true, totalSpent: true,
+    tokens: true, points: true, totalDraws: true, totalSpent: true, totalRecharge: true,
     status: true, registerDate: true, lastLoginDate: true, lastLoginIp: true, operations: true
   })
   const [selectedUsers, setSelectedUsers] = useState<Set<number | string>>(new Set())
@@ -368,6 +371,7 @@ function UsersPage() {
         case 'tokens': aValue = a.tokens; bValue = b.tokens; break
         case 'totalOrders': aValue = a.totalOrders; bValue = b.totalOrders; break
         case 'totalSpent': aValue = a.totalSpent; bValue = b.totalSpent; break
+        case 'totalRecharge': aValue = a.totalRecharge; bValue = b.totalRecharge; break
         case 'status': aValue = userStatuses[a.id] === 'active' ? 1 : 0; bValue = userStatuses[b.id] === 'active' ? 1 : 0; break
         case 'registerDate': aValue = new Date(a.registerDate).getTime(); bValue = new Date(b.registerDate).getTime(); break
         case 'lastLoginDate': aValue = new Date(a.lastLoginDate).getTime(); bValue = new Date(b.lastLoginDate).getTime(); break
@@ -416,6 +420,7 @@ function UsersPage() {
           // 如果有自定義渲染，需要提取實際值
           if (col.key === 'tokens') return user.tokens.toLocaleString()
           if (col.key === 'totalSpent') return user.totalSpent.toLocaleString()
+          if (col.key === 'totalRecharge') return user.totalRecharge.toLocaleString()
           if (col.key === 'totalOrders') return user.totalOrders.toString()
           if (col.key === 'status') return userStatuses[user.id] === 'active' ? '啟用' : '停用'
           if (col.key === 'registerDate') return formatDateTime(user.registerDate)
@@ -475,6 +480,7 @@ function UsersPage() {
   const inactiveUsers = realUsers.filter(u => userStatuses[u.id] === 'inactive').length
   const totalTokens = realUsers.reduce((sum, u) => sum + u.tokens, 0)
   const totalSpent = realUsers.reduce((sum, u) => sum + u.totalSpent, 0)
+  const totalRecharge = realUsers.reduce((sum, u) => sum + u.totalRecharge, 0)
 
   // 表格欄位定義
   const columns: Column<User>[] = [
@@ -560,13 +566,23 @@ function UsersPage() {
       className: 'text-right',
       render: (user) => <span className="font-mono whitespace-nowrap">{user.totalDraws}</span>
     },
+    /* 總消費(G)＝抽獎花掉的 G；總儲值(TWD)＝綠界真錢。原本只有一欄「總消費(TWD)」，
+       吃的是 users.total_spent —— 那欄只有機器人腳本在寫，真人永遠 0（老闆 2026-09-04） */
     {
       key: 'totalSpent',
-      label: '總消費(TWD)',
+      label: '總消費(G)',
       sortable: true,
       visible: visibleColumns.totalSpent,
       className: 'text-right',
       render: (user) => <span className="font-mono whitespace-nowrap">{user.totalSpent.toLocaleString()}</span>
+    },
+    {
+      key: 'totalRecharge',
+      label: '總儲值(TWD)',
+      sortable: true,
+      visible: visibleColumns.totalRecharge,
+      className: 'text-right',
+      render: (user) => <span className="font-mono whitespace-nowrap">{user.totalRecharge.toLocaleString()}</span>
     },
     /*
      * 「狀態」欄移除（老闆 2026-08-31）：一顆開關擺在表格裡，滑鼠掃過去很容易誤觸，
@@ -683,7 +699,7 @@ function UsersPage() {
     <AdminLayout pageTitle="會員管理">
       <div className="space-y-6">
         {/* 統計卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           <StatsCard
             title="總會員數"
             value={totalUsers}
@@ -711,6 +727,11 @@ function UsersPage() {
           <StatsCard
             title="總消費金額"
             value={totalSpent}
+            unit="G"
+          />
+          <StatsCard
+            title="總儲值金額"
+            value={totalRecharge}
             unit="TWD"
           />
         </div>
@@ -784,7 +805,8 @@ function UsersPage() {
               { key: 'tokens', label: '代幣餘額(G)', visible: visibleColumns.tokens },
               { key: 'points', label: '積分餘額(P)', visible: visibleColumns.points },
               { key: 'totalDraws', label: '抽獎數', visible: visibleColumns.totalDraws },
-              { key: 'totalSpent', label: '總消費(TWD)', visible: visibleColumns.totalSpent },
+              { key: 'totalSpent', label: '總消費(G)', visible: visibleColumns.totalSpent },
+              { key: 'totalRecharge', label: '總儲值(TWD)', visible: visibleColumns.totalRecharge },
               { key: 'registerDate', label: '註冊時間', visible: visibleColumns.registerDate },
               { key: 'lastLoginDate', label: '最後登入', visible: visibleColumns.lastLoginDate },
               { key: 'lastLoginIp', label: '最後IP', visible: visibleColumns.lastLoginIp },
