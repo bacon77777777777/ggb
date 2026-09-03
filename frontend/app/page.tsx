@@ -764,6 +764,12 @@ export default function Home() {
       } else if (
         activeSecondaryTab === 'featured' &&
         sessionFeedOrders.has(activePrimaryTab) &&
+        /* 空的凍結表視同沒有（老闆 2026-09-03：Safari 整頁重新整理推薦不會換）。
+           首次載入時這個 memo 會先跑一次「商品還沒到、0 件」的 v2 分支，以前那一次就把空表
+           凍結進來；商品到了之後就一路走這條「沿用」分支，空表對不到任何商品、全部照 API
+           原始順序排 —— 等於推薦從來沒真的洗過牌。下拉更新看起來正常只是因為 isJustRefreshed()
+           那 2 秒把這條擋掉了 */
+        sessionFeedOrders.get(activePrimaryTab)!.order.size > 0 &&
         // 下拉更新要換一輪。除了上面那個事件監聽，這裡再用 isJustRefreshed() 擋一次 ——
         // 監聽器與 PathnameKeyed 的重掛誰先誰後不該由我們賭，這個旗標是重掛前就標好的
         !isJustRefreshed()
@@ -804,11 +810,14 @@ export default function Home() {
             order: new Map(items.map(i => [String(i.product.id), i.position])),
           };
           result = items.map(i => i.product);
-          feedFirstScreen.current = result.slice(0, 6).map(p => String(p.id));
-          sessionFeedOrders.set(activePrimaryTab, {
-            order: feedOrder.current.order,
-            meta: feedMeta.current,
-          });
+          // 0 件（商品還沒到）不凍結也不記首屏 —— 見上面「空的凍結表」的說明
+          if (result.length > 0) {
+            feedFirstScreen.current = result.slice(0, 6).map(p => String(p.id));
+            sessionFeedOrders.set(activePrimaryTab, {
+              order: feedOrder.current.order,
+              meta: feedMeta.current,
+            });
+          }
         }
       } else if (activeSecondaryTab === 'featured') {
         const prefMap = userSeriesPref.size > 0 ? userSeriesPref : globalSeriesPop;
@@ -866,8 +875,8 @@ export default function Home() {
           };
           tail.sort((a, b) => rankKey(b) - rankKey(a));
           result = [...head, ...tail];
-          // 這一輪的順序凍結起來，返回首頁時沿用（見檔案上方 sessionFeedOrders）
-          sessionFeedOrders.set(activePrimaryTab, {
+          // 這一輪的順序凍結起來，返回首頁時沿用（見檔案上方 sessionFeedOrders）；0 件不凍結
+          if (result.length > 0) sessionFeedOrders.set(activePrimaryTab, {
             order: new Map(result.map((p, i) => [String(p.id), i])),
             meta: feedMeta.current,
           });
