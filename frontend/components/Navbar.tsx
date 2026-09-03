@@ -15,6 +15,7 @@ import { categoryState } from '@/lib/categoryFlags';
 import NavbarLayout from './NavbarLayout';
 import { countUnread } from '@/lib/announcementRead';
 import { startKeyboardRelay } from '@/lib/keyboardRelay';
+import { useRequireLogin } from '@/hooks/useRequireLogin';
 import { asset } from '@/lib/asset';
 import { cameFromAnnouncementsList } from '@/lib/announcementsView';
 import { makeListViewMemory } from '@/lib/listViewMemory';
@@ -58,6 +59,8 @@ function NavbarInner() {
   
   const [supabase] = useState(() => createClient());
   const [bellUnread, setBellUnread] = useState(false);
+  /* 訪客點鈴鐺：跟簽到／領取一樣直接跳登入確認框（老闆 2026-09-03），不換頁 */
+  const requireLogin = useRequireLogin();
 
   useEffect(() => {
     const check = async () => {
@@ -1010,11 +1013,14 @@ function NavbarInner() {
 
             {/* 通知（鈴鐺）：手機僅首頁顯示；桌機取代原本的文字連結，固定在搜尋圖標右邊。
                 手機首頁**訪客也顯示**（老闆 2026-09-03：搜尋框右邊先放了頭像，
-                預設頭像那張剪影不好看，改回鈴鐺）—— 訪客點進去是通知頁的登入提示，
+                預設頭像那張剪影不好看，改回鈴鐺）—— 訪客點了直接跳登入確認框，
                 等於一顆登入入口。桌機訪客維持不顯示（那邊有登入鈕）。 */}
             {(isAuthenticated || isHomePage) && !isProductDetailPage && !isAnnouncementInnerPage && (
               <Link
                 href="/announcements"
+                /* 訪客：擋掉換頁、跳「需要登入」確認框（前往登入／再看看），
+                   跟簽到領取那些同一支 useRequireLogin。會員照舊進通知頁 */
+                onClick={(e) => { if (!requireLogin('登入後就可以看通知')) e.preventDefault(); }}
                 className={cn(
                   /* 手機端跟會員頁頂部的設定齒輪同一套（老闆 2026-09-03）：32px 黑色 10% 圓底
                      ＋毛玻璃、白色圖標，按下加深；那組樣式在 app/profile/page.tsx 的
