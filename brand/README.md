@@ -98,8 +98,8 @@ maskable 來源：vertical.png（未提供 appicon-maskable.png，退回 vertica
 | 檔 | 尺寸 | 去處 | 用在哪 |
 |----|------|------|--------|
 | `logo.png` | 1554×500 | `frontend/public/images/` | 導覽列、維護頁、LINE 回跳頁；**後台蓋圖也靠這張**（見下方警告） |
-| `banner_defaulet.png` | 1200×400 | `frontend/public/images/` | 輪播破圖 / 情報無封面 / 交易所無圖（檔名 typo 是原本就有的） |
-| `item_defaulet.webp` | 1024² | `frontend/public/images/` | 商品 / 品項 / 倉庫 / 商城佔位 |
+| `banner_defaulet.png` | 1200×400 | `frontend/public/images/` | 輪播破圖 / 情報無封面 / 交易所無圖（檔名 typo 是原本就有的）。**來源是 `manual/banner_defaulet-source.png`**（8/28 成品），sync 只把它往底色收到 40% 濃度，不從母檔重畫 |
+| `item_defaulet.webp` | 1024² | `frontend/public/images/` | 商品 / 品項 / 倉庫 / 商城佔位。**來源是 `manual/item_defaulet-source.webp`**（8/28 成品），sync 只把它往底色收到 40% 濃度（老闆 2026-09-03）；換 logo 時這兩張 source 要一起重做 |
 
 ### App 原生殼（換了要重新送審）
 

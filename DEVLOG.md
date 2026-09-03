@@ -98,10 +98,13 @@ PROD 的 `banners`／`site_promos` 都沒有連到 `/announcements` 的（各 0 
 - **首屏前六張** `priority`（不 lazy、fetchpriority high）；**閒置時預抓其他分類最新六件的縮圖**
   （requestIdleCallback，不跟首屏搶頻寬），滑到下一個頁籤圖已在快取
 - 「切頁籤不卸載小卡」先不做：上面幾項做完閃爍已經消失，真有需要再動列表結構
-- **預設圖的 logo 淡到原濃度的 10%**（老闆同日：40% → 再 50% → 最後定 10%，從原圖重算）：
-  `item_defaulet.webp`／`banner_defaulet.png` 的 logo 像素往底色（#f2f2f2）收，底色不變；
-  最深像素從 76 變 225，看起來是淡淡的水印。asset() 帶內容雜湊，換圖自動換快取。
-  Finder 的縮圖是快取的，看檔案要用預覽
+- **預設圖的 logo 定為原濃度的 40%**（老闆同日：淡 40% → 再 50% → 10% → 最後定 40%）：
+  `item_defaulet.webp`／`banner_defaulet.png` 每個像素往底色（#f2f2f2）收，底色不變；
+  最深像素從 76 變 171。asset() 帶內容雜湊，換圖自動換快取。Finder 的縮圖是快取的，看檔案要用預覽
+- **改進 brand/**：一開始改產生器「把母檔透明度調低」來淡，結果「吉吉比」三個字灰階太淺、
+  整個融進底色只剩雲朵外框（老闆：什麼鬼）。改成 8/28 的成品放 `brand/manual/*-source.*`
+  當來源，`brand_sync.mjs` 的 `fadedPlaceholder()` 只做「整張往底色收到 40%」，字面與外框的
+  相對深淺全部保留；換 logo 時那兩張 source 要一起重做（README 有寫）
 
 ### 首頁彈窗接棒從約 490ms 降到 185ms（老闆 2026-09-03：關一則到下一則出現停頓半秒）
 用時間戳追：`setVisible(true)` 在關閉後約 200ms 就發了，卡片卻要到 486ms 才進 DOM ——

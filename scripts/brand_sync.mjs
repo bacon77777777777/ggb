@@ -73,25 +73,22 @@ async function squareIcon({ size, pct, bg, source = 'vertical' }) {
 }
 
 /**
- * 佔位圖（商品／輪播破圖時顯示）：白底 + 灰階淡化的 logo。
+ * 佔位圖：從 brand/manual/ 的成品往底色收濃度，不從母檔重畫。
  *
- * 淡化是刻意的 —— 佔位圖要一眼看出「這裡本來該有圖」，不能讓玩家誤以為
- * 商品本身長這樣。灰階＋三成透明度是照舊版佔位圖的視覺量出來的。
+ * 2026-08-28 的成品（`*-source.*`，灰階＋三成透明度的舊視覺）是老闆看過的樣子。
+ * 2026-09-03 老闆要「原濃度的 40%」，一開始用母檔重畫再把透明度調低，結果「吉吉比」三個字
+ * 的灰階太淺、整個融進底色只剩雲朵外框（老闆：什麼鬼）。所以來源固定用那張成品，
+ * 這裡只做一件事：每個像素 = bg + density × (原值 − bg)，字面、外框的相對深淺全部保留。
+ * 換 logo 時要連 `*-source.*` 一起重做（用舊版 placeholder() 的作法：母檔灰階＋0.65 透明度合成）。
  */
-async function placeholder({ w, h, pct, source, fade = 0.65, bg = PLACEHOLDER_BG }) {
-  const src = path.join(MASTERS, `${source}.png`)
-  const lw = Math.round(w * pct)
-  const { data, info } = await sharp(src).resize({ width: lw }).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
-  for (let i = 0; i < data.length; i += 4) {
-    const lum = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2])
-    data[i] = data[i + 1] = data[i + 2] = lum
-    data[i + 3] = Math.round(data[i + 3] * fade)
+const PLACEHOLDER_DENSITY = 0.4
+async function fadedPlaceholder({ source, density = PLACEHOLDER_DENSITY, bg = PLACEHOLDER_BG }) {
+  const { data, info } = await sharp(path.join(MANUAL, source)).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+  const bgv = [bg.r, bg.g, bg.b]
+  for (let i = 0; i < data.length; i += info.channels) {
+    for (let c = 0; c < 3; c++) data[i + c] = Math.round(bgv[c] + (data[i + c] - bgv[c]) * density)
   }
-  const logo = await sharp(data, { raw: info }).png().toBuffer()
-  return sharp({ create: { width: w, height: h, channels: 4, background: bg } })
-    .composite([{ input: logo, left: Math.round((w - info.width) / 2), top: Math.round((h - info.height) / 2) }])
-    .png(PNG_OPTS)
-    .toBuffer()
+  return sharp(data, { raw: info })
 }
 
 const copyMaster = (name) => async () => fs.promises.readFile(path.join(MASTERS, name))
@@ -126,10 +123,10 @@ const SPECS = [
 
   // ── 佔位圖
   { out: 'banner_defaulet.png', desc: '輪播破圖 / 情報無封面 / 交易所無圖（檔名 typo 是原本就有的）', size: '1200×400',
-    make: () => placeholder({ w: 1200, h: 400, pct: 0.38, source: 'horizontal' }),
+    make: async () => (await fadedPlaceholder({ source: 'banner_defaulet-source.png' })).png(PNG_OPTS).toBuffer(),
     dest: ['frontend/public/images/banner_defaulet.png'] },
   { out: 'item_defaulet.webp', desc: '商品 / 品項 / 倉庫 / 商城佔位', size: '1024×1024', webp: true,
-    make: () => placeholder({ w: 1024, h: 1024, pct: 0.55, source: 'vertical' }),
+    make: async () => (await fadedPlaceholder({ source: 'item_defaulet-source.webp' })).png(PNG_OPTS).toBuffer(),
     dest: ['frontend/public/images/item_defaulet.webp'] },
 
   // ── App 原生殼（換了要 cap sync + 重新送審才生效）
