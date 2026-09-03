@@ -62,7 +62,7 @@ export default function GuestLoginBar({ visible, lowered }: { visible: boolean; 
         {/* 13px 是算過的：iPhone SE（375px）扣掉邊距、幣、按鈕只剩約 200px 給字，
             這句 15 個字在 14px 就會被截掉。「300積分」跟登入頁紅膠囊同一個數字 */}
         <span className="min-w-0 flex-1 truncate text-[13px] font-black text-white cjk-optical-center">
-          新用戶使用LINE登入即領300積分
+          新用戶使用LINE登入即領<span className="text-accent-yellow">300積分</span>
         </span>
         {/* 「再粗一點」（老闆 2026-09-03）：中文字型是系統 PingFang，最粗只到 600、
             font-black 已經是天花板，所以補 0.6px 的同色描邊把筆畫撐粗，字級也放到 16px */}
