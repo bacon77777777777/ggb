@@ -63,11 +63,18 @@ function playCashIn(value: number) {
 }
 
 /**
- * 本地開發用假值（老闆 2026-09-03：本地要看得到效果，照賞等給）。dev server 上不看行情，
- * 直接依這張卡的賞等對到四個分級：A賞／SSR → 26,000（金色＋震動）、B賞／SR → 8,800（金色）、
- * C賞／R → 1,500（大字白）、其他 → 350（小字白）。正式環境（NODE_ENV=production）照真實行情。
+ * 示範值（老闆 2026-09-03：本地與 staging 都要看得到效果，照賞等給；**只有正式站用真行情**）。
+ * 不看行情，直接依這張卡的賞等對到四個分級：A賞／SSR → 26,000、B賞／SR → 8,800、
+ * C賞／R → 1,500、其他 → 350。
+ * 判斷用網址不用 NODE_ENV：staging 也是 production build，用 NODE_ENV 會讓 staging 吃真資料
+ *（老闆回報試試看只有最後一張跳 —— 真行情裡普卡都 <100）。
  */
-const DEV_FAKE = process.env.NODE_ENV !== 'production';
+const isDemoEnv = () => {
+  if (process.env.NODE_ENV !== 'production') return true;
+  if (typeof window === 'undefined') return false;
+  const h = window.location.hostname;
+  return h === 'localhost' || h.startsWith('staging.') || h.endsWith('.vercel.app');
+};
 const devValueFor = (grade?: string | null) => {
   const g = String(grade ?? '').toUpperCase();
   if (g.includes('SSR') || g.includes('A賞') || g.includes('超稀有') || g.includes('最後賞')) return 26000;
@@ -82,7 +89,7 @@ export default function MarketValuePop({ value, trigger, grade, enabled = true }
   useEffect(() => {
     if (!enabled) return;
     if (trigger === null || trigger === undefined) return;
-    const v = DEV_FAKE ? devValueFor(grade) : value;
+    const v = isDemoEnv() ? devValueFor(grade) : value;
     if (typeof v !== 'number' || v < MARKET_POP_MIN) return;
     setShot({ key: String(trigger), value: v });
     playCashIn(v);
