@@ -1846,9 +1846,8 @@ export default function ProductDetailPage() {
     const cardRightContent = (
       <div className="space-y-2 sm:space-y-5">
             <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
-              <div className="p-2 sm:p-4 border-b border-neutral-50 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-800/30">
-                <h2 className="text-sm sm:text-lg font-black text-neutral-900 dark:text-neutral-50 tracking-tight uppercase tracking-wider">品項總覽</h2>
-              </div>
+              {/* 「品項總覽」標題列拿掉（老闆 2026-09-03）：A賞大圖一擺上去就知道這塊是什麼，
+                  標題只是多佔一行。轉蛋／盒玩的 GachaCollectionList 那份維持 */}
               
               {renderTopPrizeGrid()}
               {renderPrizeTable()}
@@ -2414,9 +2413,8 @@ export default function ProductDetailPage() {
 
           <div className="lg:col-span-8 space-y-2 sm:space-y-5">
             <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
-              <div className="p-2 sm:p-4 border-b border-neutral-50 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-800/30">
-                <h2 className="text-sm sm:text-lg font-black text-neutral-900 dark:text-neutral-50 tracking-tight uppercase tracking-wider">品項總覽</h2>
-              </div>
+              {/* 「品項總覽」標題列拿掉（老闆 2026-09-03）：A賞大圖一擺上去就知道這塊是什麼，
+                  標題只是多佔一行。轉蛋／盒玩的 GachaCollectionList 那份維持 */}
               
               {renderTopPrizeGrid()}
               {renderPrizeTable()}

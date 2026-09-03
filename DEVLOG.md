@@ -93,6 +93,8 @@ PROD 的 `banners`／`site_promos` 都沒有連到 `/announcements` 的（各 0 
   `renderTopPrizeGrid()` ＋ `renderPrizeTable()`（原本兩塊一模一樣的表格 JSX 各寫一份）
 - 賞等判斷收到 `lib/grade.ts`：`isMajorGrade`（從會員頁搬來，倉庫與商品頁共用）、
   `gradeBase`、`isAGrade`、`isLastOneLevel`
+- 「品項總覽」標題列拿掉（只改這三種；轉蛋／盒玩的 `GachaCollectionList` 維持）：
+  A賞大圖一擺上去就知道這塊是什麼，標題只是多佔一行
 
 ### 「最新上架」彈窗換底圖（老闆 2026-09-03）
 - 新圖 `new_item.png` 800×1189，規格照公告模板 `bg.webp`（底部多一顆粉紅膠囊鈕）。
