@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { asset } from '@/lib/asset';
+import { GradeBadge } from '@/components/ui/GradeBadge';
 
 /**
  * 倉庫格狀的一格 = 一支獎品（老闆 2026-08-24，照 Pokémon GO 的寶可夢倉庫）。
@@ -17,8 +18,12 @@ export interface WarehouseGridCellProps {
   grade: string;
   image: string;
   selected: boolean;
-  /** 大賞／最後賞：賞等膠囊用實色，一般版用灰底，才不會最不值錢的喊最大聲 */
-  major: boolean;
+  /**
+   * 大賞／最後賞。以前拿它決定膠囊顏色（大獎實色、一般灰底）；
+   * 2026-09-03 老闆要求全站賞等配色統一走 GradeBadge，這裡不再用它上色，
+   * 保留欄位是因為呼叫端還在傳（篩選也用同一個判斷）。
+   */
+  major?: boolean;
   /** 已申請配送，不能再操作 */
   pending?: boolean;
   /** 掛在交易所架上，不能再操作（下架才解鎖） */
@@ -33,7 +38,6 @@ export default function WarehouseGridCell({
   grade,
   image,
   selected,
-  major,
   pending = false,
   listed = false,
   disabled = false,
@@ -74,6 +78,14 @@ export default function WarehouseGridCell({
         * ＋ `components/ImageLongPressGuard.tsx`），這裡多加一層是因為倉庫的圖是
         * 玩家的獎品 —— 就算哪天全站那層被動到，這一格也不該破功。
         */}
+      {/* 賞等：全站統一配色（GradeBadge／lib/prizeGrade，老闆 2026-09-03），
+          貼卡片左上角不留邊、只圓外側兩角 —— 跟商品頁品項總覽的大圖格子、小卡「熱門」同一顆版。
+          掛在卡片層級而不是圖框裡：圖框外面還有 p-1.5，掛圖框會離卡片邊 6px */}
+      <GradeBadge
+        grade={grade}
+        size="sm"
+        className="absolute -left-px -top-px z-10 h-6 max-w-[60%] rounded-none rounded-tl-xl rounded-br-lg border border-white/10 px-2 py-0"
+      />
       <div
         className="relative aspect-square w-full overflow-hidden rounded-lg bg-white"
         style={{ WebkitTouchCallout: 'none', userSelect: 'none', WebkitUserSelect: 'none' } as React.CSSProperties}
@@ -105,17 +117,6 @@ export default function WarehouseGridCell({
           onError={() => { setImageFailed(true); setImageReady(true); }}
         />
 
-        {/* 賞等：大賞實色、一般版灰底 */}
-        <span
-          className={cn(
-            'absolute left-1 top-1 max-w-[calc(100%-0.5rem)] truncate rounded-md px-1.5 py-[3px] text-[10px] font-black leading-none',
-            major
-              ? 'bg-primary text-white'
-              : 'bg-neutral-900/55 text-white backdrop-blur-[2px]',
-          )}
-        >
-          <span className="cjk-optical-center">{grade}</span>
-        </span>
 
         {pending && (
           <span className="absolute bottom-1 left-1 rounded-md bg-blue-500 px-1.5 py-[3px] text-[10px] font-black leading-none text-white">

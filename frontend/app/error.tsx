@@ -15,6 +15,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui';
 import * as Sentry from '@sentry/nextjs';
 import { recoverFromStaleBuild } from '@/lib/staleBuild';
 
@@ -43,27 +44,23 @@ export default function Error({
 
   if (reloading) return null;
 
+  /*
+   * 版面跟 404 頁（app/not-found.tsx）同一套（老闆 2026-09-03：原本那版體感不好）：
+   * 大字淡色的 Oops 當視覺錨點、標題、一句說明、同一顆 Button。
+   * 高度算法也照 404：100dvh 扣 Navbar 57px、再留底部導航的 pb，內容才會置中。
+   * 錯誤頁跟 404 差在多一顆「重新整理」（reset 會重新掛載這段路由，多半就好了）。
+   */
   return (
-    <div className="min-h-[calc(100dvh-57px)] bg-neutral-50 dark:bg-neutral-950 flex flex-col items-center justify-center px-6 pb-[calc(4rem+env(safe-area-inset-bottom))] text-center transition-colors">
-      <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">這一頁出了點狀況</h2>
-      <p className="text-neutral-500 dark:text-neutral-400 mb-8 max-w-md leading-relaxed">
-        通常重新整理就會恢復。如果一直出現，換個頁面再回來看看，
-        你的代幣、獎品與訂單都不會受到影響。
+    <div className="min-h-[calc(100dvh-57px)] bg-neutral-50 dark:bg-neutral-950 flex flex-col items-center justify-center px-4 pb-[calc(4rem+env(safe-area-inset-bottom))] text-center transition-colors">
+      <h1 className="text-9xl font-bold text-primary/20">Oops</h1>
+      <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mt-4 mb-2">這一頁出了點狀況</h2>
+      <p className="text-neutral-500 dark:text-neutral-400 mb-8 max-w-md">
+        通常重新整理就會恢復。你的代幣、獎品與訂單都不會受到影響。
       </p>
-
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => reset()}
-          className="px-5 py-2.5 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors"
-        >
-          重新整理
-        </button>
-        <Link
-          href="/"
-          className="px-5 py-2.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 bg-neutral-100 dark:bg-neutral-800 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-        >
-          回首頁
+        <Button size="lg" onClick={() => reset()}>重新整理</Button>
+        <Link href="/">
+          <Button size="lg" variant="secondary">回首頁</Button>
         </Link>
       </div>
 
