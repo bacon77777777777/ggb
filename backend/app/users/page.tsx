@@ -525,7 +525,17 @@ function UsersPage() {
       key: 'email',
       label: '電子郵件',
       sortable: true,
-      visible: visibleColumns.email
+      visible: visibleColumns.email,
+      /*
+       * LINE 登入的帳號沒有真信箱，系統填的是 `line_<32 位雜湊>@line-login.ggb.com.tw`，
+       * 一整串把整欄撐到真信箱的兩倍寬（老闆 2026-09-04）。欄寬照真信箱抓，
+       * 這種假信箱截斷加點點點，滑過去才看全文。真信箱不動。
+       */
+      render: (user) => user.email.endsWith('@line-login.ggb.com.tw') ? (
+        <Tooltip content={user.email}>
+          <span className="inline-block max-w-[200px] truncate align-bottom cursor-help">{user.email}</span>
+        </Tooltip>
+      ) : user.email,
     },
     /* 電話欄移除（老闆 2026-08-31）：列表上一整欄號碼既佔寬度又是個資，
        要查號碼去會員詳情的「基本設置」看 —— 那裡本來就有，而且改得動 */
