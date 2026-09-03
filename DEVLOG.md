@@ -81,6 +81,19 @@ PROD 的 `banners`／`site_promos` 都沒有連到 `/announcements` 的（各 0 
 - Playwright 用 iPhone 視口驗過三個狀態：剛進不顯示 → 下滑降到底（bottom 6px）
   → 往上撥升回警語列上面（bottom 103px）
 
+### 一番賞／抽卡／自製賞的「品項總覽」改成倉庫那種格子（老闆 2026-09-03）
+以前是表格列（小縮圖＋賞等＋名稱＋剩餘/總數），圖太小看不出是什麼。老闆先要求
+「跟挑戰機台內頁一樣大圖」（四欄 63:88），看了成品再改成「跟我的倉庫一樣，三個一排」。
+
+- 格子照 `components/warehouse/WarehouseGridCell` 的版：白底方形圖框 `object-contain`
+  （公仔／抱枕／卡片直式橫式都有，不裁切）、賞等膠囊壓圖左上（大獎實色、一般灰底）、
+  品名固定兩行高；剩餘/總數放圖右下的小膠囊。完抽的整格淡掉。點格子照舊開品項詳情
+- 手機三欄、平板四欄、桌機六欄。抽卡／一番賞／自製賞三種共用同一份 `renderPrizeGrid()`
+  （原本兩塊一模一樣的表格 JSX 各寫一份）
+- 「大獎」判斷 `isMajorGrade` 從 `app/profile/page.tsx` 搬到 `lib/grade.ts`，倉庫與商品頁共用
+- 順帶解掉一個坑：舊表格外框是 `overflow-x-auto`，會被下拉刷新當成內層捲動區
+  （PwaPullToRefresh 為此特別加了「只能橫向捲」的判斷），格狀版沒有那層容器
+
 ### 「最新上架」彈窗換底圖（老闆 2026-09-03）
 - 新圖 `new_item.png` 800×1189，規格照公告模板 `bg.webp`（底部多一顆粉紅膠囊鈕）。
   sharp 轉 WebP 覆蓋 `public/images/new_item.webp`（635KB → 29KB）；PNG 原檔留在原地、不進 git

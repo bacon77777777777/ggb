@@ -31,6 +31,7 @@ import { restoreScrollTo } from '@/lib/restoreScroll';
 import { ProfileSkeleton } from '@/components/Skeletons';
 import { WarehouseItemDetailModal } from '@/components/warehouse/WarehouseItemDetailModal';
 import WarehouseGridCell from '@/components/warehouse/WarehouseGridCell';
+import { isMajorGrade } from '@/lib/grade';
 import WarehouseSearchPanel from '@/components/warehouse/WarehouseSearchPanel';
 import ProductCard from '@/components/ProductCard';
 import ProductCardSkeleton from '@/components/ProductCardSkeleton';
@@ -167,7 +168,7 @@ interface FollowedProduct {
   type?: string;
 }
 
-const MAJOR_LEVELS = ['SP賞', 'S賞', 'A賞', 'B賞', 'C賞', 'SP', 'S', 'A', 'B', 'C', 'LAST ONE', '最後賞'];
+// MAJOR_LEVELS／isMajorGrade 搬到 lib/grade.ts（商品頁品項總覽也要用）
 
 /*
  * 賞等的名次（數字小＝大獎）。用於倉庫「賞等 高到低」排序。
@@ -187,24 +188,6 @@ const gradeRank = (grade: string | undefined | null): number => {
   return 900;
 };
 
-const isMajorGrade = (grade: string | undefined | null) => {
-  if (!grade) return false;
-  const trimmed = grade.trim();
-  if (!trimmed) return false;
-  const upper = trimmed.toUpperCase();
-  if (upper === 'LAST ONE' || trimmed === '最後賞') return true;
-  if (MAJOR_LEVELS.includes(trimmed) || MAJOR_LEVELS.includes(upper)) return true;
-  let base = trimmed;
-  const prizeIndex = base.indexOf('賞');
-  if (prizeIndex !== -1) {
-    base = base.slice(0, prizeIndex);
-  }
-  if (base.includes(' ')) {
-    base = base.split(' ')[0];
-  }
-  const baseUpper = base.toUpperCase();
-  return MAJOR_LEVELS.includes(baseUpper);
-};
 
 const formatDrawId = (id: string | number, dateStr?: string) => {
   if (!dateStr) return `TX${id}`;
