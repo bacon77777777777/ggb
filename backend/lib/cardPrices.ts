@@ -46,7 +46,15 @@ export function parseSetPage(html: string): SetCard[] {
 }
 
 export async function fetchSetCards(setCode: string): Promise<SetCard[]> {
-  const res = await fetch(`https://yuyu-tei.jp/sell/poc/s/${setCode}`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(30000) })
+  const res = await fetch(`https://yuyu-tei.jp/sell/poc/s/${setCode}`, {
+    headers: {
+      'User-Agent': UA,
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'ja,zh-TW;q=0.9,en;q=0.8',
+      'Referer': 'https://yuyu-tei.jp/',
+    },
+    signal: AbortSignal.timeout(30000),
+  })
   if (!res.ok) throw new Error(`yuyu-tei ${setCode} → ${res.status}`)
   const html = await res.text()
   // 找不到的代碼會落到「一覧」通用頁：標題沒有 [代碼] 就當抓錯，不要拿別的系列的價

@@ -7,6 +7,11 @@ import { runCardPriceUpdate } from '@/lib/cardPrices'
  */
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
+/*
+ * 跑在東京機房（老闆 2026-09-03 推正當天）：遊々亭擋美國機房的 IP —— Vercel 預設的
+ * 華盛頓機房打過去一律 403，從台灣、日本的 IP 都是 200。同一站對 robots 沒有限制。
+ */
+export const preferredRegion = 'hnd1'
 
 const CRON_SECRET = process.env.CRON_SECRET ?? ''
 
