@@ -61,17 +61,17 @@ function NavbarInner() {
 
   useEffect(() => {
     const check = async () => {
+      // 鈴鐺未登入不顯示（老闆 2026-09-03），沒登入就不用算未讀
+      if (!user) { setBellUnread(false); return; }
       try {
         // 個人通知（綁定禮入帳、邀請獎勵可領…）也要點亮鈴鐺，
         // 不然玩家拿到獎勵完全沒感覺 —— 私訊類歸「訊息」頁管，不算
-        if (user) {
-          const { count } = await supabase
-            .from('notifications')
-            .select('id', { count: 'exact', head: true })
-            .eq('is_read', false)
-            .not('type', 'in', '(exchange_message,sell_message)');
-          if ((count ?? 0) > 0) { setBellUnread(true); return; }
-        }
+        const { count } = await supabase
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('is_read', false)
+          .not('type', 'in', '(exchange_message,sell_message)');
+        if ((count ?? 0) > 0) { setBellUnread(true); return; }
 
         const res = await fetch('/api/announcements?limit=30');
         if (!res.ok) return;
@@ -979,8 +979,10 @@ function NavbarInner() {
               </Link>
             )}
 
-            {/* 通知（鈴鐺）：手機僅首頁顯示；桌機取代原本的文字連結，固定在搜尋圖標右邊 */}
-            {!isProductDetailPage && !isAnnouncementInnerPage && (
+            {/* 通知（鈴鐺）：手機僅首頁顯示；桌機取代原本的文字連結，固定在搜尋圖標右邊。
+                未登入不顯示（老闆 2026-09-03）—— 通知頁本身也只給登入玩家看，
+                直接開網址會給登入提示。用 isAuthenticated 跟旁邊的搜尋圖標同一個判準 */}
+            {isAuthenticated && !isProductDetailPage && !isAnnouncementInnerPage && (
               <Link
                 href="/announcements"
                 className={cn(
@@ -1003,7 +1005,8 @@ function NavbarInner() {
               </Link>
             )}
 
-            {pathname === '/announcements' && (
+            {/* 未登入的通知頁是登入提示，沒有列表可以標已讀 */}
+            {pathname === '/announcements' && user && (
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent('ggb:markAllAnnouncementsRead'))}

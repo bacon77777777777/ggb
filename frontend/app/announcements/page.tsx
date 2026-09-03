@@ -13,6 +13,7 @@ import { restoreScrollTo } from '@/lib/restoreScroll';
 import { useSwipeTabs } from '@/lib/useSwipeTabs';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { LoginRequired } from '@/components/auth/LoginRequired';
 
 interface Announcement {
   id: string;
@@ -78,7 +79,7 @@ export default function AnnouncementsPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [supabase] = useState(() => createClient());
   const tabKeys = CATEGORIES.map(c => c.key);
@@ -211,6 +212,26 @@ export default function AnnouncementsPage() {
     });
   })();
 
+  /* 通知頁只給登入玩家看（老闆 2026-09-03）：鈴鐺未登入已經不顯示，
+     直接開網址進來的一律給登入提示。auth 還沒判定完先畫骨架，
+     不然已登入的人刷新會先閃一下「請登入」再換成列表。 */
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-neutral-950 pb-24">
+        <div className="max-w-2xl mx-auto"><LoadingSkeleton /></div>
+      </div>
+    );
+  }
+  if (!user) {
+    return (
+      <LoginRequired
+        title="登入後才看得到通知"
+        description="平台公告與你的個人通知（獎勵入帳、配送進度）都在這裡"
+        next="/announcements"
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 pb-24">
 
@@ -232,9 +253,7 @@ export default function AnnouncementsPage() {
         <div className="max-w-2xl mx-auto px-4 min-h-[60vh]" {...swipeTabs}>
           {rows.length === 0 ? (
             <div className="py-16 text-center text-neutral-400 dark:text-neutral-500 text-sm font-bold">
-              {activeTab === 'mine'
-                ? (user ? '目前沒有你的通知' : '登入後才看得到你的通知')
-                : '這個分類目前沒有通知'}
+              {activeTab === 'mine' ? '目前沒有你的通知' : '這個分類目前沒有通知'}
             </div>
           ) : (
             rows.map(row => row.kind === 'note' ? (

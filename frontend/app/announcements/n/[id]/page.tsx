@@ -7,6 +7,7 @@ import { Clock } from 'lucide-react';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { LoginRequired } from '@/components/auth/LoginRequired';
 
 /**
  * 個人通知的詳情內頁（老闆 2026-08-26）
@@ -50,12 +51,16 @@ function actionLabel(link: string): string {
 
 export default function NotificationDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [supabase] = useState(() => createClient());
   const [note, setNote] = useState<UserNotification | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    /* auth 還在判定時 user 也是 null——那時就把 isLoading 關掉，
+       已登入的人刷新會先閃一下「找不到這則通知」，等資料到才換成內容。
+       所以要等 auth 判定完才決定：沒登入就停，有登入才去撈。 */
+    if (authLoading) return;
     if (!user) { setIsLoading(false); return; }
     let cancelled = false;
     supabase
@@ -76,20 +81,28 @@ export default function NotificationDetailPage() {
         }
       });
     return () => { cancelled = true; };
-  }, [id, user, supabase]);
+  }, [id, user, authLoading, supabase]);
 
   // 骨架拿掉，跟路由切換時的 app/loading.tsx 用同一個等待畫面（老闆 2026-08-29）
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return <ProductLoadingScreen />;
+  }
+
+  // 沒登入一律給登入提示（老闆 2026-09-03），登入完回到這一則
+  if (!user) {
+    return (
+      <LoginRequired
+        title="登入後才看得到你的通知"
+        description="個人通知只對本人顯示"
+      />
+    );
   }
 
   if (!note) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-neutral-950 p-8">
         <p className="text-5xl mb-4">📭</p>
-        <h1 className="text-lg font-black text-neutral-900 dark:text-white mb-2">
-          {user ? '找不到這則通知' : '登入後才看得到你的通知'}
-        </h1>
+        <h1 className="text-lg font-black text-neutral-900 dark:text-white mb-2">找不到這則通知</h1>
         <Link href="/announcements" className="text-primary font-bold text-sm">回到通知</Link>
       </div>
     );

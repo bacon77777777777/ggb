@@ -7,6 +7,8 @@ import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { markRead } from '@/lib/announcementRead';
+import { useAuth } from '@/contexts/AuthContext';
+import { LoginRequired } from '@/components/auth/LoginRequired';
 
 interface Announcement {
   id: string;
@@ -78,6 +80,7 @@ export default function AnnouncementDetailPage() {
 
   // 直接開網址進來也要標記已讀（不只從列表點進來）
   useEffect(() => { if (id) markRead(String(id)); }, [id]);
+  const { user, isLoading: authLoading } = useAuth();
   const [item, setItem] = useState<Announcement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -91,8 +94,19 @@ export default function AnnouncementDetailPage() {
   }, [id]);
 
   // 骨架拿掉，跟路由切換時的 app/loading.tsx 用同一個等待畫面（老闆 2026-08-29）
-  if (isLoading) {
+  // auth 判定也算在等待裡：已登入的人刷新不該先看到「請登入」
+  if (authLoading || isLoading) {
     return <ProductLoadingScreen />;
+  }
+
+  // 通知內頁跟列表一樣只給登入玩家看（老闆 2026-09-03）；登入完回到這一則
+  if (!user) {
+    return (
+      <LoginRequired
+        title="登入後才看得到通知"
+        description="平台公告與你的個人通知都只對登入會員顯示"
+      />
+    );
   }
 
   if (notFound || !item) {
