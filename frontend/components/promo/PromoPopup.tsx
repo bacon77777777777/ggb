@@ -113,9 +113,15 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
   const [closedIds, setClosedIds] = useState<string[]>([]);
   const [current, setCurrent] = useState<SitePromo | null>(null);
   const [visible, setVisible] = useState(false);
+  /*
+   * 遮罩另外管（老闆 2026-09-03）：兩則以上排隊時，關掉第一則遮罩**不退場**，
+   * 撐到最後一則關掉才淡出。以前遮罩跟著每一則進出，關一則遮罩就消失、
+   * 玩家以為可以操作了，下一則又突然跳出來。`visible` 只管卡片。
+   */
+  const [overlayOpen, setOverlayOpen] = useState(false);
   /* 遮罩開著時把 Safari／PWA 的狀態列一起壓暗（App 全出血本來就蓋得到），
      見 StatusBarStyle 的 useStatusBarDim 說明 */
-  useStatusBarDim(visible);
+  useStatusBarDim(overlayOpen);
   /** 「今日不再顯示」的勾選狀態。每換一則就歸零，不要沿用上一則的選擇 */
   const [hideToday, setHideToday] = useState(false);
   /** 最新上架清單目前露出幾筆，捲到底再加一頁 */
@@ -158,6 +164,7 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
       if (cancelled) return;
       shownOnceRef.current = true;
       setBgReady(true);      // 底圖已備妥（或等逾時了），內容不用再等第二道閘
+      setOverlayOpen(true);
       setVisible(true);
     };
 
@@ -179,10 +186,10 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
   // 這個 effect 必須放在下面的 early return 之前，否則 promo 為 null 時
   // hook 數量會變動。
   useEffect(() => {
-    if (!visible) return;
+    if (!overlayOpen) return;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = 'unset'; };
-  }, [visible]);
+  }, [overlayOpen]);
 
   /*
    * 內容的淡入閘門。真正的等待已經移到上面「顯示之前先載底圖」那段 ——
@@ -198,17 +205,18 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
   useEffect(() => { setBgReady(false); }, [current?.id]);
 
   const promo = current;
-  if (!promo) return null;
+  // 兩則之間（上一則退場、下一則還沒選出來）promo 是 null，但遮罩要留著，不能整個 return
+  if (!promo && !overlayOpen) return null;
 
   // 沒圖就退回卡片版，否則會彈出一個全空的彈窗
-  const isImageOnly = promo.layout === 'image' && !!promo.image_url;
+  const isImageOnly = !!promo && promo.layout === 'image' && !!promo.image_url;
 
   /**
    * 點 CTA / 圖片：立刻蓋上全屏 loading 再換頁。
    * 只呼叫 close() 的話，彈窗會先收起、畫面停在舊頁等路由切換，
    * 看起來像按了沒反應。
    */
-  const isNewArrival = promo.layout === 'new_arrival';
+  const isNewArrival = promo?.layout === 'new_arrival';
 
 
   /**
@@ -218,9 +226,13 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
    *   只有按叉叉才存 —— 點內容是「我要去看」，不是「不想再看到」（老闆指定）。
    */
   const dismiss = (saveHideToday: boolean) => {
-    setVisible(false);
-    if (saveHideToday && hideToday) hideForToday(promo.id);
+    if (!promo) return;
     const id = promo.id;
+    // 後面還有沒有別則要跳？有的話遮罩留著，只讓卡片退場
+    const more = promos.some(p => p.id !== id && !closedIds.includes(p.id));
+    setVisible(false);
+    if (!more) setOverlayOpen(false);
+    if (saveHideToday && hideToday) hideForToday(promo.id);
     setTimeout(() => {
       setClosedIds(prev => [...prev, id]);
       setCurrent(null);          // 讓上面的 effect 接手挑下一則
@@ -246,7 +258,7 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
 
   return (
     <AnimatePresence>
-      {visible && (
+      {overlayOpen && (
         <motion.div
           className="fixed inset-0 z-[120] flex flex-col items-center justify-center px-8 bg-black/60 backdrop-blur-[2px] overscroll-contain"
           initial={{ opacity: 0 }}
@@ -258,6 +270,17 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
              遮罩本身要吃掉 touchmove；卡片內文那塊需要捲動，故不用 touch-action:none */
           onTouchMove={e => { if (e.target === e.currentTarget) e.preventDefault(); }}
         >
+          {/* 卡片層：每一則各自進出（mode="wait"：上一則退完下一則才進），遮罩在外面不動 */}
+          <AnimatePresence mode="wait">
+            {visible && promo && (
+              <motion.div
+                key={promo.id}
+                className="w-full flex flex-col items-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18 }}
+              >
           {/* relative 包一層：叉叉要貼卡片右上角（老闆 2026-09-03：離太遠）。
               不能直接放進 motion.div —— 純圖版那層 overflow-hidden 會把伸出去的叉叉切掉 */}
           <div className="relative w-full max-w-[330px]">
@@ -478,7 +501,9 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
             />
             今日不再顯示
           </label>
-
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       )}
     </AnimatePresence>

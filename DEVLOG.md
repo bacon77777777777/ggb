@@ -118,6 +118,11 @@ PROD 的 `banners`／`site_promos` 都沒有連到 `/announcements` 的（各 0 
   那一條；但 Safari 與 PWA 的狀態列是瀏覽器拿 `theme-color` 自己塗的，遮罩把整頁壓暗只有
   最上面還亮紅色。`StatusBarStyle` 加 `useStatusBarDim(active)`：往同一個宣告堆疊推一筆
   「當前頂色混 60% 黑、白字」，遮罩關掉就 pop 回原值（驗過 #EE4D2D → #5f1f12 → #EE4D2D）
+- **兩則以上排隊時遮罩不退場**（老闆同日）：以前遮罩跟著每一則進出，關一則遮罩就消失、
+  玩家以為可以操作了，下一則又突然跳出來。改成遮罩另外用 `overlayOpen` 管、撐到最後一則
+  關掉才淡出；卡片各自進出（內層 AnimatePresence `mode="wait"`）。捲動鎖與狀態列壓暗也改跟遮罩走。
+  用 Playwright 攔截 site_promos 塞一則假公告驗過：關第一則的 60ms～2.5s 遮罩都在、第二則出現、
+  關掉最後一則遮罩才消失
 - 清單每列的類別膠囊改放商品名左邊、同一行（老闆同日：跟商品小卡一樣，每列少一層高度）。
   照小卡的寫法膠囊必須是純 inline、高度用 py 撐 —— inline-flex 這類原子行內盒會讓 Safari
   的截行誤判，名稱明明放得下也硬加刪節號。名稱維持單行、超出點點點收尾
