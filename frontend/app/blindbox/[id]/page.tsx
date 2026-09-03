@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import { Volume2, VolumeX } from 'lucide-react';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
+import { MachineLoadingOverlay } from '@/components/ui/MachineLoadingOverlay';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/types/database.types';
@@ -552,6 +553,9 @@ export default function BlindboxDetailPage() {
     );
   }
 
+  // 主題沒定就先不要出頁面（先掛的會是錯的那一台）；定了就出，機台圖沒到只在機台那塊蓋黑遮罩
+  if (!themeResolved) return <ProductLoadingScreen />;
+
   const renderMachineInner = () => (
     <div
       className="relative"
@@ -559,7 +563,8 @@ export default function BlindboxDetailPage() {
     >
       {/* 主題沒定就先不要掛任何一台 —— 掛錯的那一台不只會閃，
           它載完圖還會觸發 onLoaded 把載入畫面收掉 */}
-      <div className="bg-neutral-950 shadow-card border border-neutral-900 overflow-hidden">
+      <div className="relative bg-neutral-950 shadow-card border border-neutral-900 overflow-hidden">
+        <MachineLoadingOverlay show={!isMachineReady} />
         {!themeResolved ? (
           <div className="relative w-full" style={{ aspectRatio: '750/932' }} />
         ) : effectiveTheme === 'blindbox_mode2' ? (
@@ -795,13 +800,8 @@ export default function BlindboxDetailPage() {
         </div>
       )}
 
-      {/* 主題還沒定就一起擋著：先渲染的會是錯的那一台，而它載完圖又會把
-          載入畫面收掉 —— 光藏內容沒有用（見 themeResolved 的說明） */}
-      {!(isMachineReady && themeResolved) && <ProductLoadingScreen />}
-      <div
-        className="min-h-screen bg-neutral-50 dark:bg-neutral-950"
-        style={!(isMachineReady && themeResolved) ? { visibility: 'hidden', position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' } : undefined}
-      >
+      {/* 頁面先出來，機台圖沒到只在機台那塊蓋黑遮罩（renderMachineInner 裡；老闆 2026-09-03） */}
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
         {/* Mobile < 1024px */}
         <div className="block lg:hidden overflow-x-hidden pb-32 pt-[calc(3.5rem+env(safe-area-inset-top))]">
           <div

@@ -315,6 +315,38 @@ export default function GGBPackRip({
   const timers = useRef([]);
   const later = (fn, ms) => { const t = setTimeout(fn, ms); timers.current.push(t); return t; };
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  /*
+   * 翻開就是品項圖（老闆 2026-09-03：卡面是翻開那一刻才開始載，網路慢就先黑一片）。
+   * 結果在撕包前就知道了，所以掛上來就把整疊卡圖抓進快取：前三張一起抓、其餘一張接一張；
+   * 翻牌時那張還沒到就等它到（最多 1.5 秒）再翻。商品頁在結果回來那一刻也先抓過一輪，
+   * 這裡是保險。
+   */
+  const cardImgs = useRef(new Map()); // src → { done, promise }
+  const preloadCard = (src) => {
+    if (!src) return Promise.resolve();
+    let e = cardImgs.current.get(src);
+    if (!e) {
+      e = { done: false, promise: null };
+      e.promise = new Promise((res) => {
+        const im = new Image();
+        im.onload = im.onerror = () => { e.done = true; res(); };
+        im.src = src;
+      });
+      cardImgs.current.set(src, e);
+    }
+    return e.promise;
+  };
+  const cardsKey = Array.isArray(cards) ? cards.join("|") : "";
+  useEffect(() => {
+    const list = Array.isArray(cards) ? cards : [];
+    let cancelled = false;
+    (async () => {
+      await Promise.all(list.slice(0, 3).map(preloadCard));
+      for (const src of list.slice(3)) { if (cancelled) return; await preloadCard(src); }
+    })();
+    return () => { cancelled = true; };
+  }, [cardsKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const [dims, setDims] = useState({ w: 300, h: 510 });
 
   useEffect(() => {
@@ -501,8 +533,26 @@ export default function GGBPackRip({
     later(() => { if (!waitsForTap(0)) flipTop(0); }, dealDone + cfg.flipDelay);
   };
 
+  const cardIdxRef = useRef(cardIdx); cardIdxRef.current = cardIdx;
+  const flipWaiting = useRef(false);
   const flipTop = (idx) => {
     if (phaseRef.current !== "cards") return;
+    const src = cards[idx];
+    const entry = src ? cardImgs.current.get(src) : null;
+    if (src && !(entry && entry.done)) {
+      // 卡面還沒到：等它到（最多 1.5 秒）再翻，翻開才不會是黑的
+      if (flipWaiting.current) return;
+      flipWaiting.current = true;
+      Promise.race([preloadCard(src), new Promise((r) => setTimeout(r, 1500))]).then(() => {
+        flipWaiting.current = false;
+        if (phaseRef.current !== "cards" || cardIdxRef.current !== idx) return;
+        doFlip(idx);
+      });
+      return;
+    }
+    doFlip(idx);
+  };
+  const doFlip = (idx) => {
     setFlipped(true);
     // 翻牌體感數字：這張卡有行情就跳（trigger = idx，同一張只跳一次）
     setPop({ value: Array.isArray(cardValues) ? cardValues[idx] ?? null : null, trigger: idx, grade: Array.isArray(cardGrades) ? cardGrades[idx] ?? null : null });
@@ -984,7 +1034,9 @@ export default function GGBPackRip({
       onPointerUp={onStageUp} onPointerCancel={onStageUp}>
       <style>{CSS_KEYFRAMES}</style>
       {/* 翻牌體感數字（老闆 2026-09-03）：flipTop 時設定，畫面中上方跳「+N」 */}
-      <MarketValuePop value={pop?.value} trigger={pop?.trigger ?? null} grade={pop?.grade} enabled={cfg.marketPop !== false} />
+      {phase === "cards" && (
+        <MarketValuePop value={pop?.value} trigger={pop?.trigger ?? null} grade={pop?.grade} enabled={cfg.marketPop !== false} />
+      )}
 
       {/* 背景流星（老闆 2026-08-29）。z-0 壓在所有演出元素底下 —— 這頁的內容
           最低是 z-2，所以它永遠在最後面；canvas 本身是透明的，S.stage 的暗紫

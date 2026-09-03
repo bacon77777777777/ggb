@@ -52,6 +52,11 @@ type Props = {
    */
   frontImage?: string;
   backImage?: string;
+  /**
+   * 卡包圖貼上去、看得到卡包了（老闆 2026-09-03：進頁面上半部先是空的，過一陣子卡包才一起出現）。
+   * 商品頁拿它收機台區的黑遮罩；沒有 WebGL 退回靜態圖時也算好了。
+   */
+  onReady?: () => void;
 };
 
 /*
@@ -232,12 +237,13 @@ function slotFor(d: number, aspect: number) {
 const skyBackground = (s: number) => skyGradientCss(s);
 
 const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
-  ({ packStyles, onActiveStyleChange, height = 466, frontImage, backImage }, ref) => {
+  ({ packStyles, onActiveStyleChange, height = 466, frontImage, backImage, onReady }, ref) => {
     const mountRef = useRef<HTMLDivElement | null>(null);
     const curRef = useRef(0);
     const paramsRef = useRef<Params>(DEFAULTS);
     const goRef = useRef<((d: number) => void) | null>(null);
     const notifyRef = useRef(onActiveStyleChange);
+    const onReadyRef = useRef(onReady); onReadyRef.current = onReady;
     const [params, setParams] = useState<Params>(DEFAULTS);
     const [ready, setReady] = useState(false);
     const [fallback, setFallback] = useState(false);
@@ -555,6 +561,8 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         await Promise.all(
           Array.from({ length: N }, (_, i) => i).filter(i => i !== first).map(applyOne),
         );
+        // 正面全部貼好（載不到的已退回內建款）→ 卡包看得到了，商品頁可以收遮罩
+        if (!disposed) onReadyRef.current?.();
       };
       applyTextures();
 
@@ -714,6 +722,8 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         if (el.parentNode === mount) mount.removeChild(el);
       };
     }, [ready, packStyles, height, frontImage, backImage]);
+
+    useEffect(() => { if (fallback) onReadyRef.current?.(); }, [fallback]);
 
     if (fallback) {
       const style = packStyles[0] ?? '01';

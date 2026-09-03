@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { hapticMedium } from '@/lib/haptics';
@@ -86,10 +86,20 @@ const devValueFor = (grade?: string | null) => {
 
 export default function MarketValuePop({ value, trigger, grade, enabled = true }: { value: number | null | undefined; trigger: string | number | null; grade?: string | null; /** 後台模組參數「翻牌市價數字」（machine_theme_params.marketPop），關掉完全不跳 */ enabled?: boolean }) {
   const [shot, setShot] = useState<{ key: string; value: number } | null>(null);
+  /*
+   * 只在 trigger **換了**才跳（老闆 2026-09-03 回報：卡包還沒撕開就跳了 +5.98）。
+   * 掛上來的第一次只記住當下的 trigger、不跳 —— 元件帶著舊的 trigger 重掛
+   * （父層重排、或別的原因重新建了這一支）不能算一次新的翻牌；
+   * enabled／value 變了而 trigger 沒變，也不重跳。
+   */
+  const seen = useRef<{ key: string | null } | null>(null);
 
   useEffect(() => {
-    if (!enabled) return;
-    if (trigger === null || trigger === undefined) return;
+    const key = trigger === null || trigger === undefined ? null : String(trigger);
+    if (seen.current === null) { seen.current = { key }; return; }
+    if (seen.current.key === key) return;
+    seen.current = { key };
+    if (key === null || !enabled) return;
     const v = isDemoEnv() ? devValueFor(grade) : value;
     if (typeof v !== 'number' || v < MARKET_POP_MIN) return;
     setShot({ key: String(trigger), value: v });
@@ -98,7 +108,7 @@ export default function MarketValuePop({ value, trigger, grade, enabled = true }
     const t = setTimeout(() => setShot(s => (s?.key === String(trigger) ? null : s)), 2200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trigger, value, enabled]);
+  }, [trigger, enabled]);
 
   return (
     <AnimatePresence>

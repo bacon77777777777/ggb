@@ -426,7 +426,10 @@ export default function CardDrawAnimation({
           </motion.div>
         )}
 
-        <MarketValuePop value={pop?.value} trigger={pop?.trigger ?? null} grade={pop?.grade} enabled={marketPopOn} />
+        {/* 只在揭曉階段掛，卡包還沒開的畫面不可能跳數字（老闆 2026-09-03） */}
+        {phase === 'swipe' && (
+          <MarketValuePop value={pop?.value} trigger={pop?.trigger ?? null} grade={pop?.grade} enabled={marketPopOn} />
+        )}
         {/* ── Phase 2: Immersive card reveal ── */}
         {phase === 'swipe' && prizes.length > 0 && (
           <motion.div

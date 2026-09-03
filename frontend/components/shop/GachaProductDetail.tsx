@@ -24,12 +24,15 @@ import ProductBadge from '@/components/ui/ProductBadge';
 import { hapticHeavy, hapticLight, hapticMedium, hapticNotify } from '@/lib/haptics';
 import { asset } from '@/lib/asset';
 import ViewerPill from '@/components/product/ViewerPill';
+import { MachineLoadingOverlay } from '@/components/ui/MachineLoadingOverlay';
 
 interface GachaProductDetailProps {
   product: Database['public']['Tables']['products']['Row'];
   prizes: Database['public']['Tables']['product_prizes']['Row'][];
   machineTheme?: string;
   onMachineReady?: () => void;
+  /** 機台圖還沒到：機台那塊蓋黑遮罩（老闆 2026-09-03，頁面其他部分照常先出來） */
+  machineLoading?: boolean;
 }
 
 /** 機台本身不畫按鈕的主題 —— 推一下／立即轉蛋／試試看改走頁面底部操作欄 */
@@ -45,7 +48,7 @@ const MACHINE_COMPONENTS: Record<string, React.ComponentType<React.ComponentProp
   gacha_mode5: GachaMachineMode5,
 }
 
-export function GachaProductDetail({ product, prizes, machineTheme, onMachineReady }: GachaProductDetailProps) {
+export function GachaProductDetail({ product, prizes, machineTheme, onMachineReady, machineLoading = false }: GachaProductDetailProps) {
   const router = useRouter();
   const { user, refreshProfile } = useAuth();
   const { showToast } = useToast();
@@ -428,6 +431,7 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
               />
             );
           })()}
+          <MachineLoadingOverlay show={machineLoading} />
           {/* 蛋箱裡的商品圖：預設就顯示（老闆指定），點一下收起、再點一下又出現。
               整塊維持可點擊 —— 收起後那層就是「再點一次」的目標，
               不然圖藏起來之後玩家沒有東西可以點回來。 */}

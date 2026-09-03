@@ -17,6 +17,8 @@ import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, Loader2, Check, Bo
 import SoundToggle, { RAISED_STYLE, RAISED_STYLE_GOLD } from '@/components/ui/SoundToggle';
 import { useSoundMuted } from '@/hooks/useSoundMuted';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
+import { MachineLoadingOverlay } from '@/components/ui/MachineLoadingOverlay';
+import { preloadPrizeImages } from '@/lib/preloadImages';
 import { machineAssets } from '@/lib/machineAssets';
 import { useMachineAssets } from '@/lib/useMachineAssets';
 import ProductCard from '@/components/ProductCard';
@@ -502,6 +504,19 @@ export default function ProductDetailPage() {
     ]);
   }, [product, moduleSettings]);
   const cardAssetsReady = useMachineAssets(cardAssetUrls);
+  /*
+   * 卡包輪播（PackShowcase3D）自己抓貼圖、貼好才看得到卡包，跟上面那組圖是兩回事 ——
+   * 只等圖不等它，遮罩會在卡包出現前就收掉，上半部又是空的（老闆 2026-09-03）。
+   * 6 秒保險：WebGL 起不來或圖掛了都不該讓玩家一直看黑遮罩。
+   */
+  const [packShowcaseReady, setPackShowcaseReady] = useState(false);
+  const productIdForShowcase = product?.type === 'card' ? product.id : null;
+  useEffect(() => {
+    // 用 id 當依賴：product 物件在背景更新、即時訂閱時會換新，用它會一直把 6 秒重數
+    if (!productIdForShowcase || packShowcaseReady) return;
+    const t = setTimeout(() => setPackShowcaseReady(true), 6000);
+    return () => clearTimeout(t);
+  }, [productIdForShowcase, packShowcaseReady]);
 
   const [isFollowed, setIsFollowed] = useState(false);
   const [isGachaLoading, setIsGachaLoading] = useState(false);
@@ -1027,9 +1042,9 @@ export default function ProductDetailPage() {
           market_display_value: marketValueOf(pick),
         } as Prize;
       });
-      setWonPrizes([...filler, trialPrize]);
+      setWonPrizes(preloadPrizeImages([...filler, trialPrize]));
     } else {
-      setWonPrizes([trialPrize]);
+      setWonPrizes(preloadPrizeImages([trialPrize]));
     }
     setIsVideoOpen(true);
   };
@@ -1132,7 +1147,8 @@ export default function ProductDetailPage() {
         items: results.map(r => ({ item_id: r.id, item_name: r.name, item_category: r.grade }))
       });
 
-      setWonPrizes(results);
+      // 結果一到就先抓卡圖，撕包那幾秒剛好載完，翻開就是品項圖（老闆 2026-09-03）
+      setWonPrizes(preloadPrizeImages(results));
       if (isCardType) {
         setIsPurchaseModalOpen(false);
       }
@@ -1600,16 +1616,19 @@ export default function ProductDetailPage() {
      */
     const themeResolved = !!(product as any).machine_theme || moduleSettingsLoaded;
     const gachaMachineTheme = (product as any).machine_theme || moduleSettings['gacha'] || 'gacha_classic'
-    const gachaReady = themeResolved && isMachineReady;
+    /*
+     * 主題定了就先出頁面（老闆 2026-09-03：進商品頁要快）。機台圖還沒到只在機台那塊
+     * 蓋黑遮罩（GachaProductDetail 的 machineLoading），不再把整頁藏起來等它。
+     */
+    if (!themeResolved) return <ProductLoadingScreen />;
     return (
-      <>
-        {!gachaReady && <ProductLoadingScreen />}
-        <div style={!gachaReady ? { visibility: 'hidden', position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' } : undefined}>
-          {themeResolved && (
-            <GachaProductDetail product={product} prizes={prizes} machineTheme={gachaMachineTheme} onMachineReady={() => setIsMachineReady(true)} />
-          )}
-        </div>
-      </>
+      <GachaProductDetail
+        product={product}
+        prizes={prizes}
+        machineTheme={gachaMachineTheme}
+        machineLoading={!isMachineReady}
+        onMachineReady={() => setIsMachineReady(true)}
+      />
     );
   }
 
@@ -1687,6 +1706,8 @@ export default function ProductDetailPage() {
   if (product.type === 'card') {
     const cardThemeForMachine = (product as any).machine_theme
       || moduleSettings['card'];
+    // 主題沒定就先不要出頁面：主題決定要等哪些素材、閃電要不要掛，定了再出（通常已經在了）
+    if (!(product as any).machine_theme && !moduleSettingsLoaded) return <ProductLoadingScreen />;
     const renderCardMachine = () => (
       <div
         className="relative overflow-hidden"
@@ -1774,6 +1795,7 @@ export default function ProductDetailPage() {
                   ref={packCarouselRef}
                   packStyles={packStyles}
                   onActiveStyleChange={handleActiveStyleChange}
+                  onReady={() => setPackShowcaseReady(true)}
                   height={Math.round(375 * 932 / 750)}
                   /* 卡包樣式選「自訂」才用這一檔商品自己的正／背面，選「預設」就是內建
                      五款輪流（migration 666 之前是看「是不是卡包模式」）。
@@ -1784,6 +1806,9 @@ export default function ProductDetailPage() {
                 />
               </div>
             </div>
+
+            {/* 卡包棚景／卡背／正面還沒到、或輪播還沒把卡包貼出來：這塊蓋黑遮罩，好了淡出 */}
+            <MachineLoadingOverlay show={!cardAssetsReady || !packShowcaseReady} />
 
             {/* 機台上不畫按鈕（老闆指定）—— 換一批／立即開包／試試看
                 改走頁面底部固定操作欄，跟盒玩 blindbox_mode5、轉蛋 gacha_mode5 一致 */}
@@ -1999,12 +2024,9 @@ export default function ProductDetailPage() {
 
     return (
       <>
-      {/* 素材沒到就先放載入動畫，跟轉蛋同一套處理，避免半成品先攤在玩家眼前 */}
-      {!cardAssetsReady && <ProductLoadingScreen />}
-      <div
-        className="min-h-screen bg-neutral-50 dark:bg-neutral-950"
-        style={!cardAssetsReady ? { visibility: 'hidden', position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' } : undefined}
-      >
+      {/* 素材沒到只在機台那塊蓋黑遮罩（renderCardMachine 裡的 MachineLoadingOverlay），
+          頁面本身先出來（老闆 2026-09-03：以前整頁等到卡包素材齊了才一起出現） */}
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
         {/* Mobile < 1024px；pt 同上，要含警語列高度 */}
         <div
           className="block lg:hidden overflow-x-hidden pb-32"
