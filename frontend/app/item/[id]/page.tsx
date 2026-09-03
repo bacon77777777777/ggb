@@ -2134,6 +2134,7 @@ export default function ProductDetailPage() {
                 cardBack={(product as any).card_back_image_url || asset('/images/card/back.webp')}
                 cards={ordered.map(p => p.image_url || asset('/images/card/00004.webp'))}
                 cardValues={ordered.map(p => p.market_display_value ?? null)}
+                cardGrades={ordered.map(p => p.grade ?? p.rarity ?? null)}
                 prizeTier={packTiers[0] ?? 'blue'}
                 prizeTiers={packTiers}
                 soundDefault={!isVideoMuted}

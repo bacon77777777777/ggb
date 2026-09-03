@@ -110,12 +110,12 @@ export default function CardFlipDirect({
     }
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [pop, setPop] = useState<{ value: number | null; trigger: string } | null>(null);
+  const [pop, setPop] = useState<{ value: number | null; trigger: string; grade?: string } | null>(null);
   const reveal = (id: string) => {
     setRevealedIds(prev => new Set([...prev, id]));
     // 翻牌體感數字（MarketValuePop）：這張卡有行情就跳
     const z = prizes.find(p => p.id === id);
-    setPop({ value: z?.market_display_value ?? null, trigger: id });
+    setPop({ value: z?.market_display_value ?? null, trigger: id, grade: z?.grade ?? z?.rarity });
   };
 
   const handleCardClick = (id: string, rank: 'SSR' | 'SR' | 'R' | 'N') => {
@@ -135,7 +135,7 @@ export default function CardFlipDirect({
 
   return (
     <div className="fixed inset-0 z-[1200] bg-black flex flex-col items-center justify-center overflow-hidden">
-      <MarketValuePop value={pop?.value} trigger={pop?.trigger ?? null} />
+      <MarketValuePop value={pop?.value} trigger={pop?.trigger ?? null} grade={pop?.grade} />
       {/* Background */}
       <div className="absolute inset-0 -z-10">
         <Image src={asset("/images/gacha_bg.webp")} alt="" fill className="object-cover brightness-[0.25] blur-[8px]" unoptimized />

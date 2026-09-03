@@ -19,24 +19,31 @@ import { hapticMedium } from '@/lib/haptics';
 export const MARKET_POP_MIN = 100;
 
 /**
- * 本地開發用隨機值（老闆 2026-09-03：本地要看得到效果）。dev server 上每次翻牌從四個等級裡
- * 隨機抽一個，不管品項有沒有行情，四種分級都看得到。正式環境（NODE_ENV=production）照真實行情。
+ * 本地開發用假值（老闆 2026-09-03：本地要看得到效果，照賞等給）。dev server 上不看行情，
+ * 直接依這張卡的賞等對到四個分級：A賞／SSR → 26,000（金色＋震動）、B賞／SR → 8,800（金色）、
+ * C賞／R → 1,500（大字白）、其他 → 350（小字白）。正式環境（NODE_ENV=production）照真實行情。
  */
-const DEV_RANDOM = process.env.NODE_ENV !== 'production';
-const DEV_SAMPLES = [350, 1500, 8800, 26000];
-const pickDevValue = () => DEV_SAMPLES[Math.floor(Math.random() * DEV_SAMPLES.length)];
+const DEV_FAKE = process.env.NODE_ENV !== 'production';
+const devValueFor = (grade?: string | null) => {
+  const g = String(grade ?? '').toUpperCase();
+  if (g.includes('SSR') || g.includes('A賞') || g.includes('超稀有') || g.includes('最後賞')) return 26000;
+  if (g.includes('SR') || g.includes('B賞')) return 8800;
+  if (g.includes('R') || g.includes('C賞') || g.includes('稀有')) return 1500;
+  return 350;
+};
 
-export default function MarketValuePop({ value, trigger }: { value: number | null | undefined; trigger: string | number | null }) {
+export default function MarketValuePop({ value, trigger, grade }: { value: number | null | undefined; trigger: string | number | null; grade?: string | null }) {
   const [shot, setShot] = useState<{ key: string; value: number } | null>(null);
 
   useEffect(() => {
     if (trigger === null || trigger === undefined) return;
-    const v = DEV_RANDOM ? pickDevValue() : value;
+    const v = DEV_FAKE ? devValueFor(grade) : value;
     if (typeof v !== 'number' || v < MARKET_POP_MIN) return;
     setShot({ key: String(trigger), value: v });
     if (v >= 20000) hapticMedium();
     const t = setTimeout(() => setShot(s => (s?.key === String(trigger) ? null : s)), 2200);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trigger, value]);
 
   return (

@@ -306,7 +306,7 @@ export default function CardDrawAnimation({
   /* 保險用的夾範圍索引：上面的 render 期歸零已經擋掉已知的越界，
      但這疊卡是靠索引在讀的，任何一條沒想到的路徑都不該讓整頁掛掉 */
   const topIndex = prizes.length ? Math.min(Math.max(swipeIndex, 0), prizes.length - 1) : 0;
-  const [pop, setPop] = useState<{ value: number | null; trigger: string } | null>(null);
+  const [pop, setPop] = useState<{ value: number | null; trigger: string; grade?: string } | null>(null);
 
   /*
    * 整疊卡共用一個尺寸，由「目前最上面那張」的圖片比例決定。
@@ -360,7 +360,7 @@ export default function CardDrawAnimation({
     const tier = tierOf(prize);
     sfxRevealTier(tier);
     // 翻牌體感數字（MarketValuePop）：這張卡有行情就跳；同一張只跳一次（trigger = id）
-    setPop({ value: prize.market_display_value ?? null, trigger: prize.id });
+    setPop({ value: prize.market_display_value ?? null, trigger: prize.id, grade: prize.grade ?? prize.rarity });
     // 高稀有的揭曉比較長，音樂讓開一下再回來
     if (tier === 'sr' || tier === 'ssr') {
       setPackDucking(true);
@@ -419,7 +419,7 @@ export default function CardDrawAnimation({
           </motion.div>
         )}
 
-        <MarketValuePop value={pop?.value} trigger={pop?.trigger ?? null} />
+        <MarketValuePop value={pop?.value} trigger={pop?.trigger ?? null} grade={pop?.grade} />
         {/* ── Phase 2: Immersive card reveal ── */}
         {phase === 'swipe' && prizes.length > 0 && (
           <motion.div

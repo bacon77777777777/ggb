@@ -183,6 +183,8 @@ export default function GGBPackRip({
   cards: cardsProp,
   /** 每張卡翻開時跳的「+N」體感數字（跟 cards 對齊；null 或 <100 不跳）。見 MarketValuePop */
   cardValues = /** @type {(number|null)[] | null} */ (null),
+  /** 每張卡的賞等（跟 cards 對齊），本地開發模式 MarketValuePop 照它給假值 */
+  cardGrades = /** @type {(string|null)[] | null} */ (null),
   prizeTier: prizeTierProp = "blue",
   /**
    * 每一包各自的特效等級，例如買十包就是十個元素。
@@ -502,7 +504,7 @@ export default function GGBPackRip({
     if (phaseRef.current !== "cards") return;
     setFlipped(true);
     // 翻牌體感數字：這張卡有行情就跳（trigger = idx，同一張只跳一次）
-    setPop({ value: Array.isArray(cardValues) ? cardValues[idx] ?? null : null, trigger: idx });
+    setPop({ value: Array.isArray(cardValues) ? cardValues[idx] ?? null : null, trigger: idx, grade: Array.isArray(cardGrades) ? cardGrades[idx] ?? null : null });
     sfx.current.stopHype(); // 翻下去的瞬間收掉醞釀音，讓中獎音接手
     sfx.current.flip();
     // 每包的最後一張都要有收尾，不是只有整筆的最後一張
@@ -981,7 +983,7 @@ export default function GGBPackRip({
       onPointerUp={onStageUp} onPointerCancel={onStageUp}>
       <style>{CSS_KEYFRAMES}</style>
       {/* 翻牌體感數字（老闆 2026-09-03）：flipTop 時設定，畫面中上方跳「+N」 */}
-      <MarketValuePop value={pop?.value} trigger={pop?.trigger ?? null} />
+      <MarketValuePop value={pop?.value} trigger={pop?.trigger ?? null} grade={pop?.grade} />
 
       {/* 背景流星（老闆 2026-08-29）。z-0 壓在所有演出元素底下 —— 這頁的內容
           最低是 z-2，所以它永遠在最後面；canvas 本身是透明的，S.stage 的暗紫
