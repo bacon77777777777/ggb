@@ -300,7 +300,10 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                           key={p.id}
                           href={productHref(p)}
                           onClick={go(productHref(p))}
-                          className="flex w-full items-center gap-2.5 py-1.5 text-left transition-transform active:scale-[0.99]"
+                          /* py-[9px]（老闆 2026-09-03：每列高一點點，預設露 5.5 列）：清單區量到 298px、
+                             一列 54px → 5.52 列，半列露在下緣才知道可以往下捲。
+                             py-2 是 52px → 5.73 列，半列露太少看不出來 */
+                          className="flex w-full items-center gap-2.5 py-[9px] text-left transition-transform active:scale-[0.99]"
                         >
                           {/* object-contain 不裁切：商品主圖直式橫式都有，cover 會把海報標題切掉。
                               不加白底：外框上緣是粉紅漸層，白色方塊會浮出來。
