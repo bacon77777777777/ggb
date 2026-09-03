@@ -99,7 +99,9 @@ snkrdunk 有防爬不繞、eBay 網頁 403 但有官方 API（需要時再接）
   最高 198,000 円 → 43,560）。排程 migration 687（PROD 每天 04:00；STG 沒有 pg_cron）
 - **推正踩到的坑**：遊々亭擋美國機房的 IP —— Vercel 預設華盛頓機房打過去 5 個系列全部 403
   （本機台灣 IP 任何標頭都是 200，robots 也沒限制）。cron route 加 `preferredRegion = 'hnd1'`
-  改跑東京機房，請求也帶完整瀏覽器標頭
+  改跑東京機房，請求也帶完整瀏覽器標頭。等部署期間先用 `scripts/card_prices_run_pg.ts`
+  從本機（台灣 IP）抓、直接以 postgres 連線寫進 PROD（`CARD_PRICES_DB_URL=… npx tsx …`），
+  PROD 當天就有值（533 個品項、86 張 ≥100、最高 43,560）
 - **前台**：`PRIZE_PUBLIC_COLUMNS` 加欄；真抽結果靠名稱對回品項、試玩本來就從品項挑。
   `components/card/MarketValuePop.tsx`：<100 不跳；<1,000 小字白、≥1,000 大字白、≥5,000 金色光暈、
   ≥20,000 金色＋震動；數字滾動後上飄淡出。接在三處：撕包演出 `GgbPackRip`（card_peel，
