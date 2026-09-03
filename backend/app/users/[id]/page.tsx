@@ -18,6 +18,7 @@ import Tooltip from '@/components/ui/Tooltip'
 import { SettingsShell, SettingsNav, SectionHead, SettingsRow } from '@/components/settings/SettingsSection'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import { isSyntheticEmail, realEmail } from '@/lib/syntheticEmail'
 
 // Define interfaces for local state
 interface User {
@@ -1122,7 +1123,7 @@ export default function UserDetailPage() {
                   </Field>
 
                   <Field label="電子郵件">
-                    <Input value={form.email} disabled />
+                    <Input value={realEmail(form.email) ?? ''} placeholder={isSyntheticEmail(form.email) ? 'LINE 快速帳號，尚未綁定信箱' : ''} disabled />
                   </Field>
 
                   <Field label="電話">
@@ -1292,8 +1293,13 @@ export default function UserDetailPage() {
             <>
               <SectionHead title="帳號綁定" info="玩家的登入方式與聯絡管道。這裡只顯示狀態，不提供後台代為綁定 —— 綁定必須由本人完成，否則等於後台可以把任何一顆 LINE 掛到任何帳號上。" />
               <div className="divide-y divide-neutral-100">
-                <SettingsRow title="電子郵件" desc={user.email || '未設定'} state={user.email ? 'on' : 'off'}>
-                  <Badge status={user.email ? 'active' : 'inactive'} size="lg">{user.email ? '已綁定' : '未綁定'}</Badge>
+                {/* LINE 快速帳號的 users.email 是系統合成的內部代號，不算綁定（lib/syntheticEmail） */}
+                <SettingsRow
+                  title="電子郵件"
+                  desc={realEmail(user.email) || (isSyntheticEmail(user.email) ? 'LINE 快速帳號，玩家還沒在前台「設定」綁信箱' : '未設定')}
+                  state={realEmail(user.email) ? 'on' : 'off'}
+                >
+                  <Badge status={realEmail(user.email) ? 'active' : 'inactive'} size="lg">{realEmail(user.email) ? '已綁定' : '未綁定'}</Badge>
                 </SettingsRow>
                 <SettingsRow title="手機號碼" desc={user.phone || '未設定'} state={user.phone ? 'on' : 'off'}>
                   <Badge status={user.phone ? 'active' : 'inactive'} size="lg">{user.phone ? '已綁定' : '未綁定'}</Badge>

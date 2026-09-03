@@ -22,6 +22,7 @@ import SelectField from '@/components/ui/SelectField'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import { ActionMenu, Tooltip } from '@/components/ui'
+import { isSyntheticEmail } from '@/lib/syntheticEmail'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { useToast } from '@/contexts/ToastContext'
@@ -531,7 +532,7 @@ function UsersPage() {
        * 一整串把整欄撐到真信箱的兩倍寬（老闆 2026-09-04）。欄寬照真信箱抓，
        * 這種假信箱截斷加點點點，滑過去才看全文。真信箱不動。
        */
-      render: (user) => user.email.endsWith('@line-login.ggb.com.tw') ? (
+      render: (user) => isSyntheticEmail(user.email) ? (
         <Tooltip content={user.email}>
           <span className="inline-block max-w-[200px] truncate align-bottom cursor-help">{user.email}</span>
         </Tooltip>
