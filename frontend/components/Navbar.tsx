@@ -732,6 +732,10 @@ function NavbarInner() {
         )}
         isSticky={!isProductDetailPage}
         leftClassName={(isProductDetailPage || isAnnouncementInnerPage) ? "flex-1" : "flex-1 md:flex-none md:w-auto"}
+        /* 首頁未登入的手機端 right slot 是空的（登入鈕拿掉了、鈴鐺只給登入者），
+           但它預設帶 pl-2 —— 搜尋框會離右緣 16px、logo 卻離左緣 8px，兩邊不對稱。
+           空的時候把那 8px 收掉；桌機那條右邊有登入鈕，維持原樣 */
+        rightClassName={isHomePage && !isAuthenticated ? "pl-0 md:pl-2" : undefined}
         left={
           <>
             {(isProductDetailPage || isAnnouncementInnerPage) ? (
@@ -772,8 +776,9 @@ function NavbarInner() {
                   alt="GACHA ONLINE"
                   width={112}
                   height={36}
-                  /* 手機端 h-10→h-9（老闆 2026-09-03：縮小一點點），騰出寬度給旁邊的搜尋框 */
-                  className="h-9 md:h-11 w-auto"
+                  /* 手機端 40px→36px→31px（老闆 2026-09-03 兩次：先縮一點點、再縮 15%，
+                     36×0.85≈30.6），騰出寬度給旁邊的搜尋框。桌機不動 */
+                  className="h-[31px] md:h-11 w-auto"
                   priority
                 />
               </div>
@@ -1166,17 +1171,17 @@ function NavbarInner() {
                   {/* 未登入時搜尋圖標只放首頁（見上方 isHomePage 那顆）。
                       常見問題／關於我們／條款／隱私／退換貨這些頁跟搜尋無關，
                       未登入不放搜尋鈕（老闆 2026-08-21：其他頁面不相關不需放）。 */}
-                  {/* Mobile login button: 細膠囊線框 */}
-                  <Link
-                    href="/login"
-                    className={cn(
-                      "md:hidden px-3 h-8 flex items-center rounded-full border text-[12px] font-black active:scale-95 transition-transform whitespace-nowrap",
-                      // 首頁那條是主題色底，紅字紅框會糊掉
-                      isHomePage ? "border-white text-white" : "border-primary text-primary",
-                    )}
-                  >
-                    登入拿積分
-                  </Link>
+                  {/* Mobile login button: 細膠囊線框。
+                      首頁不放（老闆 2026-09-03：移除）—— 首頁的搜尋框要吃滿整條，
+                      未登入要登入走底部導航的「會員」。其他頁維持 */}
+                  {!isHomePage && (
+                    <Link
+                      href="/login"
+                      className="md:hidden px-3 h-8 flex items-center rounded-full border border-primary text-primary text-[12px] font-black active:scale-95 transition-transform whitespace-nowrap"
+                    >
+                      登入拿積分
+                    </Link>
+                  )}
                   {/* Desktop login button */}
                   <Link
                     href="/login"
