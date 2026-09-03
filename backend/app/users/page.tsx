@@ -22,7 +22,7 @@ import SelectField from '@/components/ui/SelectField'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import { ActionMenu, Tooltip } from '@/components/ui'
-import { isSyntheticEmail } from '@/lib/syntheticEmail'
+import { realEmail } from '@/lib/syntheticEmail'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { useToast } from '@/contexts/ToastContext'
@@ -528,15 +528,11 @@ function UsersPage() {
       sortable: true,
       visible: visibleColumns.email,
       /*
-       * LINE 登入的帳號沒有真信箱，系統填的是 `line_<32 位雜湊>@line-login.ggb.com.tw`，
-       * 一整串把整欄撐到真信箱的兩倍寬（老闆 2026-09-04）。欄寬照真信箱抓，
-       * 這種假信箱截斷加點點點，滑過去才看全文。真信箱不動。
+       * LINE 登入的帳號沒有真信箱，系統填的 `line_<雜湊>@line-login.ggb.com.tw` 是內部代號，
+       * 列表上留空（老闆 2026-09-04）—— 印出來既撐寬整欄，也讓管理員以為他有綁信箱。
+       * 那串在會員詳情「帳號綁定」的 LINE 列看得到。
        */
-      render: (user) => isSyntheticEmail(user.email) ? (
-        <Tooltip content={user.email}>
-          <span className="inline-block max-w-[200px] truncate align-bottom cursor-help">{user.email}</span>
-        </Tooltip>
-      ) : user.email,
+      render: (user) => realEmail(user.email) ?? '',
     },
     /* 電話欄移除（老闆 2026-08-31）：列表上一整欄號碼既佔寬度又是個資，
        要查號碼去會員詳情的「基本設置」看 —— 那裡本來就有，而且改得動 */

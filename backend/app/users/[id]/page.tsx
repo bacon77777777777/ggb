@@ -18,7 +18,7 @@ import Tooltip from '@/components/ui/Tooltip'
 import { SettingsShell, SettingsNav, SectionHead, SettingsRow } from '@/components/settings/SettingsSection'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import { realEmail } from '@/lib/syntheticEmail'
+import { isSyntheticEmail, realEmail } from '@/lib/syntheticEmail'
 
 // Define interfaces for local state
 interface User {
@@ -1304,11 +1304,17 @@ export default function UserDetailPage() {
                 <SettingsRow title="手機號碼" desc={user.phone || '未設定'} state={user.phone ? 'on' : 'off'}>
                   <Badge status={user.phone ? 'active' : 'inactive'} size="lg">{user.phone ? '已綁定' : '未綁定'}</Badge>
                 </SettingsRow>
+                {/* LINE 快速帳號的合成信箱放這一列（它是 LINE 帳號的代號，不是信箱），管理員才不會誤會他綁了信箱 */}
                 <SettingsRow
                   title="LINE"
                   desc={user.lineBound
-                    ? '已綁定。綁定禮 300 積分是「一顆 LINE 一生一次」（apply_line_perks），換帳號重綁不會再送'
-                    : '尚未綁定 LINE'}
+                    ? (
+                      <>
+                        {isSyntheticEmail(user.email) && <span className="block font-mono text-neutral-500">{user.email}</span>}
+                        已綁定。綁定禮 300 積分
+                      </>
+                    )
+                    : '未綁定'}
                   state={user.lineBound ? 'on' : 'off'}
                 >
                   <Badge status={user.lineBound ? 'active' : 'inactive'} size="lg">
