@@ -17,6 +17,8 @@ import { HOME_KEY, fetchHomeCatalog } from '@/lib/queries/home';
 import { newsListKey, fetchNewsList } from '@/lib/queries/news';
 import { rankingKey, fetchRanking } from '@/lib/queries/ranking';
 import { useHideOnScroll } from '@/lib/useHideOnScroll';
+import { useAuth } from '@/contexts/AuthContext';
+import GuestLoginBar from '@/components/GuestLoginBar';
 
 /**
  * 往下滑會把底部欄收起來的頁面（老闆 2026-08-29：先只有首頁，那裡才是長長的商品列表）。
@@ -78,19 +80,33 @@ function MobileTabbarInner() {
   const collapsed = useHideOnScroll({ enabled: HIDE_ON_SCROLL_PATHS.includes(pathname) });
 
   /*
+   * 未登入時底欄收起的那一刻，換一條滿寬的登入提示接在同一個位置（老闆 2026-09-03）。
+   * auth 還在判定時不算未登入 —— 不然已登入的人一滑就先閃一下「立即登入」。
+   */
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const showGuestBar = collapsed && !authLoading && !isAuthenticated && pathname === '/';
+
+  /*
    * 把收起的距離發佈成 `--bottom-nav-shift`，讓首頁那兩顆懸浮按鈕（扇形選單、
    * 商城上架）跟著往下坐 —— 底欄走了它們還浮在原位，下面會空一塊。
    * 這裡不含安全區：那兩顆自己的算式已經有 env(safe-area-inset-bottom)。
    * 變數沒設時是 0px，也就是完全照舊，所以其他頁不受影響。
+   *
+   * 訪客的登入提示條跟底欄一樣高（3.75rem），所以它在的時候只把警語列那段扣掉：
+   * 懸浮按鈕坐到提示條上緣，而不是壓在它上面。
    */
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty(
       '--bottom-nav-shift',
-      collapsed ? 'calc(3.75rem + var(--promo-notice-h, 0px))' : '0px',
+      !collapsed
+        ? '0px'
+        : showGuestBar
+          ? 'var(--promo-notice-h, 0px)'
+          : 'calc(3.75rem + var(--promo-notice-h, 0px))',
     );
     return () => { root.style.removeProperty('--bottom-nav-shift'); };
-  }, [collapsed]);
+  }, [collapsed, showGuestBar]);
 
   /*
    * 按下就預取（老闆 2026-08-22 頁面加載優化 ⑤）：touchstart 時先把目標頁的主資料
@@ -152,6 +168,7 @@ function MobileTabbarInner() {
   const isRankingGlass = pathname === '/ranking';
 
   return (
+    <>
     <div
       className={cn(
         'fixed bottom-0 left-0 right-0 md:hidden z-50 pb-[env(safe-area-inset-bottom)]',
@@ -211,5 +228,7 @@ function MobileTabbarInner() {
         </div>
       </div>
     </div>
+    <GuestLoginBar visible={showGuestBar} />
+    </>
   );
 }

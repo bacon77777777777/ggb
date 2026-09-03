@@ -804,7 +804,9 @@ function NavbarInner() {
                 <Search className="w-4 h-4 stroke-[2.5] shrink-0" />
                 {/* 字要短：這格扣掉 logo、鈴鐺、登入鈕只剩一百多 px，
                     「搜尋商品名稱、系列」在 iPhone 17 Pro 上就被截成「系…」 */}
-                <span className="text-[14px] font-black truncate">搜尋商品</span>
+                {/* .cjk-optical-center（+0.13em）：中文在這種矮膠囊裡靠字型的 line box
+                    置中會看起來偏上（老闆 2026-09-03 回報「文字沒居中」），跟登入頁膠囊同一招 */}
+                <span className="text-[14px] font-black truncate cjk-optical-center">搜尋商品</span>
               </Link>
             )}
 
