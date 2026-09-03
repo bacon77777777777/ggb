@@ -23,10 +23,14 @@
  *   machine_theme   個別指定開包演出；留空＝跟著全站預設走
  *   description     商品說明。**這是玩家看得到的欄位**（商品頁內文＋分享卡的 OG
  *                   description），沒帶就留空，不會自動塞任何字。
+ *   card_set        抽卡：遊々亭系列代碼（sv10、m06…）。寫完商品會**在這台機器上抓一次**
+ *                   遊々亭標價當翻牌「+N」體感值（Vercel 抓不到，只有本機能抓）；沒帶或對不到
+ *                   卡號的品項由 DB 補賞等體感值，所以抽卡商品一定有值、一定會跳。
  */
 
 import fs from 'fs'
 import { Client } from 'pg'
+import { fillCardPricesPg } from '../lib/cardPrices'
 
 const DBS = [
   { name: 'STG', url: 'postgresql://postgres.zqxxmdbvtwuiocebaxvk:pdsCNbpWjJb4ikpR@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres' },
@@ -41,6 +45,7 @@ interface Item {
   name: string; price: number; image: string | null
   prizes: Prize[]; total_count: number
   cards_per_pack?: number; pack_style?: string; machine_theme?: string; description?: string
+  card_set?: string
 }
 
 const [, , inPath] = process.argv
@@ -80,13 +85,14 @@ async function run(db: typeof DBS[number]) {
         `INSERT INTO products
            (name, category, price, type, status, is_active, supplier_id,
             image_url, description, total_count, remaining, remaining_count, sales,
-            cards_per_pack, pack_style, machine_theme)
-         VALUES ($1,$2,$3,$4,'pending',false,$5,$6,$7,$8,$8,0,0,$9,$10,$11)
+            cards_per_pack, pack_style, machine_theme, card_set)
+         VALUES ($1,$2,$3,$4,'pending',false,$5,$6,$7,$8,$8,0,0,$9,$10,$11,$12)
          RETURNING id`,
         [it.name, it.category, it.price, it.type, SUPPLIER_ID, it.image, description(it), total,
          it.type === 'card' && (it.cards_per_pack ?? 1) > 1 ? it.cards_per_pack : null,
          it.pack_style === 'custom' ? 'custom' : 'builtin',
-         it.machine_theme || null],
+         it.machine_theme || null,
+         it.type === 'card' && it.card_set ? it.card_set.trim().toLowerCase() : null],
       )
       const pid = rows[0].id as number
       ;(ids[it.type] ??= []).push(pid)
@@ -110,6 +116,15 @@ async function run(db: typeof DBS[number]) {
   const range = (a: number[]) => a.length ? `${Math.min(...a)}–${Math.max(...a)}（${a.length} 件）` : '無'
   console.log(`[${db.name}]${apply ? '' : '（試算，已 rollback）'}`)
   for (const [t, a] of Object.entries(ids)) console.log(`  ${t.padEnd(9)} ${range(a)}`)
+
+  // 抽卡：寫完就抓一次行情（交易外；抓價失敗不該把已匯入的商品退掉）
+  if (apply && ids.card?.length) {
+    console.log(`  翻牌 +N 行情（遊々亭，抓這一次）`)
+    try {
+      const r = await fillCardPricesPg(c, { productIds: ids.card, log: console.log })
+      console.log(`  → 真價 ${r.updated} 筆、體感值 ${r.fallback} 筆`)
+    } catch (e) { console.error(`  ✗ 抓行情失敗：${(e as Error).message}（品項已由 DB 補體感值）`) }
+  }
   await c.end()
 }
 

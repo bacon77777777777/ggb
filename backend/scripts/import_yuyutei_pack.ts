@@ -21,11 +21,16 @@
  *     && npx tsx scripts/import_yuyutei_pack.ts <selection.json> <out.json> [--db=STG|PROD] [--apply]
  *   不加 --apply 只搬圖 + 乾跑 SQL（rollback），不會真的寫入。
  *   --db 預設 STG。R2 是兩環境共用，複製到 PROD 時吃 out.json 就不會重傳圖。
+ *
+ * selection.json 帶 `card_set`（遊々亭系列代碼，如 m06；沒帶就從 src 的 `yuyutei:<代碼>` 取）。
+ * 寫完商品會**在這台機器上抓一次**遊々亭標價當翻牌「+N」體感值（Vercel 抓不到，只有本機能抓），
+ * 對不到卡號的由 DB 補賞等體感值 —— 抽卡商品一定有值、一定會跳。
  */
 import fs from 'fs'
 import sharp from 'sharp'
 import { Client } from 'pg'
 import { r2Upload } from '../lib/r2'
+import { fillCardPricesPg } from '../lib/cardPrices'
 
 const DBS = {
   STG: 'postgresql://postgres.zqxxmdbvtwuiocebaxvk:pdsCNbpWjJb4ikpR@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres',
@@ -37,7 +42,10 @@ interface Prize { level: string; name: string; image: string; qty: number; rare:
 interface Item {
   src: string; type: string; category: string; name: string; price: number
   image: string | null; cards_per_pack: number; total_count: number; prizes: Prize[]
+  card_set?: string
 }
+/** 遊々亭系列代碼：selection 帶的優先，否則從 src `yuyutei:m06` 取 */
+const cardSetOf = (it: Item) => (it.card_set ?? (/^yuyutei:([a-z0-9]+)/i.exec(it.src)?.[1] ?? '')).trim().toLowerCase() || null
 
 const [, , inPath, outPath] = process.argv
 const apply = process.argv.includes('--apply')
@@ -86,20 +94,22 @@ async function main() {
 
   const c = new Client({ connectionString: DB_URL })
   await c.connect()
+  const created: number[] = []
   try {
     await c.query('BEGIN')
     for (const it of items) {
       const { rows } = await c.query(
         `INSERT INTO products
            (name, category, price, type, status, is_active, supplier_id, image_url, description,
-            machine_theme, cards_per_pack, total_count, remaining, remaining_count, sales)
-         VALUES ($1,$2,$3,$4,'pending',false,$5,NULL,$6,'card_peel',$7,$8,$8,0,0)
+            machine_theme, cards_per_pack, total_count, remaining, remaining_count, sales, card_set)
+         VALUES ($1,$2,$3,$4,'pending',false,$5,NULL,$6,'card_peel',$7,$8,$8,0,0,$9)
          RETURNING id`,
         [it.name, it.category, it.price, it.type, SUPPLIER_ID,
          `卡表取自遊々亭公開頁（${it.src}），一包 ${it.cards_per_pack} 張、共 ${it.total_count / it.cards_per_pack} 包。商品圖／卡包正反面／卡牌背面待上傳，部分卡名待覆核。`,
-         it.cards_per_pack, it.total_count],
+         it.cards_per_pack, it.total_count, cardSetOf(it)],
       )
       const pid = rows[0].id as number
+      created.push(pid)
       for (const p of it.prizes) {
         await c.query(
           `INSERT INTO product_prizes
@@ -113,7 +123,17 @@ async function main() {
     }
     if (apply) await c.query('COMMIT')
     else { await c.query('ROLLBACK'); console.log('（乾跑，已 rollback；確認後加 --apply）') }
-  } catch (e) { await c.query('ROLLBACK'); throw e } finally { await c.end() }
+  } catch (e) { await c.query('ROLLBACK'); await c.end(); throw e }
+
+  // 寫完就抓一次行情（交易外；抓價失敗不該把已匯入的商品退掉）
+  if (apply && created.length) {
+    console.log(`[${dbArg}] 翻牌 +N 行情（遊々亭，抓這一次）`)
+    try {
+      const r = await fillCardPricesPg(c, { productIds: created, log: console.log })
+      console.log(`  → 真價 ${r.updated} 筆、體感值 ${r.fallback} 筆`)
+    } catch (e) { console.error(`  ✗ 抓行情失敗：${(e as Error).message}（品項已由 DB 補體感值）`) }
+  }
+  await c.end()
 }
 
 main().catch(e => { console.error(e); process.exit(1) })

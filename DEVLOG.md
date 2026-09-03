@@ -91,7 +91,7 @@ PROD 的 `banners`／`site_promos` 都沒有連到 `/announcements` 的（各 0 
 - Navbar 在首頁先 `router.prefetch('/search')`：Link 在正式環境會自己預抓，dev 不會，
   而且搜尋頁 chunk 不小，早一點抓比較穩
 
-### 抽卡翻牌「+10,000」體感數字：每日抓第三方行情（老闆 2026-09-03 拍板）
+### 抽卡翻牌「+10,000」體感數字：匯入時抓一次第三方行情（老闆 2026-09-03 拍板）
 老闆要的是**體感**，不是回收價：翻開卡片時畫面中上方跳一個數字（不帶單位），抽卡規則頁寫明是
 第三方行情換算的參考值。來源討論過四個站：huca 是同業二手資料（只當抽查對照）、pokeprice 是美規卡、
 snkrdunk 有防爬不繞、eBay 網頁 403 但有官方 API（需要時再接）；主來源定**遊々亭日圓標價**
@@ -138,6 +138,23 @@ snkrdunk 有防爬不繞、eBay 網頁 403 但有官方 API（需要時再接）
   四個等級都看得到；**只有 www 正式站照真實行情**。判斷用網址（localhost／staging.*／*.vercel.app）
   不用 NODE_ENV —— staging 也是 production build，一開始用 NODE_ENV 讓 staging 吃了真資料，
   老闆回報試試看只有最後一張跳（真行情裡普卡換算都 <100，門檻擋掉）
+- **定案改成「上架那刻抓一次、之後不抓」**（老闆同日：反正只是體驗；未來抽卡商品上架都要有行情且跳）。
+  先把 Vercel 的路試到底：edge runtime 探針（東京出口的假設）打回來 `region: iad1`、遊々亭 403 ——
+  Hobby 方案的 edge 跟 serverless 一樣落在華盛頓，Supabase Seoul 的 pg_net 也是 403。
+  **機房 IP 全擋，真價只有這台 Mac（台灣 IP）抓得到**，所以：
+  ① 匯入腳本 `insert_competitor_products.ts`／`import_yuyutei_pack.ts` 在 `--apply` 寫完商品後
+  直接呼叫 `lib/cardPrices.ts` 的 `fillCardPricesPg()` 抓一次（交易外，抓失敗不退商品；
+  selection.json 帶 `card_set`，yuyutei 那支沒帶就從 `src` 的代碼取）；
+  ② **賞等體感值保底**：`card_value_fallback()`／`apply_card_value_fallback()`（migration 690，
+  A/SSR/最後賞 26,000、B/SR 8,800、C/R 1,500、其他 350，名稱雜湊 ±15% 抖動、來源標
+  `grade-fallback`）＋ `product_prizes` AFTER INSERT 觸發器（migration 692）：任何管道新增的
+  抽卡品項沒有值就當場補，三檔「戰術牌組」因此也跳；
+  ③ 每日排程拿掉（migration 691，PROD `card-price-daily` unschedule）。
+  STG 實測：匯入一檔測試商品 → 觸發器先補 29,380／1,620，接著本機抓 sv10 把對到的 001 覆蓋成
+  真價 5.98，對不到的 999 留體感值，歷史表兩筆來源都在；測完刪掉。
+  STG／PROD 目前 0 個抽卡品項沒有值（真價 1,712、體感 793）。整批重抓用
+  `CARD_PRICES_DB_URL=… npx tsx scripts/card_prices_run_pg.ts [--product=id]`。
+  ⚠️ 後台手動建的抽卡商品只有體感值（沒有 `card_set`、Vercel 抓不到）；要真價就走匯入腳本
 - 樣式（老闆：太不明顯、再加粗）：往上移到壓住卡牌上緣，字放大；字體只有一個粗細，
   用同色描邊把筆畫撐粗、黑邊改用八方向 text-shadow 畫，等級越高邊越粗
 - **進帳音**（老闆：要有進帳的聲音）：音效庫沒現成的，WebAudio 合成「收銀機叮」＋金幣叮噹，

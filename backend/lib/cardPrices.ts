@@ -1,14 +1,24 @@
 /**
- * 抽卡翻牌的「+10,000」體感數字 —— 每日抓價（老闆 2026-09-03）
+ * 抽卡翻牌的「+10,000」體感數字（老闆 2026-09-03）
  *
- * 來源：遊々亭（yuyu-tei.jp）各系列的日圓**標價**（不是成交價；穩、每日可抓、無反爬，帶 UA 即可）。
+ * **只在商品匯入那一次抓，之後不抓**（老闆：反正只是體驗）。真價只有本機抓得到 ——
+ * 遊々亭擋所有機房 IP：Vercel iad1 的 serverless 與 edge runtime、Supabase Seoul 的 pg_net
+ * 全部 403，Hobby 方案又不吃 preferredRegion（2026-09-03 三種都試過）。所以：
+ *   - 匯入腳本（insert_competitor_products / import_yuyutei_pack，在這台 Mac 跑）寫完商品就呼叫
+ *     `fillCardPricesPg()` 抓真價，抓不到的由 `apply_card_value_fallback()` 補賞等體感值
+ *   - DB trigger `trg_prize_value_fallback`（migration 692）保底：任何管道新增的抽卡品項沒有值就補
+ *   - `runCardPriceUpdate()`（supabase client 版）留給 /api/cron/card-price-daily 手動觸發用，
+ *     在 Vercel 上實際抓不到，排程已拿掉（migration 691）
+ *
+ * 來源：遊々亭（yuyu-tei.jp）各系列的日圓**標價**（不是成交價；本機帶瀏覽器 UA 即可）。
  * 匯率：open.er-api.com（免費、免金鑰、每日更新）。台灣銀行的 CSV 端點有 Cloudflare 驗證，
  *       照公司規則不繞。**顯示值 = 日圓 × 當日匯率的台幣，保留小數兩位**（老闆 2026-09-03 定案：
  *       30～80 円的普卡也要換算、也要跳，所以不取 5 的倍數、不設門檻）。抓不到匯率就跳過這一輪。
  * 對應：商品 `card_set`（遊々亭 vers 代碼，如 sv10、m02）＋ 品項 `card_no`（3 位卡號）。
  *       同一個卡號有多個版本（鏡面／異版）時取**最低價**，寧可保守也不要誇大體感。
- * 顯示：`product_prizes.market_display_value`，前台 <100 不跳。歷史寫 `card_market_prices`。
+ * 顯示：`product_prizes.market_display_value`，有值就跳、不設門檻。歷史寫 `card_market_prices`。
  */
+import type { Client as PgClient } from 'pg'
 import { getSupabaseAdmin } from './supabaseAdmin'
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
@@ -121,4 +131,56 @@ export async function runCardPriceUpdate(): Promise<RunSummary> {
     await new Promise(r => setTimeout(r, 800))
   }
   return summary
+}
+
+export interface PgFillOptions {
+  /** 只處理這些商品；不給就是全部有 card_set 的抽卡商品 */
+  productIds?: number[]
+  log?: (line: string) => void
+}
+
+/**
+ * 本機版：抓遊々亭真價、用 pg 連線批次寫入，再跑 `apply_card_value_fallback()` 把對不到的補上體感值。
+ * 匯入腳本在 --apply 寫完商品後呼叫；同一連線、不開交易（抓價失敗不該把已匯入的商品退掉）。
+ * 逐筆對 Seoul 來回 1000 多趟會跑超過 10 分鐘，所以 UPDATE／INSERT 都走 unnest 批次。
+ */
+export async function fillCardPricesPg(c: PgClient, opts: PgFillOptions = {}): Promise<{ fx: number | null; updated: number; fallback: number }> {
+  const log = opts.log ?? (() => {})
+  const fx = await fetchJpyTwd()
+  const filter = opts.productIds ? 'AND id = ANY($1)' : ''
+  const params = opts.productIds ? [opts.productIds] : []
+  const { rows: products } = await c.query<{ id: number; card_set: string }>(
+    `SELECT id, card_set FROM products WHERE type='card' AND card_set IS NOT NULL ${filter}`, params)
+  const bySet = new Map<string, number[]>()
+  for (const p of products) { const s = p.card_set.trim().toLowerCase(); if (s) bySet.set(s, [...(bySet.get(s) ?? []), Number(p.id)]) }
+
+  let updated = 0
+  if (!fx) log('  ✗ 抓不到 JPY→TWD 匯率，這次只補體感值')
+  else {
+    const fetchedAt = new Date().toISOString()
+    for (const [set, ids] of bySet) {
+      let cards: SetCard[]
+      try { cards = await fetchSetCards(set) } catch (e) { log(`  ✗ ${set}: ${(e as Error).message}`); continue }
+      const minByNo = new Map<string, number>()
+      for (const k of cards) minByNo.set(k.no, Math.min(minByNo.get(k.no) ?? Infinity, k.jpy))
+      const { rows: prizes } = await c.query<{ id: number; card_no: string }>(
+        'SELECT id, card_no FROM product_prizes WHERE product_id = ANY($1) AND card_no IS NOT NULL', [ids])
+      const rows = prizes.flatMap(z => { const jpy = minByNo.get(String(z.card_no)); return jpy === undefined ? [] : [{ id: z.id, no: z.card_no, jpy, display: toDisplayValue(jpy, fx) }] })
+      if (rows.length) {
+        await c.query('UPDATE product_prizes AS pp SET market_display_value = v.val::numeric FROM (SELECT unnest($1::bigint[]) AS id, unnest($2::numeric[]) AS val) v WHERE pp.id = v.id',
+          [rows.map(r => r.id), rows.map(r => r.display)])
+        await c.query(`INSERT INTO card_market_prices (prize_id, source, card_set, card_no, jpy, fx_jpy_twd, twd, display_value, fetched_at)
+          SELECT unnest($1::bigint[]), 'yuyu-tei', $2, unnest($3::text[]), unnest($4::int[]), $5, unnest($6::int[]), unnest($7::numeric[]), $8`,
+          [rows.map(r => r.id), set, rows.map(r => r.no), rows.map(r => r.jpy), fx, rows.map(r => Math.round(r.jpy * fx)), rows.map(r => r.display), fetchedAt])
+        updated += rows.length
+      }
+      log(`  ${set}: 遊々亭 ${cards.length} 張，對到 ${rows.length}/${prizes.length}`)
+      // 對外站客氣一點：一個系列一次請求，之間停一下
+      await new Promise(r => setTimeout(r, 800))
+    }
+  }
+  const { rows: [fb] } = await c.query<{ n: number }>('SELECT apply_card_value_fallback() AS n')
+  const fallback = Number(fb?.n ?? 0)
+  if (fallback) log(`  對不到來源的 ${fallback} 個品項補了賞等體感值`)
+  return { fx, updated, fallback }
 }
