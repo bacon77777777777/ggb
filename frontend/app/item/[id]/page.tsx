@@ -82,7 +82,7 @@ import { isCategoryHidden, isCategoryUnderMaintenance, categoryFlagKey, CATEGORY
 import { fetchProductPromotion, type ProductPromotion } from '@/lib/promotions';
 import GradeBadge from '@/components/ui/GradeBadge';
 import { asset } from '@/lib/asset';
-import { isMajorGrade } from '@/lib/grade';
+import { isMajorGrade, isAGrade, isLastOneLevel } from '@/lib/grade';
 import { skyGradientCss, skyProgressNow } from '@/lib/oceanSky';
 
 /**
@@ -1608,22 +1608,20 @@ export default function ProductDetailPage() {
   // };
 
   /*
-   * 品項總覽：格狀、三個一排（老闆 2026-09-03：先要求跟挑戰機台一樣大圖，
-   * 再改成跟「我的倉庫」一樣）。以前是表格列（小縮圖＋賞等＋名稱＋剩餘/總數），
-   * 圖太小看不出是什麼。格子照 components/warehouse/WarehouseGridCell 的版：
-   * 白底方形圖框 object-contain（不裁切，公仔／抱枕／卡片直式橫式都有）、
-   * 賞等膠囊壓在圖左上（大獎實色、一般灰底，同倉庫的 isMajorGrade）、
-   * 品名固定兩行高；剩餘/總數放圖右下的小膠囊。
-   * 最後賞不在這裡，它有自己的金色卡片。抽卡／一番賞／自製賞三種共用同一份。
+   * 品項總覽（老闆 2026-09-03）：**只有 A賞**用大圖格子，其他賞維持原本的表格列。
+   * 老闆先要求「跟挑戰機台內頁一樣大圖」，看了成品改成「跟我的倉庫一樣三個一排」，
+   * 再收斂成只有 A賞這樣呈現 —— A賞是這一檔的門面，其他賞看得出是什麼就好。
    *
-   * 順帶解掉一個坑：舊表格外框是 overflow-x-auto，會被下拉刷新當成內層捲動區
-   *（PwaPullToRefresh 為此特別加了「只能橫向捲」的判斷），格狀版沒有那層容器。
+   * 格子照 components/warehouse/WarehouseGridCell 的版：白底方形圖框 object-contain
+   *（不裁切）、賞等膠囊壓圖左上（實色）、品名固定兩行高；剩餘/總數放圖右下的小膠囊。
+   * 最後賞不在這裡，它有自己的金色卡片。抽卡／一番賞／自製賞三種共用這兩個 render。
    */
-  const renderPrizeGrid = () => {
-    const regular = prizes.filter(p => p.level !== 'Last One' && p.level !== 'LAST ONE' && !p.level.includes('最後賞'));
+  const renderTopPrizeGrid = () => {
+    const top = prizes.filter(p => !isLastOneLevel(p.level) && isAGrade(p.level));
+    if (top.length === 0) return null;
     return (
-      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 p-2">
-        {regular.map((prize, index) => (
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 p-2 border-b border-neutral-50 dark:border-neutral-800">
+        {top.map((prize, index) => (
           <button
             type="button"
             key={index}
@@ -1643,7 +1641,6 @@ export default function ProductDetailPage() {
                 unoptimized
                 draggable={false}
               />
-              {/* 賞等：大賞實色、一般版灰底（同倉庫） */}
               <span
                 className={cn(
                   'absolute left-1 top-1 max-w-[calc(100%-0.5rem)] truncate rounded-md px-1.5 py-[3px] text-[10px] font-black leading-none',
@@ -1654,12 +1651,11 @@ export default function ProductDetailPage() {
               >
                 <span className="cjk-optical-center">{prize.level}</span>
               </span>
-              {/* 剩餘/總數 */}
               <span className="absolute bottom-1 right-1 rounded-md bg-neutral-900/55 px-1.5 py-[3px] text-[10px] font-black leading-none text-white backdrop-blur-[2px] tabular-nums">
                 {prize.remaining.toLocaleString()}/{prize.total.toLocaleString()}
               </span>
             </div>
-            {/* 品名固定兩行高（同倉庫）：12px × 1.25 × 2 = 30px，一行的也佔一樣高，格子才整齊 */}
+            {/* 品名固定兩行高（同倉庫）：12px × 1.25 × 2 = 30px */}
             <div className="mt-1.5 flex h-[30px] items-center px-0.5">
               <p className="line-clamp-2 w-full text-center text-[12px] font-bold leading-[1.25] text-neutral-900 dark:text-white">
                 {prize.name}
@@ -1670,6 +1666,66 @@ export default function ProductDetailPage() {
       </div>
     );
   };
+
+  /** A賞以外的賞：原本的表格列（小縮圖＋賞等＋名稱＋剩餘/總數） */
+  const renderPrizeTable = () => (
+    <>
+      <div className="overflow-x-auto relative custom-scrollbar">
+        <table className="w-full text-left">
+          <thead className="bg-neutral-50/50 dark:bg-neutral-800/50 text-[13px] sm:text-sm font-black text-neutral-400 dark:text-neutral-500 border-b border-neutral-50 dark:border-neutral-800">
+            <tr>
+              <th className="px-2 sm:px-6 py-2 sm:py-3 uppercase tracking-widest">獎項名稱</th>
+              <th
+                className={cn(
+                  "px-2 sm:px-6 py-2 sm:py-3 text-right uppercase tracking-widest w-[96px] sm:w-[128px] whitespace-nowrap",
+                  "sticky right-0 z-20 bg-neutral-50/90 dark:bg-neutral-900/90 backdrop-blur-sm"
+                )}
+              >
+                剩餘 / 總數
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
+            {prizes.filter(p => !isLastOneLevel(p.level) && !isAGrade(p.level)).map((prize, index) => (
+              <tr 
+                key={index} 
+                className={cn(
+                  "hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors group cursor-pointer",
+                  prize.remaining === 0 && "opacity-50"
+                )}
+                onClick={() => setViewingIndex(prizes.indexOf(prize))}
+              >
+                <td className="px-2 sm:px-6 py-2 sm:py-3.5">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
+                      <Image src={prize.image_url || asset('/images/item_defaulet.webp')} alt={prize.name} fill className="object-cover" unoptimized />
+                    </div>
+                    {/* 賞等擺名稱左邊（老闆指定）：一番賞／抽卡／自製賞
+                        的重點是「這是幾賞」，名稱反而是次要資訊 */}
+                    <GradeBadge grade={prize.level} size="sm" />
+                    <div className="font-black text-neutral-900 dark:text-neutral-50 text-[13px] sm:text-sm leading-tight tracking-tight whitespace-nowrap">
+                      {prize.name}
+                    </div>
+                  </div>
+                </td>
+                <td
+                  className={cn(
+                    "px-2 sm:px-6 py-2 sm:py-3.5 text-right w-[96px] sm:w-[128px] whitespace-nowrap align-middle",
+                    "sticky right-0 z-10 bg-white dark:bg-neutral-900",
+                    "group-hover:bg-neutral-50/80 dark:group-hover:bg-neutral-800/80"
+                  )}
+                >
+                  <span className="font-black text-sm sm:text-base tracking-tighter text-neutral-900 dark:text-neutral-50">
+                    {prize.remaining.toLocaleString()}<span className="text-neutral-200 dark:text-neutral-700 mx-1">/</span>{prize.total.toLocaleString()}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
 
   if (product.type === 'card') {
     const cardThemeForMachine = (product as any).machine_theme
@@ -1794,7 +1850,8 @@ export default function ProductDetailPage() {
                 <h2 className="text-sm sm:text-lg font-black text-neutral-900 dark:text-neutral-50 tracking-tight uppercase tracking-wider">品項總覽</h2>
               </div>
               
-              {renderPrizeGrid()}
+              {renderTopPrizeGrid()}
+              {renderPrizeTable()}
 
               <div className="flex items-center justify-between px-2 sm:px-6 py-2 sm:py-4 bg-accent-red/5 dark:bg-accent-red/10 border-t-2 border-neutral-50 dark:border-neutral-800">
                 <span className="font-black text-accent-red text-sm sm:text-base tracking-widest uppercase">
@@ -2361,7 +2418,8 @@ export default function ProductDetailPage() {
                 <h2 className="text-sm sm:text-lg font-black text-neutral-900 dark:text-neutral-50 tracking-tight uppercase tracking-wider">品項總覽</h2>
               </div>
               
-              {renderPrizeGrid()}
+              {renderTopPrizeGrid()}
+              {renderPrizeTable()}
 
               <div className="flex items-center justify-between px-2 sm:px-6 py-2 sm:py-4 bg-accent-red/5 dark:bg-accent-red/10 border-t-2 border-neutral-50 dark:border-neutral-800">
                 <span className="font-black text-accent-red text-sm sm:text-base tracking-widest uppercase">
