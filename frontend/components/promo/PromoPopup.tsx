@@ -32,14 +32,17 @@ const TEMPLATE_BG = asset('/images/bg.webp');
 const NEW_ARRIVAL_BG = asset('/images/new_item.webp');
 
 /**
- * 外框裡那塊白板的內容區。
+ * 外框裡那塊淡粉內板的內容區。
  *
- * 2026-08-12 換圖：新的外框是 800×1189（與公告模板 bg.webp 同尺寸），
- * 白板幾乎滿版 —— sharp 量原圖得 top 28.01% / bottom 0.25% / 左右各約 0.25%。
- * 這裡再往內縮出留白：上緣避開粉紅漸層、左右不要貼著圓角。
- * 上下留得比較緊（29% / 1.5%），把高度盡量讓給清單。
+ * 2026-09-03 換圖（老闆：規格改成跟公告模板 bg.webp 一樣，800×1189、底部有一顆膠囊鈕）。
+ * 掃描線量原圖：標題頁籤下緣 20.9%、內板左右 1%～98.9%、膠囊鈕 84.95%～93.78%。
+ * 這裡再往內縮出留白：上緣避開頁籤、下緣停在膠囊鈕上方、左右不要貼著圓角。
  */
-const PANEL = { top: '29%', bottom: '1.5%', left: '6%', right: '6%' };
+const PANEL = { top: '22.5%', bottom: '16.5%', left: '6%', right: '6%' };
+/** 底圖上已經畫好的粉紅膠囊鈕（量測值），按鈕文字疊上去；跟公告模板的橘色藥丸同一個做法 */
+const PILL = { left: '21.25%', top: '84.95%', width: '56.75%', height: '8.83%' };
+/** 內板的底色（量自原圖），「還有更多」的漸層要用它，白色會在淡粉板上浮出一塊 */
+const PANEL_COLOR = '#fef3f8';
 
 /** 商品頁網址：與 ProductCard 同一套規則，不要兩邊各寫一份 */
 const productHref = (p: NewArrivalProduct) =>
@@ -335,9 +338,23 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                       初始畫面常常剛好停在某一列的結尾，沒有這道漸層看不出來可以捲。
                       pointer-events-none 才不會擋到最後一列的點擊 */}
                   {visibleCount < (promo.products?.length ?? 0) && (
-                    <span className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-white to-transparent" />
+                    <span
+                      className="pointer-events-none absolute inset-x-0 bottom-0 h-6"
+                      style={{ background: `linear-gradient(to top, ${PANEL_COLOR}, transparent)` }}
+                    />
                   )}
                 </div>
+
+                {/* 底圖畫好的粉紅膠囊鈕：「來去看看」＝關掉這一則、留在首頁（老闆 2026-09-03）。
+                    走 go(null) 才會推佇列（見上面 go 的說明），只 setVisible 會卡住下一則 */}
+                <button
+                  type="button"
+                  onClick={go(null)}
+                  className="absolute flex items-center justify-center text-white text-[15px] font-black active:scale-[0.97] transition-transform duration-300"
+                  style={{ ...PILL, opacity: bgReady ? 1 : 0 }}
+                >
+                  來去看看
+                </button>
               </div>
             ) : isImageOnly ? (
               /* 與卡片版同比例，多則排隊時尺寸才不會忽大忽小。
