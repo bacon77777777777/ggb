@@ -49,28 +49,34 @@ export default function GuestLoginBar({ visible, lowered }: { visible: boolean; 
       aria-hidden={!visible}
       data-testid="guest-login-bar"
     >
-      <div className="flex h-[52px] items-center gap-2 rounded-full bg-black/75 backdrop-blur-md pl-3 pr-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.3)]">
-        {/* 22px（老闆 2026-09-03：28px 太大、再縮小） */}
+      {/* gap-1.5 是金幣與文字的間距（老闆：拉近一點，怕文案被裁）；文字與按鈕靠按鈕的 ml-0.5 補回 8px */}
+      <div className="flex h-[52px] items-center gap-1.5 rounded-full bg-black/75 backdrop-blur-md pl-3 pr-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.3)]">
+        {/* 18px（老闆 2026-09-03：28→22→18，文案加長後再縮一點） */}
         <Image
           src={asset('/images/gcoin.webp')}
           alt=""
-          width={22}
-          height={22}
+          width={18}
+          height={18}
           unoptimized
-          className="h-[22px] w-[22px] shrink-0 object-contain"
+          className="h-[18px] w-[18px] shrink-0 object-contain"
         />
-        {/* 13px 是算過的：iPhone SE（375px）扣掉邊距、幣、按鈕只剩約 200px 給字，
-            這句 15 個字在 14px 就會被截掉。「300積分」跟登入頁紅膠囊同一個數字 */}
-        <span className="min-w-0 flex-1 truncate text-[13px] font-black text-white cjk-optical-center">
-          新用戶使用LINE登入即領
-          {/* 再粗（老闆）：字重已到 PingFang 的上限，補同色描邊撐粗，跟「立即登入」同一招 */}
+        {/* 字級是量過的：這句 17 個字在 13px 約 221px 寬，393pt 機型剛好放滿；
+            375pt（SE 2/3、mini）只剩約 205px，所以 385pt 以下降到 12px，按鈕內距也縮 2px。
+            「300積分」跟登入頁紅膠囊同一個數字 */}
+        <span className="min-w-0 flex-1 truncate text-[13px] max-[385px]:text-[12px] font-black text-white cjk-optical-center">
+          新用戶使用
+          {/* 「LINE登入」與「300積分」再粗（老闆）：字重已到 PingFang 的上限，
+              補同色描邊撐粗，跟「立即登入」同一招；前者維持白、後者亮黃 */}
+          <span className="[-webkit-text-stroke:0.5px_currentColor]">LINE登入</span>
+          即領
           <span className="text-accent-yellow [-webkit-text-stroke:0.5px_currentColor]">300積分</span>
+          讚讚
         </span>
         {/* 「再粗一點」（老闆 2026-09-03）：中文字型是系統 PingFang，最粗只到 600、
             font-black 已經是天花板，所以補 0.6px 的同色描邊把筆畫撐粗，字級也放到 16px */}
         <Link
           href="/login"
-          className="flex h-10 shrink-0 items-center rounded-full bg-gradient-to-r from-[#d8f552] to-[#5ee266] px-3.5 text-[16px] font-black text-neutral-900 [-webkit-text-stroke:0.6px_#171717] shadow-[0_2px_8px_rgba(94,226,102,0.45)] active:scale-95 transition-transform"
+          className="ml-0.5 flex h-10 shrink-0 items-center rounded-full bg-gradient-to-r from-[#d8f552] to-[#5ee266] px-3.5 max-[385px]:px-3 text-[16px] font-black text-neutral-900 [-webkit-text-stroke:0.6px_#171717] shadow-[0_2px_8px_rgba(94,226,102,0.45)] active:scale-95 transition-transform"
         >
           {/* 不套 .cjk-optical-center：這顆 40px 高、字 16px 又有描邊，再往下推 0.13em
               就偏下了（老闆 2026-09-03 回報沒垂直置中）。跟簽到頁那顆同樣的坑 */}
