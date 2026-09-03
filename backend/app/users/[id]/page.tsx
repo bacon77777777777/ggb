@@ -18,7 +18,7 @@ import Tooltip from '@/components/ui/Tooltip'
 import { SettingsShell, SettingsNav, SectionHead, SettingsRow } from '@/components/settings/SettingsSection'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import { isSyntheticEmail, realEmail } from '@/lib/syntheticEmail'
+import { realEmail } from '@/lib/syntheticEmail'
 
 // Define interfaces for local state
 interface User {
@@ -1123,7 +1123,7 @@ export default function UserDetailPage() {
                   </Field>
 
                   <Field label="電子郵件">
-                    <Input value={realEmail(form.email) ?? ''} placeholder={isSyntheticEmail(form.email) ? 'LINE 快速帳號，尚未綁定信箱' : ''} disabled />
+                    <Input value={realEmail(form.email) ?? ''} placeholder="未綁定" disabled />
                   </Field>
 
                   <Field label="電話">
@@ -1296,7 +1296,7 @@ export default function UserDetailPage() {
                 {/* LINE 快速帳號的 users.email 是系統合成的內部代號，不算綁定（lib/syntheticEmail） */}
                 <SettingsRow
                   title="電子郵件"
-                  desc={realEmail(user.email) || (isSyntheticEmail(user.email) ? 'LINE 快速帳號，玩家還沒在前台「設定」綁信箱' : '未設定')}
+                  desc={realEmail(user.email) || '未綁定'}
                   state={realEmail(user.email) ? 'on' : 'off'}
                 >
                   <Badge status={realEmail(user.email) ? 'active' : 'inactive'} size="lg">{realEmail(user.email) ? '已綁定' : '未綁定'}</Badge>
