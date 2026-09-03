@@ -31,6 +31,3 @@ export const isMajorGrade = (grade: string | undefined | null) => {
 export const isLastOneLevel = (grade: string | undefined | null) =>
   !!grade && (grade === 'Last One' || grade === 'LAST ONE' || grade.includes('最後賞'));
 
-/** 商品頁品項總覽用大圖格子的賞等（老闆 2026-09-03：先只有 A賞，後來 B賞也要）。其餘走表格列 */
-export const BIG_IMAGE_GRADES = ['A', 'B'];
-export const isBigImageGrade = (grade: string | undefined | null) => BIG_IMAGE_GRADES.includes(gradeBase(grade));

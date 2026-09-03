@@ -82,7 +82,7 @@ import { isCategoryHidden, isCategoryUnderMaintenance, categoryFlagKey, CATEGORY
 import { fetchProductPromotion, type ProductPromotion } from '@/lib/promotions';
 import GradeBadge from '@/components/ui/GradeBadge';
 import { asset } from '@/lib/asset';
-import { isBigImageGrade, isLastOneLevel } from '@/lib/grade';
+import { isLastOneLevel } from '@/lib/grade';
 import { skyGradientCss, skyProgressNow } from '@/lib/oceanSky';
 
 /**
@@ -1608,74 +1608,18 @@ export default function ProductDetailPage() {
   // };
 
   /*
-   * 品項總覽（老闆 2026-09-03）：**A賞與 B賞**用大圖格子（BIG_IMAGE_GRADES），
-   * 其他賞維持原本的表格列。老闆先要求「跟挑戰機台內頁一樣大圖」，看了成品改成
-   * 「跟我的倉庫一樣三個一排」，再收斂成只有大獎這樣呈現 —— 大獎是這一檔的門面，
-   * 其他賞看得出是什麼就好。
-   *
-   * 格子照 components/warehouse/WarehouseGridCell 的版：白底方形圖框 object-contain
-   *（不裁切）、賞等膠囊壓圖左上（實色）、品名固定兩行高；剩餘/總數放圖右下的小膠囊。
-   * 最後賞不在這裡，它有自己的金色卡片。抽卡／一番賞／自製賞三種共用這兩個 render。
+   * 品項總覽（老闆 2026-09-03 最終版）：全部維持表格列（小縮圖＋賞等＋名稱＋剩餘/總數）。
+   * 同一天試過 A賞／A+B賞改成倉庫那種大圖格子，老闆看了不要 —— 三個一排、只有兩件時
+   * 會空一個白格在那邊。標題列拿掉了，表頭那格寫「品項總覽」就是這塊的名字。
+   * 最後賞不在表裡，它有自己的金色卡片。抽卡／一番賞／自製賞三種共用同一份。
    */
-  const renderTopPrizeGrid = () => {
-    const top = prizes.filter(p => !isLastOneLevel(p.level) && isBigImageGrade(p.level));
-    if (top.length === 0) return null;
-    return (
-      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 p-2 border-b border-neutral-50 dark:border-neutral-800">
-        {top.map((prize, index) => (
-          <button
-            type="button"
-            key={index}
-            onClick={() => setViewingIndex(prizes.indexOf(prize))}
-            className={cn(
-              'group relative flex flex-col rounded-xl border border-neutral-100 bg-white p-1.5 text-left transition-all active:scale-[0.97] dark:border-neutral-800 dark:bg-neutral-900',
-              prize.remaining === 0 && 'opacity-40',
-            )}
-          >
-            {/* 賞等貼卡片左上角、剩餘/總數貼圖框右下角，都不留邊（老闆 2026-09-03）——
-                跟商品小卡右上角的「熱門」同一顆版：h-6、px-2、只圓外側兩角。
-                掛在卡片（button）層級而不是圖框裡：圖框外面還有 p-1.5，掛圖框會離卡片邊 6px。
-                顏色用全站的賞等配色（GradeBadge／lib/prizeGrade），不要整排都紅（老闆） */}
-            <GradeBadge
-              grade={prize.level}
-              size="sm"
-              className="absolute -left-px -top-px z-10 h-6 max-w-[60%] rounded-none rounded-tl-xl rounded-br-lg border border-white/10 px-2 py-0"
-            />
-            <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-white">
-              <Image
-                src={prize.image_url || asset('/images/item_defaulet.webp')}
-                alt={prize.name}
-                fill
-                sizes="33vw"
-                className="object-contain"
-                unoptimized
-                draggable={false}
-              />
-              {/* 剩餘/總數貼圖框右下角（老闆：先移右上又改回右下），不留邊、只圓內側那一角 */}
-              <span className="absolute bottom-0 right-0 z-10 inline-flex h-6 items-center rounded-tl-lg rounded-br-lg border border-white/10 bg-neutral-900/55 px-2 text-[11px] font-black leading-none text-white backdrop-blur-[2px] tabular-nums">
-                {prize.remaining.toLocaleString()}/{prize.total.toLocaleString()}
-              </span>
-            </div>
-            {/* 品名固定兩行高（同倉庫）：12px × 1.25 × 2 = 30px */}
-            <div className="mt-1.5 flex h-[30px] items-center px-0.5">
-              <p className="line-clamp-2 w-full text-center text-[12px] font-bold leading-[1.25] text-neutral-900 dark:text-white">
-                {prize.name}
-              </p>
-            </div>
-          </button>
-        ))}
-      </div>
-    );
-  };
-
-  /** 大圖格子以外的賞：原本的表格列（小縮圖＋賞等＋名稱＋剩餘/總數） */
   const renderPrizeTable = () => (
     <>
       <div className="overflow-x-auto relative custom-scrollbar">
         <table className="w-full text-left">
           <thead className="bg-neutral-50/50 dark:bg-neutral-800/50 text-[13px] sm:text-sm font-black text-neutral-400 dark:text-neutral-500 border-b border-neutral-50 dark:border-neutral-800">
             <tr>
-              <th className="px-2 sm:px-6 py-2 sm:py-3 uppercase tracking-widest">其他品項</th>
+              <th className="px-2 sm:px-6 py-2 sm:py-3 uppercase tracking-widest">品項總覽</th>
               <th
                 className={cn(
                   "px-2 sm:px-6 py-2 sm:py-3 text-right uppercase tracking-widest w-[96px] sm:w-[128px] whitespace-nowrap",
@@ -1687,7 +1631,7 @@ export default function ProductDetailPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
-            {prizes.filter(p => !isLastOneLevel(p.level) && !isBigImageGrade(p.level)).map((prize, index) => (
+            {prizes.filter(p => !isLastOneLevel(p.level)).map((prize, index) => (
               <tr 
                 key={index} 
                 className={cn(
@@ -1847,10 +1791,9 @@ export default function ProductDetailPage() {
     const cardRightContent = (
       <div className="space-y-2 sm:space-y-5">
             <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
-              {/* 「品項總覽」標題列拿掉（老闆 2026-09-03）：A賞大圖一擺上去就知道這塊是什麼，
-                  標題只是多佔一行。轉蛋／盒玩的 GachaCollectionList 那份維持 */}
+              {/* 「品項總覽」標題列拿掉（老闆 2026-09-03），名字改寫在表頭那格。
+                  轉蛋／盒玩的 GachaCollectionList 那份維持 */}
               
-              {renderTopPrizeGrid()}
               {renderPrizeTable()}
 
               <div className="flex items-center justify-between px-2 sm:px-6 py-2 sm:py-4 bg-accent-red/5 dark:bg-accent-red/10 border-t-2 border-neutral-50 dark:border-neutral-800">
@@ -2414,10 +2357,9 @@ export default function ProductDetailPage() {
 
           <div className="lg:col-span-8 space-y-2 sm:space-y-5">
             <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
-              {/* 「品項總覽」標題列拿掉（老闆 2026-09-03）：A賞大圖一擺上去就知道這塊是什麼，
-                  標題只是多佔一行。轉蛋／盒玩的 GachaCollectionList 那份維持 */}
+              {/* 「品項總覽」標題列拿掉（老闆 2026-09-03），名字改寫在表頭那格。
+                  轉蛋／盒玩的 GachaCollectionList 那份維持 */}
               
-              {renderTopPrizeGrid()}
               {renderPrizeTable()}
 
               <div className="flex items-center justify-between px-2 sm:px-6 py-2 sm:py-4 bg-accent-red/5 dark:bg-accent-red/10 border-t-2 border-neutral-50 dark:border-neutral-800">
