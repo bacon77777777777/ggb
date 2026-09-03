@@ -115,6 +115,9 @@ function NavbarInner() {
      頂部不擺「登入拿積分」。只管手機那顆，桌機那條維持 */
   const NO_LOGIN_BUTTON_PATHS = ['/faq', '/about', '/terms', '/privacy', '/return-policy'];
   const hideMobileLoginButton = isHomePage || NO_LOGIN_BUTTON_PATHS.includes(pathname);
+  /* 首頁先把搜尋頁的程式抓好（老闆 2026-09-03：點搜尋框先蓋滿版 loading 體驗差）。
+     Link 在正式環境會自己預抓，但 dev 不會；而且搜尋頁的 chunk 不小，早一點抓比較穩 */
+  useEffect(() => { if (isHomePage) router.prefetch('/search'); }, [isHomePage, router]);
   /* App 殼裡首頁曾經不放 logo（2026-09-03 上午），同日老闆改回跟 PWA 一樣有 logo。
      現在 App／網頁版同一套，沒有殼的特例 */
   const isMainTab =

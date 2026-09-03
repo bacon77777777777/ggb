@@ -80,6 +80,17 @@ PROD 的 `banners`／`site_promos` 都沒有連到 `/announcements` 的（各 0 
 - Playwright 用 iPhone 視口驗過三個狀態：剛進不顯示 → 下滑降到底（bottom 6px）
   → 往上撥升回警語列上面（bottom 103px）
 
+### 首頁搜尋框 → 搜尋頁不再先蓋滿版 loading（老闆 2026-09-03）
+從首頁點搜尋框換到 /search 時，Next 在新頁程式與 RSC 到之前先畫 `app/loading.tsx`（滿版載入動畫），
+玩家看到的是「先整頁 loading、再突然變成搜尋頁」。老闆要「先有畫面」：直接到搜尋頁、輸入框聚焦、
+只有下面關鍵字區塊在載入。
+
+- 新增 `app/search/loading.tsx`：頂部返回鍵＋搜尋框照真頁版型畫好（殼是 server component，
+  輸入框只是外觀），下面關鍵字區塊用骨架。真頁到了輸入框由 `?focus=1` 自動聚焦、鍵盤靠
+  `lib/keyboardRelay` 接力
+- Navbar 在首頁先 `router.prefetch('/search')`：Link 在正式環境會自己預抓，dev 不會，
+  而且搜尋頁 chunk 不小，早一點抓比較穩
+
 ### 抽卡翻牌「+10,000」體感數字：每日抓第三方行情（老闆 2026-09-03 拍板）
 老闆要的是**體感**，不是回收價：翻開卡片時畫面中上方跳一個數字（不帶單位），抽卡規則頁寫明是
 第三方行情換算的參考值。來源討論過四個站：huca 是同業二手資料（只當抽查對照）、pokeprice 是美規卡、
