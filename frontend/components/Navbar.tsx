@@ -765,18 +765,43 @@ function NavbarInner() {
               </>
             )}
             
-            <Link href="/" className={cn("flex items-center group md:relative", (isProductDetailPage || isAnnouncementInnerPage) ? "hidden" : (!showLogo && "hidden md:flex"))}>
+            <Link href="/" className={cn("flex items-center group shrink-0 md:relative", (isProductDetailPage || isAnnouncementInnerPage) ? "hidden" : (!showLogo && "hidden md:flex"))}>
               <div className="flex items-center gap-1.5 transition-transform group-hover:scale-105">
                 <Image
                   src={asset("/images/logo.png")}
                   alt="GACHA ONLINE"
                   width={112}
                   height={36}
-                  className="h-10 md:h-11 w-auto"
+                  /* 手機端 h-10→h-9（老闆 2026-09-03：縮小一點點），騰出寬度給旁邊的搜尋框 */
+                  className="h-9 md:h-11 w-auto"
                   priority
                 />
               </div>
             </Link>
+
+            {/*
+              手機首頁的搜尋框（老闆 2026-09-03：搜尋改成輸入框、滿寬）。
+              放在 left slot 裡是因為手機端只有這個 slot 會長（leftClassName 給了 flex-1），
+              right slot 是 shrink-0，塞進去撐不開。
+
+              它不是真的 <input>：真輸入框在搜尋頁，這裡只是長得像輸入框的入口 ——
+              點下去照舊走 keyboardRelay 先把 iOS 鍵盤叫起來、再換頁讓搜尋頁接手。
+              做成真 input 的話，換頁時 Navbar 在搜尋頁是 hidden，focus 會斷、鍵盤跟著收。
+              桌機不顯示（桌機的搜尋入口仍是右側那顆圖標）。
+            */}
+            {isHomePage && (
+              <Link
+                href="/search?focus=1"
+                onClick={startKeyboardRelay}
+                className="md:hidden flex-1 min-w-0 ml-2 h-9 flex items-center gap-1.5 pl-3 pr-3 rounded-full bg-white text-neutral-400 active:scale-[0.98] transition-transform"
+                aria-label="搜尋"
+              >
+                <Search className="w-4 h-4 stroke-[2.5] shrink-0" />
+                {/* 字要短：這格扣掉 logo、鈴鐺、登入鈕只剩一百多 px，
+                    「搜尋商品名稱、系列」在 iPhone 17 Pro 上就被截成「系…」 */}
+                <span className="text-[14px] font-black truncate">搜尋商品</span>
+              </Link>
+            )}
 
             <div className={cn("hidden", !(isProductDetailPage || isAnnouncementInnerPage) && "md:flex items-center gap-3 lg:gap-5")}>
               <Link
@@ -957,22 +982,18 @@ function NavbarInner() {
             )}
 
             {/*
-              首頁的搜尋圖標。老闆指定與鈴鐺互換位置，所以排在通知（鈴鐺）前面。
+              首頁的搜尋圖標 —— 現在只有桌機用（手機首頁改成 left slot 裡的滿寬搜尋框，
+              老闆 2026-09-03）。老闆指定與鈴鐺互換位置，所以排在通知（鈴鐺）前面。
 
-              未登入時維持只在手機顯示（`md:hidden`）—— 桌機未登入的搜尋入口
-              本來就不在這裡，把它放出來等於多長一顆。
+              桌機未登入不顯示：未登入的搜尋入口本來就不在這裡，放出來等於多長一顆。
               未登入在**非首頁**的搜尋圖標另外放在登入鈕旁邊（見下方 auth 區塊），
               那顆的條件不同（排除商品內頁等），不要跟這顆合併。
             */}
-            {isHomePage && (
+            {isHomePage && isAuthenticated && (
               <Link
                 href="/search?focus=1"
                 onClick={startKeyboardRelay}
-                className={cn(
-                  // 手機端壓在主題色上 → 白色；桌機那條仍是白底，維持深灰
-                  "p-2 rounded-xl text-white md:text-neutral-600 md:dark:text-neutral-400 active:scale-90 transition-transform",
-                  !isAuthenticated && "md:hidden",
-                )}
+                className="hidden md:flex p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform"
                 aria-label="搜尋"
               >
                 <Search className="w-5 h-5 stroke-[2]" />
