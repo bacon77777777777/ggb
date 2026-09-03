@@ -39,6 +39,12 @@
 - 搜尋：`2841 7063`／`28417063`／`#28417063` 都認（`lib/userSearch` + 會員列表 + 代幣流動 API）
 - CSV：Email 欄換成會員編號
 
+### 同批：會員列表「總消費」永遠 0
+- 那欄吃 `users.total_spent`，只有機器人排行榜腳本（migration 547）在寫，真人從來沒人寫
+- 改成兩欄：**總消費(G)**＝抽獎實收 `tokens_spent`（積分 4P=1G），跟會員詳情上方那張卡同算法；
+  **總儲值(TWD)**＝`recharge_records` 成功的綠界真錢，排除 test／promotion／compensation 與 bonus。上方統計卡同步變六張
+- 順手：抽獎數查詢沒分頁，超過 1000 筆被截斷、其他人退回 `users.total_draws` 舊值 —— 補 `fetchAllRows`
+
 ## v2026.09.04b｜2026-09-04｜後台會員頁：LINE 快速帳號的合成信箱不當信箱顯示
 
 LINE 首次登入沒給信箱時，Supabase Auth 需要一個 email 當帳號，前台填的是
