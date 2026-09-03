@@ -58,8 +58,8 @@ const NEW_ARRIVAL_PAGE = 10;
 const LOAD_MORE_THRESHOLD_PX = 48;
 
 const APPEAR_DELAY_MS = 700;   // 首則：等首頁載入動畫跑完
-const NEXT_DELAY_MS   = 260;   // 後續：讓上一則退場後再進場，不要疊在一起
-const EXIT_MS         = 220;   // 與退場動畫時間相當
+const NEXT_DELAY_MS   = 40;    // 後續：遮罩現在不退場了，卡片一退完下一則就接上（老闆 2026-09-03：原本 260 停頓半秒）
+const EXIT_MS         = 130;   // 與卡片退場動畫（0.12s）相當
 /**
  * 底圖最多等多久。等不到就照樣開，寧可版面醜一下也不要整個彈窗永遠不出現
  *（離線、CDN 掛掉、擋圖擴充套件都會走到這裡）。
@@ -182,6 +182,19 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
     return () => { cancelled = true; clearTimeout(t); if (safety) clearTimeout(safety); };
   }, [current]);
 
+  /*
+   * 這一則顯示著的時候就把「下一則」的底圖抓進快取（老闆 2026-09-03：關一則到下一則出現
+   * 停頓半秒）。show() 前的預載閘門看到 img.complete 就直接放行，接棒不用再等網路。
+   */
+  useEffect(() => {
+    if (!visible || !current) return;
+    const next = promos.find(p => p.id !== current.id && !closedIds.includes(p.id));
+    const src = bgSrcFor(next ?? null);
+    if (!src) return;
+    const img = new window.Image();
+    img.src = src;
+  }, [visible, current, promos, closedIds]);
+
   // 彈窗開著時鎖住背景捲動（同 components/ui/Modal.tsx 的作法）。
   // 這個 effect 必須放在下面的 early return 之前，否則 promo 為 null 時
   // hook 數量會變動。
@@ -279,7 +292,7 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.18 }}
+                transition={{ duration: 0.12 }}
               >
           {/* relative 包一層：叉叉要貼卡片右上角（老闆 2026-09-03：離太遠）。
               不能直接放進 motion.div —— 純圖版那層 overflow-hidden 會把伸出去的叉叉切掉 */}
@@ -288,7 +301,10 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
             className={`w-full ${isImageOnly ? 'rounded-3xl overflow-hidden' : ''}`}
             initial={{ scale: 0.88, y: 12 }}
             animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.94, opacity: 0 }}
+            /* 退場用直線 120ms、不用彈簧：外層 AnimatePresence 是 mode="wait"，會等**所有**退場動畫
+               跑完才放下一則進來，彈簧要 300～400ms 才穩定，兩則之間就多卡了那一段
+               （老闆 2026-09-03：接棒停頓半秒）。進場維持彈簧 */
+            exit={{ scale: 0.94, opacity: 0, transition: { duration: 0.12, ease: 'easeOut' } }}
             transition={{ type: 'spring', stiffness: 320, damping: 26 }}
           >
             {/* 最新上架：外框已經畫好標題與狗狗，中間白板放商品格 */}
