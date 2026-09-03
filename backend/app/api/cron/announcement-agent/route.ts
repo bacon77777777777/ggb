@@ -21,7 +21,10 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
  * 公告內頁會把這個寫法渲染成主題色可點連結。
  */
 
-const NEW_PRODUCT_THRESHOLD = 5   // 當日新上架商品達此數才發彙總
+// 當日新上架商品達此數才發彙總。
+// 5 → 1（老闆 2026-09-04）：9/2 只上 4 件就整天沒公告，新品寧可多發不要漏。
+// 同一天多次上架不會洗版：source_key 以日期為鍵，後面的 run 只更新那一則的清單。
+const NEW_PRODUCT_THRESHOLD = 1
 
 /** 公告內文用的型別名稱（玩家看得懂的字，不是 DB 代號） */
 const TYPE_LABEL: Record<string, string> = {
