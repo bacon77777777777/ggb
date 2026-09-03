@@ -16,7 +16,6 @@ import NavbarLayout from './NavbarLayout';
 import { countUnread } from '@/lib/announcementRead';
 import { startKeyboardRelay } from '@/lib/keyboardRelay';
 import { useRequireLogin } from '@/hooks/useRequireLogin';
-import { useNativeAppState } from '@/lib/useIsNativeApp';
 import { asset } from '@/lib/asset';
 import { cameFromAnnouncementsList } from '@/lib/announcementsView';
 import { makeListViewMemory } from '@/lib/listViewMemory';
@@ -116,11 +115,8 @@ function NavbarInner() {
      頂部不擺「登入拿積分」。只管手機那顆，桌機那條維持 */
   const NO_LOGIN_BUTTON_PATHS = ['/faq', '/about', '/terms', '/privacy', '/return-policy'];
   const hideMobileLoginButton = isHomePage || NO_LOGIN_BUTTON_PATHS.includes(pathname);
-  /* App 殼裡首頁不放 logo、搜尋框吃滿整條（老闆 2026-09-03）—— App 本身就是品牌，
-     不需要再標一次。網頁版維持有 logo。一定要等 `resolved`：初值是「還不知道」，
-     沒等就會先畫一次網頁版的樣子再收掉 logo（見 lib/useIsNativeApp.ts） */
-  const { isNative, resolved: nativeResolved } = useNativeAppState();
-  const hideLogoInApp = isHomePage && nativeResolved && isNative;
+  /* App 殼裡首頁曾經不放 logo（2026-09-03 上午），同日老闆改回跟 PWA 一樣有 logo。
+     現在 App／網頁版同一套，沒有殼的特例 */
   const isMainTab =
     pathname === '/' ||
     pathname === '/exchange' ||
@@ -779,7 +775,7 @@ function NavbarInner() {
               </>
             )}
             
-            <Link href="/" className={cn("flex items-center group shrink-0 md:relative", (isProductDetailPage || isAnnouncementInnerPage) ? "hidden" : (!showLogo && "hidden md:flex"), hideLogoInApp && "hidden md:flex")}>
+            <Link href="/" className={cn("flex items-center group shrink-0 md:relative", (isProductDetailPage || isAnnouncementInnerPage) ? "hidden" : (!showLogo && "hidden md:flex"))}>
               <div className="flex items-center gap-1.5 transition-transform group-hover:scale-105">
                 <Image
                   src={asset("/images/logo.png")}
@@ -808,11 +804,7 @@ function NavbarInner() {
               <Link
                 href="/search?focus=1"
                 onClick={startKeyboardRelay}
-                className={cn(
-                  "md:hidden flex-1 min-w-0 h-9 flex items-center gap-1.5 pl-3 pr-3 rounded-full bg-white text-neutral-400 active:scale-[0.98] transition-transform",
-                  // App 裡沒有 logo，搜尋框直接從左緣的內距開始
-                  !hideLogoInApp && "ml-2",
-                )}
+                className="md:hidden flex-1 min-w-0 ml-2 h-9 flex items-center gap-1.5 pl-3 pr-3 rounded-full bg-white text-neutral-400 active:scale-[0.98] transition-transform"
                 aria-label="搜尋"
               >
                 <Search className="w-4 h-4 stroke-[2.5] shrink-0" />
