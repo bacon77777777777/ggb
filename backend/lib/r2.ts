@@ -33,6 +33,22 @@ export function r2CacheControlFor(key: string): string {
   return 'public, max-age=31536000, immutable'
 }
 
+/**
+ * 列表用縮圖（老闆 2026-09-03：首頁小卡塞的是 800px 原圖、每張 60～100KB，卡片才 180px 寬，
+ * 行動網路上第一次開首頁就是在等這些）。`products/` 底下的圖上傳時自動多產一張
+ * 400px 寬的 WebP，檔名同 key 換成 `-thumb.webp`；前台 `lib/productImage.ts` 的
+ * `thumbUrl()` 照這個慣例推網址，缺圖就退回原圖。既有的由 scripts/r2_make_thumbs.ts 回填。
+ */
+export const THUMB_WIDTH = 400
+export function thumbKeyFor(key: string): string | null {
+  if (!key.startsWith('products/') || /-thumb\.webp$/.test(key)) return null
+  return key.replace(/\.[a-z0-9]+$/i, '') + '-thumb.webp'
+}
+export async function makeThumb(data: Buffer): Promise<Buffer> {
+  const sharp = (await import('sharp')).default
+  return sharp(data).rotate().resize({ width: THUMB_WIDTH, withoutEnlargement: true }).webp({ quality: 80 }).toBuffer()
+}
+
 export async function r2Upload(key: string, data: Buffer, contentType: string): Promise<string> {
   await r2.send(new PutObjectCommand({
     Bucket:       R2_BUCKET,
@@ -41,6 +57,16 @@ export async function r2Upload(key: string, data: Buffer, contentType: string): 
     ContentType:  contentType,
     CacheControl: r2CacheControlFor(key),
   }))
+  // 商品圖順手產縮圖。失敗不擋主圖上傳：前台缺縮圖會退回原圖
+  const thumbKey = contentType.startsWith('image/') ? thumbKeyFor(key) : null
+  if (thumbKey) {
+    try {
+      const thumb = await makeThumb(data)
+      await r2.send(new PutObjectCommand({
+        Bucket: R2_BUCKET, Key: thumbKey, Body: thumb, ContentType: 'image/webp', CacheControl: r2CacheControlFor(thumbKey),
+      }))
+    } catch (e) { console.warn('[r2] thumb failed for', key, (e as Error).message) }
+  }
   return r2PublicUrl(key)
 }
 

@@ -33,3 +33,14 @@ export function getItemImageForId(id: string | number): string {
   }
   return ITEM_IMAGES[hash % ITEM_IMAGES.length] ?? DEFAULT_ITEM_IMAGE;
 }
+
+/**
+ * 列表用縮圖網址（老闆 2026-09-03）。R2 上 `products/` 的圖都有一張 400px 的 `<檔名>-thumb.webp`
+ *（上傳時後台自動產、既有的已回填），卡片才 180px 寬，抓原圖（800px、60～100KB）是浪費。
+ * 只認 R2 的 products/ 路徑；其他來源（外站、本站靜態圖）原樣回傳。缺縮圖時呼叫端要能退回原圖。
+ */
+export function thumbUrl(src: string | null | undefined): string | null {
+  if (!src) return null;
+  if (!/\.r2\.dev\/products\//.test(src) || /-thumb\.webp$/.test(src)) return src;
+  return src.replace(/\.[a-z0-9]+(\?.*)?$/i, '-thumb.webp');
+}

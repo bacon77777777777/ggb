@@ -80,6 +80,25 @@ PROD 的 `banners`／`site_promos` 都沒有連到 `/announcements` 的（各 0 
 - Playwright 用 iPhone 視口驗過三個狀態：剛進不顯示 → 下滑降到底（bottom 6px）
   → 往上撥升回警語列上面（bottom 103px）
 
+### 小卡圖片「今天之前都很絲滑」的退化與整套加速（老闆 2026-09-03 下午）
+老闆回報：App 開圖絲滑、Safari／PWA 卻卡，切頁籤每次都先顯示預設圖、滑回推薦頁也是。
+**這是上午「墊預設圖」那一版改出來的退化**：以前真圖直接放，快取命中時瀏覽器同步畫出來；
+改成「先墊預設圖、真圖透明度 0、等 onLoad 再 200ms 淡入」之後，每次切頁籤小卡整批重新掛載，
+就算圖在快取裡也要等事件、再淡入。App 解碼快到感覺不出來，Safari／PWA 就看得到。
+另外上午回填 R2 標頭改寫了所有圖的 Last-Modified，已快取的圖今天第一次再看到會重抓一次（一次性）。
+
+修法（都在這一批）：
+- **載過的圖記在模組層** `loadedImageSrcs`：重新掛載時直接畫真圖、不墊、不淡入；
+  **掛載當下同步檢查** `img.complete`（快取命中時 load 事件可能在 React 掛上 onLoad 之前就發過了）；
+  淡入拿掉。驗過 WebKit／Chromium：切頁籤與切回來 30ms 就是真圖
+- **列表縮圖**：`products/` 的圖上傳時後台自動多產 400px WebP `<檔名>-thumb.webp`
+  （`lib/r2.ts` 的 `r2Upload` 順手做，所有呼叫點自動受惠）；既有 3229 張由
+  `scripts/r2_make_thumbs.ts` 回填。前台 `thumbUrl()` 照慣例推網址，小卡先吃縮圖、
+  缺縮圖退回原圖、原圖也壞才預設圖。每張從 60～100KB 降到約 20KB
+- **首屏前六張** `priority`（不 lazy、fetchpriority high）；**閒置時預抓其他分類最新六件的縮圖**
+  （requestIdleCallback，不跟首屏搶頻寬），滑到下一個頁籤圖已在快取
+- 「切頁籤不卸載小卡」先不做：上面幾項做完閃爍已經消失，真有需要再動列表結構
+
 ### 首頁推薦整頁重新整理不會換（老闆 2026-09-03：Safari 不換、PWA／App 會）
 不是 Safari 的問題：整頁 reload 在 WebKit 與 Chromium 都拿到一模一樣的順序，只有下拉更新
 那條事件會重排。PWA／App 的刷新走下拉更新，Safari 的下拉是真正的 reload，所以看起來只有它不換。

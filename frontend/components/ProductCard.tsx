@@ -3,8 +3,8 @@ import Link from 'next/link';
 import ProductBadge, { ProductType } from './ui/ProductBadge';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { useState, useEffect, useRef } from 'react';
-import { getItemImageForId, DEFAULT_ITEM_IMAGE as DEFAULT_IMAGE } from '@/lib/productImage';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { getItemImageForId, thumbUrl, DEFAULT_ITEM_IMAGE as DEFAULT_IMAGE } from '@/lib/productImage';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { categoryState } from '@/lib/categoryFlags';
 import { useProductPromotion } from '@/contexts/PromotionsContext';
@@ -38,6 +38,8 @@ interface ProductCardProps {
   /** 推薦 feed 的桶別／位置（首頁推薦頁籤才有）：有帶就記曝光與點擊（lib/feed/events） */
   feedBucket?: FeedBucket;
   feedPosition?: number;
+  /** 首屏那幾張：高優先度、不 lazy（老闆 2026-09-03：第一次開首頁圖等很久） */
+  priority?: boolean;
   /** 系列（session 意圖／item-to-item 用） */
   series?: string | null;
   unitLabel?: string;
@@ -45,6 +47,16 @@ interface ProductCardProps {
   cardsPerPack?: number;
   showRemainingText?: boolean;
 }
+
+/**
+ * 這次工作階段已經載完的圖片網址（模組層、跨掛載）。
+ *
+ * 首頁切頁籤、從商品頁返回都會把小卡整批卸載再掛載；以前真圖直接放，快取命中時瀏覽器
+ * 同步畫出來，切來切去都是絲滑的。2026-09-03 上午改成「先墊預設圖、等 onLoad 再淡入」，
+ * 結果每次重新掛載都從預設圖開始等事件、再淡入 —— 老闆當天就回報「今天之前都很絲滑」。
+ * 所以載過的網址記下來：重新掛載時直接畫真圖、不墊、不淡入；預設圖只留給真的還沒載過的圖。
+ */
+const loadedImageSrcs = new Set<string>();
 
 export default function ProductCard(props: ProductCardProps) {
   // 維護中的類別照常列出（跟關閉不同），但卡片上要看得出來買不到 ——
@@ -67,6 +79,7 @@ export default function ProductCard(props: ProductCardProps) {
     hrefOverride,
     feedBucket,
     feedPosition,
+    priority = false,
     series,
     unitLabel,
     cardsPerPack,
@@ -90,7 +103,9 @@ export default function ProductCard(props: ProductCardProps) {
           ? `/card/${id}`
           : `/item/${id}`);
   const fallbackImage = getItemImageForId(id);
-  const [displayImage, setDisplayImage] = useState<string>(image || fallbackImage);
+  /* 先吃 400px 縮圖（thumbUrl），缺縮圖退回原圖，原圖也壞才退預設圖 */
+  const preferred = thumbUrl(image) || fallbackImage;
+  const [displayImage, setDisplayImage] = useState<string>(preferred);
 
   /*
    * 按下就預取（老闆 2026-08-22 頁面加載優化 ⑤）：touchstart 比 click 早 100ms 左右，
@@ -129,17 +144,37 @@ export default function ProductCard(props: ProductCardProps) {
     router.prefetch(href);
   };
   const [imgError, setImgError] = useState(false);
-  /* 真圖到了沒。預設圖本身（沒有圖片網址、或載失敗退回）不用等，直接算已載入 */
-  const [imgLoaded, setImgLoaded] = useState(false);
+  /* 真圖到了沒。這次工作階段載過的網址一開始就算已載入（見 loadedImageSrcs）；
+     預設圖本身（沒有圖片網址、或載失敗退回）也不用等 */
+  const [imgLoaded, setImgLoaded] = useState(() => loadedImageSrcs.has(preferred));
   const showFallback = !imgLoaded && displayImage !== DEFAULT_IMAGE;
+  const imgRef = useRef<HTMLImageElement>(null);
+  const markLoaded = () => { loadedImageSrcs.add(displayImage); setImgLoaded(true); };
 
   useEffect(() => {
-    setDisplayImage(image || fallbackImage);
+    const next = thumbUrl(image) || fallbackImage;
+    setDisplayImage(next);
     setImgError(false);
-    setImgLoaded(false);
+    setImgLoaded(loadedImageSrcs.has(next));
   }, [image, fallbackImage]);
 
+  /*
+   * 掛載當下就檢查：瀏覽器快取命中時 <img> 一建立就是完成狀態，load 事件可能在 React
+   * 掛上 onLoad 之前就發過了 —— 只靠 onLoad 會一直停在預設圖。同步判定、第一幀就畫真圖。
+   */
+  useLayoutEffect(() => {
+    const el = imgRef.current;
+    if (el && el.complete && el.naturalWidth > 0 && !imgLoaded) markLoaded();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayImage]);
+
   const handleImageError = () => {
+    // 縮圖不存在（還沒回填、或不是我們產的圖）→ 退回原圖；原圖也壞 → 預設圖
+    if (image && displayImage !== image && displayImage === thumbUrl(image)) {
+      setDisplayImage(image);
+      setImgLoaded(loadedImageSrcs.has(image));
+      return;
+    }
     if (!imgError) {
       setImgError(true);
       setDisplayImage(DEFAULT_IMAGE);
@@ -196,13 +231,17 @@ export default function ProductCard(props: ProductCardProps) {
                 unoptimized
               />
             )}
+            {/* 不淡入：快取命中要跟以前一樣同一幀出現；真的從網路來的圖載完直接換上 */}
             <Image 
+              ref={imgRef}
               src={displayImage}
               alt={name}
               fill
-              className={cn("object-contain transition-opacity duration-200", showFallback && "opacity-0")}
+              className={cn("object-contain", showFallback && "opacity-0")}
               unoptimized
-              onLoad={() => setImgLoaded(true)}
+              priority={priority}
+              fetchPriority={priority ? 'high' : undefined}
+              onLoad={markLoaded}
               onError={handleImageError}
             />
           </div>

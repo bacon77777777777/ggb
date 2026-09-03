@@ -21,6 +21,7 @@ import { categoryState } from '@/lib/categoryFlags';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { filterBannersBySchedule } from '@/lib/schedule';
 import { isJustRefreshed } from '@/lib/contentRefresh';
+import { thumbUrl } from '@/lib/productImage';
 import { restoreScrollTo } from '@/lib/restoreScroll';
 import PromoPopup from '@/components/promo/PromoPopup';
 import FanMenu from '@/components/home/FanMenu';
@@ -595,6 +596,33 @@ export default function Home() {
     },
     [activePrimaryTab, flagStates, menuProductIdsByMenuId]
   );
+
+  /*
+   * 閒置時預抓其他主分類的前幾張小卡圖（老闆 2026-09-03：滑到下一個頁籤圖要已經在快取裡）。
+   * 各分類的推薦順序要到那個頁籤才會抽，這裡抓不到「將來的首屏」，退而求其次抓各類型
+   * 最新的六件（fresh 桶＋頭部多半就是這些）。用 thumbUrl 抓縮圖，跟小卡吃的是同一個網址，
+   * 瀏覽器快取才對得上。requestIdleCallback：不跟首屏搶頻寬。
+   */
+  useEffect(() => {
+    if (typeof window === 'undefined' || allProducts.length === 0) return;
+    const run = () => {
+      const byType = new Map<string, ProductRow[]>();
+      for (const p of allProducts) {
+        if (p.type === activePrimaryTab) continue;
+        const list = byType.get(p.type) ?? [];
+        if (list.length < 6) { list.push(p); byType.set(p.type, list); }
+      }
+      for (const list of byType.values()) {
+        for (const p of list) {
+          const src = thumbUrl(p.image_url);
+          if (src) { const img = new window.Image(); img.decoding = 'async'; img.src = src; }
+        }
+      }
+    };
+    const idle = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+    const handle = idle ? idle(run, { timeout: 4000 }) : window.setTimeout(run, 2500);
+    return () => { if (idle) (window as unknown as { cancelIdleCallback: (h: number) => void }).cancelIdleCallback(handle); else window.clearTimeout(handle); };
+  }, [allProducts, activePrimaryTab]);
 
   // 二級頁籤最多顯示幾顆。轉蛋光是現在就有 18 個系列，抓 14 會有四個
   // 系列永遠顯示不出來、畫面上也沒有任何提示（老闆指定放寬到 20）
@@ -1630,7 +1658,7 @@ export default function Home() {
                     mixed.push({ kind: 'sell', item: featuredSellCards[inserted] });
                   }
 
-                  return mixed.map((row) => {
+                  return mixed.map((row, rowIndex) => {
                     if (row.kind === 'sell') {
                       const listing = row.item;
                       return (
@@ -1695,6 +1723,8 @@ export default function Home() {
                         series={product.series}
                         feedBucket={feedMeta.current.get(String(product.id))?.bucket}
                         feedPosition={feedMeta.current.get(String(product.id))?.position}
+                        /* 首屏前六張高優先度、不 lazy（老闆 2026-09-03：第一次開首頁圖等很久） */
+                        priority={rowIndex < 6}
                         onNavigate={() => {
                           persistHomeState();
                           import('@/lib/trackEvent').then(({ trackEvent }) => {
@@ -1728,7 +1758,7 @@ export default function Home() {
                   </button>
                 </div>
               ) : (
-                filteredProducts.slice(0, homeDisplayCount).map((product) => (
+                filteredProducts.slice(0, homeDisplayCount).map((product, index) => (
                   <ProductCard
                     key={product.id}
                     id={product.id.toString()}
@@ -1741,6 +1771,7 @@ export default function Home() {
                     isHot={product.is_hot}
                     type={product.type}
                     status={product.status}
+                    priority={index < 6}
                     onNavigate={persistHomeState}
                   />
                 ))
