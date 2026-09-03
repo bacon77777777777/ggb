@@ -70,7 +70,9 @@ export default function GuestLoginBar({ visible, lowered }: { visible: boolean; 
           href="/login"
           className="flex h-10 shrink-0 items-center rounded-full bg-gradient-to-r from-[#d8f552] to-[#5ee266] px-3.5 text-[16px] font-black text-neutral-900 [-webkit-text-stroke:0.6px_#171717] shadow-[0_2px_8px_rgba(94,226,102,0.45)] active:scale-95 transition-transform"
         >
-          <span className="cjk-optical-center">立即登入</span>
+          {/* 不套 .cjk-optical-center：這顆 40px 高、字 16px 又有描邊，再往下推 0.13em
+              就偏下了（老闆 2026-09-03 回報沒垂直置中）。跟簽到頁那顆同樣的坑 */}
+          <span>立即登入</span>
         </Link>
       </div>
     </div>

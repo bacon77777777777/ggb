@@ -76,6 +76,8 @@ PROD 的 `banners`／`site_promos` 都沒有連到 `/announcements` 的（各 0 
   那整套都在 `SocialLoginButtons` 裡，複製一份出來只會多一條要同步的路
 - 「立即登入」再粗一點：中文字型是系統 PingFang、最粗只到 600，`font-black` 已是天花板，
   補 0.6px 同色描邊把筆畫撐粗、字級放到 16px
+- 「立即登入」沒垂直置中（老闆回報）：這顆**不套** `.cjk-optical-center` —— 40px 高、
+  16px 字又有描邊，再往下推 0.13em 就偏下了，跟簽到頁那顆同一個坑
 - Playwright 用 iPhone 視口驗過三個狀態：剛進不顯示 → 下滑降到底（bottom 6px）
   → 往上撥升回警語列上面（bottom 103px）
 
