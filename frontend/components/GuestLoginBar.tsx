@@ -47,13 +47,14 @@ export default function GuestLoginBar({ visible }: { visible: boolean }) {
       data-testid="guest-login-bar"
     >
       <div className="flex h-[52px] items-center gap-2 rounded-full bg-black/75 backdrop-blur-md pl-3 pr-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.3)]">
+        {/* 22px（老闆 2026-09-03：28px 太大、再縮小） */}
         <Image
           src={asset('/images/gcoin.webp')}
           alt=""
-          width={28}
-          height={28}
+          width={22}
+          height={22}
           unoptimized
-          className="h-7 w-7 shrink-0 object-contain"
+          className="h-[22px] w-[22px] shrink-0 object-contain"
         />
         {/* 13px 是算過的：iPhone SE（375px）扣掉邊距、幣、按鈕只剩約 200px 給字，
             這句 15 個字在 14px 就會被截掉。「300積分」跟登入頁紅膠囊同一個數字 */}
