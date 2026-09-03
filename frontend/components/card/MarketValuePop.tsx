@@ -97,8 +97,8 @@ export default function MarketValuePop({ value, trigger, grade, enabled = true }
       {shot && (
         <motion.div
           key={shot.key}
-          /* 位置：卡牌上緣（老闆 2026-09-03：太不明顯，往上移到稍微壓到卡牌與背景） */
-          className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+13%)] z-[1300] flex justify-center"
+          /* 位置：卡牌上方的背景上（老闆 2026-09-03：先壓卡牌上緣，再改成整個移到背景上） */
+          className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+7%)] z-[1300] flex justify-center"
           initial={{ opacity: 0, y: 16, scale: 0.8 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -40, scale: 1.05 }}
@@ -127,23 +127,27 @@ function CountUp({ value }: { value: number }) {
   }, [value]);
   const tier = value >= 20000 ? 'legend' : value >= 5000 ? 'gold' : value >= 1000 ? 'big' : 'small';
   /*
-   * 字要粗、邊要黑（老闆 2026-09-03：太不明顯、文字加粗）。
+   * 全部白字、綠邊線、綠光暈（老闆 2026-09-03 定案，大賞也一樣，不用金色）。
    * font-amount（DIN Alternate）只有一個粗細，所以用**同色描邊**把筆畫撐粗；
-   * 黑邊不能再用 text-stroke（一個元素只能一種描邊色），改用八方向的 text-shadow 畫出來。
-   * 等級越高邊越粗。
+   * 綠邊不能再用 text-stroke（一個元素只能一種描邊色），改用八方向的 text-shadow 畫，
+   * 再疊一圈綠色光暈。等級只差在字級、邊粗與光暈強度；最高級保留脈動。
    */
   const outline = tier === 'legend' ? 5 : tier === 'gold' || tier === 'big' ? 4 : 3;
+  const GREEN = '#16c25a';
   const dirs = [[-1, -1], [1, -1], [-1, 1], [1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]];
-  const textShadow = dirs.map(([x, y]) => `${x * outline}px ${y * outline}px 0 #000`).join(', ')
-    + (tier === 'gold' ? ', 0 0 18px rgba(255,200,60,0.85)' : tier === 'legend' ? ', 0 0 28px rgba(255,200,60,1)' : ', 0 4px 12px rgba(0,0,0,0.7)');
+  const glow = tier === 'legend' ? '0 0 30px rgba(34,220,110,1), 0 0 60px rgba(34,220,110,0.7)'
+    : tier === 'gold' ? '0 0 22px rgba(34,220,110,0.95), 0 0 44px rgba(34,220,110,0.5)'
+    : tier === 'big' ? '0 0 16px rgba(34,220,110,0.85)'
+    : '0 0 10px rgba(34,220,110,0.7)';
+  const textShadow = dirs.map(([x, y]) => `${x * outline}px ${y * outline}px 0 ${GREEN}`).join(', ') + ', ' + glow;
   return (
     <span
       className={cn(
-        'font-amount font-black tabular-nums tracking-tight',
-        tier === 'small' && 'text-[34px] text-white',
-        tier === 'big' && 'text-[46px] text-white',
-        tier === 'gold' && 'text-[54px] text-[#ffd54a]',
-        tier === 'legend' && 'text-[64px] text-[#ffd54a] animate-pulse',
+        'font-amount font-black tabular-nums tracking-tight text-white',
+        tier === 'small' && 'text-[34px]',
+        tier === 'big' && 'text-[46px]',
+        tier === 'gold' && 'text-[54px]',
+        tier === 'legend' && 'text-[64px] animate-pulse',
       )}
       style={{ textShadow, WebkitTextStroke: `${tier === 'small' ? 1.5 : 2.5}px currentColor` }}
     >
