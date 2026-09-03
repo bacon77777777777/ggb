@@ -1009,9 +1009,10 @@ function NavbarInner() {
             )}
 
             {/* 通知（鈴鐺）：手機僅首頁顯示；桌機取代原本的文字連結，固定在搜尋圖標右邊。
-                未登入不顯示（老闆 2026-09-03）—— 通知頁本身也只給登入玩家看，
-                直接開網址會給登入提示。用 isAuthenticated 跟旁邊的搜尋圖標同一個判準 */}
-            {isAuthenticated && !isProductDetailPage && !isAnnouncementInnerPage && (
+                手機首頁**訪客也顯示**（老闆 2026-09-03：搜尋框右邊先放了頭像，
+                預設頭像那張剪影不好看，改回鈴鐺）—— 訪客點進去是通知頁的登入提示，
+                等於一顆登入入口。桌機訪客維持不顯示（那邊有登入鈕）。 */}
+            {(isAuthenticated || isHomePage) && !isProductDetailPage && !isAnnouncementInnerPage && (
               <Link
                 href="/announcements"
                 className={cn(
@@ -1020,7 +1021,8 @@ function NavbarInner() {
                     ? "text-primary"
                     // 手機端只在首頁出現（見下一行的 hidden），所以白色只會壓在主題色上
                     : "text-white md:text-neutral-600 md:dark:text-neutral-400 md:hover:text-primary",
-                  !isHomePage && "hidden"
+                  !isHomePage && "hidden",
+                  !isAuthenticated && "md:hidden",
                 )}
                 aria-label="通知"
               >
@@ -1032,30 +1034,6 @@ function NavbarInner() {
                   <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-accent-yellow md:bg-accent-red md:border-2 md:border-white md:dark:border-neutral-950" />
                 )}
               </Link>
-            )}
-
-            {/* 手機首頁搜尋框右邊的圓形頭像（老闆 2026-09-03）：
-                會員 → 自己的頭像、進會員中心；訪客 → 站上統一的預設頭像、進登入頁。
-                auth 還在判定時放一顆半透明圓佔位，不然會先閃訪客頭像再換成會員的。
-                白色細框是因為壓在主題色底上，頭像多半是淺色，沒框會糊成一團。桌機不放 */}
-            {isHomePage && (
-              isLoading || (isAuthenticated && !user) ? (
-                <div className="md:hidden ml-0.5 h-8 w-8 rounded-full bg-white/30 animate-pulse" />
-              ) : (
-                <Link
-                  href={user ? '/profile' : '/login'}
-                  aria-label={user ? '會員中心' : '登入'}
-                  className="md:hidden ml-0.5 relative h-8 w-8 shrink-0 overflow-hidden rounded-full border-2 border-white/90 bg-white active:scale-90 transition-transform"
-                >
-                  <Image
-                    src={user?.avatar_url || asset('/images/avatar.webp')}
-                    alt=""
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
-                </Link>
-              )
             )}
 
             {/* 未登入的通知頁是登入提示，沒有列表可以標已讀 */}
