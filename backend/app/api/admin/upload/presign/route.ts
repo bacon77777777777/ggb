@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     // 副檔名只取安全字元，避免路徑被塞奇怪的東西
     const safeExt = (ext || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'mp4'
     const key = `products/video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${safeExt}`
-    const { uploadUrl, publicUrl } = await r2PresignPut(key, contentType)
+    const { uploadUrl, publicUrl, cacheControl } = await r2PresignPut(key, contentType)
 
     await logAdminAction({
       adminId: session.adminId,
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       detail: { url: publicUrl, size },
       ip: getClientIp(request),
     })
-    return NextResponse.json({ uploadUrl, publicUrl })
+    return NextResponse.json({ uploadUrl, publicUrl, cacheControl })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : '簽名失敗'
     return NextResponse.json({ error: msg }, { status: 500 })

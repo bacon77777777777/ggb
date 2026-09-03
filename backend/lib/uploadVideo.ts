@@ -51,13 +51,15 @@ export async function uploadVideo(
     body: JSON.stringify({ contentType, size: file.size, ext }),
   })
   if (!signRes.ok) throw new Error((await signRes.json().catch(() => null))?.error || '取得上傳網址失敗')
-  const { uploadUrl, publicUrl } = await signRes.json() as { uploadUrl: string; publicUrl: string }
+  const { uploadUrl, publicUrl, cacheControl } = await signRes.json() as { uploadUrl: string; publicUrl: string; cacheControl?: string }
 
   try {
     await new Promise<void>((resolve, reject) => {
       const xhr = new XMLHttpRequest()
       xhr.open('PUT', uploadUrl)
       xhr.setRequestHeader('Content-Type', contentType)
+      // 簽章裡有 Cache-Control，這裡要帶一模一樣的值（見 lib/r2.ts r2PresignPut）
+      if (cacheControl) xhr.setRequestHeader('Cache-Control', cacheControl)
       xhr.upload.onprogress = e => {
         if (e.lengthComputable) onProgress?.(Math.round(e.loaded / e.total * 100))
       }

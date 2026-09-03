@@ -17,12 +17,29 @@ export function r2PublicUrl(key: string) {
   return `${R2_PUBLIC_URL}/${key}`
 }
 
+/**
+ * 物件的 Cache-Control（老闆 2026-09-03：回首頁小卡一片白）。
+ *
+ * R2 的 public 網域不會自己加快取標頭，沒設的話瀏覽器只能用啟發式規則
+ * （新鮮期＝距 Last-Modified 的 10%），手機上的 WKWebView 動不動就重新驗證，
+ * 驗證回來前那格是空的。全站的圖都在這個 bucket，所以在這裡統一給。
+ *
+ * 檔名唯一（帶時間戳／uuid／隨機碼）的前綴 → 一年 immutable，換圖就是換檔名。
+ * `slot/`（機台圖 slice_slot_sprite 會原檔名重切覆寫）與 `reels-proto/` 是固定檔名 → 一天。
+ * 既有物件由 scripts/r2_set_cache_control.ts 回填。
+ */
+export function r2CacheControlFor(key: string): string {
+  if (/^(slot|reels-proto)\//.test(key)) return 'public, max-age=86400'
+  return 'public, max-age=31536000, immutable'
+}
+
 export async function r2Upload(key: string, data: Buffer, contentType: string): Promise<string> {
   await r2.send(new PutObjectCommand({
-    Bucket:      R2_BUCKET,
-    Key:         key,
-    Body:        data,
-    ContentType: contentType,
+    Bucket:       R2_BUCKET,
+    Key:          key,
+    Body:         data,
+    ContentType:  contentType,
+    CacheControl: r2CacheControlFor(key),
   }))
   return r2PublicUrl(key)
 }
@@ -38,10 +55,13 @@ export async function r2Upload(key: string, data: Buffer, contentType: string): 
  * 用完記得 bucket 要開 CORS（scripts/r2_set_cors.ts），不然瀏覽器會擋下 PUT。
  */
 export async function r2PresignPut(key: string, contentType: string, expiresIn = 600) {
+  const cacheControl = r2CacheControlFor(key)
+  /* Cache-Control 進了簽章，瀏覽器 PUT 時必須帶一模一樣的 Cache-Control 標頭
+     （lib/uploadVideo.ts），不然簽章對不上會 403 —— 所以把值一起回給呼叫端 */
   const url = await getSignedUrl(r2, new PutObjectCommand({
-    Bucket: R2_BUCKET, Key: key, ContentType: contentType,
+    Bucket: R2_BUCKET, Key: key, ContentType: contentType, CacheControl: cacheControl,
   }), { expiresIn })
-  return { uploadUrl: url, publicUrl: r2PublicUrl(key) }
+  return { uploadUrl: url, publicUrl: r2PublicUrl(key), cacheControl }
 }
 
 export async function r2DeletePrefix(prefix: string): Promise<number> {

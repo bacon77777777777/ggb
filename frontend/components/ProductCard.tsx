@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import ProductBadge, { ProductType } from './ui/ProductBadge';
 import Image from 'next/image';
+import { cn } from '@/lib/utils';
 import { useState, useEffect, useRef } from 'react';
 import { getItemImageForId, DEFAULT_ITEM_IMAGE as DEFAULT_IMAGE } from '@/lib/productImage';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
@@ -128,16 +129,21 @@ export default function ProductCard(props: ProductCardProps) {
     router.prefetch(href);
   };
   const [imgError, setImgError] = useState(false);
+  /* 真圖到了沒。預設圖本身（沒有圖片網址、或載失敗退回）不用等，直接算已載入 */
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const showFallback = !imgLoaded && displayImage !== DEFAULT_IMAGE;
 
   useEffect(() => {
     setDisplayImage(image || fallbackImage);
     setImgError(false);
+    setImgLoaded(false);
   }, [image, fallbackImage]);
 
   const handleImageError = () => {
     if (!imgError) {
       setImgError(true);
       setDisplayImage(DEFAULT_IMAGE);
+      setImgLoaded(true);   // 退回預設圖就不用再等了
     }
   };
 
@@ -177,12 +183,26 @@ export default function ProductCard(props: ProductCardProps) {
                 原本是 object-cover，非正方形的商品圖會被切掉上下或左右 ——
                 卡包／盒裝的圖常是直式，切掉的往往正好是商品名那一截。
                 留白處用同色底，看起來是刻意留白而不是破圖 */}
+            {/* 載入中先墊預設圖、真圖載完才蓋上去（老闆 2026-09-03：回首頁小卡一片白）。
+                以前是真圖直接放、底下只有淺灰底色，網路慢或快取失效重新驗證的那段就是空格。
+                做法同最新上架彈窗的 ProductThumb：預設圖永遠在底下，真圖用透明度切換 */}
+            {showFallback && (
+              <Image
+                src={DEFAULT_IMAGE}
+                alt=""
+                aria-hidden
+                fill
+                className="object-contain"
+                unoptimized
+              />
+            )}
             <Image 
               src={displayImage}
               alt={name}
               fill
-              className="object-contain"
+              className={cn("object-contain transition-opacity duration-200", showFallback && "opacity-0")}
               unoptimized
+              onLoad={() => setImgLoaded(true)}
               onError={handleImageError}
             />
           </div>

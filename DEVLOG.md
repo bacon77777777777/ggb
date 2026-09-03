@@ -81,6 +81,29 @@ PROD 的 `banners`／`site_promos` 都沒有連到 `/announcements` 的（各 0 
 - Playwright 用 iPhone 視口驗過三個狀態：剛進不顯示 → 下滑降到底（bottom 6px）
   → 往上撥升回警語列上面（bottom 103px）
 
+### 回首頁小卡一片白：R2 圖片補 Cache-Control ＋ 小卡載入中墊預設圖（老闆 2026-09-03）
+老闆回報：商品頁／會員中心切回首頁，小卡圖片全白、過很久才出現，像整頁重載。
+
+**診斷**：不是資料重抓（Chromium／WebKit 兩個引擎、返回鍵與頁籤兩條路徑量過，回首頁時圖片
+請求 0 次、150ms 內全部顯示；列表也是先畫快取再背景更新）。真正原因是 **R2 回的圖沒有
+`Cache-Control`**：只有 Content-Type／ETag／Last-Modified，瀏覽器只能用啟發式規則
+（新鮮期＝距 Last-Modified 的 10%），昨天上傳的圖只有兩小時、剛上傳的只有幾分鐘。切頁回首頁
+會把列表整棵重掛（PathnameKeyed），每格圖都是新元素，過了新鮮期就要先向 R2 重新驗證，
+回應回來前那格是空的 —— 手機網路上一來一回就是「過很久」。桌機本機測不出來因為 RTT 幾乎是零。
+白色而不是預設圖：小卡的圖框只有淺灰底、真圖直接放，預設圖只在「沒網址」或「載失敗」才出現。
+
+**修法**：
+- `lib/r2.ts` 加 `r2CacheControlFor(key)`：唯一檔名（時間戳／uuid／隨機碼）的前綴一年 immutable；
+  `slot/`（機台圖 slice_slot_sprite 會原檔名重切覆寫）與 `reels-proto/` 固定檔名 → 一天。
+  `r2Upload` 與簽名直傳 `r2PresignPut` 都帶上；簽章裡有 Cache-Control，瀏覽器 PUT 必須帶同值
+  （`lib/uploadVideo.ts`，presign route 把值一起回給前端）
+- **既有物件回填** `scripts/r2_set_cache_control.ts`：HEAD 取 ContentType → CopyObject 到自己
+  （REPLACE，一定要帶回 ContentType 不然變 binary/octet-stream）。全 bucket 5473 個物件
+  （products 3328、news 2070、banners 43…）1 分 36 秒跑完、0 失敗；重跑全部 skipped（冪等）。
+  R2 是 STG／PROD 共用，一次到位
+- 小卡 `ProductCard` 載入中先墊預設圖、真圖 onLoad 才用透明度切上去（同最新上架彈窗的
+  ProductThumb）。用 Playwright 把 R2 圖延遲 3 秒驗過：0.5 秒時看到的是預設圖不是白格
+
 ### 錯誤頁改成跟 404 同一種呈現（老闆 2026-09-03）
 老闆在商品頁撞到「這一頁出了點狀況」（是我改 `lib/grade.ts` 到商品頁跟上之間那一兩分鐘
 的 import 對不上，不是線上問題），說那版體感不好、能不能像 404 那樣。
