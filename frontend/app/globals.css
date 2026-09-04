@@ -707,3 +707,10 @@ canvas {
 /* 會員中心手機分頁開著時，全域底部導航無條件隱藏（2026-09-02 分頁改 window 捲動後
    蓋不住它了；連 URL 沒帶 ?tab 的旁門路徑——如重設密碼回跳——也要蓋到） */
 body[data-profile-detail="1"] [data-testid="mobile-tabbar"] { display: none; }
+
+/* ── 電腦端：關掉 macOS／觸控板的下拉回彈 ──
+   回彈時整個視窗連 sticky 的導覽列、fixed 的側欄都跟著往下跑（老闆 2026-09-04：「畫面下拉，頂部導航會跑」）。
+   只限 1024 以上：手機端的下拉更新靠這個手勢，不能動。 */
+@media (min-width: 1024px) {
+  html, body { overscroll-behavior-y: none; }
+}
