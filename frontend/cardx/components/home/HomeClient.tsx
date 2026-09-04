@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./HomeClient.module.css";
+/* 輪播圖接真資料（老闆 2026-09-04）：跟手機首頁同一個 /api/public/home，照檔期過濾；圖不壓字，高度照卡、寬度隨圖 */
+import { fetchHomeCatalog } from "@/lib/queries/home";
+import { filterBannersBySchedule } from "@/lib/schedule";
+import { isInternalUrl, toInternalPath } from "@/lib/internalUrl";
 
 const FAVORITES_KEY = "cardx.favorites.byId";
 
@@ -21,9 +25,22 @@ export function HomeClient() {
   const [favoriteById, setFavoriteById] = useState<Record<string, boolean>>({});
   const bannerRef = useRef<HTMLDivElement | null>(null);
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
-  const bannerCount = 5;
-  const bannerCycleCount = 3;
-  const bannerBaseStart = bannerCount;
+  const [banners, setBanners] = useState<{ id: string; image: string; link: string }[]>([]);
+  useEffect(() => {
+    let alive = true;
+    fetchHomeCatalog()
+      .then((d) => {
+        if (!alive) return;
+        const rows = filterBannersBySchedule(d.banners);
+        setBanners(rows.map((b) => ({ id: String(b.id), image: b.image_url, link: b.link_url || "#" })));
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  const bannerCount = Math.max(1, banners.length);
+  const bannerLoop = banners.length >= 2;
+  const bannerCycleCount = bannerLoop ? 3 : 1;
+  const bannerBaseStart = bannerLoop ? bannerCount : 0;
   const bannerTotalChildren = bannerCount * bannerCycleCount;
   const bannerStepRef = useRef(0);
   const bannerChildIndexRef = useRef(bannerBaseStart);
@@ -38,75 +55,6 @@ export function HomeClient() {
     return (value: number) => formatter.format(Math.round(value));
   }, []);
 
-  const bannerSlideFactories = useMemo(() => {
-    return [
-      (key: string) => (
-        <Link key={key} href="/market" className={styles.link}>
-          <div className={styles.background2}>
-            <div className={styles.pictureImage17763391}>
-              <div className={styles.bannerSlideContent}>
-                <p className={styles.bannerTag}>市集</p>
-                <p className={styles.bannerTitle}>市集精選</p>
-                <p className={styles.bannerSubtitle}>實體卡牌安心買賣，平台代管交易金額</p>
-              </div>
-            </div>
-          </div>
-        </Link>
-      ),
-      (key: string) => (
-        <Link key={key} href="/packs" className={styles.link2}>
-          <div className={styles.background3}>
-            <div className={styles.pictureImage17764365}>
-              <div className={styles.bannerSlideContent}>
-                <p className={styles.bannerTag}>卡包</p>
-                <p className={styles.bannerTitle}>自製卡包</p>
-                <p className={styles.bannerSubtitle}>線上開抽，機率透明</p>
-              </div>
-            </div>
-          </div>
-        </Link>
-      ),
-      (key: string) => (
-        <Link key={key} href="/trades" className={styles.link3}>
-          <div className={styles.background4}>
-            <div className={styles.pictureImage17763314}>
-              <div className={styles.bannerSlideContent}>
-                <p className={styles.bannerTag}>交換</p>
-                <p className={styles.bannerTitle}>卡牌交換</p>
-                <p className={styles.bannerSubtitle}>提案、確認、寄送一站完成</p>
-              </div>
-            </div>
-          </div>
-        </Link>
-      ),
-      (key: string) => (
-        <Link key={key} href="/missions" className={styles.link4}>
-          <div className={styles.background6}>
-            <div className={styles.pictureImage17722093}>
-              <div className={styles.bannerSlideContent}>
-                <p className={styles.bannerTag}>任務</p>
-                <p className={styles.bannerTitle}>新手任務</p>
-                <p className={styles.bannerSubtitle}>完成任務拿獎勵</p>
-              </div>
-            </div>
-          </div>
-        </Link>
-      ),
-      (key: string) => (
-        <Link key={key} href="/leaderboard" className={styles.link5}>
-          <div className={styles.background8}>
-            <div className={styles.pictureImage17749762}>
-              <div className={styles.bannerSlideContent}>
-                <p className={styles.bannerTag}>排行</p>
-                <p className={styles.bannerTitle}>排行榜與獎勵</p>
-                <p className={styles.bannerSubtitle}>參與交易衝榜，贏取每週獎勵</p>
-              </div>
-            </div>
-          </div>
-        </Link>
-      ),
-    ];
-  }, []);
 
   useEffect(() => {
     try {
@@ -193,7 +141,8 @@ export function HomeClient() {
   useEffect(() => {
     bannerChildIndexRef.current = bannerBaseStart;
     scrollBannerToChildIndex(bannerBaseStart, "auto");
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bannerBaseStart]);
 
   useEffect(() => {
     const el = bannerRef.current;
@@ -235,6 +184,7 @@ export function HomeClient() {
   }, [bannerCount]);
 
   useEffect(() => {
+    if (!bannerLoop) return;
     const id = window.setInterval(() => {
       const maxChildIdx = bannerTotalChildren - 1;
       let nextChildIdx = bannerChildIndexRef.current + 1;
@@ -245,7 +195,7 @@ export function HomeClient() {
       scrollBannerToChildIndex(nextChildIdx, "smooth");
     }, 4500);
     return () => window.clearInterval(id);
-  }, [bannerBaseStart, bannerCount, bannerTotalChildren]);
+  }, [bannerBaseStart, bannerCount, bannerTotalChildren, bannerLoop]);
 
   const marketItems = [
     {
@@ -420,14 +370,24 @@ export function HomeClient() {
 
   return (
     <div className={`${styles.main2} ${styles.homeRoot}`}>
+      {banners.length > 0 ? (
       <div className={styles.banner}>
         <div className={styles.frame3} ref={bannerRef}>
           {Array.from({ length: bannerTotalChildren }).map((_, childIdx) => {
-            const realIdx = childIdx % bannerCount;
-            return bannerSlideFactories[realIdx]?.(`banner_${childIdx}`) ?? null;
+            const b = banners[childIdx % bannerCount];
+            if (!b) return null;
+            const slideStyle = { display: "block", flexShrink: 0, height: 187, width: "auto", borderRadius: 12, overflow: "hidden" } as const;
+            const img = <img src={b.image} alt="" style={{ height: 187, width: "auto", display: "block" }} draggable={false} />;
+            return isInternalUrl(b.link) ? (
+              <Link key={`banner_${childIdx}`} href={toInternalPath(b.link)} style={slideStyle}>{img}</Link>
+            ) : (
+              <a key={`banner_${childIdx}`} href={b.link} target="_blank" rel="noopener noreferrer" style={slideStyle}>{img}</a>
+            );
           })}
         </div>
       </div>
+      ) : null}
+      {bannerLoop ? (
       <div className={styles.carouselDots} aria-label="Carousel Dots">
         {Array.from({ length: bannerCount }).map((_, idx) => (
           <div
@@ -443,6 +403,7 @@ export function HomeClient() {
           />
         ))}
       </div>
+      ) : null}
       <div className={styles.main}>
         <div className={styles.sectionLobby}>
           <div className={styles.nav}>
