@@ -255,9 +255,9 @@ function CheckoutPageInner() {
         <div className={homeStyles.main2}>
           <div className={homeStyles.main}>
             <div className={homeStyles.sectionLobby}>
-              <div style={{ marginTop: 14, borderRadius: 18, background: "rgba(0,0,0,0.12)", padding: 14 }}>
-                <div style={{ fontSize: 14, fontWeight: 900, color: "rgba(255,255,255,0.92)" }}>結帳</div>
-                <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)" }}>缺少商品 id</div>
+              <div style={{ marginTop: 14, borderRadius: 18, background: "#ffffff", boxShadow: "0 0 0 1px #e5e7eb, 0 10px 40px -10px rgba(0,0,0,0.08)", padding: 14 }}>
+                <div style={{ fontSize: 14, fontWeight: 900, color: "#111827" }}>結帳</div>
+                <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>缺少商品 id</div>
               </div>
             </div>
           </div>
@@ -272,9 +272,9 @@ function CheckoutPageInner() {
         <div className={homeStyles.main2}>
           <div className={homeStyles.main}>
             <div className={homeStyles.sectionLobby}>
-              <div style={{ marginTop: 14, borderRadius: 18, background: "rgba(0,0,0,0.12)", padding: 14 }}>
-                <div style={{ fontSize: 14, fontWeight: 900, color: "rgba(255,255,255,0.92)" }}>結帳</div>
-                <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)" }}>找不到商品</div>
+              <div style={{ marginTop: 14, borderRadius: 18, background: "#ffffff", boxShadow: "0 0 0 1px #e5e7eb, 0 10px 40px -10px rgba(0,0,0,0.08)", padding: 14 }}>
+                <div style={{ fontSize: 14, fontWeight: 900, color: "#111827" }}>結帳</div>
+                <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>找不到商品</div>
               </div>
             </div>
           </div>
@@ -425,7 +425,7 @@ function CheckoutPageInner() {
             {errorMsg ? (
               <div style={{ marginTop: 12 }}>
                 <SurfaceCard style={{ borderRadius: 14, background: "rgba(255,77,79,0.10)", padding: "10px 12px" }}>
-                  <div style={{ color: "rgba(255,120,120,0.95)", fontSize: 12, fontWeight: 900 }}>{errorMsg}</div>
+                  <div style={{ color: "#dc2626", fontSize: 12, fontWeight: 900 }}>{errorMsg}</div>
                 </SurfaceCard>
               </div>
             ) : null}
@@ -435,14 +435,14 @@ function CheckoutPageInner() {
                 <SurfaceCard style={{ borderRadius: 14, background: "rgba(34,131,246,0.12)", padding: "10px 12px" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ color: "rgba(147, 197, 253, 0.95)", fontSize: 12, fontWeight: 950 }}>交易前需要完成實名驗證</div>
-                      <div style={{ marginTop: 4, color: "rgba(255,255,255,0.62)", fontSize: 12, fontWeight: 800 }}>
+                      <div style={{ color: "#1d4ed8", fontSize: 12, fontWeight: 950 }}>交易前需要完成實名驗證</div>
+                      <div style={{ marginTop: 4, color: "#6b7280", fontSize: 12, fontWeight: 800 }}>
                         目前狀態：{kyc.status === "reviewing" ? "審核中" : kyc.status === "rejected" ? "未通過" : "未提交"}
                       </div>
                     </div>
                     <SecondaryButton
                       onClick={() => router.push(`/account/kyc?next=${encodeURIComponent(nextUrl)}`)}
-                      style={{ height: 32, borderRadius: 10, fontSize: 12, padding: "0 10px", background: "rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.90)" }}
+                      style={{ height: 32, borderRadius: 10, fontSize: 12, padding: "0 10px", background: "#ffffff", color: "#111827" }}
                     >
                       前往驗證
                     </SecondaryButton>
@@ -454,44 +454,44 @@ function CheckoutPageInner() {
             <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
               <SurfaceCard style={{ display: "grid", gap: 10 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                  <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.86)" }}>商品</div>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>商品</div>
                   <Pill tone="muted">{kind === "market" ? "直購" : "抽獎"}</Pill>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                    <img src={resolvedItem.imageUrl} alt="" style={{ width: 44, height: 44, borderRadius: 12, objectFit: "cover", background: "rgba(255,255,255,0.06)" }} />
+                    <img src={resolvedItem.imageUrl} alt="" style={{ width: 44, height: 44, borderRadius: 12, objectFit: "cover", background: "#f3f4f6" }} />
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {resolvedItem.title}
                       </div>
-                      <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)" }}>TWD</div>
+                      <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>TWD</div>
                     </div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", whiteSpace: "nowrap" }}>{twd(amountSubtotal)}</div>
+                  <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", whiteSpace: "nowrap" }}>{twd(amountSubtotal)}</div>
                 </div>
               </SurfaceCard>
 
               <SurfaceCard style={{ display: "grid", gap: 10 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                  <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.86)" }}>收件資訊</div>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>收件資訊</div>
                   <SecondaryButton
                     onClick={() => {
                       router.push(`/account/addresses?next=${encodeURIComponent(nextUrl)}`);
                     }}
-                    style={{ height: 32, borderRadius: 10, fontSize: 12, padding: "0 10px", background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.86)" }}
+                    style={{ height: 32, borderRadius: 10, fontSize: 12, padding: "0 10px", background: "#f3f4f6", color: "#111827" }}
                   >
                     {defaultAddress ? "更換" : "新增"}
                   </SecondaryButton>
                 </div>
                 {defaultAddress ? (
                   <div style={{ display: "grid", gap: 6 }}>
-                    <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.86)" }}>
+                    <div style={{ fontSize: 12, fontWeight: 900, color: "#111827" }}>
                       {defaultAddress.name} · {defaultAddress.phone}
                     </div>
-                    <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.70)" }}>{defaultAddress.addressLine}</div>
+                    <div style={{ fontSize: 12, fontWeight: 850, color: "#374151" }}>{defaultAddress.addressLine}</div>
                   </div>
                 ) : (
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,120,120,0.95)" }}>請先新增地址</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#dc2626" }}>請先新增地址</div>
                 )}
               </SurfaceCard>
 
@@ -499,8 +499,8 @@ function CheckoutPageInner() {
                 <KeyValueRow label="商品小計" value={twd(amountSubtotal)} />
                 <KeyValueRow label="運費（買家出）" value={twd(shippingFee)} />
                 <KeyValueRow label="平台服務費" value={twd(platformFee)} />
-                <div style={{ height: 1, background: "rgba(255,255,255,0.08)", marginTop: 4, marginBottom: 4 }} />
-                <KeyValueRow label={<span style={{ fontWeight: 950, color: "rgba(255,255,255,0.78)" }}>應付總額</span>} value={<span style={{ fontSize: 16 }}>{twd(totalAmount)}</span>} />
+                <div style={{ height: 1, background: "#e5e7eb", marginTop: 4, marginBottom: 4 }} />
+                <KeyValueRow label={<span style={{ fontWeight: 950, color: "#374151" }}>應付總額</span>} value={<span style={{ fontSize: 16 }}>{twd(totalAmount)}</span>} />
               </SurfaceCard>
 
               <div style={{ display: "grid", gap: 8 }}>
@@ -513,9 +513,9 @@ function CheckoutPageInner() {
                   {payPhase === "processing" ? "付款處理中..." : "前往藍新付款"}
                 </Button3D>
                 {needsKyc ? (
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)" }}>完成實名驗證後才能付款</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>完成實名驗證後才能付款</div>
                 ) : needsAddress ? (
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)" }}>請先新增收件地址後再付款</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>請先新增收件地址後再付款</div>
                 ) : null}
               </div>
 

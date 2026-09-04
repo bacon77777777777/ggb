@@ -228,9 +228,9 @@ function NewsPageInner() {
           fontSize: 14,
           fontWeight: 600,
           transition: "all 200ms ease",
-          background: active ? "rgba(255,255,255,0.08)" : "transparent",
-          color: active ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.58)",
-          boxShadow: active ? "0 1px 0 rgba(255,255,255,0.06), 0 4px 18px rgba(0,0,0,0.25)" : "none",
+          background: active ? "#ffffff" : "transparent",
+          color: active ? "#111827" : "#6b7280",
+          boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06), 0 4px 12px -6px rgba(0,0,0,0.12)" : "none",
           whiteSpace: "nowrap",
         }}
       >
@@ -288,7 +288,7 @@ function NewsPageInner() {
                     display: "flex",
                     gap: 8,
                     borderRadius: 14,
-                    background: "rgba(255,255,255,0.04)",
+                    background: "#f3f4f6",
                     padding: 6,
                     flex: "1 1 520px",
                     minWidth: 0,
@@ -299,7 +299,7 @@ function NewsPageInner() {
                     <TabButton key={c.key} active={newsCategory === c.key} label={c.label} onClick={() => setNewsParamsAndUrl(c.key, 1)} />
                   ))}
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.55)" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#6b7280" }}>
                   {categoryLabel(newsCategory)} · {filteredNews.length.toLocaleString()} 篇
                 </div>
               </div>
@@ -339,40 +339,40 @@ function NewsPageInner() {
                         }}
                         style={{
                           borderRadius: 16,
-                          background: "#1c2532",
+                          background: "#ffffff",
                           overflow: "hidden",
                           width: "100%",
-                          boxShadow: "0px 2px 15px 0px rgba(0,0,0,0.10)",
+                          boxShadow: "0 0 0 1px #e5e7eb, 0 10px 40px -10px rgba(0,0,0,0.08)",
                           cursor: "pointer",
                         }}
                       >
                         {hasImage ? (
-                          <div style={{ width: "100%", aspectRatio: "342 / 188", background: "#1c2532" }}>
+                          <div style={{ width: "100%", aspectRatio: "342 / 188", background: "#f3f4f6" }}>
                             <img alt="" src={n.imageUrl} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                           </div>
                         ) : null}
 
-                        <div style={{ padding: "14px 14px", display: "grid", gap: 10, background: "#1c2532" }}>
+                        <div style={{ padding: "14px 14px", display: "grid", gap: 10, background: "#ffffff" }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                              <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.78)", whiteSpace: "nowrap" }}>{categoryLabel(n.category)}</div>
-                              <div style={{ width: 1, height: 14, background: "rgba(255,255,255,0.12)" }} />
-                              <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap" }}>{formatZhDate(n.dateISO)}</div>
+                              <div style={{ fontSize: 12, fontWeight: 900, color: "#374151", whiteSpace: "nowrap" }}>{categoryLabel(n.category)}</div>
+                              <div style={{ width: 1, height: 14, background: "#e5e7eb" }} />
+                              <div style={{ fontSize: 12, fontWeight: 700, color: "#6b7280", whiteSpace: "nowrap" }}>{formatZhDate(n.dateISO)}</div>
                             </div>
                           </div>
 
                           <div style={{ display: "grid", gap: 6 }}>
-                            <div style={{ fontSize: 16, fontWeight: 900, color: "rgba(255,255,255,0.92)", letterSpacing: "-0.01em", lineHeight: 1.2 }}>
+                            <div style={{ fontSize: 16, fontWeight: 900, color: "#111827", letterSpacing: "-0.01em", lineHeight: 1.2 }}>
                               {n.title}
                             </div>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.62)" }}>{n.subtitle}</div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: "#6b7280" }}>{n.subtitle}</div>
                           </div>
 
                           <div
                             style={{
                               fontSize: 12,
                               fontWeight: 650,
-                              color: "rgba(255,255,255,0.62)",
+                              color: "#6b7280",
                               lineHeight: 1.5,
                               display: "-webkit-box",
                               WebkitLineClamp: 2,
@@ -383,7 +383,7 @@ function NewsPageInner() {
                             {n.content}
                           </div>
 
-                          <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.40)" }}>{n.id.replace(/^news_/, "").toUpperCase()}</div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "#9ca3af" }}>{n.id.replace(/^news_/, "").toUpperCase()}</div>
                         </div>
                       </div>
                     );
@@ -401,9 +401,9 @@ function NewsPageInner() {
                       width: 34,
                       height: 34,
                       borderRadius: 10,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(255,255,255,0.06)",
-                      color: "rgba(255,255,255,0.86)",
+                      border: "1px solid #e5e7eb",
+                      background: "#ffffff",
+                      color: "#374151",
                       cursor: safePage <= 1 ? "not-allowed" : "pointer",
                       opacity: safePage <= 1 ? 0.45 : 1,
                     }}
@@ -413,7 +413,7 @@ function NewsPageInner() {
                   {pageTokens(totalPages, safePage).map((t, idx) => {
                     if (t === "ellipsis") {
                       return (
-                        <div key={`e_${idx}`} style={{ width: 34, textAlign: "center", color: "rgba(255,255,255,0.45)", fontWeight: 800 }}>
+                        <div key={`e_${idx}`} style={{ width: 34, textAlign: "center", color: "#6b7280", fontWeight: 800 }}>
                           …
                         </div>
                       );
@@ -428,9 +428,9 @@ function NewsPageInner() {
                           width: 34,
                           height: 34,
                           borderRadius: 10,
-                          border: "1px solid rgba(255,255,255,0.12)",
-                          background: active ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)",
-                          color: active ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.72)",
+                          border: "1px solid #e5e7eb",
+                          background: active ? "#111827" : "#ffffff",
+                          color: active ? "#ffffff" : "#374151",
                           cursor: "pointer",
                           fontSize: 12,
                           fontWeight: 900,
@@ -448,9 +448,9 @@ function NewsPageInner() {
                       width: 34,
                       height: 34,
                       borderRadius: 10,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(255,255,255,0.06)",
-                      color: "rgba(255,255,255,0.86)",
+                      border: "1px solid #e5e7eb",
+                      background: "#ffffff",
+                      color: "#374151",
                       cursor: safePage >= totalPages ? "not-allowed" : "pointer",
                       opacity: safePage >= totalPages ? 0.45 : 1,
                     }}
@@ -488,9 +488,9 @@ function NewsPageInner() {
             style={{
               width: "min(860px, 96vw)",
               borderRadius: 18,
-              border: "1px solid rgba(255, 255, 255, 0.10)",
-              background: "rgba(17, 25, 35, 0.92)",
-              boxShadow: "0 18px 60px rgba(0, 0, 0, 0.6)",
+              border: "1px solid #e5e7eb",
+              background: "#ffffff",
+              boxShadow: "0 18px 60px rgba(0, 0, 0, 0.18)",
               overflow: "hidden",
               position: "relative",
             }}
@@ -501,9 +501,9 @@ function NewsPageInner() {
               onClick={() => setSelectedId(null)}
               style={{
                 appearance: "none",
-                border: "1px solid rgba(255,255,255,0.14)",
-                background: "rgba(0,0,0,0.18)",
-                color: "rgba(255,255,255,0.9)",
+                border: "1px solid #e5e7eb",
+                background: "#f3f4f6",
+                color: "#374151",
                 width: 38,
                 height: 38,
                 borderRadius: 12,
@@ -520,7 +520,7 @@ function NewsPageInner() {
             </button>
 
             {selected.imageUrl ? (
-              <div style={{ width: "100%", aspectRatio: "342 / 188", background: "#1c2532" }}>
+              <div style={{ width: "100%", aspectRatio: "342 / 188", background: "#f3f4f6" }}>
                 <img alt="" src={selected.imageUrl} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
               </div>
             ) : null}
@@ -528,29 +528,29 @@ function NewsPageInner() {
             <div style={{ padding: 16, display: "grid", gap: 12 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.78)", whiteSpace: "nowrap" }}>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: "#374151", whiteSpace: "nowrap" }}>
                     {categoryLabel(selected.category)}
                   </div>
-                  <div style={{ width: 1, height: 14, background: "rgba(255,255,255,0.12)" }} />
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap" }}>{formatZhDate(selected.dateISO)}</div>
+                  <div style={{ width: 1, height: 14, background: "#e5e7eb" }} />
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#6b7280", whiteSpace: "nowrap" }}>{formatZhDate(selected.dateISO)}</div>
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.45)" }}>{selected.id.replace(/^news_/, "").toUpperCase()}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{selected.id.replace(/^news_/, "").toUpperCase()}</div>
               </div>
 
               <div style={{ display: "grid", gap: 6 }}>
-                <div style={{ fontSize: 20, fontWeight: 950, color: "rgba(255,255,255,0.92)", letterSpacing: "-0.01em", lineHeight: 1.2 }}>
+                <div style={{ fontSize: 20, fontWeight: 950, color: "#111827", letterSpacing: "-0.01em", lineHeight: 1.2 }}>
                   {selected.title}
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 750, color: "rgba(255,255,255,0.62)" }}>{selected.subtitle}</div>
+                <div style={{ fontSize: 13, fontWeight: 750, color: "#6b7280" }}>{selected.subtitle}</div>
               </div>
 
               <div
                 style={{
                   borderRadius: 16,
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid #e5e7eb",
+                  background: "#f9fafb",
                   padding: 14,
-                  color: "rgba(255,255,255,0.78)",
+                  color: "#374151",
                   fontSize: 13,
                   fontWeight: 650,
                   lineHeight: 1.7,

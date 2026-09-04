@@ -22,10 +22,10 @@ export default function InfoPage() {
                 ].map((x) => (
                   <SurfaceRowLink key={x.href} href={x.href}>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>{x.title}</div>
-                      <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)" }}>{x.desc}</div>
+                      <div style={{ fontSize: 14, fontWeight: 950, color: "#111827" }}>{x.title}</div>
+                      <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{x.desc}</div>
                     </div>
-                    <span aria-hidden="true" style={{ color: "rgba(255,255,255,0.45)", fontWeight: 900 }}>
+                    <span aria-hidden="true" style={{ color: "#6b7280", fontWeight: 900 }}>
                       →
                     </span>
                   </SurfaceRowLink>

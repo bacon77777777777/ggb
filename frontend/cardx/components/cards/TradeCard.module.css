@@ -1,6 +1,7 @@
 .card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
   border-radius: 20px;
   padding: 16px;
   display: grid;
@@ -11,7 +12,7 @@
   font-size: 18px;
   line-height: 1.2;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.95);
+  color: #111827;
 }
 
 .row {
@@ -20,7 +21,7 @@
 }
 
 .label {
-  color: rgba(255, 255, 255, 0.55);
+  color: #6b7280;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -28,7 +29,7 @@
 }
 
 .value {
-  color: rgba(255, 255, 255, 0.85);
+  color: #111827;
   font-size: 14px;
   font-weight: 650;
 }
@@ -38,7 +39,7 @@
   gap: 12px;
   align-items: center;
   justify-content: space-between;
-  color: rgba(255, 255, 255, 0.55);
+  color: #6b7280;
   font-size: 12px;
   font-weight: 650;
 }

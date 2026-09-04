@@ -22,9 +22,9 @@ function TabButton({ active, label, onClick }: { active: boolean; label: string;
         fontSize: 14,
         fontWeight: 650,
         transition: "all 200ms ease",
-        background: active ? "rgba(255,255,255,0.08)" : "transparent",
-        color: active ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.58)",
-        boxShadow: active ? "0 1px 0 rgba(255,255,255,0.06), 0 4px 18px rgba(0,0,0,0.25)" : "none",
+        background: active ? "#ffffff" : "transparent",
+        color: active ? "#111827" : "#6b7280",
+        boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06), 0 4px 12px -6px rgba(0,0,0,0.12)" : "none",
       }}
     >
       {label}
@@ -180,7 +180,7 @@ function MissionsPageInner() {
             <PageHeader title="任務" subtitle="完成行為任務獲得 points" />
 
             <div style={{ marginTop: 14, width: "100%" }}>
-              <SurfaceCard style={{ padding: 6, background: "rgba(255,255,255,0.04)" }}>
+              <SurfaceCard style={{ padding: 6, background: "#f9fafb" }}>
                 <div style={{ display: "flex", gap: 8 }}>
                   <TabButton active={tab === "daily"} label="每日" onClick={() => setTab("daily")} />
                   <TabButton active={tab === "weekly"} label="每週" onClick={() => setTab("weekly")} />
@@ -196,21 +196,21 @@ function MissionsPageInner() {
                   const done = m.progress >= m.target;
                   const claimed = !!claimedById[m.id];
                   return (
-                    <SurfaceCard key={m.id} style={{ borderRadius: 16, background: "rgba(255,255,255,0.06)" }}>
+                    <SurfaceCard key={m.id} style={{ borderRadius: 16, background: "#ffffff" }}>
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 900, color: "rgba(255,255,255,0.92)", lineHeight: 1.2 }}>{m.title}</div>
-                          <div style={{ marginTop: 4, fontSize: 12, fontWeight: 750, color: "rgba(255,255,255,0.58)" }}>{m.description}</div>
+                          <div style={{ fontSize: 14, fontWeight: 900, color: "#111827", lineHeight: 1.2 }}>{m.title}</div>
+                          <div style={{ marginTop: 4, fontSize: 12, fontWeight: 750, color: "#6b7280" }}>{m.description}</div>
                         </div>
                         <Pill tone="muted">+{m.rewardPoints.toLocaleString()} pts</Pill>
                       </div>
 
                       <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-                        <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                        <div style={{ height: 8, borderRadius: 999, background: "#f3f4f6", overflow: "hidden" }}>
                           <div style={{ width: `${pct * 100}%`, height: "100%", background: done ? "rgba(102,187,106,0.85)" : "rgba(34,131,246,0.80)" }} />
                         </div>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)" }}>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
                             進度 {m.progress}/{m.target}
                           </div>
                           {done ? (

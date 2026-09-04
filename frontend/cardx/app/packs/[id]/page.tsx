@@ -22,11 +22,17 @@ import { createClient } from "@/lib/supabase/client";
 import { fetchProductDetail, productKey, type ProductDetail } from "@/lib/queries/product";
 import type { HomeProduct } from "@/lib/queries/home";
 import { fetchRecommendations } from "@/lib/recommendations";
+import { fetchProductPromotion, type ProductPromotion } from "@/lib/promotions";
 import { swrLoad } from "@/lib/swr";
 import { isLastOneLevel } from "@/lib/grade";
 import { asset } from "@/lib/asset";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProductLoadingScreen } from "@/components/ui/ProductLoadingScreen";
+import GradeBadge from "@/components/ui/GradeBadge";
+import ViewerPill from "@/components/product/ViewerPill";
+import { useGachaDraw } from "@/hooks/useGachaDraw";
+import { GachaResultModal } from "@/components/shop/GachaResultModal";
+import { PurchaseConfirmationModal } from "@/components/shop/PurchaseConfirmationModal";
 import type { PrizeInfo } from "@/components/ui/PrizeDetailSheet";
 
 const PrizeDetailSheet = dynamic(() => import("@/components/ui/PrizeDetailSheet"), { ssr: false });
@@ -70,9 +76,9 @@ const copyButtonStyle = (enabled: boolean): React.CSSProperties => ({
   width: 32,
   height: 32,
   borderRadius: 10,
-  border: enabled ? "1px solid rgba(77,163,255,0.35)" : "1px solid rgba(255,255,255,0.10)",
-  background: enabled ? "rgba(77,163,255,0.12)" : "rgba(255,255,255,0.04)",
-  color: enabled ? "rgba(77,163,255,0.95)" : "rgba(255,255,255,0.40)",
+  border: enabled ? "1px solid rgba(77,163,255,0.35)" : "1px solid #e5e7eb",
+  background: enabled ? "rgba(77,163,255,0.12)" : "#ffffff",
+  color: enabled ? "rgba(77,163,255,0.95)" : "#9ca3af",
   display: "grid",
   placeItems: "center",
   padding: 0,
@@ -96,6 +102,9 @@ export default function PackDetailPage() {
   const [recommendations, setRecommendations] = useState<HomeProduct[]>([]);
   const [follows, setFollows] = useState<Set<number>>(new Set());
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
+  // 跟手機商品頁同一份資訊：進行中的促銷（商品資訊列出）、玩家已抽到的品項（品項總覽標示）
+  const [promo, setPromo] = useState<ProductPromotion | null>(null);
+  const [collectedIds, setCollectedIds] = useState<Set<number>>(new Set());
 
   const fairnessInfoCloseRef = useRef<HTMLButtonElement | null>(null);
   const navRef = useRef<HTMLElement | null>(null);
@@ -103,7 +112,6 @@ export default function PackDetailPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [fairnessInfoOpen, setFairnessInfoOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
-  const [pushSignal, setPushSignal] = useState(0);
   const [shareCopied, setShareCopied] = useState(false);
 
   /* ── 商品＋賞項（跟手機頁同一支、同一個 query key） ── */
@@ -161,6 +169,26 @@ export default function PackDetailPage() {
     return () => { cancelled = true; };
   }, [user?.id, supabase]);
 
+  /* ── 促銷（跟手機頁同一支 fetchProductPromotion） ── */
+  useEffect(() => {
+    if (!Number.isFinite(productId)) return;
+    let cancelled = false;
+    void fetchProductPromotion(supabase, productId).then((x) => { if (!cancelled) setPromo(x); });
+    return () => { cancelled = true; };
+  }, [productId, supabase]);
+
+  /* ── 已收集：玩家在這件商品抽到過的品項（跟手機頁 GachaCollectionList 同一份 query） ── */
+  useEffect(() => {
+    if (!user?.id || !Number.isFinite(productId)) { setCollectedIds(new Set()); return; }
+    let cancelled = false;
+    supabase.from("draw_records").select("product_prize_id").eq("user_id", user.id).eq("product_id", productId).then(({ data }) => {
+      if (cancelled) return;
+      setCollectedIds(new Set(((data || []) as { product_prize_id: number | null }[])
+        .map((r) => r.product_prize_id).filter((x): x is number => x !== null)));
+    });
+    return () => { cancelled = true; };
+  }, [user?.id, productId, supabase]);
+
   const toggleFollow = useCallback(async (pid: number) => {
     if (!user?.id) { router.push("/login"); return; }
     const has = follows.has(pid);
@@ -197,6 +225,9 @@ export default function PackDetailPage() {
   const isSealed = !!p.sealed_at;
   const txidHash: string = p.txid_hash || "";
   const followed = !!product && follows.has(Number(product.id));
+
+  /* ── 抽獎流程（購買彈窗 → /api/gacha → 演出 → 中獎彈窗），跟手機商品頁同一套 ── */
+  const draw = useGachaDraw(product, prizes);
 
   useEffect(() => {
     if (!product) return;
@@ -250,14 +281,14 @@ export default function PackDetailPage() {
     return (
       <AppShell sidebarItems={defaultSidebarItems} hideBottomNavOnMobile>
         <div className={styles.page} style={{ display: "grid", placeItems: "center", minHeight: "50vh", gap: 12, textAlign: "center" }}>
-          <div style={{ fontSize: 16, fontWeight: 900, color: "rgba(255,255,255,0.85)" }}>找不到這件商品</div>
+          <div style={{ fontSize: 16, fontWeight: 900, color: "#111827" }}>找不到這件商品</div>
           <Link href="/" className={styles.secondaryButton} style={{ padding: "10px 18px" }}>回首頁</Link>
         </div>
       </AppShell>
     );
   }
 
-  /* 舞台底部（老闆 2026-09-04）：左邊 G 金額／抽，右邊 推一下｜立即開抽｜試試看。聊聊與收藏移到麵包屑右邊 */
+  /* 舞台底部（老闆 2026-09-04）：推一下｜G 金額／抽（紅色主鈕）｜試試看。聊聊與收藏移到麵包屑右邊 */
   const hasMachine = product.type === "gacha";
   // 麵包屑右邊三顆用 cardx 原本的方形次要按鈕（老闆 2026-09-04：「用原本方形那種」）
   const crumbIconStyle = (active: boolean): React.CSSProperties => ({
@@ -271,12 +302,12 @@ export default function PackDetailPage() {
     } catch { return; }
     try { await navigator.clipboard.writeText(url); setShareCopied(true); window.setTimeout(() => setShareCopied(false), 1500); } catch {}
   };
-  const btn3d = (color: "red" | "blue" | "purple", label: string, opts: { onClick?: () => void; disabled?: boolean; grow?: boolean } = {}) => (
+  const btn3d = (color: "red" | "blue" | "purple", label: React.ReactNode, opts: { onClick?: () => void; disabled?: boolean; grow?: boolean; ariaLabel?: string } = {}) => (
     <button
       className={`button-3d button-3d_${color} button-3d_sm ${styles.buyButton3d}`}
       data-v-c8c96dbe=""
       type="button"
-      aria-label={label}
+      aria-label={opts.ariaLabel ?? (typeof label === "string" ? label : undefined)}
       disabled={opts.disabled}
       onClick={opts.onClick}
       style={{ width: opts.grow ? undefined : "auto", flex: opts.grow ? "1 1 auto" : "0 0 auto", minWidth: 0, ...(opts.disabled ? { opacity: 0.55, cursor: "not-allowed" } : {}) }}
@@ -288,19 +319,29 @@ export default function PackDetailPage() {
       </span>
     </button>
   );
+  /* 主鈕文字就是「G 金額／抽」（老闆 2026-09-04：金額搬進紅鈕、拿掉「立即開抽」字樣） */
+  /* ⚠️ 這裡要 flex 不能 inline-flex：外層 .button-3d__text 的 line-height 是 20px，
+     inline 級的盒子會照基線對齊、底下多留一截 descender 的空間，整組字看起來就偏上。
+     金幣圖也要 block，理由相同 */
+  const priceLabel = (
+    <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, lineHeight: 1 }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={asset("/images/gcoin.webp")} alt="G" style={{ width: 22, height: 22, display: "block", flex: "0 0 auto" }} />
+      <span style={{ fontSize: 20, fontWeight: 900, lineHeight: 1 }}>{product.price.toLocaleString()}</span>
+      <span style={{ fontSize: 13, fontWeight: 700, opacity: 0.7, lineHeight: 1 }}>/ {unit}</span>
+    </span>
+  );
   const actionButtons = (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
-      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "0 0 auto", paddingRight: 6 }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={asset("/images/gcoin.webp")} alt="G" style={{ width: 22, height: 22, display: "inline-block" }} />
-        <span style={{ fontSize: 20, fontWeight: 900, color: "#fff", lineHeight: 1 }}>{product.price.toLocaleString()}</span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.55)" }}>/ {unit}</span>
+    <div style={{ display: "grid", gap: 10, width: "100%", minWidth: 0 }}>
+      {/* 「N 人正在看」貼在主鈕上緣置中，跟手機商品頁同一顆膠囊（老闆 2026-09-04） */}
+      <div style={{ display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+        <ViewerPill productId={Number(product.id)} inline />
       </div>
-      {/* 三顆同一套 3D 樣式：推一下藍、立即開抽紅（同儲值）、試試看紫（老闆 2026-09-04）。48 高靠 stretch 撐出來，這列不能 center */}
-      <div style={{ flex: "1 1 auto", display: "flex", alignItems: "stretch", justifyContent: "flex-end", gap: 8, minWidth: 0, height: 48 }}>
-        {hasMachine ? btn3d("blue", "推一下", { onClick: () => setPushSignal((n) => n + 1) }) : null}
-        {btn3d("red", isSoldOut ? "已完抽" : "立即開抽", { disabled: isSoldOut, grow: true })}
-        {btn3d("purple", "試試看")}
+      {/* 三顆同一套 3D 樣式：推一下藍、主鈕紅（同儲值）、試試看紫。48 高靠 stretch 撐出來，這列不能 center */}
+      <div style={{ display: "flex", alignItems: "stretch", gap: 8, width: "100%", minWidth: 0, height: 48 }}>
+        {hasMachine ? btn3d("blue", "推一下", { onClick: draw.handlePush, disabled: draw.machineDisabled }) : null}
+        {btn3d("red", isSoldOut ? "已完抽" : priceLabel, { onClick: draw.openPurchase, disabled: isSoldOut || draw.machineDisabled || draw.isProcessing, grow: true, ariaLabel: isSoldOut ? "已完抽" : `${product.price.toLocaleString()} G／${unit}，立即開抽` })}
+        {btn3d("purple", "試試看", { onClick: draw.handleTrial, disabled: isSoldOut || draw.machineDisabled })}
       </div>
     </div>
   );
@@ -312,7 +353,7 @@ export default function PackDetailPage() {
     alignItems: "center",
     padding: "10px 12px",
     minWidth: 0,
-    borderBottom: last ? undefined : "1px solid rgba(255,255,255,0.08)",
+    borderBottom: last ? undefined : "1px solid #e5e7eb",
   });
 
   const panelInner = (
@@ -335,13 +376,13 @@ export default function PackDetailPage() {
               const last = idx === regularPrizes.length - 1 && !lastOne;
               return (
                 <div key={r.id} style={rateRowStyle(last)}>
-                  <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.78)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.level}</div>
+                  <div style={{ fontSize: 12, fontWeight: 950, color: "#374151", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.level}</div>
                   <div />
-                  <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.92)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>
-                  <div aria-hidden="true" style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.10)", overflow: "hidden" }}>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "#111827", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>
+                  <div aria-hidden="true" style={{ height: 8, borderRadius: 999, background: "#f3f4f6", overflow: "hidden" }}>
                     <div style={{ width: `${clamp(pct, 0, 100)}%`, height: "100%", borderRadius: 999, background: "linear-gradient(90deg, rgba(34,131,246,0.85), rgba(36,163,255,0.85))" }} />
                   </div>
-                  <div style={{ textAlign: "right", fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.88)", whiteSpace: "nowrap" }}>
+                  <div style={{ textAlign: "right", fontSize: 12, fontWeight: 950, color: "#111827", whiteSpace: "nowrap" }}>
                     {showCounts ? `${r.remaining ?? 0}/${r.total ?? 0}` : `${(Number(r.probability) || 0).toFixed(1)}%`}
                   </div>
                 </div>
@@ -351,19 +392,19 @@ export default function PackDetailPage() {
               <div style={rateRowStyle(true)}>
                 <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,215,120,0.95)", whiteSpace: "nowrap" }}>最後賞</div>
                 <div />
-                <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.92)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lastOne.name}</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.5)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>抽到最後一張籤就是你的</div>
-                <div style={{ textAlign: "right", fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.88)" }}>{(lastOne.remaining ?? 0) > 0 ? "未送出" : "已送出"}</div>
+                <div style={{ fontSize: 13, fontWeight: 900, color: "#111827", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lastOne.name}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>抽到最後一張籤就是你的</div>
+                <div style={{ textAlign: "right", fontSize: 12, fontWeight: 950, color: "#111827" }}>{(lastOne.remaining ?? 0) > 0 ? "未送出" : "已送出"}</div>
               </div>
             ) : null}
           </div>
 
-          <div style={{ ...rateRowStyle(true), borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-            <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.72)", whiteSpace: "nowrap" }}>總計</div>
+          <div style={{ ...rateRowStyle(true), borderTop: "1px solid #e5e7eb" }}>
+            <div style={{ fontSize: 12, fontWeight: 950, color: "#374151", whiteSpace: "nowrap" }}>總計</div>
             <div />
             <div />
             <div />
-            <div style={{ textAlign: "right", fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.88)" }}>{totalRemaining}/{totalItems}</div>
+            <div style={{ textAlign: "right", fontSize: 14, fontWeight: 950, color: "#111827" }}>{totalRemaining}/{totalItems}</div>
           </div>
         </div>
 
@@ -379,68 +420,95 @@ export default function PackDetailPage() {
     { label: "條碼", value: p.barcode || "—" },
   ];
 
-  const prizeCardStyle = (gold: boolean): React.CSSProperties => ({
-    borderRadius: 16,
-    border: gold ? "1px solid rgba(255, 215, 120, 0.85)" : "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(255,255,255,0.05)",
+  /* 品項總覽小卡（老闆 2026-09-04）：圖上下左右滿編、不留 padding；
+     圖下面才是內距 16 的文字區：賞等標籤＋品名，再一行剩餘／收集狀態。
+     賞等用全站同一顆 GradeBadge；轉蛋與盒玩只有「一般版」這種沒意義的賞等，不顯示 */
+  const showGrade = !["gacha", "blindbox"].includes(product.type);
+  const prizeTileStyle = (gold: boolean): React.CSSProperties => ({
+    borderRadius: 8,
+    background: "#ffffff",
+    boxShadow: gold ? "inset 0 0 0 1.5px #f0b429" : "0 1px 2px rgba(0,0,0,0.04)",
+    border: gold ? undefined : "1px solid #e5e7eb",
     overflow: "hidden",
+    display: "grid",
+    gridTemplateRows: "auto 1fr",
     minWidth: 0,
     cursor: "pointer",
-    boxShadow: gold
-      ? "inset 0 0 0 2px rgba(255, 244, 200, 0.98), inset 0 0 0 5px rgba(215, 162, 71, 0.92), 0 0 0 1px rgba(0,0,0,0.22), 0 18px 40px rgba(0,0,0,0.35)"
-      : undefined,
   });
+  const prizeTile = (x: (typeof prizes)[number], gold: boolean, extra?: React.CSSProperties) => {
+    const gone = showCounts && !gold && (x.remaining ?? 0) <= 0;
+    const collected = collectedIds.has(Number(x.id));
+    /* 底部那行：封存制（一番賞／抽卡／自製賞）看剩餘張數；
+       轉蛋／盒玩不公開張數也不公開單品機率，跟手機頁一樣只標已收集／未收集 */
+    /* 未登入時沒有「收集狀態」可講，整行不畫 —— 印一個破折號看起來像資料壞掉 */
+    const figure = gold ? "最後一籤" : showCounts ? `${x.remaining ?? 0} / ${x.total ?? 0}` : user ? (collected ? "已收集" : "未收集") : null;
+    const figureColor = gold
+      ? "#b45309"
+      : !showCounts && user && collected ? "#059669"
+      : !showCounts && user ? "#9ca3af"
+      : "#111827";
+    return (
+      <div key={x.id} role="button" tabIndex={0} style={{ ...prizeTileStyle(gold), opacity: gone ? 0.5 : 1, ...extra }} onClick={() => setViewingIndex(prizes.indexOf(x))}>
+        <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={x.image_url || asset("/images/item_defaulet.webp")} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }} />
+        </div>
+        <div style={{ padding: 16, display: "grid", gridTemplateRows: figure ? "1fr auto" : "1fr", gap: figure ? 14 : 0, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8, minWidth: 0 }}>
+            {showGrade ? <GradeBadge grade={gold ? "最後賞" : x.level} size="sm" className="mt-[2px]" /> : null}
+            <span style={{ fontSize: 15, fontWeight: 500, color: "#111827", lineHeight: "20px", minWidth: 0, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{x.name}</span>
+          </div>
+          {figure ? (
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
+              {!gold && showCounts ? <span style={{ fontSize: 13, fontWeight: 600, color: "#6b7280" }}>剩餘</span> : null}
+              <span style={{ fontSize: 20, fontWeight: 900, color: figureColor, lineHeight: 1, letterSpacing: "-0.01em", fontVariantNumeric: "tabular-nums" }}>{figure}</span>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  };
 
   // 桌機舞台滿高（老闆 2026-09-04）：sticky 區高度 = 視窗 − 導覽列 − 上下各 20，機台在裡面 fit 高度
   const stageBoxHeight = `calc(100dvh - var(--header-height) - 40px - ${navH}px)`;
   const renderStage = (fill: boolean) => themeResolved ? (
-    <ProductStageVisual key={`${product.id}-${theme}`} product={product} theme={theme} isSoldOut={isSoldOut} controls={actionButtons} pushSignal={pushSignal} fillHeight={fill} />
+    <ProductStageVisual
+      key={`${product.id}-${theme}`}
+      product={product}
+      theme={theme}
+      isSoldOut={isSoldOut}
+      controls={actionButtons}
+      fillHeight={fill}
+      machineState={draw.machineState}
+      shakeRepeats={draw.shakeRepeats}
+      pushSoundMode={draw.pushSoundMode}
+      hasHighTierPending={draw.hasHighTierPending}
+      disableButtons={draw.machineDisabled}
+      onHoleClick={draw.handleHoleClick}
+    />
   ) : (
-    <div style={fill ? { height: "100%", borderRadius: 16, background: "#1c2532" } : { aspectRatio: "1 / 1", borderRadius: 16, background: "#1c2532" }} />
+    <div style={fill ? { height: "100%", borderRadius: 16, background: "#f3f4f6" } : { aspectRatio: "1 / 1", borderRadius: 16, background: "#f3f4f6" }} />
   );
 
   const sections = (
     <>
-            <section className={styles.section} aria-label="品項總覽">
-              <div className={styles.sectionHeader}>品項總覽</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 16 }}>
-                {lastOne ? (
-                  <div role="button" tabIndex={0} style={prizeCardStyle(true)} onClick={() => setViewingIndex(prizes.indexOf(lastOne))}>
-                    <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", background: "rgba(0,0,0,0.18)" }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={lastOne.image_url || asset("/images/item_defaulet.webp")} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }} />
-                    </div>
-                    <div style={{ padding: 12, display: "grid", gap: 6, background: "linear-gradient(180deg, rgba(255, 246, 220, 0.98), rgba(220, 175, 90, 0.96))" }}>
-                      <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(0,0,0,0.68)" }}>最後賞</div>
-                      <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(0,0,0,0.92)", lineHeight: "16px" }}>{lastOne.name}</div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(0,0,0,0.7)" }}>抽到最後一張籤就是你的</div>
-                    </div>
-                  </div>
-                ) : null}
-                {regularPrizes.map((x) => {
-                  const gone = showCounts && (x.remaining ?? 0) <= 0;
-                  return (
-                    <div key={x.id} role="button" tabIndex={0} style={{ ...prizeCardStyle(false), opacity: gone ? 0.5 : 1 }} onClick={() => setViewingIndex(prizes.indexOf(x))}>
-                      <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", background: "rgba(0,0,0,0.18)" }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={x.image_url || asset("/images/item_defaulet.webp")} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }} />
-                      </div>
-                      <div style={{ padding: 12, display: "grid", gap: 6 }}>
-                        <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.62)" }}>{x.level}</div>
-                        <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(255,255,255,0.94)", lineHeight: "16px", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{x.name}</div>
-                        {showCounts ? (
-                          <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.85)" }}>剩餘 {x.remaining ?? 0} / {x.total ?? 0}</div>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })}
+            <section className={styles.section} aria-label="品項總覽" style={{ marginTop: 0 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
+                {lastOne ? prizeTile(lastOne, true) : null}
+                {regularPrizes.map((x) => prizeTile(x, false))}
               </div>
             </section>
 
       <section className={styles.section} aria-label="商品資訊">
               <div className={styles.sectionHeader}>商品資訊</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+                {/* 促銷：有進行中的方案才出現（跟手機頁一樣紅色標出，例：開學買五送一） */}
+                {promo ? (
+                  <div className={styles.itemDetailCard} style={{ gridColumn: "1 / -1", borderColor: "rgba(255, 77, 79, 0.35)", background: "rgba(255, 77, 79, 0.10)" }}>
+                    <div className={styles.itemDetailLabel}>促銷</div>
+                    <div className={styles.itemDetailValue} style={{ color: "#ff8a8c" }}>{promo.name || promo.badgeText}</div>
+                  </div>
+                ) : null}
                 {infoCards.map((row) => (
                   <div key={row.label} className={styles.itemDetailCard}>
                     <div className={styles.itemDetailLabel}>{row.label}</div>
@@ -448,26 +516,15 @@ export default function PackDetailPage() {
                   </div>
                 ))}
               </div>
-              {detail?.categories?.length ? (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-                  {detail.categories.map((c) => (
-                    <Link
-                      key={c.id}
-                      href={`/?menu=${encodeURIComponent(String(c.id))}`}
-                      style={{ padding: "6px 12px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.85)" }}
-                    >
-                      {c.name}
-                    </Link>
+              {/* 注意事項：手機頁列在商品資訊底下，這裡照抄同一份（麵包屑的規則鈕開的是同一段文字） */}
+              <div style={{ marginTop: 16 }}>
+                <div className={styles.sectionHeader}>注意事項</div>
+                <ol style={{ paddingLeft: 18, display: "grid", gap: 4, listStyle: "decimal" }}>
+                  {(RULES[product.type] || RULES.custom).map((line, i) => (
+                    <li key={i} style={{ fontSize: 14, fontWeight: 700, lineHeight: "24px", color: "#6b7280" }}>{line}</li>
                   ))}
-                </div>
-              ) : null}
-              {product.description ? (
-                <div className={styles.itemDetailCard} style={{ marginTop: 12 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, lineHeight: "20px", color: "rgba(255,255,255,0.82)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                    {product.description}
-                  </div>
-                </div>
-              ) : null}
+                </ol>
+              </div>
             </section>
 
             {showCounts ? (
@@ -478,7 +535,7 @@ export default function PackDetailPage() {
                     type="button"
                     aria-label="公平性驗證說明"
                     onClick={() => setFairnessInfoOpen(true)}
-                    style={{ width: 24, height: 24, borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.72)", display: "grid", placeItems: "center", padding: 0, cursor: "pointer", flex: "0 0 auto" }}
+                    style={{ width: 24, height: 24, borderRadius: 999, border: "1px solid #e5e7eb", background: "#ffffff", color: "#374151", display: "grid", placeItems: "center", padding: 0, cursor: "pointer", flex: "0 0 auto" }}
                   >
                     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" style={{ display: "block" }}>
                       <path fill="currentColor" d="M11 17h2v-6h-2v6zm1-8.75c.69 0 1.25-.56 1.25-1.25S12.69 5.75 12 5.75 10.75 6.31 10.75 7 11.31 8.25 12 8.25zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
@@ -553,7 +610,7 @@ export default function PackDetailPage() {
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg>
             </button>
             {shareCopied ? (
-              <div role="status" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", padding: "6px 10px", borderRadius: 8, background: "rgba(17,25,35,0.96)", border: "1px solid rgba(255,255,255,0.12)", fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.9)", whiteSpace: "nowrap", zIndex: 20 }}>已複製連結</div>
+              <div role="status" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", padding: "6px 10px", borderRadius: 8, background: "#ffffff", border: "1px solid #e5e7eb", boxShadow: "0 10px 40px -10px rgba(0,0,0,0.12)", fontSize: 12, fontWeight: 800, color: "#111827", whiteSpace: "nowrap", zIndex: 20 }}>已複製連結</div>
             ) : null}
           </div>
         </nav>
@@ -588,7 +645,7 @@ export default function PackDetailPage() {
               aria-modal="true"
               aria-label="公平性驗證說明"
               onClick={(e) => e.stopPropagation()}
-              style={{ width: "min(560px, calc(100vw - 32px))", borderRadius: 16, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(17, 25, 35, 0.96)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", padding: 16, color: "rgba(255,255,255,0.92)" }}
+              style={{ width: "min(560px, calc(100vw - 32px))", borderRadius: 16, border: "1px solid #e5e7eb", background: "#ffffff", boxShadow: "0 20px 70px -15px rgba(0,0,0,0.15)", padding: 16, color: "#111827" }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <div style={{ fontSize: 14, fontWeight: 900 }}>公平性驗證</div>
@@ -597,12 +654,12 @@ export default function PackDetailPage() {
                   type="button"
                   aria-label="關閉"
                   onClick={() => setFairnessInfoOpen(false)}
-                  style={{ width: 32, height: 32, borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.82)", display: "grid", placeItems: "center", padding: 0, cursor: "pointer", flex: "0 0 auto" }}
+                  style={{ width: 32, height: 32, borderRadius: 10, border: "1px solid #e5e7eb", background: "#ffffff", color: "#374151", display: "grid", placeItems: "center", padding: 0, cursor: "pointer", flex: "0 0 auto" }}
                 >
                   <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>×</span>
                 </button>
               </div>
-              <div style={{ marginTop: 12, fontSize: 13, fontWeight: 700, lineHeight: "18px", color: "rgba(255,255,255,0.82)" }}>
+              <div style={{ marginTop: 12, fontSize: 13, fontWeight: 700, lineHeight: "18px", color: "#374151" }}>
                 <div style={{ display: "grid", gap: 10 }}>
                   <div>這一檔開賣前就把每一張籤是什麼賞排好、封存起來，並公布一組驗證碼。之後任何人都改不了籤表。</div>
                   <div>完抽（{totalItems} 抽）之後公開完整對照表，你可以拿它重新算一次驗證碼，跟商品頁上的比對；一致就代表抽到的結果和大賞位置沒有被事後動過。</div>
@@ -617,14 +674,14 @@ export default function PackDetailPage() {
 
         {rulesOpen ? (
           <div role="presentation" onClick={() => setRulesOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.62)", display: "grid", placeItems: "center", padding: 16 }}>
-            <div role="dialog" aria-modal="true" aria-label="規則" onClick={(e) => e.stopPropagation()} style={{ width: "min(560px, calc(100vw - 32px))", borderRadius: 16, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(17, 25, 35, 0.96)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", padding: 16, color: "rgba(255,255,255,0.92)" }}>
+            <div role="dialog" aria-modal="true" aria-label="規則" onClick={(e) => e.stopPropagation()} style={{ width: "min(560px, calc(100vw - 32px))", borderRadius: 16, border: "1px solid #e5e7eb", background: "#ffffff", boxShadow: "0 20px 70px -15px rgba(0,0,0,0.15)", padding: 16, color: "#111827" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <div style={{ fontSize: 14, fontWeight: 900 }}>注意事項</div>
-                <button type="button" aria-label="關閉" onClick={() => setRulesOpen(false)} style={{ width: 32, height: 32, borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.82)", display: "grid", placeItems: "center", padding: 0, cursor: "pointer", flex: "0 0 auto" }}>
+                <button type="button" aria-label="關閉" onClick={() => setRulesOpen(false)} style={{ width: 32, height: 32, borderRadius: 10, border: "1px solid #e5e7eb", background: "#ffffff", color: "#374151", display: "grid", placeItems: "center", padding: 0, cursor: "pointer", flex: "0 0 auto" }}>
                   <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>×</span>
                 </button>
               </div>
-              <ol style={{ marginTop: 12, paddingLeft: 20, display: "grid", gap: 8, fontSize: 13, fontWeight: 700, lineHeight: "18px", color: "rgba(255,255,255,0.82)", listStyle: "decimal" }}>
+              <ol style={{ marginTop: 12, paddingLeft: 20, display: "grid", gap: 8, fontSize: 13, fontWeight: 700, lineHeight: "18px", color: "#374151", listStyle: "decimal" }}>
                 {(RULES[product.type] || RULES.custom).map((line, i) => <li key={i}>{line}</li>)}
               </ol>
             </div>
@@ -656,7 +713,20 @@ export default function PackDetailPage() {
           </div>
         ) : null}
 
+        <GachaResultModal isOpen={draw.showResultModal} onClose={draw.closeResult} results={draw.wonPrizes} hideTicketNumber />
+        <PurchaseConfirmationModal
+          isOpen={draw.isPurchaseModalOpen}
+          onClose={draw.closePurchase}
+          onConfirm={draw.confirmPurchase}
+          product={product}
+          userTokens={user?.tokens || 0}
+          userPoints={user?.points || 0}
+          isProcessing={draw.isProcessing}
+          onTopUp={() => router.push("/topup")}
+        />
+
         <PrizeDetailSheet
+          split
           prize={viewingPrize}
           onClose={() => setViewingIndex(null)}
           sealed={showCounts}

@@ -326,8 +326,8 @@ function TrendsPageInner() {
                           borderRadius: 999,
                           border: 0,
                           cursor: "pointer",
-                          background: active ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.04)",
-                          color: active ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.68)",
+                          background: active ? "#111827" : "#f3f4f6",
+                          color: active ? "#ffffff" : "#374151",
                           fontSize: 13,
                           fontWeight: 800,
                           whiteSpace: "nowrap",
@@ -348,8 +348,8 @@ function TrendsPageInner() {
                       borderRadius: 999,
                       border: 0,
                       cursor: "pointer",
-                      background: followOnly ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.04)",
-                      color: followOnly ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.68)",
+                      background: followOnly ? "#111827" : "#f3f4f6",
+                      color: followOnly ? "#ffffff" : "#374151",
                       fontSize: 13,
                       fontWeight: 800,
                       whiteSpace: "nowrap",
@@ -365,16 +365,16 @@ function TrendsPageInner() {
                       height: 34,
                       width: "clamp(160px, 22vw, 260px)",
                       borderRadius: 999,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid #e5e7eb",
+                      background: "#ffffff",
                       padding: "0 12px",
-                      color: "rgba(255,255,255,0.92)",
+                      color: "#111827",
                       fontSize: 13,
                       fontWeight: 800,
                       outline: "none",
                     }}
                   />
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#6b7280", whiteSpace: "nowrap" }}>
                     {filtered.length.toLocaleString()} 張
                   </div>
                 </div>
@@ -395,8 +395,8 @@ function TrendsPageInner() {
                           borderRadius: 999,
                           border: 0,
                           cursor: "pointer",
-                          background: active ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.04)",
-                          color: active ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.68)",
+                          background: active ? "#111827" : "#f3f4f6",
+                          color: active ? "#ffffff" : "#374151",
                           fontSize: 13,
                           fontWeight: 800,
                           whiteSpace: "nowrap",
@@ -421,8 +421,8 @@ function TrendsPageInner() {
                           borderRadius: 999,
                           border: 0,
                           cursor: "pointer",
-                          background: active ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.04)",
-                          color: active ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.68)",
+                          background: active ? "#111827" : "#f3f4f6",
+                          color: active ? "#ffffff" : "#374151",
                           fontSize: 13,
                           fontWeight: 800,
                           whiteSpace: "nowrap",
@@ -433,7 +433,7 @@ function TrendsPageInner() {
                     );
                   })}
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.55)" }}>區間：{activeRange.toUpperCase()}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>區間：{activeRange.toUpperCase()}</div>
               </div>
 
               <section className={homeStyles.section} aria-label="走勢列表">
@@ -474,9 +474,9 @@ function TrendsPageInner() {
                         }}
                         style={{
                           borderRadius: 16,
-                          background: "#1c2532",
+                          background: "#ffffff",
                           overflow: "hidden",
-                          boxShadow: "0px 2px 15px 0px rgba(0,0,0,0.10)",
+                          boxShadow: "0 0 0 1px #e5e7eb, 0 10px 40px -10px rgba(0,0,0,0.08)",
                           padding: 12,
                           display: "flex",
                           flexDirection: "column",
@@ -501,11 +501,11 @@ function TrendsPageInner() {
                             }
                           >
                             <div className={homeStyles.topicRingInner}>
-                              <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", lineHeight: 1 }}>
+                              <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", lineHeight: 1 }}>
                                 {up ? "+" : "-"}
                                 {Math.abs(c.rangeDeltaPct).toFixed(1)}%
                               </div>
-                              <div style={{ fontSize: 10, fontWeight: 850, color: "rgba(255,255,255,0.55)", lineHeight: 1, marginTop: 2 }}>
+                              <div style={{ fontSize: 10, fontWeight: 850, color: "#6b7280", lineHeight: 1, marginTop: 2 }}>
                                 {activeRange.toUpperCase()}
                               </div>
                             </div>
@@ -514,8 +514,8 @@ function TrendsPageInner() {
 
                         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
                           <div style={{ display: "grid", gap: 4 }}>
-                            <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.55)" }}>參考價</div>
-                            <div style={{ fontSize: 16, fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>{formatTwd(c.rangePrice)}</div>
+                            <div style={{ fontSize: 12, fontWeight: 850, color: "#6b7280" }}>參考價</div>
+                            <div style={{ fontSize: 16, fontWeight: 950, color: "#111827" }}>{formatTwd(c.rangePrice)}</div>
                           </div>
                           <svg width="120" height="32" viewBox="0 0 120 32" aria-hidden="true">
                             <polyline
@@ -548,9 +548,9 @@ function TrendsPageInner() {
                                   height: 28,
                                   padding: "0 10px",
                                   borderRadius: 999,
-                                  border: "1px solid rgba(255,255,255,0.12)",
-                                  background: followed ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.04)",
-                                  color: followed ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.68)",
+                                  border: "1px solid #e5e7eb",
+                                  background: followed ? "#e5e7eb" : "#f3f4f6",
+                                  color: followed ? "#111827" : "#374151",
                                   fontSize: 12,
                                   fontWeight: 900,
                                   cursor: "pointer",
@@ -596,9 +596,9 @@ function TrendsPageInner() {
             style={{
               width: "min(640px, 96vw)",
               borderRadius: 18,
-              border: "1px solid rgba(255, 255, 255, 0.10)",
-              background: "rgba(17, 25, 35, 0.92)",
-              boxShadow: "0 18px 60px rgba(0, 0, 0, 0.6)",
+              border: "1px solid #e5e7eb",
+              background: "#ffffff",
+              boxShadow: "0 18px 60px rgba(0, 0, 0, 0.18)",
               padding: 16,
               position: "relative",
             }}
@@ -609,9 +609,9 @@ function TrendsPageInner() {
               onClick={() => setSelectedId(null)}
               style={{
                 appearance: "none",
-                border: "1px solid rgba(255,255,255,0.14)",
-                background: "rgba(0,0,0,0.18)",
-                color: "rgba(255,255,255,0.9)",
+                border: "1px solid #e5e7eb",
+                background: "#f3f4f6",
+                color: "#374151",
                 width: 38,
                 height: 38,
                 borderRadius: 12,
@@ -627,12 +627,12 @@ function TrendsPageInner() {
             </button>
 
             <div style={{ display: "flex", alignItems: "center", gap: 12, paddingRight: 44 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, overflow: "hidden", background: "rgba(255,255,255,0.06)", flex: "0 0 auto" }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, overflow: "hidden", background: "#f3f4f6", flex: "0 0 auto" }}>
                 <img alt="" src={avatarSrc(selected.id)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
               </div>
               <div style={{ minWidth: 0, flex: "1 1 auto" }}>
-                <div style={{ fontSize: 16, fontWeight: 950, color: "rgba(255,255,255,0.92)", lineHeight: 1.2 }}>{selected.name}</div>
-                <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.55)" }}>
+                <div style={{ fontSize: 16, fontWeight: 950, color: "#111827", lineHeight: 1.2 }}>{selected.name}</div>
+                <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
                   {selected.traders.toLocaleString()} 人關注 · 區間 {activeRange.toUpperCase()}
                 </div>
               </div>
@@ -646,21 +646,21 @@ function TrendsPageInner() {
                 }
               >
                 <div className={homeStyles.topicRingInner}>
-                  <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", lineHeight: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", lineHeight: 1 }}>
                     {selected.rangeDeltaPct >= 0 ? "+" : "-"}
                     {Math.abs(selected.rangeDeltaPct).toFixed(1)}%
                   </div>
-                  <div style={{ fontSize: 10, fontWeight: 850, color: "rgba(255,255,255,0.55)", lineHeight: 1, marginTop: 2 }}>
+                  <div style={{ fontSize: 10, fontWeight: 850, color: "#6b7280", lineHeight: 1, marginTop: 2 }}>
                     {activeRange.toUpperCase()}
                   </div>
                 </div>
               </div>
             </div>
 
-            <div style={{ marginTop: 14, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", padding: 12 }}>
+            <div style={{ marginTop: 14, borderRadius: 16, border: "1px solid #e5e7eb", background: "#f9fafb", padding: 12 }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.55)" }}>參考價</div>
-                <div style={{ fontSize: 18, fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>{formatTwd(selected.rangePrice)}</div>
+                <div style={{ fontSize: 12, fontWeight: 850, color: "#6b7280" }}>參考價</div>
+                <div style={{ fontSize: 18, fontWeight: 950, color: "#111827" }}>{formatTwd(selected.rangePrice)}</div>
               </div>
               <div style={{ marginTop: 10 }}>
                 <svg width="100%" height="150" viewBox="0 0 600 150" preserveAspectRatio="none" aria-hidden="true">
@@ -683,9 +683,9 @@ function TrendsPageInner() {
                     height: 38,
                     padding: "0 14px",
                     borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    background: followById[selected.id] ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.06)",
-                    color: followById[selected.id] ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.80)",
+                    border: "1px solid #e5e7eb",
+                    background: followById[selected.id] ? "#e5e7eb" : "#f3f4f6",
+                    color: followById[selected.id] ? "#111827" : "#374151",
                     fontSize: 13,
                     fontWeight: 950,
                     cursor: "pointer",

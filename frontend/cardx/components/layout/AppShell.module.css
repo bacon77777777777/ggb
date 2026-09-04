@@ -3,8 +3,8 @@
   --sidebar-width: 230px;
   --header-height: 64px;
   --app-gutter: 24px;
-  background: #0e141d;
-  color: rgba(255, 255, 255, 0.9);
+  background: #f9fafb;
+  color: #111827;
 }
 
 .shellCollapsed {
@@ -16,8 +16,8 @@
 }
 
 .shellScrolled .header {
-  background: rgba(17, 25, 35, 0.92);
-  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.08);
   backdrop-filter: blur(10px);
 }
 
@@ -32,8 +32,8 @@
   align-items: center;
   justify-content: center;
   padding: 14px 24px;
-  background: #111923;
-  border-bottom: 1px solid #ffffff0a;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
   transition: background-color 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
 }
 
@@ -85,11 +85,11 @@
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  color: #ffffffd6;
+  color: #374151;
 }
 
 .iconHamburger:hover {
-  color: #fff;
+  color: #111827;
 }
 
 .hamburgerIcon {
@@ -131,7 +131,7 @@
   font-size: 26px;
   font-weight: 800;
   letter-spacing: 1px;
-  color: #fff;
+  color: #111827;
   white-space: nowrap;
   line-height: 35px;
   user-select: none;
@@ -142,7 +142,7 @@
   font-size: 24px;
   font-weight: 800;
   letter-spacing: 0.5px;
-  color: #fff;
+  color: #111827;
   white-space: nowrap;
   line-height: 36px;
   user-select: none;
@@ -187,7 +187,7 @@
 .squarePill {
   margin-left: 8px;
   border-radius: 8px;
-  background: #ffffff1f;
+  background: #f3f4f6;
   padding: 6px;
   width: 36px;
   height: 36px;
@@ -196,23 +196,23 @@
   justify-content: center;
   border: 0;
   cursor: pointer;
-  color: #ffffffd6;
+  color: #374151;
 }
 
 .squarePill:hover {
-  background: #ffffff33;
-  color: #fff;
+  background: rgba(0, 0, 0, 0.08);
+  color: #111827;
 }
 
 .loginPill {
   margin-left: auto;
   border-radius: 8px;
-  background: #ffffff1f;
+  background: #f3f4f6;
   padding: 7px 17px 9px 15px;
   height: 36px;
   border: 0;
   cursor: pointer;
-  color: #ffffffd6;
+  color: #374151;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: -0.24px;
@@ -223,8 +223,8 @@
 }
 
 .loginPill:hover {
-  background: #ffffff33;
-  color: #fff;
+  background: rgba(0, 0, 0, 0.08);
+  color: #111827;
 }
 
 .authedRight {
@@ -253,7 +253,7 @@
 .overlayPill {
   margin-left: 16px;
   border-radius: 8px;
-  background: #ffffff1f;
+  background: #f3f4f6;
   padding: 7px 7px 6px;
   width: 79px;
   min-width: 79px;
@@ -263,12 +263,12 @@
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  color: #ffffffd6;
+  color: #374151;
 }
 
 .overlayPill:hover {
-  background: #ffffff33;
-  color: #fff;
+  background: rgba(0, 0, 0, 0.08);
+  color: #111827;
 }
 
 .overlayFlag {
@@ -278,7 +278,7 @@
 }
 
 .verticalDivider {
-  background: #3c485cb2;
+  background: #e5e7eb;
   width: 1px;
   height: 23px;
 }
@@ -286,7 +286,7 @@
 .bellPill {
   margin-left: 16px;
   border-radius: 8px;
-  background: #ffffff1f;
+  background: #f3f4f6;
   padding: 7px 6px;
   width: 36px;
   height: 36px;
@@ -295,18 +295,18 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #ffffffd6;
+  color: #374151;
 }
 
 .bellPill:hover {
-  background: #ffffff33;
-  color: #fff;
+  background: rgba(0, 0, 0, 0.08);
+  color: #111827;
 }
 
 .chatPill {
   margin-left: 8px;
   border-radius: 8px;
-  background: #ffffff1f;
+  background: #f3f4f6;
   padding: 0;
   width: 36px;
   height: 36px;
@@ -315,7 +315,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #ffffffd6;
+  color: #374151;
 }
 
 .chatPill svg {
@@ -323,15 +323,15 @@
 }
 
 .chatPill:hover {
-  background: #ffffff33;
-  color: #fff;
+  background: rgba(0, 0, 0, 0.08);
+  color: #111827;
 }
 
 .bonusPillMobile {
   margin-left: auto;
   border-radius: 8px;
-  box-shadow: 0 2px 12px 0 #00000029;
-  background: #ffffff1f;
+  box-shadow: 0 2px 12px 0 #0000000d;
+  background: #f3f4f6;
   padding: 5px;
   width: 36px;
   height: 36px;
@@ -342,7 +342,7 @@
 }
 
 .bonusPillMobile:hover {
-  background: #ffffff33;
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .bonusPillMobileIcon {
@@ -358,12 +358,12 @@
 .loginPillMobile {
   margin-left: 12px;
   border-radius: 8px;
-  background: #ffffff1f;
+  background: #f3f4f6;
   padding: 10px 16px 11px;
   height: 36px;
   border: 0;
   cursor: pointer;
-  color: #ffffffd6;
+  color: #374151;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: -0.24px;
@@ -374,8 +374,8 @@
 }
 
 .loginPillMobile:hover {
-  background: #ffffff33;
-  color: #fff;
+  background: rgba(0, 0, 0, 0.08);
+  color: #111827;
 }
 
 .registerBtnMobile {
@@ -419,7 +419,7 @@
   gap: 10px;
   height: 36px;
   padding: 4px 0 4px 10px;
-  background: #ffffff1f;
+  background: #f3f4f6;
   border-radius: 8px;
 }
 
@@ -433,7 +433,7 @@
   gap: 8px;
   padding: 0;
   cursor: pointer;
-  color: #ffffffd6;
+  color: #374151;
   font-weight: 700;
   font-size: 13px;
 }
@@ -444,8 +444,8 @@
   display: grid;
   place-items: center;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.92);
+  background: #e5e7eb;
+  color: #111827;
   font-weight: 900;
   font-size: 12px;
 }
@@ -458,7 +458,7 @@
 .chevronIcon {
   width: 18px;
   height: 18px;
-  color: #ffffffd6;
+  color: #374151;
   opacity: 0.9;
   transform: rotate(90deg);
 }
@@ -466,7 +466,7 @@
 .depositInner {
   appearance: none;
   border: 0;
-  background: #ed1d49;
+  background: rgb(var(--primary));
   color: #fff;
   height: 28px;
   padding: 0 12px;
@@ -493,7 +493,7 @@
 .profilePill {
   appearance: none;
   border: 0;
-  background: #ffffff1f;
+  background: #f3f4f6;
   height: 36px;
   padding: 0 10px 0 0;
   border-radius: 8px;
@@ -503,7 +503,7 @@
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  color: #ffffffd6;
+  color: #374151;
 }
 
 .settingsWrap {
@@ -517,9 +517,8 @@
   width: 520px;
   border-radius: 16px;
   border: 0;
-  background: rgba(13, 19, 28, 0.92);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.68);
+  background: #ffffff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 18px 50px -12px rgba(0, 0, 0, 0.18);
   padding: 10px;
   z-index: 60;
 }
@@ -533,7 +532,7 @@
   height: 0;
   border-left: 10px solid transparent;
   border-right: 10px solid transparent;
-  border-bottom: 10px solid rgba(13, 19, 28, 0.92);
+  border-bottom: 10px solid #ffffff;
 }
 
 .settingsGrid {
@@ -557,13 +556,13 @@
   padding: 10px 12px;
   border-radius: 14px;
   border: 0;
-  background: rgba(27, 38, 54, 0.9);
-  color: rgba(255, 255, 255, 0.92);
+  background: #f3f4f6;
+  color: #111827;
   cursor: pointer;
 }
 
 .settingsRow:hover {
-  background: rgba(27, 38, 54, 1);
+  background: #e5e7eb;
 }
 
 .settingsRow + .settingsRow {
@@ -586,28 +585,28 @@
 .settingsLabel {
   font-size: 11px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.55);
+  color: #6b7280;
 }
 
 .settingsValue {
   font-size: 17px;
   font-weight: 950;
   letter-spacing: -0.3px;
-  color: rgba(255, 255, 255, 0.95);
+  color: #111827;
 }
 
 .settingsValueSolo {
   font-size: 13px;
   font-weight: 850;
-  color: rgba(255, 255, 255, 0.86);
+  color: #111827;
 }
 
 .settingsFlag {
   width: 34px;
   height: 34px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -624,27 +623,27 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06));
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: radial-gradient(circle at 30% 30%, #f3f4f6, #e5e7eb);
+  border: 1px solid #e5e7eb;
 }
 
 .settingsIcon {
   width: 34px;
   height: 34px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  color: rgba(255, 255, 255, 0.78);
+  color: #374151;
 }
 
 .settingsCaret {
   width: 9px;
   height: 9px;
-  border-right: 2px solid rgba(255, 255, 255, 0.6);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.6);
+  border-right: 2px solid #6b7280;
+  border-bottom: 2px solid #6b7280;
   transform: rotate(45deg);
   margin-right: 4px;
   flex: 0 0 auto;
@@ -655,7 +654,7 @@
   height: 24px;
   border-radius: 999px;
   border: 0;
-  background: rgba(255, 255, 255, 0.14);
+  background: #e5e7eb;
   display: grid;
   align-items: center;
   padding: 0 4px;
@@ -670,7 +669,7 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
+  background: #ffffff;
   transform: translateX(0);
   transition: transform 140ms ease;
 }
@@ -682,14 +681,14 @@
 .settingsSliderBlock {
   margin-top: 0;
   border-radius: 14px;
-  background: rgba(27, 38, 54, 0.9);
+  background: #f3f4f6;
   padding: 12px 14px;
 }
 
 .settingsSliderLabel {
   font-size: 12px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.52);
+  color: #6b7280;
   margin-bottom: 4px;
 }
 
@@ -702,13 +701,13 @@
   accent-color: #2b7cff;
 }
 .profilePill:hover {
-  background: #ffffff29;
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .profileArrow {
   width: 18px;
   height: 18px;
-  color: #ffffffd6;
+  color: #374151;
   transform: rotate(90deg);
 }
 
@@ -732,9 +731,8 @@
   width: 300px;
   border-radius: 18px;
   border: 0;
-  background: rgba(13, 19, 28, 0.92);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.68);
+  background: #ffffff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 18px 50px -12px rgba(0, 0, 0, 0.18);
   padding: 12px;
   z-index: 60;
 }
@@ -749,9 +747,9 @@
   height: 72px;
   border-radius: 50%;
   margin: 0 auto 4px;
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04));
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.45);
+  background: radial-gradient(circle at 30% 30%, #f3f4f6, #e5e7eb);
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
 }
 
 .profileLevelPill {
@@ -759,13 +757,13 @@
   width: fit-content;
   padding: 2px 9px;
   border-radius: 8px;
-  background: #ed1d49;
+  background: rgb(var(--primary));
   color: #fff;
   font-weight: 800;
   font-size: 12px;
   line-height: 1;
   letter-spacing: -0.2px;
-  outline: 2px solid rgba(13, 19, 28, 0.92);
+  outline: 2px solid #ffffff;
 }
 
 .profileHeroName {
@@ -775,7 +773,7 @@
   font-size: 16px;
   line-height: 20px;
   letter-spacing: -0.2px;
-  color: rgba(255, 255, 255, 0.96);
+  color: #111827;
 }
 
 .profileLevelRow {
@@ -785,7 +783,7 @@
   justify-content: space-between;
   font-weight: 600;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.62);
+  color: #6b7280;
 }
 
 .profileProgressRow {
@@ -799,7 +797,7 @@
 .profileProgressTrack {
   height: 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  background: #e5e7eb;
   overflow: hidden;
 }
 
@@ -815,14 +813,14 @@
   gap: 6px;
   font-weight: 600;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.92);
+  color: #111827;
   text-wrap: nowrap;
 }
 
 .profileMenuList {
   margin-bottom: 8px;
   border-radius: 12px;
-  background: rgba(27, 38, 54, 0.9);
+  background: #f3f4f6;
   padding: 6px 2px;
 }
 
@@ -831,7 +829,7 @@
   appearance: none;
   border: 0;
   background: transparent;
-  color: rgba(255, 255, 255, 0.72);
+  color: #374151;
   font-weight: 600;
   font-size: 15px;
   padding: 8px 10px;
@@ -844,7 +842,7 @@
 }
 
 .profileMenuItem:hover {
-  color: #fff;
+  color: #111827;
 }
 
 .profileMenuIcon {
@@ -852,7 +850,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.38);
+  color: #9ca3af;
 }
 
 .profileMenuText {
@@ -864,21 +862,21 @@
   height: 40px;
   border-radius: 12px;
   border: 0;
-  background: rgba(27, 38, 54, 0.9);
-  color: rgba(255, 255, 255, 0.72);
+  background: #f3f4f6;
+  color: #374151;
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
 }
 
 .profileLogout:hover {
-  color: #fff;
+  color: #111827;
 }
 
 .langSettingsPill {
   appearance: none;
   border: 0;
-  background: #ffffff1f;
+  background: #f3f4f6;
   height: 36px;
   padding: 0 10px;
   border-radius: 18px;
@@ -886,18 +884,18 @@
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  color: #ffffffd6;
+  color: #374151;
 }
 
 .langSettingsPill:hover {
-  background: #ffffff29;
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .langFlag {
   height: 22px;
   padding: 0 6px;
   border-radius: 6px;
-  background: #ed1d49;
+  background: rgb(var(--primary));
   color: #fff;
   display: inline-flex;
   align-items: center;
@@ -916,7 +914,7 @@
 .iconButton {
   appearance: none;
   border: 0;
-  background: #ffffff1f;
+  background: #f3f4f6;
   width: 44px;
   height: 44px;
   border-radius: 12px;
@@ -924,13 +922,13 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #ffffffd6;
+  color: #374151;
   position: relative;
 }
 
 .searchButton:hover,
 .iconButton:hover {
-  background: #ffffff29;
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .searchButton:active,
@@ -958,8 +956,8 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #2a3546, #111923);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: radial-gradient(circle at 30% 30%, #f3f4f6, #e5e7eb);
+  border: 1px solid #e5e7eb;
 }
 
 .badge {
@@ -973,7 +971,7 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  border: 2px solid #1b2636;
+  border: 2px solid #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -991,7 +989,7 @@
   height: 18px;
   padding: 0 4px;
   border-radius: 6px;
-  border: 2px solid #1b2636;
+  border: 2px solid #ffffff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1002,7 +1000,7 @@
   appearance: none;
   border: 0;
   background: transparent;
-  color: #ffffffd6;
+  color: #374151;
   width: 28px;
   height: 28px;
   border-radius: 8px;
@@ -1019,9 +1017,9 @@
 }
 .collapseButton {
   appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(0, 0, 0, 0.18);
-  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
+  color: #111827;
   width: 40px;
   height: 40px;
   border-radius: 12px;
@@ -1043,28 +1041,28 @@
   padding: 8px 10px;
   border-radius: 12px;
   font-weight: 850;
-  color: rgba(255, 255, 255, 0.75);
+  color: #374151;
   border: 1px solid transparent;
 }
 
 .topNavLink:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.92);
+  background: rgba(0, 0, 0, 0.04);
+  border-color: #e5e7eb;
+  color: #111827;
 }
 
 .topNavLinkActive {
-  background: rgba(237, 29, 73, 0.12);
-  border-color: rgba(237, 29, 73, 0.55);
-  color: rgba(255, 255, 255, 0.95);
+  background: rgb(var(--primary) / 0.12);
+  border-color: rgb(var(--primary) / 0.55);
+  color: #111827;
 }
 
 .brandDot {
   width: 10px;
   height: 10px;
   border-radius: 999px;
-  background: #ed1d49;
-  box-shadow: 0 0 0 6px rgba(237, 29, 73, 0.18);
+  background: rgb(var(--primary));
+  box-shadow: 0 0 0 6px rgb(var(--primary) / 0.18);
 }
 
 .headerRight {
@@ -1075,9 +1073,9 @@
 
 .headerButton {
   appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(0, 0, 0, 0.18);
-  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
+  color: #111827;
   height: 38px;
   padding: 0 14px;
   border-radius: 12px;
@@ -1119,8 +1117,8 @@
   height: calc(100dvh - var(--header-height));
   width: var(--sidebar-width);
   overflow: hidden;
-  border-right: 1px solid rgba(255, 255, 255, 0.04);
-  background: #111923;
+  border-right: 1px solid #e5e7eb;
+  background: #ffffff;
   padding: 12px;
   border-radius: 0;
   display: flex;
@@ -1133,8 +1131,8 @@
   overflow: auto;
   border-radius: 0;
   border: 0;
-  border-right: 1px solid rgba(255, 255, 255, 0.04);
-  background: #111923;
+  border-right: 1px solid #e5e7eb;
+  background: #ffffff;
 }
 
 .sidebarTop {
@@ -1160,9 +1158,9 @@
 .leftMenuTab {
   height: 44px;
   border-radius: 14px;
-  background: #2a3546;
+  background: #f3f4f6;
   border: 1px solid transparent;
-  color: #ffffffd6;
+  color: #374151;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
@@ -1175,15 +1173,15 @@
 }
 
 .leftMenuTab:hover {
-  background: #3c485c;
-  border-color: #ffffff14;
-  color: #fff;
+  background: #e5e7eb;
+  border-color: #e5e7eb;
+  color: #111827;
 }
 
 .leftMenuTabActive {
-  background: #3c485c;
-  border-color: #ffffff1f;
-  color: #fff;
+  background: #e5e7eb;
+  border-color: #e5e7eb;
+  color: #111827;
 }
 
 .leftMenuTabIcon {
@@ -1192,7 +1190,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #ffffffd6;
+  color: #374151;
 }
 
 .leftMenuTabLabel {
@@ -1227,7 +1225,7 @@
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  color: #ffffffd1;
+  color: #374151;
   font-weight: 750;
   font-size: 15px;
   text-decoration: none;
@@ -1237,15 +1235,15 @@
 }
 
 .leftMenuItem:hover {
-  background: #ffffff0a;
-  border-color: #ffffff14;
-  color: #fff;
+  background: rgba(0, 0, 0, 0.04);
+  border-color: #e5e7eb;
+  color: #111827;
 }
 
 .leftMenuItemActive {
-  background: #ffffff12;
-  border-color: #ffffff1f;
-  color: #fff;
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #111827;
 }
 
 .leftMenuItemIcon {
@@ -1255,12 +1253,12 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: #ffffff7a;
+  color: #6b7280;
 }
 
 .leftMenuItem:hover .leftMenuItemIcon,
 .leftMenuItemActive .leftMenuItemIcon {
-  color: #ffffffd6;
+  color: #374151;
 }
 
 .leftMenuItemLabel {
@@ -1275,7 +1273,7 @@
 
 .leftMenuDivider {
   height: 1px;
-  background: #ffffff14;
+  background: #e5e7eb;
   margin: 10px 6px;
 }
 
@@ -1303,22 +1301,22 @@
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  background: #2a3546;
-  color: #ffffffd6;
+  background: #f3f4f6;
+  color: #374151;
   border: 1px solid transparent;
   transition: background 0.12s ease-in-out, border-color 0.12s ease-in-out, color 0.12s ease-in-out;
 }
 
 .collapsedTab:hover {
-  background: #3c485c;
-  border-color: #ffffff14;
-  color: #fff;
+  background: #e5e7eb;
+  border-color: #e5e7eb;
+  color: #111827;
 }
 
 .collapsedTabActive {
-  background: #3c485c;
-  border-color: #ffffff1f;
-  color: #fff;
+  background: #e5e7eb;
+  border-color: #e5e7eb;
+  color: #111827;
 }
 
 .collapsedNav {
@@ -1354,34 +1352,34 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff7a;
+  color: #6b7280;
   cursor: pointer;
   text-decoration: none;
   transition: background 0.12s ease-in-out, border-color 0.12s ease-in-out, color 0.12s ease-in-out;
 }
 
 .collapsedItem:hover {
-  background: #ffffff0a;
-  border-color: #ffffff14;
-  color: #ffffffd6;
+  background: rgba(0, 0, 0, 0.04);
+  border-color: #e5e7eb;
+  color: #374151;
 }
 
 .collapsedItemActive {
-  background: #ffffff12;
-  border-color: #ffffff1f;
-  color: #fff;
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #111827;
 }
 
 .collapsedDivider {
   height: 1px;
-  background: #ffffff14;
+  background: #e5e7eb;
   width: 28px;
   margin: 10px 0;
 }
 
 .sidebarToggle {
   display: flex;
-  background: #111923;
+  background: #f3f4f6;
   border-radius: 8px;
   padding: 4px;
   flex: 1;
@@ -1394,13 +1392,13 @@
   border-radius: 6px;
   font-size: 13px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.5);
+  color: #6b7280;
   text-decoration: none;
 }
 
 .sidebarToggleBtnActive {
-  background: #2a3546;
-  color: #fff;
+  background: #ffffff;
+  color: #111827;
 }
 
 .sidebarList {
@@ -1415,7 +1413,7 @@
   gap: 12px;
   padding: 10px 12px;
   border-radius: 8px;
-  color: rgba(255, 255, 255, 0.7);
+  color: #374151;
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
@@ -1428,13 +1426,13 @@
 }
 
 .sidebarLink:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
+  background: rgba(0, 0, 0, 0.04);
+  color: #111827;
 }
 
 .sidebarLinkActive {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: #f3f4f6;
+  color: #111827;
 }
 
 .sidebarIcon {
@@ -1451,7 +1449,7 @@
 
 .divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.05);
+  background: #e5e7eb;
   margin: 8px 0;
 }
 
@@ -1513,7 +1511,7 @@
   overflow: hidden;
   text-decoration: none;
   scroll-snap-align: start;
-  background-color: #2a3546;
+  background-color: #f3f4f6;
   background-image: linear-gradient(113.61deg, #2283f600 70.57%, #2283f64d 100%),
     linear-gradient(128.6deg, #2283f666 0%, #2283f600 48.3%);
 }
@@ -1528,13 +1526,13 @@
 }
 
 .bannerCardTag {
-  background: #ffffff29;
+  background: rgba(0, 0, 0, 0.08);
   padding: 3px 7px 3px 6px;
   border-radius: 4px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.66px;
-  color: #fff;
+  color: #111827;
   text-transform: uppercase;
   backdrop-filter: blur(2px);
 }
@@ -1543,7 +1541,7 @@
   margin-top: 8px;
   font-size: 32px;
   font-weight: 700;
-  color: #fff;
+  color: #111827;
   line-height: 1.05;
   letter-spacing: -0.02em;
   white-space: pre-line;
@@ -1554,7 +1552,7 @@
   align-items: center;
   justify-content: center;
   background: #fff;
-  color: #0d131c;
+  color: #111827;
   height: 32px;
   padding: 0 12px;
   border-radius: 8px;
@@ -1591,7 +1589,7 @@
 .dot {
   width: 24px;
   height: 4px;
-  background: rgba(255, 255, 255, 0.2);
+  background: #e5e7eb;
   border-radius: 2px;
   cursor: pointer;
 }
@@ -1616,7 +1614,7 @@
   gap: 10px;
   padding: 10px 12px;
   border-radius: 14px;
-  color: rgba(255, 255, 255, 0.82);
+  color: #374151;
   font-weight: 750;
   border: 1px solid transparent;
 }
@@ -1631,19 +1629,19 @@
 }
 
 .sidebarLink:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.04);
+  border-color: #e5e7eb;
 }
 
 .sidebarLinkActive {
-  background: rgba(237, 29, 73, 0.12);
-  border-color: rgba(237, 29, 73, 0.55);
-  color: rgba(255, 255, 255, 0.95);
+  background: rgb(var(--primary) / 0.12);
+  border-color: rgb(var(--primary) / 0.55);
+  color: #111827;
 }
 
 .divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.08);
+  background: #e5e7eb;
   margin: 10px 6px;
 }
 
@@ -1654,8 +1652,8 @@
   bottom: 0;
   height: 64px;
   display: none;
-  background: rgba(13, 18, 26, 0.92);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.95);
+  border-top: 1px solid #e5e7eb;
   backdrop-filter: blur(12px);
   z-index: 60;
 }
@@ -1690,14 +1688,14 @@
   font-size: 13px;
   font-weight: 700;
   line-height: 1;
-  color: rgba(255, 255, 255, 0.68);
+  color: #6b7280;
   text-decoration: none;
   position: relative;
   -webkit-tap-highlight-color: transparent;
 }
 
 .bottomNavItemActive {
-  color: rgba(255, 255, 255, 0.95);
+  color: #111827;
 }
 
 .bottomNavItemActive::after {
@@ -1708,7 +1706,7 @@
   transform: translateX(-50%);
   width: 56px;
   height: 10px;
-  background: radial-gradient(closest-side, rgba(237, 29, 73, 0.95), rgba(237, 29, 73, 0));
+  background: radial-gradient(closest-side, rgb(var(--primary) / 0.95), rgb(var(--primary) / 0));
   pointer-events: none;
 }
 
@@ -1716,11 +1714,11 @@
   width: 24px;
   height: 24px;
   display: block;
-  color: rgba(255, 255, 255, 0.78);
+  color: #6b7280;
 }
 
 .bottomNavItemActive .bottomNavIcon {
-  color: rgba(255, 255, 255, 0.98);
+  color: #111827;
 }
 
 .backdrop {
@@ -1745,18 +1743,18 @@
 .authModal {
   width: min(460px, 96vw);
   border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(17, 25, 35, 0.92);
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.2);
   padding: 18px;
   position: relative;
 }
 
 .authClose {
   appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(0, 0, 0, 0.18);
-  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
+  color: #111827;
   width: 38px;
   height: 38px;
   border-radius: 12px;
@@ -1772,7 +1770,7 @@
   text-align: center;
   font-size: 18px;
   font-weight: 950;
-  color: rgba(255, 255, 255, 0.92);
+  color: #111827;
   letter-spacing: -0.02em;
   padding: 10px 44px 14px;
 }
@@ -1816,14 +1814,14 @@
 
 .authDividerLine {
   height: 1px;
-  background: rgba(255, 255, 255, 0.12);
+  background: #e5e7eb;
   flex: 1 1 auto;
 }
 
 .authDividerText {
   font-size: 12px;
   font-weight: 850;
-  color: rgba(255, 255, 255, 0.55);
+  color: #6b7280;
 }
 
 .authRow {
@@ -1835,10 +1833,10 @@
 .authInput {
   height: 46px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
   padding: 0 12px;
-  color: rgba(255, 255, 255, 0.92);
+  color: #111827;
   font-weight: 800;
   font-size: 13px;
   outline: none;
@@ -1852,9 +1850,9 @@
 .authPrimary {
   height: 46px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.92);
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
+  color: #111827;
   font-weight: 950;
   font-size: 13px;
   padding: 0 14px;
@@ -1874,7 +1872,7 @@
 .authHint {
   font-size: 12px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.62);
+  color: #6b7280;
   text-align: center;
 }
 
@@ -1887,9 +1885,9 @@
 .authCodeInput {
   height: 48px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.18);
-  color: rgba(255, 255, 255, 0.92);
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
+  color: #111827;
   font-weight: 950;
   font-size: 18px;
   text-align: center;
@@ -1906,8 +1904,8 @@
   height: 46px;
   border-radius: 12px;
   border: 0;
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.92);
+  background: rgb(var(--primary));
+  color: #ffffff;
   font-weight: 950;
   font-size: 14px;
   cursor: pointer;
@@ -1921,7 +1919,7 @@
 .authLink {
   border: 0;
   background: transparent;
-  color: rgba(255, 255, 255, 0.62);
+  color: #6b7280;
   font-weight: 850;
   font-size: 12px;
   cursor: pointer;
@@ -1931,7 +1929,7 @@
 .authError {
   font-size: 12px;
   font-weight: 850;
-  color: rgba(239, 83, 80, 0.92);
+  color: #dc2626;
   text-align: center;
 }
 
@@ -1941,8 +1939,8 @@
   bottom: 0;
   left: 0;
   width: min(320px, 86vw);
-  background: #111923;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
   transform: translateX(-102%);
   transition: transform 160ms ease;
   z-index: 66;
@@ -1970,14 +1968,14 @@
 
 .mobileDrawerTitle {
   font-weight: 950;
-  color: rgba(255, 255, 255, 0.92);
+  color: #111827;
 }
 
 .mobileDrawerClose {
   appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(0, 0, 0, 0.18);
-  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
+  color: #111827;
   width: 38px;
   height: 38px;
   border-radius: 12px;
@@ -1996,20 +1994,20 @@
   padding: 12px 12px;
   border-radius: 14px;
   font-weight: 850;
-  color: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
 }
 
 .mobileDrawerLink:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.04);
+  border-color: #e5e7eb;
 }
 
 .mobileDrawerLinkActive {
-  background: rgba(237, 29, 73, 0.12);
-  border-color: rgba(237, 29, 73, 0.55);
-  color: rgba(255, 255, 255, 0.95);
+  background: rgb(var(--primary) / 0.12);
+  border-color: rgb(var(--primary) / 0.55);
+  color: #111827;
 }
 
 /* 老闆 2026-09-04：頭像＋暱稱那顆比左右兩邊低了 3px——
@@ -2022,8 +2020,8 @@
 
 /* 老闆 2026-09-04：設定／鈴鐺／聊聊那顆膠囊 hover 不要整顆亮，個別圖標亮 */
 .iconGroup:hover {
-  background: #ffffff1f;
-  color: #ffffffd6;
+  background: #f3f4f6;
+  color: #374151;
 }
 .iconGroupBtn {
   appearance: none;
@@ -2042,6 +2040,6 @@
   transition: background-color 0.1s ease-in-out, color 0.1s ease-in-out;
 }
 .iconGroupBtn:hover {
-  background: #ffffff33;
-  color: #fff;
+  background: rgba(0, 0, 0, 0.08);
+  color: #111827;
 }

@@ -33,16 +33,16 @@ type MyTradeRecord = {
 const fieldLabelStyle: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 900,
-  color: "rgba(255,255,255,0.78)",
+  color: "#374151",
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
   height: 42,
   borderRadius: 12,
-  border: "1px solid rgba(255,255,255,0.12)",
-  background: "rgba(255,255,255,0.06)",
-  color: "rgba(255,255,255,0.92)",
+  border: "1px solid #e5e7eb",
+  background: "#ffffff",
+  color: "#111827",
   padding: "0 14px",
   fontSize: 14,
   fontWeight: 800,
@@ -62,7 +62,7 @@ const textareaStyle: React.CSSProperties = {
 const errorTextStyle: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 800,
-  color: "rgba(255,150,160,0.95)",
+  color: "#dc2626",
 };
 
 export default function TradeNewPage() {
@@ -119,18 +119,18 @@ export default function TradeNewPage() {
       <div style={{ padding: "20px 0 96px" }}>
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 16px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 18 }}>
-            <Link href="/trades" style={{ color: "rgba(255,255,255,0.82)", textDecoration: "none", fontSize: 13, fontWeight: 800 }}>
+            <Link href="/trades" style={{ color: "#374151", textDecoration: "none", fontSize: 13, fontWeight: 800 }}>
               ← 返回交換
             </Link>
-            <div style={{ color: "rgba(255,255,255,0.62)", fontSize: 13, fontWeight: 800 }}>建立新的交換提案</div>
+            <div style={{ color: "#6b7280", fontSize: 13, fontWeight: 800 }}>建立新的交換提案</div>
           </div>
 
           <div
             style={{
               borderRadius: 18,
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "linear-gradient(180deg, rgba(14,18,26,0.92), rgba(8,10,14,0.92))",
-              boxShadow: "0 24px 80px rgba(0,0,0,0.55)",
+              border: "1px solid #e5e7eb",
+              background: "#ffffff",
+              boxShadow: "0 10px 40px -10px rgba(0,0,0,0.08)",
               padding: "24px 24px 28px",
             }}
           >
@@ -139,20 +139,20 @@ export default function TradeNewPage() {
                 margin: 0,
                 fontSize: 18,
                 fontWeight: 900,
-                color: "#ffffff",
+                color: "#111827",
                 letterSpacing: "-0.36px",
               }}
             >
               建立交換
             </h1>
-            <div style={{ marginTop: 6, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.60)" }}>
+            <div style={{ marginTop: 6, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
               填寫你持有與想交換的卡牌資訊，送出後即開始配對。
             </div>
 
             <form onSubmit={handleSubmit} noValidate style={{ marginTop: 18, display: "grid", gap: 16 }}>
               <div style={{ display: "grid", gap: 6 }}>
                 <label htmlFor="trade-title" style={fieldLabelStyle}>
-                  標題 <span style={{ color: "rgba(255,150,160,0.95)" }}>*</span>
+                  標題 <span style={{ color: "#dc2626" }}>*</span>
                 </label>
                 <input
                   id="trade-title"
@@ -177,7 +177,7 @@ export default function TradeNewPage() {
                   style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}
                 >
                   {gameOptions.map((opt) => (
-                    <option key={opt.key} value={opt.key} style={{ background: "#10141c", color: "#ffffff" }}>
+                    <option key={opt.key} value={opt.key} style={{ background: "#ffffff", color: "#111827" }}>
                       {opt.label}
                     </option>
                   ))}
@@ -186,7 +186,7 @@ export default function TradeNewPage() {
 
               <div style={{ display: "grid", gap: 6 }}>
                 <label htmlFor="trade-offer" style={fieldLabelStyle}>
-                  我有（描述） <span style={{ color: "rgba(255,150,160,0.95)" }}>*</span>
+                  我有（描述） <span style={{ color: "#dc2626" }}>*</span>
                 </label>
                 <textarea
                   id="trade-offer"
@@ -202,7 +202,7 @@ export default function TradeNewPage() {
 
               <div style={{ display: "grid", gap: 6 }}>
                 <label htmlFor="trade-want" style={fieldLabelStyle}>
-                  我想要（描述） <span style={{ color: "rgba(255,150,160,0.95)" }}>*</span>
+                  我想要（描述） <span style={{ color: "#dc2626" }}>*</span>
                 </label>
                 <textarea
                   id="trade-want"
@@ -233,7 +233,7 @@ export default function TradeNewPage() {
               {saveFailed ? <div style={errorTextStyle}>儲存失敗，請確認瀏覽器允許本機儲存後再試一次。</div> : null}
 
               <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12, marginTop: 4 }}>
-                <Link href="/trades" style={{ color: "rgba(255,255,255,0.66)", textDecoration: "none", fontSize: 13, fontWeight: 800 }}>
+                <Link href="/trades" style={{ color: "#6b7280", textDecoration: "none", fontSize: 13, fontWeight: 800 }}>
                   取消
                 </Link>
                 <button

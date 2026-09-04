@@ -914,8 +914,8 @@ function AccountPageInner() {
                           borderRadius: 16,
                           display: "grid",
                           placeItems: "center",
-                          background: active ? "rgba(43,124,255,0.26)" : "rgba(255,255,255,0.06)",
-                          color: "rgba(255,255,255,0.82)",
+                          background: active ? "rgba(43,124,255,0.26)" : "#f3f4f6",
+                          color: "#374151",
                         }}
                       >
                         <UiIcon href={t.icon} size={20} />
@@ -929,8 +929,8 @@ function AccountPageInner() {
               {tab === "overview" ? (
               <>
               <div style={{ marginTop: 14 }}>
-                <SurfaceCard style={{ borderRadius: 16, background: "rgba(255,255,255,0.04)" }}>
-                  <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(255,255,255,0.90)" }}>快速入口</div>
+                <SurfaceCard style={{ borderRadius: 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 950, color: "#111827" }}>快速入口</div>
                   <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
                     <Button3D color="blue" onClick={() => goTab("seller")} style={{ height: 38, borderRadius: 12 }}>
                       賣家管理
@@ -965,18 +965,18 @@ function AccountPageInner() {
                         width: 42,
                         height: 42,
                         borderRadius: 999,
-                        background: "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.16), rgba(255,255,255,0.05))",
+                        background: "radial-gradient(circle at 30% 30%, #f3f4f6, #e5e7eb)",
                         flex: "0 0 auto",
                       }}
                     />
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {displayName}
                       </div>
-                      <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.55)" }}>變更</div>
+                      <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>變更</div>
                     </div>
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap" }}>
+                  <div style={{ fontSize: 12, fontWeight: 850, color: "#6b7280", whiteSpace: "nowrap" }}>
                     <UiIcon href="#icon-chevron-right" size={18} opacity={0.7} />
                   </div>
                 </div>
@@ -1003,7 +1003,7 @@ function AccountPageInner() {
                           width: 34,
                           height: 34,
                           borderRadius: 14,
-                          background: "rgba(255,255,255,0.06)",
+                          background: "#f3f4f6",
                           display: "grid",
                           placeItems: "center",
                         }}
@@ -1011,7 +1011,7 @@ function AccountPageInner() {
                         <UiIcon href="#icon-docs" size={20} />
                       </span>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.58)" }}>KYC 實名驗證</div>
+                        <div style={{ fontSize: 12, fontWeight: 850, color: "#6b7280" }}>KYC 實名驗證</div>
                         <div
                           style={{
                             marginTop: 2,
@@ -1024,7 +1024,7 @@ function AccountPageInner() {
                                   ? "#eab308"
                                   : kycStatus === "rejected"
                                     ? "#f87171"
-                                    : "rgba(255,255,255,0.75)",
+                                    : "#374151",
                           }}
                         >
                           {kycStatus === "approved" ? "已通過" : kycStatus === "reviewing" ? "審核中" : kycStatus === "rejected" ? "未通過" : "未提交"}
@@ -1033,7 +1033,7 @@ function AccountPageInner() {
                     </div>
                     <UiIcon href="#icon-chevron-right" size={18} opacity={0.7} />
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 750, color: "rgba(255,255,255,0.52)", lineHeight: "18px" }}>
+                  <div style={{ fontSize: 12, fontWeight: 750, color: "#6b7280", lineHeight: "18px" }}>
                     交易前需要完成實名驗證，才能購買與開抽。
                   </div>
                 </button>
@@ -1061,17 +1061,17 @@ function AccountPageInner() {
                         width: 42,
                         height: 42,
                         borderRadius: 16,
-                        background: "rgba(255,255,255,0.06)",
+                        background: "#f3f4f6",
                         display: "grid",
                         placeItems: "center",
-                        color: "rgba(255,255,255,0.82)",
+                        color: "#374151",
                         flex: "0 0 auto",
                       }}
                     >
                       <UiIcon href="#icon-box" size={20} />
                     </div>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.58)" }}>
+                      <div style={{ fontSize: 12, fontWeight: 850, color: "#6b7280" }}>
                         預設收件地址{addressCount > 0 ? `（共 ${addressCount} 個地址）` : ""}
                       </div>
                       {defaultAddress ? (
@@ -1080,7 +1080,7 @@ function AccountPageInner() {
                             marginTop: 2,
                             fontSize: 13,
                             fontWeight: 900,
-                            color: "rgba(255,255,255,0.88)",
+                            color: "#111827",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
@@ -1089,7 +1089,7 @@ function AccountPageInner() {
                           {defaultAddress.name}｜{defaultAddress.addressLine}
                         </div>
                       ) : (
-                        <div style={{ marginTop: 2, fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.75)" }}>
+                        <div style={{ marginTop: 2, fontSize: 13, fontWeight: 900, color: "#374151" }}>
                           尚未新增，前往地址簿設定收件地址
                         </div>
                       )}
@@ -1106,7 +1106,8 @@ function AccountPageInner() {
                   className={homeStyles.accountCard}
                   style={{
                     borderRadius: 18,
-                    background: "linear-gradient(180deg, rgba(30, 110, 216, 0.88), rgba(14, 20, 29, 0.25))",
+                    background: "linear-gradient(180deg, rgba(30, 110, 216, 0.95), rgba(30, 110, 216, 0.75))",
+                    color: "#ffffff",
                     overflow: "hidden",
                     minHeight: 220,
                     display: "grid",
@@ -1130,9 +1131,9 @@ function AccountPageInner() {
                       >
                         <UiIcon href="#icon-box" size={18} />
                       </span>
-                      <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.95)" }}>訂單與開抽</div>
+                      <div style={{ fontSize: 14, fontWeight: 950, color: "#ffffff" }}>訂單與開抽</div>
                     </div>
-                    <div style={{ marginTop: 10, fontSize: 12, fontWeight: 750, color: "rgba(255,255,255,0.72)", lineHeight: "18px", maxWidth: 440 }}>
+                    <div style={{ marginTop: 10, fontSize: 12, fontWeight: 750, color: "#e5e7eb", lineHeight: "18px", maxWidth: 440 }}>
                       追蹤市集購買與卡包開抽的付款、物流與狀態進度。
                     </div>
                     <button
@@ -1145,7 +1146,7 @@ function AccountPageInner() {
                         borderRadius: 12,
                         border: 0,
                         background: "rgba(0,0,0,0.18)",
-                        color: "rgba(255,255,255,0.92)",
+                        color: "#ffffff",
                         fontWeight: 900,
                         cursor: "pointer",
                       }}
@@ -1172,8 +1173,8 @@ function AccountPageInner() {
                       onClick={() => router.push("/orders")}
                       style={{ display: "grid", gap: 4, justifyItems: "center", background: "none", border: 0, cursor: "pointer", color: "inherit" }}
                     >
-                      <span style={{ fontSize: 26, fontWeight: 950, color: "rgba(255,255,255,0.95)", letterSpacing: "-0.3px" }}>{orderCount}</span>
-                      <span style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.70)" }}>市集訂單</span>
+                      <span style={{ fontSize: 26, fontWeight: 950, color: "#ffffff", letterSpacing: "-0.3px" }}>{orderCount}</span>
+                      <span style={{ fontSize: 12, fontWeight: 850, color: "#e5e7eb" }}>市集訂單</span>
                     </button>
                     <button
                       type="button"
@@ -1191,8 +1192,8 @@ function AccountPageInner() {
                         alignContent: "center",
                       }}
                     >
-                      <span style={{ fontSize: 26, fontWeight: 950, color: "rgba(255,255,255,0.95)", letterSpacing: "-0.3px" }}>{openingCount}</span>
-                      <span style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.70)" }}>卡包開抽</span>
+                      <span style={{ fontSize: 26, fontWeight: 950, color: "#ffffff", letterSpacing: "-0.3px" }}>{openingCount}</span>
+                      <span style={{ fontSize: 12, fontWeight: 850, color: "#e5e7eb" }}>卡包開抽</span>
                     </button>
                   </div>
                 </div>
@@ -1211,15 +1212,15 @@ function AccountPageInner() {
                         width: 30,
                         height: 30,
                         borderRadius: 12,
-                        background: "rgba(255,255,255,0.08)",
+                        background: "#f3f4f6",
                         display: "grid",
                         placeItems: "center",
-                        color: "rgba(255,255,255,0.82)",
+                        color: "#374151",
                       }}
                     >
                       <UiIcon href="#icon-settings" size={18} />
                     </span>
-                    <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>設定個人信息</div>
+                    <div style={{ fontSize: 14, fontWeight: 950, color: "#111827" }}>設定個人信息</div>
                   </div>
                   <div style={{ marginTop: 12, display: "grid", gap: 0 }}>
                     {[
@@ -1237,10 +1238,10 @@ function AccountPageInner() {
                           gap: 12,
                           padding: "12px 2px",
                           cursor: "pointer",
-                          borderBottom: idx === all.length - 1 ? 0 : "1px solid rgba(255,255,255,0.08)",
+                          borderBottom: idx === all.length - 1 ? 0 : "1px solid #e5e7eb",
                         }}
                       >
-                        <span style={{ fontSize: 13, fontWeight: 850, color: "rgba(255,255,255,0.80)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <span style={{ fontSize: 13, fontWeight: 850, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {row.label}
                         </span>
                         <input
@@ -1270,13 +1271,13 @@ function AccountPageInner() {
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <span
                         aria-hidden="true"
-                        style={{ width: 30, height: 30, borderRadius: 12, background: "rgba(255,255,255,0.08)", display: "grid", placeItems: "center" }}
+                        style={{ width: 30, height: 30, borderRadius: 12, background: "#f3f4f6", display: "grid", placeItems: "center" }}
                       >
                         <UiIcon href="#icon-docs" size={18} />
                       </span>
-                      <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>我的電子郵件</div>
+                      <div style={{ fontSize: 13, fontWeight: 950, color: "#111827" }}>我的電子郵件</div>
                     </div>
-                    <div style={{ fontSize: 12, fontWeight: 900, color: authUser?.email ? "#22c55e" : "rgba(255,255,255,0.55)", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 12, fontWeight: 900, color: authUser?.email ? "#22c55e" : "#6b7280", whiteSpace: "nowrap" }}>
                       {authUser?.email ? "已綁定" : "未綁定"}
                     </div>
                   </div>
@@ -1287,10 +1288,10 @@ function AccountPageInner() {
                       justifyContent: "space-between",
                       gap: 10,
                       padding: "8px 2px",
-                      borderBottom: "1px solid rgba(255,255,255,0.08)",
+                      borderBottom: "1px solid #e5e7eb",
                     }}
                   >
-                    <span style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.60)" }}>訂閱促銷電郵</span>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>訂閱促銷電郵</span>
                     <input type="checkbox" defaultChecked aria-label="訂閱促銷電郵" style={{ width: 18, height: 18, accentColor: "#2b7cff" }} />
                   </label>
                   <input
@@ -1302,9 +1303,9 @@ function AccountPageInner() {
                       width: "100%",
                       height: 38,
                       borderRadius: 12,
-                      border: 0,
-                      background: "rgba(0,0,0,0.16)",
-                      color: "rgba(255,255,255,0.86)",
+                      border: "1px solid #e5e7eb",
+                      background: "#ffffff",
+                      color: "#111827",
                       padding: "0 12px",
                       fontSize: 13,
                       fontWeight: 800,
@@ -1326,23 +1327,23 @@ function AccountPageInner() {
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <span
                         aria-hidden="true"
-                        style={{ width: 30, height: 30, borderRadius: 12, background: "rgba(255,255,255,0.08)", display: "grid", placeItems: "center" }}
+                        style={{ width: 30, height: 30, borderRadius: 12, background: "#f3f4f6", display: "grid", placeItems: "center" }}
                       >
                         <UiIcon href="#icon-settings" size={18} />
                       </span>
-                      <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>密碼</div>
+                      <div style={{ fontSize: 13, fontWeight: 950, color: "#111827" }}>密碼</div>
                     </div>
-                    <div style={{ fontSize: 12, fontWeight: 900, color: canChangePassword ? "#22c55e" : "rgba(255,255,255,0.55)", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 12, fontWeight: 900, color: canChangePassword ? "#22c55e" : "#6b7280", whiteSpace: "nowrap" }}>
                       {canChangePassword ? "可變更" : "不適用"}
                     </div>
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 750, color: "rgba(255,255,255,0.55)", lineHeight: "18px" }}>密碼組合需至少 8 個字元，由數字字母與符號組合。</div>
+                  <div style={{ fontSize: 12, fontWeight: 750, color: "#6b7280", lineHeight: "18px" }}>密碼組合需至少 8 個字元，由數字字母與符號組合。</div>
                   {passwordMsg ? (
                     <div
                       style={{
                         fontSize: 12,
                         fontWeight: 850,
-                        color: passwordMsg.tone === "success" ? "rgba(34,197,94,0.95)" : "rgba(255,120,120,0.95)",
+                        color: passwordMsg.tone === "success" ? "#16a34a" : "#dc2626",
                         lineHeight: "18px",
                       }}
                     >
@@ -1362,9 +1363,9 @@ function AccountPageInner() {
                           width: "100%",
                           height: 38,
                           borderRadius: 12,
-                          border: 0,
-                          background: "rgba(0,0,0,0.16)",
-                          color: "rgba(255,255,255,0.86)",
+                          border: "1px solid #e5e7eb",
+                          background: "#ffffff",
+                          color: "#111827",
                           padding: "0 12px",
                           fontSize: 13,
                           fontWeight: 800,
@@ -1381,9 +1382,9 @@ function AccountPageInner() {
                           width: "100%",
                           height: 38,
                           borderRadius: 12,
-                          border: 0,
-                          background: "rgba(0,0,0,0.16)",
-                          color: "rgba(255,255,255,0.86)",
+                          border: "1px solid #e5e7eb",
+                          background: "#ffffff",
+                          color: "#111827",
                           padding: "0 12px",
                           fontSize: 13,
                           fontWeight: 800,
@@ -1400,9 +1401,9 @@ function AccountPageInner() {
                           width: "100%",
                           height: 38,
                           borderRadius: 12,
-                          border: 0,
-                          background: "rgba(0,0,0,0.16)",
-                          color: "rgba(255,255,255,0.86)",
+                          border: "1px solid #e5e7eb",
+                          background: "#ffffff",
+                          color: "#111827",
                           padding: "0 12px",
                           fontSize: 13,
                           fontWeight: 800,
@@ -1480,24 +1481,24 @@ function AccountPageInner() {
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <span
                         aria-hidden="true"
-                        style={{ width: 30, height: 30, borderRadius: 12, background: "rgba(255,255,255,0.08)", display: "grid", placeItems: "center" }}
+                        style={{ width: 30, height: 30, borderRadius: 12, background: "#f3f4f6", display: "grid", placeItems: "center" }}
                       >
                         <UiIcon href="#icon-notifications" size={18} />
                       </span>
-                      <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>兩步驗證 (2FA)</div>
+                      <div style={{ fontSize: 13, fontWeight: 950, color: "#111827" }}>兩步驗證 (2FA)</div>
                     </div>
-                    <div style={{ fontSize: 12, fontWeight: 900, color: twoFaEnabled ? "#22c55e" : "rgba(255, 87, 87, 0.92)", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 12, fontWeight: 900, color: twoFaEnabled ? "#22c55e" : "#dc2626", whiteSpace: "nowrap" }}>
                       {twoFaEnabled ? "已啟動" : "未啟動"}
                     </div>
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 750, color: "rgba(255,255,255,0.55)", lineHeight: "18px" }}>
+                  <div style={{ fontSize: 12, fontWeight: 750, color: "#6b7280", lineHeight: "18px" }}>
                     為帳戶增加額外安全層，防止未經授權的登入。
                   </div>
                   {twoFaEnabled ? (
                     <div style={{ display: "grid", gap: 10 }}>
-                      <div style={{ borderRadius: 14, background: "rgba(0,0,0,0.16)", padding: "10px 12px" }}>
-                        <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.72)" }}>備用碼（示意）</div>
-                        <div style={{ marginTop: 6, display: "grid", gap: 6, fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.82)" }}>
+                      <div style={{ borderRadius: 14, background: "#f3f4f6", padding: "10px 12px" }}>
+                        <div style={{ fontSize: 12, fontWeight: 850, color: "#374151" }}>備用碼（示意）</div>
+                        <div style={{ marginTop: 6, display: "grid", gap: 6, fontSize: 12, fontWeight: 900, color: "#374151" }}>
                           <div>R3K9-1Q8Z</div>
                           <div>7M2A-LP4D</div>
                           <div>H9T1-K2Q7</div>
@@ -1549,7 +1550,7 @@ function AccountPageInner() {
 
               {tab === "seller" ? (
                 <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
-                  <div style={{ display: "flex", gap: 8, borderRadius: 14, background: "rgba(255,255,255,0.04)", padding: 6, width: "min(520px, 100%)" }}>
+                  <div style={{ display: "flex", gap: 8, borderRadius: 14, background: "#f3f4f6", padding: 6, width: "min(520px, 100%)" }}>
                     <button
                       type="button"
                       onClick={() => {
@@ -1565,8 +1566,8 @@ function AccountPageInner() {
                         cursor: "pointer",
                         fontSize: 13,
                         fontWeight: 900,
-                        background: sellMode === "market" ? "rgba(255,255,255,0.08)" : "transparent",
-                        color: sellMode === "market" ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.58)",
+                        background: sellMode === "market" ? "#ffffff" : "transparent",
+                        color: sellMode === "market" ? "#111827" : "#6b7280",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -1574,7 +1575,7 @@ function AccountPageInner() {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      市集上架 <span style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.78)" }}>{sellerListings.length}</span>
+                      市集上架 <span style={{ fontSize: 12, fontWeight: 950, color: "#374151" }}>{sellerListings.length}</span>
                     </button>
                     <button
                       type="button"
@@ -1591,8 +1592,8 @@ function AccountPageInner() {
                         cursor: "pointer",
                         fontSize: 13,
                         fontWeight: 900,
-                        background: sellMode === "packs" ? "rgba(255,255,255,0.08)" : "transparent",
-                        color: sellMode === "packs" ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.58)",
+                        background: sellMode === "packs" ? "#ffffff" : "transparent",
+                        color: sellMode === "packs" ? "#111827" : "#6b7280",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -1600,7 +1601,7 @@ function AccountPageInner() {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      自製卡包 <span style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.78)" }}>{creatorPacks.length}</span>
+                      自製卡包 <span style={{ fontSize: 12, fontWeight: 950, color: "#374151" }}>{creatorPacks.length}</span>
                     </button>
                   </div>
 
@@ -1629,7 +1630,7 @@ function AccountPageInner() {
                     </div>
 
                     {!sellerListings.length ? (
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)", lineHeight: "18px" }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", lineHeight: "18px" }}>
                         尚無上架紀錄。
                       </div>
                     ) : (
@@ -1648,7 +1649,7 @@ function AccountPageInner() {
                                 key={x.refId}
                                 style={{
                                   borderRadius: 16,
-                                  background: "rgba(255,255,255,0.06)",
+                                  background: "#f3f4f6",
                                   padding: 14,
                                   display: "grid",
                                   gap: 10,
@@ -1656,13 +1657,13 @@ function AccountPageInner() {
                               >
                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                                   <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                                    <img alt="" src={img} style={{ width: 44, height: 44, borderRadius: 12, objectFit: "cover", background: "rgba(0,0,0,0.18)", flex: "0 0 auto" }} />
+                                    <img alt="" src={img} style={{ width: 44, height: 44, borderRadius: 12, objectFit: "cover", background: "#f3f4f6", flex: "0 0 auto" }} />
                                     <div style={{ minWidth: 0 }}>
-                                      <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                      <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                         {title}
                                       </div>
                                       <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                                        <span style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.72)" }}>{price}</span>
+                                        <span style={{ fontSize: 12, fontWeight: 900, color: "#374151" }}>{price}</span>
                                         <Pill tone={tone}>{statusLabel}</Pill>
                                       </div>
                                     </div>
@@ -1697,11 +1698,9 @@ function AccountPageInner() {
                                         zIndex: 40,
                                         width: 220,
                                         borderRadius: 14,
-                                        border: "1px solid rgba(255, 255, 255, 0.16)",
-                                        background: "rgba(17, 25, 35, 0.96)",
-                                        boxShadow: "0 14px 40px rgba(0,0,0,0.45)",
-                                        backdropFilter: "blur(12px)",
-                                        WebkitBackdropFilter: "blur(12px)",
+                                        border: "1px solid #e5e7eb",
+                                        background: "#ffffff",
+                                        boxShadow: "0 14px 40px rgba(0,0,0,0.15)",
                                         padding: 6,
                                       }}
                                     >
@@ -1717,7 +1716,7 @@ function AccountPageInner() {
                                           borderRadius: 12,
                                           border: "1px solid transparent",
                                           background: "transparent",
-                                          color: "rgba(255,255,255,0.92)",
+                                          color: "#111827",
                                           fontSize: 13,
                                           fontWeight: 900,
                                           textAlign: "left",
@@ -1739,7 +1738,7 @@ function AccountPageInner() {
                                           borderRadius: 12,
                                           border: "1px solid transparent",
                                           background: "transparent",
-                                          color: "rgba(255,255,255,0.92)",
+                                          color: "#111827",
                                           fontSize: 13,
                                           fontWeight: 900,
                                           textAlign: "left",
@@ -1761,7 +1760,7 @@ function AccountPageInner() {
                                           borderRadius: 12,
                                           border: "1px solid transparent",
                                           background: "transparent",
-                                          color: "rgba(255,255,255,0.92)",
+                                          color: "#111827",
                                           fontSize: 13,
                                           fontWeight: 900,
                                           textAlign: "left",
@@ -1783,7 +1782,7 @@ function AccountPageInner() {
                                           borderRadius: 12,
                                           border: "1px solid transparent",
                                           background: "transparent",
-                                          color: "rgba(255,120,120,0.95)",
+                                          color: "#dc2626",
                                           fontSize: 13,
                                           fontWeight: 900,
                                           textAlign: "left",
@@ -1830,7 +1829,7 @@ function AccountPageInner() {
                     </div>
 
                     {!creatorPacks.length ? (
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)", lineHeight: "18px" }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", lineHeight: "18px" }}>
                         尚無自製卡包。
                       </div>
                     ) : (
@@ -1849,7 +1848,7 @@ function AccountPageInner() {
                                 key={x.packId}
                                 style={{
                                   borderRadius: 16,
-                                  background: "rgba(255,255,255,0.06)",
+                                  background: "#f3f4f6",
                                   padding: 14,
                                   display: "grid",
                                   gap: 10,
@@ -1857,13 +1856,13 @@ function AccountPageInner() {
                               >
                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                                   <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                                    <img alt="" src={img} style={{ width: 44, height: 44, borderRadius: 12, objectFit: "cover", background: "rgba(0,0,0,0.18)", flex: "0 0 auto" }} />
+                                    <img alt="" src={img} style={{ width: 44, height: 44, borderRadius: 12, objectFit: "cover", background: "#f3f4f6", flex: "0 0 auto" }} />
                                     <div style={{ minWidth: 0 }}>
-                                      <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                      <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                         {title}
                                       </div>
                                       <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                                        <span style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.72)" }}>{price}</span>
+                                        <span style={{ fontSize: 12, fontWeight: 900, color: "#374151" }}>{price}</span>
                                         <Pill tone={tone}>{statusLabel}</Pill>
                                         <Pill tone="muted">庫存 {x.inventory}</Pill>
                                         <Pill tone="muted">已售 {x.soldCount}</Pill>
@@ -1900,11 +1899,9 @@ function AccountPageInner() {
                                         zIndex: 40,
                                         width: 220,
                                         borderRadius: 14,
-                                        border: "1px solid rgba(255, 255, 255, 0.16)",
-                                        background: "rgba(17, 25, 35, 0.96)",
-                                        boxShadow: "0 14px 40px rgba(0,0,0,0.45)",
-                                        backdropFilter: "blur(12px)",
-                                        WebkitBackdropFilter: "blur(12px)",
+                                        border: "1px solid #e5e7eb",
+                                        background: "#ffffff",
+                                        boxShadow: "0 14px 40px rgba(0,0,0,0.15)",
                                         padding: 6,
                                       }}
                                     >
@@ -1920,7 +1917,7 @@ function AccountPageInner() {
                                           borderRadius: 12,
                                           border: "1px solid transparent",
                                           background: "transparent",
-                                          color: "rgba(255,255,255,0.92)",
+                                          color: "#111827",
                                           fontSize: 13,
                                           fontWeight: 900,
                                           textAlign: "left",
@@ -1942,7 +1939,7 @@ function AccountPageInner() {
                                           borderRadius: 12,
                                           border: "1px solid transparent",
                                           background: "transparent",
-                                          color: "rgba(255,255,255,0.92)",
+                                          color: "#111827",
                                           fontSize: 13,
                                           fontWeight: 900,
                                           textAlign: "left",
@@ -1964,7 +1961,7 @@ function AccountPageInner() {
                                           borderRadius: 12,
                                           border: "1px solid transparent",
                                           background: "transparent",
-                                          color: "rgba(255,255,255,0.92)",
+                                          color: "#111827",
                                           fontSize: 13,
                                           fontWeight: 900,
                                           textAlign: "left",
@@ -1986,7 +1983,7 @@ function AccountPageInner() {
                                           borderRadius: 12,
                                           border: "1px solid transparent",
                                           background: "transparent",
-                                          color: "rgba(255,120,120,0.95)",
+                                          color: "#dc2626",
                                           fontSize: 13,
                                           fontWeight: 900,
                                           textAlign: "left",
@@ -2035,7 +2032,7 @@ function AccountPageInner() {
                     </div>
 
                     {!sellerFulfillment.length ? (
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)", lineHeight: "18px" }}>目前沒有需要處理的出貨。</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", lineHeight: "18px" }}>目前沒有需要處理的出貨。</div>
                     ) : (
                       <div style={{ display: "grid", gap: 10 }}>
                         {sellerFulfillment
@@ -2086,7 +2083,7 @@ function AccountPageInner() {
                                 key={x.fulfillmentId}
                                 style={{
                                   borderRadius: 16,
-                                  background: "rgba(255,255,255,0.06)",
+                                  background: "#f3f4f6",
                                 padding: 14,
                                   display: "grid",
                                   gap: 10,
@@ -2094,13 +2091,13 @@ function AccountPageInner() {
                               >
                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                                   <div style={{ minWidth: 0 }}>
-                                    <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                       {x.title}
                                     </div>
                                     <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                                       <Pill tone="muted">{kindLabel}</Pill>
                                       <Pill tone={tone}>{statusLabel}</Pill>
-                                      <span style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.72)" }}>
+                                      <span style={{ fontSize: 12, fontWeight: 900, color: "#374151" }}>
                                         {formatMoney({ amount: x.amount, currency: x.currency })}
                                       </span>
                                       {x.trackingNumber ? <Pill tone="muted">單號 {x.trackingNumber}</Pill> : null}
@@ -2159,11 +2156,9 @@ function AccountPageInner() {
                                         zIndex: 40,
                                         width: 220,
                                         borderRadius: 14,
-                                        border: "1px solid rgba(255, 255, 255, 0.16)",
-                                        background: "rgba(17, 25, 35, 0.96)",
-                                        boxShadow: "0 14px 40px rgba(0,0,0,0.45)",
-                                        backdropFilter: "blur(12px)",
-                                        WebkitBackdropFilter: "blur(12px)",
+                                        border: "1px solid #e5e7eb",
+                                        background: "#ffffff",
+                                        boxShadow: "0 14px 40px rgba(0,0,0,0.15)",
                                         padding: 6,
                                       }}
                                     >
@@ -2181,7 +2176,7 @@ function AccountPageInner() {
                                           borderRadius: 12,
                                           border: "1px solid transparent",
                                           background: "transparent",
-                                          color: "rgba(255,255,255,0.92)",
+                                          color: "#111827",
                                           fontSize: 13,
                                           fontWeight: 900,
                                           textAlign: "left",
@@ -2204,7 +2199,7 @@ function AccountPageInner() {
                                             borderRadius: 12,
                                             border: "1px solid transparent",
                                             background: "transparent",
-                                            color: "rgba(255,255,255,0.92)",
+                                            color: "#111827",
                                             fontSize: 13,
                                             fontWeight: 900,
                                             textAlign: "left",
@@ -2228,7 +2223,7 @@ function AccountPageInner() {
                                             borderRadius: 12,
                                             border: "1px solid transparent",
                                             background: "transparent",
-                                            color: "rgba(255,255,255,0.92)",
+                                            color: "#111827",
                                             fontSize: 13,
                                             fontWeight: 900,
                                             textAlign: "left",
@@ -2251,7 +2246,7 @@ function AccountPageInner() {
                                           borderRadius: 12,
                                           border: "1px solid transparent",
                                           background: "transparent",
-                                          color: "rgba(255,120,120,0.95)",
+                                          color: "#dc2626",
                                           fontSize: 13,
                                           fontWeight: 900,
                                           textAlign: "left",
@@ -2304,7 +2299,7 @@ function AccountPageInner() {
                     </div>
 
                     {!myTrades.length ? (
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)", lineHeight: "18px" }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", lineHeight: "18px" }}>
                         尚無交換紀錄。你可以先建立範例資料，或等交換流程完成後在這裡管理狀態與進度。
                       </div>
                     ) : (
@@ -2323,7 +2318,7 @@ function AccountPageInner() {
                                 key={x.tradeId}
                                 style={{
                                   borderRadius: 16,
-                                  background: "rgba(255,255,255,0.06)",
+                                  background: "#f3f4f6",
                                   padding: 14,
                                   display: "grid",
                                   gap: 10,
@@ -2331,17 +2326,17 @@ function AccountPageInner() {
                               >
                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                                   <div style={{ minWidth: 0 }}>
-                                    <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                       {title}
                                     </div>
                                     {sub ? (
-                                      <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                      <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                         {sub}
                                       </div>
                                     ) : null}
                                     <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                                       <Pill tone={tone}>{statusLabel}</Pill>
-                                      <span style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.55)" }}>
+                                      <span style={{ fontSize: 12, fontWeight: 850, color: "#6b7280" }}>
                                         {new Date(x.updatedAtIso).toLocaleString("zh-TW", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
                                       </span>
                                     </div>
@@ -2375,11 +2370,9 @@ function AccountPageInner() {
                                         zIndex: 40,
                                         width: 220,
                                         borderRadius: 14,
-                                        border: "1px solid rgba(255, 255, 255, 0.16)",
-                                        background: "rgba(17, 25, 35, 0.96)",
-                                        boxShadow: "0 14px 40px rgba(0,0,0,0.45)",
-                                        backdropFilter: "blur(12px)",
-                                        WebkitBackdropFilter: "blur(12px)",
+                                        border: "1px solid #e5e7eb",
+                                        background: "#ffffff",
+                                        boxShadow: "0 14px 40px rgba(0,0,0,0.15)",
                                         padding: 6,
                                       }}
                                     >
@@ -2395,7 +2388,7 @@ function AccountPageInner() {
                                           borderRadius: 12,
                                           border: "1px solid transparent",
                                           background: "transparent",
-                                          color: "rgba(255,255,255,0.92)",
+                                          color: "#111827",
                                           fontSize: 13,
                                           fontWeight: 900,
                                           textAlign: "left",
@@ -2418,7 +2411,7 @@ function AccountPageInner() {
                                           borderRadius: 12,
                                           border: "1px solid transparent",
                                           background: "transparent",
-                                          color: "rgba(255,255,255,0.92)",
+                                          color: "#111827",
                                           fontSize: 13,
                                           fontWeight: 900,
                                           textAlign: "left",
@@ -2443,7 +2436,7 @@ function AccountPageInner() {
                                           borderRadius: 12,
                                           border: "1px solid transparent",
                                           background: "transparent",
-                                          color: "rgba(255,255,255,0.92)",
+                                          color: "#111827",
                                           fontSize: 13,
                                           fontWeight: 900,
                                           textAlign: "left",
@@ -2467,7 +2460,7 @@ function AccountPageInner() {
                                           borderRadius: 12,
                                           border: "1px solid transparent",
                                           background: "transparent",
-                                          color: "rgba(255,120,120,0.95)",
+                                          color: "#dc2626",
                                           fontSize: 13,
                                           fontWeight: 900,
                                           textAlign: "left",
@@ -2533,21 +2526,21 @@ function AccountPageInner() {
                         {filteredRecentOrders.slice(0, 8).map((x) => (
                           <SurfaceRowLink key={`${x.kind}_${x.id}`} href={`/orders/${x.id}`}>
                             <div style={{ minWidth: 0 }}>
-                              <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {x.title}
                               </div>
                               <div style={{ marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                                 {x.status ? <Pill tone="info">{buyerStatusLabel("order", x.status)}</Pill> : null}
                               </div>
                             </div>
-                            <span aria-hidden="true" style={{ color: "rgba(255,255,255,0.45)", fontWeight: 900 }}>
+                            <span aria-hidden="true" style={{ color: "#6b7280", fontWeight: 900 }}>
                               →
                             </span>
                           </SurfaceRowLink>
                         ))}
                       </div>
                     ) : (
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)", lineHeight: "18px" }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", lineHeight: "18px" }}>
                         這個狀態目前沒有紀錄。
                       </div>
                     )}
@@ -2597,21 +2590,21 @@ function AccountPageInner() {
                         {filteredOpenings.slice(0, 8).map((x) => (
                           <SurfaceRowLink key={`${x.kind}_${x.id}`} href={`/openings/${x.id}`}>
                             <div style={{ minWidth: 0 }}>
-                              <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {x.title}
                               </div>
                               <div style={{ marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                                 {x.status ? <Pill tone="info">{buyerStatusLabel("opening", x.status)}</Pill> : null}
                               </div>
                             </div>
-                            <span aria-hidden="true" style={{ color: "rgba(255,255,255,0.45)", fontWeight: 900 }}>
+                            <span aria-hidden="true" style={{ color: "#6b7280", fontWeight: 900 }}>
                               →
                             </span>
                           </SurfaceRowLink>
                         ))}
                       </div>
                     ) : (
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)", lineHeight: "18px" }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", lineHeight: "18px" }}>
                         {recentOpenings.length ? "這個狀態目前沒有紀錄。" : "目前沒有卡包紀錄。"}
                       </div>
                     )}
@@ -2641,21 +2634,21 @@ function AccountPageInner() {
             style={{
               width: "min(420px, 100%)",
               borderRadius: 18,
-              border: "1px solid rgba(255,255,255,0.14)",
-              background: "rgba(17, 25, 35, 0.96)",
-              boxShadow: "0 18px 60px rgba(0,0,0,0.55)",
+              border: "1px solid #e5e7eb",
+              background: "#ffffff",
+              boxShadow: "0 18px 60px rgba(0,0,0,0.18)",
               padding: 14,
               display: "grid",
               gap: 12,
             }}
           >
-            <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>
+            <div style={{ fontSize: 14, fontWeight: 950, color: "#111827" }}>
               {editModal.kind === "listing" ? "調整價格" : "編輯卡包"}
             </div>
 
             {editModal.kind === "listing" ? (
               <div style={{ display: "grid", gap: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.66)" }}>價格（TWD）</div>
+                <div style={{ fontSize: 12, fontWeight: 850, color: "#6b7280" }}>價格（TWD）</div>
                 <input
                   value={editModal.price}
                   inputMode="numeric"
@@ -2664,9 +2657,9 @@ function AccountPageInner() {
                     width: "100%",
                     height: 40,
                     borderRadius: 12,
-                    border: 0,
-                    background: "rgba(255,255,255,0.06)",
-                    color: "rgba(255,255,255,0.92)",
+                    border: "1px solid #e5e7eb",
+                    background: "#ffffff",
+                    color: "#111827",
                     padding: "0 12px",
                     fontSize: 14,
                     fontWeight: 800,
@@ -2677,7 +2670,7 @@ function AccountPageInner() {
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
                 <div style={{ display: "grid", gap: 8 }}>
-                  <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.66)" }}>價格（TWD）</div>
+                  <div style={{ fontSize: 12, fontWeight: 850, color: "#6b7280" }}>價格（TWD）</div>
                   <input
                     value={editModal.price}
                     inputMode="numeric"
@@ -2686,9 +2679,9 @@ function AccountPageInner() {
                       width: "100%",
                       height: 40,
                       borderRadius: 12,
-                      border: 0,
-                      background: "rgba(255,255,255,0.06)",
-                      color: "rgba(255,255,255,0.92)",
+                      border: "1px solid #e5e7eb",
+                      background: "#ffffff",
+                      color: "#111827",
                       padding: "0 12px",
                       fontSize: 14,
                       fontWeight: 800,
@@ -2697,7 +2690,7 @@ function AccountPageInner() {
                   />
                 </div>
                 <div style={{ display: "grid", gap: 8 }}>
-                  <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.66)" }}>庫存</div>
+                  <div style={{ fontSize: 12, fontWeight: 850, color: "#6b7280" }}>庫存</div>
                   <input
                     value={editModal.inventory}
                     inputMode="numeric"
@@ -2706,9 +2699,9 @@ function AccountPageInner() {
                       width: "100%",
                       height: 40,
                       borderRadius: 12,
-                      border: 0,
-                      background: "rgba(255,255,255,0.06)",
-                      color: "rgba(255,255,255,0.92)",
+                      border: "1px solid #e5e7eb",
+                      background: "#ffffff",
+                      color: "#111827",
                       padding: "0 12px",
                       fontSize: 14,
                       fontWeight: 800,

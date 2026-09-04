@@ -10,12 +10,12 @@
   align-items: center;
   gap: 10px;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
+  color: #6b7280;
   margin-bottom: 18px;
 }
 
 .breadcrumbs a {
-  color: rgba(255, 255, 255, 0.8);
+  color: #374151;
   text-decoration: none;
 }
 
@@ -32,25 +32,25 @@
   width: 22px;
   height: 22px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.82);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
   flex: 0 0 auto;
 }
 
 .breadcrumbBackText {
-  color: rgba(255, 255, 255, 0.78);
+  color: #374151;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .breadcrumbSep {
-  color: rgba(255, 255, 255, 0.4);
+  color: #9ca3af;
 }
 
 .breadcrumbStrong {
-  color: rgba(255, 255, 255, 0.96);
+  color: #111827;
   font-weight: 800;
 }
 
@@ -127,8 +127,8 @@
   width: 64px;
   aspect-ratio: 1 / 1;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
   overflow: hidden;
   cursor: pointer;
   padding: 0;
@@ -153,18 +153,15 @@
   gap: 6px;
   border-radius: 999px;
   padding: 6px 8px;
-  border: 0.5px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(16px) saturate(180%) brightness(1.1);
-  -webkit-backdrop-filter: blur(16px) saturate(180%) brightness(1.1);
-  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.4), inset 0 -0.5px 0 rgba(0, 0, 0, 0.15),
-    inset 0 0 8px rgba(255, 255, 255, 0.06);
+  border: 0.5px solid #e5e7eb;
+  background: #f3f4f6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .mediaHudDivider {
   width: 1px;
   height: 18px;
-  background: rgba(255, 255, 255, 0.16);
+  background: #e5e7eb;
   margin: 0 2px;
 }
 
@@ -172,7 +169,7 @@
   appearance: none;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.72);
+  color: #374151;
   width: 36px;
   height: 36px;
   border-radius: 999px;
@@ -184,7 +181,7 @@
 }
 
 .mediaHudButton:hover {
-  color: rgba(255, 255, 255, 0.92);
+  color: #111827;
   transform: scale(1.06);
 }
 
@@ -201,7 +198,7 @@
   font-size: 32px;
   line-height: 1.15;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.96);
+  color: #111827;
   letter-spacing: -0.015em;
 }
 
@@ -210,11 +207,11 @@
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.62);
+  color: #6b7280;
 }
 
 .ownerName {
-  color: rgba(255, 255, 255, 0.92);
+  color: #111827;
   font-weight: 700;
 }
 
@@ -227,8 +224,8 @@
 .statCard {
   gap: 6px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
   padding: 12px;
   display: grid;
   min-width: 0;
@@ -239,8 +236,8 @@
 }
 
 .statCardLink:hover {
-  border-color: rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.06);
+  border-color: #e5e7eb;
+  background: #ffffff;
 }
 
 .statValueRow {
@@ -253,7 +250,7 @@
 
 .statArrow {
   flex: 0 0 auto;
-  color: rgba(255, 255, 255, 0.62);
+  color: #6b7280;
   display: grid;
   place-items: center;
 }
@@ -261,19 +258,19 @@
 .statLabel {
   font-size: 12px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.55);
+  color: #6b7280;
 }
 
 .statValue {
   font-size: 14px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.92);
+  color: #111827;
 }
 
 .priceCard {
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -292,7 +289,7 @@
 
 .priceCardLabel {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.62);
+  color: #6b7280;
 }
 
 .priceNow {
@@ -308,7 +305,7 @@
   border-radius: 999px;
   border: 1px solid rgba(34, 131, 246, 0.25);
   background: rgba(34, 131, 246, 0.12);
-  color: rgba(255, 255, 255, 0.9);
+  color: #111827;
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.02em;
@@ -340,13 +337,13 @@
 .packRecTitle {
   font-size: 13px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.88);
+  color: #111827;
 }
 
 .packRecSubtitle {
   font-size: 12px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.55);
+  color: #6b7280;
   white-space: nowrap;
 }
 
@@ -370,7 +367,7 @@
   padding: 0;
   font-size: 12px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.45);
+  color: #6b7280;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -402,8 +399,8 @@
   border-radius: 12px;
   overflow: hidden;
   background: rgba(23, 23, 23, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
 }
 
 .packRecCardInner::after {
@@ -411,7 +408,7 @@
   position: absolute;
   inset: 1px;
   border-radius: 11px;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.06) 55%, rgba(0, 0, 0, 0.2));
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.02) 55%, rgba(0, 0, 0, 0.04));
   pointer-events: none;
 }
 
@@ -434,7 +431,7 @@
   right: 0;
   font-size: 10px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.7);
+  color: #374151;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   text-align: center;
@@ -448,7 +445,7 @@
   right: 0;
   font-size: 16px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.96);
+  color: #111827;
   letter-spacing: -0.02em;
   text-align: center;
   z-index: 1;
@@ -462,7 +459,7 @@
   width: 72%;
   height: 72%;
   z-index: 1;
-  filter: drop-shadow(0px 12px 28px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0px 10px 24px rgba(0, 0, 0, 0.18));
 }
 
 .packRecCardIconImg {
@@ -473,7 +470,7 @@
   margin-top: 2px;
   font-size: 28px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.95);
+  color: #111827;
   letter-spacing: -0.02em;
 }
 
@@ -483,9 +480,9 @@
   height: 30px;
   padding: 0 12px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.18);
-  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
+  color: #374151;
   font-size: 12px;
   font-weight: 800;
 }
@@ -520,8 +517,8 @@
 .primaryButton {
   appearance: none;
   border: 0;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.92));
-  color: rgba(0, 0, 0, 0.92);
+  background: rgb(var(--primary));
+  color: #ffffff;
   font-weight: 800;
   border-radius: 12px;
   height: 48px;
@@ -536,9 +533,9 @@
 
 .secondaryButton {
   appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.92);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
   font-weight: 800;
   border-radius: 12px;
   height: 48px;
@@ -547,7 +544,7 @@
 }
 
 .secondaryButton:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: #f3f4f6;
 }
 
 .chatIcon {
@@ -567,10 +564,8 @@
   right: 0;
   bottom: 0;
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-  background: rgba(17, 25, 35, 0.92);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: #ffffff;
+  border-top: 1px solid #e5e7eb;
   z-index: 60;
 }
 
@@ -593,9 +588,9 @@
 
 .toggle {
   appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.12);
-  color: rgba(255, 255, 255, 0.68);
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
+  color: #6b7280;
   height: 28px;
   padding: 0 10px;
   border-radius: 10px;
@@ -605,16 +600,16 @@
 }
 
 .toggleActive {
-  border-color: rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.9);
+  border-color: #e5e7eb;
+  background: #f3f4f6;
+  color: #111827;
 }
 
 .panelCard {
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -626,7 +621,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 14px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .panelHeaderLeft {
@@ -642,8 +637,8 @@
   display: grid;
   place-items: center;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.7);
+  background: #ffffff;
+  color: #374151;
   font-weight: 700;
   font-size: 12px;
 }
@@ -658,14 +653,14 @@
 .panelTitle {
   font-size: 14px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.92);
+  color: #111827;
   white-space: nowrap;
 }
 
 .panelHint {
   font-size: 13px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.5);
+  color: #6b7280;
   white-space: nowrap;
 }
 
@@ -692,7 +687,7 @@
 .panelKpiValue {
   font-size: 18px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.92);
+  color: #111827;
 }
 
 .panelKpiChange {
@@ -722,12 +717,12 @@
 .panelKpiSub {
   font-size: 12px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.52);
+  color: #6b7280;
 }
 
 .panelChartWrap {
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid #e5e7eb;
   background: rgba(0, 0, 0, 0.16);
   padding: 12px;
   flex: 1 1 auto;
@@ -742,7 +737,7 @@
 
 .priceChartWrap {
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid #e5e7eb;
   background: rgba(0, 0, 0, 0.16);
   flex: 1 1 auto;
   position: relative;
@@ -760,19 +755,17 @@
   position: absolute;
   pointer-events: none;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(17, 25, 35, 0.92);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
   padding: 8px 10px;
   min-width: 140px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.12);
 }
 
 .priceTooltipValue {
   font-size: 14px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.96);
+  color: #111827;
   letter-spacing: -0.01em;
 }
 
@@ -780,7 +773,7 @@
   margin-top: 2px;
   font-size: 11px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.55);
+  color: #6b7280;
 }
 
 .panelBodyCenter {
@@ -794,8 +787,8 @@
   position: relative;
   overflow: hidden;
   border-radius: 16px;
-  border: 0.5px solid rgba(255, 255, 255, 0.2);
-  background: rgba(0, 0, 0, 0.26);
+  border: 0.5px solid #e5e7eb;
+  background: #ffffff;
   padding: 18px 20px;
   text-align: center;
   min-width: min(420px, 100%);
@@ -804,20 +797,20 @@
 .comingSoonTitle {
   font-size: 14px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.92);
+  color: #111827;
 }
 
 .comingSoonSub {
   margin-top: 4px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.52);
+  color: #6b7280;
 }
 
 .panelList {
   flex: 1 1 auto;
   overflow-y: auto;
-  background: rgba(0, 0, 0, 0.12);
-  border-top: 1px solid rgba(255, 255, 255, 0.02);
+  background: #f3f4f6;
+  border-top: 1px solid #e5e7eb;
 }
 
 .panelListRow {
@@ -826,7 +819,7 @@
   gap: 12px;
   align-items: center;
   padding: 14px 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid #e5e7eb;
 }
 
 .panelListRow:first-child {
@@ -836,19 +829,19 @@
 .panelListLeft {
   font-size: 12px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.72);
+  color: #374151;
 }
 
 .panelListMid {
   font-size: 13px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.92);
+  color: #111827;
 }
 
 .panelListRight {
   font-size: 12px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.56);
+  color: #6b7280;
   text-align: right;
 }
 
@@ -859,7 +852,7 @@
 .sectionHeader {
   font-size: 14px;
   font-weight: 950;
-  color: rgba(255, 255, 255, 0.9);
+  color: #111827;
   letter-spacing: 0.02em;
   margin-bottom: 12px;
 }
@@ -872,8 +865,8 @@
 
 .itemDetailCard {
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
   padding: 12px;
   display: grid;
   gap: 6px;
@@ -883,13 +876,13 @@
 .itemDetailLabel {
   font-size: 12px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.55);
+  color: #6b7280;
 }
 
 .itemDetailValue {
   font-size: 14px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.92);
+  color: #111827;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -905,14 +898,14 @@
 }
 
 .sectionLink {
-  color: rgba(255, 255, 255, 0.76);
+  color: #374151;
   text-decoration: none;
   font-size: 13px;
   font-weight: 700;
 }
 
 .sectionLink:hover {
-  color: rgba(255, 255, 255, 0.92);
+  color: #111827;
 }
 
 .relatedGrid {
@@ -925,8 +918,8 @@
   text-decoration: none;
   color: inherit;
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(17, 25, 35, 0.76);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
   overflow: hidden;
   display: grid;
 }
@@ -939,7 +932,7 @@
   display: grid;
   place-items: center;
   padding: 14px;
-  background: radial-gradient(circle at 20% 10%, rgba(237, 29, 73, 0.12), rgba(255, 255, 255, 0.02) 55%),
+  background: radial-gradient(circle at 20% 10%, rgba(237, 29, 73, 0.12), #f9fafb 55%),
     rgba(0, 0, 0, 0.18);
 }
 
@@ -947,7 +940,7 @@
   width: 100%;
   height: auto;
   max-width: 190px;
-  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.55));
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.16));
 }
 
 .relatedBody {
@@ -959,7 +952,7 @@
 .relatedTitle {
   font-size: 13px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
+  color: #111827;
   line-height: 1.25;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -977,13 +970,13 @@
 .relatedPrice {
   font-size: 15px;
   font-weight: 950;
-  color: rgba(255, 255, 255, 0.92);
+  color: #111827;
 }
 
 .relatedFmv {
   font-size: 11px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.6);
+  color: #6b7280;
 }
 
 @media (max-width: 1023px) {

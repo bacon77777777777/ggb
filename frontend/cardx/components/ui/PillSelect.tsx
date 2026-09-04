@@ -172,7 +172,7 @@ export function PillSelect<T extends string>({
           left: 12,
           top: "50%",
           transform: "translateY(-50%)",
-          color: "rgba(255, 255, 255, 0.65)",
+          color: "#6b7280",
           pointerEvents: "none",
           display: "grid",
           placeItems: "center",
@@ -187,7 +187,7 @@ export function PillSelect<T extends string>({
           right: 12,
           top: "50%",
           transform: "translateY(-50%)",
-          color: "rgba(255, 255, 255, 0.7)",
+          color: "#374151",
           pointerEvents: "none",
           display: "grid",
           placeItems: "center",
@@ -206,9 +206,9 @@ export function PillSelect<T extends string>({
           width: "100%",
           height: 38,
           borderRadius: 12,
-          border: borderless ? 0 : "1px solid rgba(255, 255, 255, 0.12)",
-          background: "rgba(255, 255, 255, 0.06)",
-          color: "rgba(255, 255, 255, 0.92)",
+          border: borderless ? 0 : "1px solid #e5e7eb",
+          background: "#f3f4f6",
+          color: "#111827",
           padding: "0 40px 0 44px",
           fontSize: 14,
           fontWeight: 800,
@@ -248,11 +248,9 @@ export function PillSelect<T extends string>({
             right: 0,
             zIndex: 50,
             borderRadius: 14,
-            border: "1px solid rgba(255, 255, 255, 0.16)",
-            background: "rgba(17, 25, 35, 0.96)",
-            boxShadow: "0 14px 40px rgba(0,0,0,0.45)",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
+            border: "1px solid #e5e7eb",
+            background: "#ffffff",
+            boxShadow: "0 10px 40px -10px rgba(0,0,0,0.15)",
             padding: 6,
             maxHeight: 320,
             overflowY: "auto",
@@ -281,9 +279,9 @@ export function PillSelect<T extends string>({
                   gap: 10,
                   padding: "10px 10px",
                   borderRadius: 12,
-                  border: active ? "1px solid rgba(255, 255, 255, 0.14)" : "1px solid transparent",
-                  background: active ? "rgba(255, 255, 255, 0.07)" : "transparent",
-                  color: "rgba(255, 255, 255, 0.92)",
+                  border: active ? "1px solid #e5e7eb" : "1px solid transparent",
+                  background: active ? "#f3f4f6" : "transparent",
+                  color: "#111827",
                   fontSize: 15,
                   fontWeight: 850,
                   letterSpacing: "-0.02em",
@@ -291,7 +289,7 @@ export function PillSelect<T extends string>({
                   cursor: "pointer",
                 }}
               >
-                <span style={{ display: "grid", placeItems: "center", color: selected ? "rgba(255, 255, 255, 0.92)" : "transparent" }}>
+                <span style={{ display: "grid", placeItems: "center", color: selected ? "#111827" : "transparent" }}>
                   <CheckIcon />
                 </span>
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.label}</span>

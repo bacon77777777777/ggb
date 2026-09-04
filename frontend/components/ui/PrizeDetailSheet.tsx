@@ -49,10 +49,16 @@ interface Props {
    */
   onPrev?: () => void;
   onNext?: () => void;
+  /**
+   * 桌機商品頁（cardx 版）用的暗色左右分欄（老闆 2026-09-04）：
+   * ≥1024 是置中的深色對話框，左邊大圖、右邊品項資料；1023 以下仍是原本的白色底部抽屜。
+   * 只有帶這個 prop 的地方會變 —— 中獎結果、倉庫、挑戰機台照舊。
+   */
+  split?: boolean;
 }
 
 
-export default function PrizeDetailSheet({ prize, onClose, sealed = false, showcase3d = false, showcaseBackImage, zIndex = 2700, onPrev, onNext }: Props) {
+export default function PrizeDetailSheet({ prize, onClose, sealed = false, showcase3d = false, showcaseBackImage, zIndex = 2700, onPrev, onNext, split = false }: Props) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
@@ -112,7 +118,7 @@ export default function PrizeDetailSheet({ prize, onClose, sealed = false, showc
     <AnimatePresence>
       {prize && (
         <motion.div
-          className="fixed inset-0 flex items-end justify-center"
+          className={`fixed inset-0 flex items-end justify-center${split ? ' lg:items-center lg:p-6' : ''}`}
           style={{ zIndex }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -125,29 +131,39 @@ export default function PrizeDetailSheet({ prize, onClose, sealed = false, showc
 
           {/* bottom sheet */}
           <motion.div
-            className="relative w-full max-w-[560px] bg-white dark:bg-neutral-900 rounded-t-3xl overflow-y-auto max-h-[88dvh] shadow-2xl pb-[env(safe-area-inset-bottom)]"
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
+            className={`relative w-full max-w-[560px] bg-white dark:bg-neutral-900 rounded-t-3xl overflow-y-auto max-h-[88dvh] shadow-2xl pb-[env(safe-area-inset-bottom)]${
+              split
+                ? ' lg:grid lg:grid-rows-[auto_auto_1fr] lg:h-[76dvh] lg:max-h-[720px] lg:max-w-[1080px] lg:grid-cols-[1.1fr_0.9fr] lg:gap-0 lg:overflow-hidden lg:rounded-2xl lg:border lg:border-neutral-200 lg:bg-white lg:pb-0 dark:lg:border-neutral-800 dark:lg:bg-neutral-900'
+                : ''
+            }`}
+            initial={split ? { y: '100%', opacity: 1 } : { y: '100%' }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={split ? { y: '100%', opacity: 0 } : { y: '100%' }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             onClick={e => e.stopPropagation()}
           >
             {/* header */}
-            <div className="sticky top-0 bg-white dark:bg-neutral-900 flex items-center justify-between px-5 pt-4 pb-2 z-10">
-              <span className="font-black text-sm text-neutral-900 dark:text-neutral-100 tracking-wide">品項詳情</span>
+            <div className={`sticky top-0 bg-white dark:bg-neutral-900 flex items-center justify-between px-5 pt-4 pb-2 z-10${
+              split ? ' lg:static lg:col-start-2 lg:row-start-1 lg:items-start lg:bg-transparent dark:lg:bg-transparent lg:px-7 lg:pb-0 lg:pt-6' : ''
+            }`}>
+              <span className={`font-black text-sm text-neutral-900 dark:text-neutral-100 tracking-wide${split ? ' lg:text-[21px] lg:leading-none lg:tracking-tight lg:text-neutral-900 dark:lg:text-neutral-50' : ''}`}>品項詳情</span>
               <button
                 type="button"
                 onClick={onClose}
-                className="w-7 h-7 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+                className={`w-7 h-7 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors${
+                  split ? ' lg:-mr-2 lg:-mt-2 lg:h-9 lg:w-9 lg:bg-transparent lg:text-neutral-400 lg:hover:bg-neutral-100 lg:hover:text-neutral-700 dark:lg:bg-transparent dark:lg:text-neutral-500 dark:lg:hover:bg-neutral-800' : ''
+                }`}
               >
-                <X className="w-4 h-4" />
+                <X className={`w-4 h-4${split ? ' lg:h-5 lg:w-5' : ''}`} />
               </button>
             </div>
 
             {/* 圖片：雙指縮放／拖移（放開彈回），沒放大時左右滑切換品項。
                 不畫左右箭頭（老闆指定）—— 手機本來就用滑的，電腦滑鼠拖曳
                 走的是同一套 pointer 事件，再擺兩顆鈕只是擋住圖 */}
-            <div className="relative px-5 pt-1 pb-2">
+            <div className={`relative px-5 pt-1 pb-2${
+              split ? ' lg:col-start-1 lg:row-span-3 lg:row-start-1 lg:flex lg:min-h-0 lg:items-stretch lg:justify-stretch lg:border-r lg:border-neutral-200 lg:bg-neutral-100 lg:p-0 dark:lg:border-neutral-800 dark:lg:bg-neutral-950' : ''
+            }`}>
               {showcase3d && prize?.display_mode === 'showcase3d' ? (
                 /* 卡包模式：立體旋轉展示（可拖曳手動轉）。
                    這裡不接左右滑切換品項 —— 拖曳已經被旋轉吃掉了 */
@@ -162,7 +178,7 @@ export default function PrizeDetailSheet({ prize, onClose, sealed = false, showc
                   key={prize?.name ?? ''}
                   src={prize?.image_url || asset('/images/item_defaulet.webp')}
                   alt={prize?.name ?? ''}
-                  className="mx-auto h-[36dvh] max-h-[320px] w-full rounded-xl"
+                  className={`mx-auto h-[36dvh] max-h-[320px] w-full rounded-xl${split ? ' lg:h-full lg:max-h-none lg:rounded-none' : ''}`}
                   onSwipeLeft={onNext}
                   onSwipeRight={onPrev}
                 />
@@ -170,19 +186,28 @@ export default function PrizeDetailSheet({ prize, onClose, sealed = false, showc
             </div>
 
             {/* name */}
-            <div className="px-5 pb-2 text-center">
-              <p className="font-black text-sm text-neutral-900 dark:text-neutral-100 leading-relaxed">{prize?.name}</p>
+            <div className={`px-5 pb-2 text-center${split ? ' lg:col-start-2 lg:row-start-2 lg:px-7 lg:pb-0 lg:pt-9 lg:text-left' : ''}`}>
+              {split && (
+                <span className="hidden lg:mb-2 lg:block lg:text-[13px] lg:font-bold lg:uppercase lg:tracking-[0.08em] lg:text-neutral-400">品名</span>
+              )}
+              <p className={`font-black text-sm text-neutral-900 dark:text-neutral-100 leading-relaxed${
+                split ? ' lg:text-[20px] lg:leading-[28px] lg:text-neutral-900 dark:lg:text-neutral-50' : ''
+              }`}>{prize?.name}</p>
             </div>
 
             {/* detail rows */}
             {rows.length > 0 && (
               <>
-                <div className="h-px bg-neutral-100 dark:bg-neutral-800 mx-5" />
-                <div className="px-5 pt-1 pb-4 flex flex-col gap-0">
+                <div className={`h-px bg-neutral-100 dark:bg-neutral-800 mx-5${split ? ' lg:hidden' : ''}`} />
+                <div className={`px-5 pt-1 pb-4 flex flex-col gap-0${
+                  split ? ' lg:col-start-2 lg:row-start-3 lg:min-h-0 lg:self-start lg:overflow-y-auto lg:px-7 lg:pb-8 lg:pt-8' : ''
+                }`}>
                   {rows.map((row, i) => (
-                    <div key={i} className="flex items-center justify-between py-2 border-b border-neutral-50 dark:border-neutral-800 last:border-0">
-                      <span className="text-[13px] text-neutral-400 dark:text-neutral-500">{row.label}</span>
-                      <span className="text-[13px]">{row.value}</span>
+                    <div key={i} className={`flex items-center justify-between py-2 border-b border-neutral-50 dark:border-neutral-800 last:border-0${
+                      split ? ' lg:border-0 lg:py-2.5 dark:lg:border-0' : ''
+                    }`}>
+                      <span className={`text-[13px] text-neutral-400 dark:text-neutral-500${split ? ' lg:text-[15px] lg:font-medium lg:text-neutral-500 dark:lg:text-neutral-400' : ''}`}>{row.label}</span>
+                      <span className={`text-[13px]${split ? ' lg:text-[16px] lg:font-black lg:text-neutral-900 dark:lg:text-neutral-50' : ''}`}>{row.value}</span>
                     </div>
                   ))}
                 </div>

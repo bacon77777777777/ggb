@@ -398,8 +398,8 @@ function AddressesPageInner() {
                           borderRadius: 16,
                           display: "grid",
                           placeItems: "center",
-                          background: active ? "rgba(43,124,255,0.26)" : "rgba(255,255,255,0.06)",
-                          color: "rgba(255,255,255,0.82)",
+                          background: active ? "rgba(43,124,255,0.26)" : "#f3f4f6",
+                          color: "#374151",
                         }}
                       >
                         <UiIcon href={t.icon} size={20} />
@@ -413,13 +413,13 @@ function AddressesPageInner() {
               <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
               {errorMsg ? (
                 <SurfaceCard style={{ borderRadius: 14, background: "rgba(255,77,79,0.10)", padding: "10px 12px" }}>
-                  <div style={{ color: "rgba(255,120,120,0.95)", fontSize: 12, fontWeight: 900 }}>{errorMsg}</div>
+                  <div style={{ color: "#dc2626", fontSize: 12, fontWeight: 900 }}>{errorMsg}</div>
                 </SurfaceCard>
               ) : null}
               <SurfaceCard style={{ display: "grid", gap: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                  <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.86)" }}>新增地址</div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: hasDefault ? "rgba(255,255,255,0.55)" : "rgba(255,120,120,0.95)" }}>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>新增地址</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: hasDefault ? "#6b7280" : "#dc2626" }}>
                     {hasDefault ? "已設定預設地址" : "請設定預設地址"}
                   </div>
                 </div>
@@ -440,7 +440,7 @@ function AddressesPageInner() {
               </SurfaceCard>
 
               <SurfaceCard style={{ display: "grid", gap: 10 }}>
-                <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.86)" }}>我的地址</div>
+                <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>我的地址</div>
                 {items.length ? (
                   <div style={{ display: "grid", gap: 10 }}>
                     {items.map((a) => (
@@ -449,7 +449,7 @@ function AddressesPageInner() {
                         style={{
                           borderRadius: 16,
                           border: 0,
-                          background: "rgba(255,255,255,0.06)",
+                          background: "#f3f4f6",
                           padding: 12,
                           display: "grid",
                           gap: 8,
@@ -458,32 +458,32 @@ function AddressesPageInner() {
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                           <div style={{ minWidth: 0 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                              <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {a.name}
                               </div>
                               {a.isDefault ? (
                                 <Pill tone="info">預設</Pill>
                               ) : null}
                             </div>
-                            <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)" }}>{a.phone}</div>
+                            <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{a.phone}</div>
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                             {!a.isDefault ? (
-                              <SecondaryButton onClick={() => setDefault(a.id)} style={{ height: 32, borderRadius: 10, fontSize: 12, padding: "0 10px", background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.86)" }}>
+                              <SecondaryButton onClick={() => setDefault(a.id)} style={{ height: 32, borderRadius: 10, fontSize: 12, padding: "0 10px", background: "#f3f4f6", color: "#111827" }}>
                                 設為預設
                               </SecondaryButton>
                             ) : null}
-                            <SecondaryButton onClick={() => remove(a.id)} style={{ height: 32, borderRadius: 10, fontSize: 12, padding: "0 10px", background: "rgba(255,77,79,0.16)", color: "rgba(255,120,120,0.95)" }}>
+                            <SecondaryButton onClick={() => remove(a.id)} style={{ height: 32, borderRadius: 10, fontSize: 12, padding: "0 10px", background: "rgba(255,77,79,0.16)", color: "#dc2626" }}>
                               刪除
                             </SecondaryButton>
                           </div>
                         </div>
-                        <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.70)" }}>{a.addressLine}</div>
+                        <div style={{ fontSize: 12, fontWeight: 850, color: "#374151" }}>{a.addressLine}</div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.58)" }}>尚未新增地址</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>尚未新增地址</div>
                 )}
               </SurfaceCard>
 

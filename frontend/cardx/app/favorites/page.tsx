@@ -513,7 +513,7 @@ export default function FavoritesPage() {
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     letterSpacing: "-0.36px",
-                    color: "#ffffff",
+                    color: "#111827",
                     fontFamily: 'Montserrat, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif',
                     fontSize: 18,
                     fontWeight: 600,
@@ -529,10 +529,10 @@ export default function FavoritesPage() {
 
             <section className={homeStyles.section} aria-label="收藏市集">
               <div className={homeStyles.header}>
-                <p style={{ fontSize: 15, fontWeight: 700, color: "rgba(255,255,255,0.62)", margin: 0 }}>市集</p>
+                <p style={{ fontSize: 15, fontWeight: 700, color: "#6b7280", margin: 0 }}>市集</p>
               </div>
               {favoritedMarket.length === 0 ? (
-                <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 700 }}>尚未收藏任何市集商品</div>
+                <div style={{ color: "#6b7280", fontSize: 13, fontWeight: 700 }}>尚未收藏任何市集商品</div>
               ) : (
                 <div
                   ref={marketListRef}
@@ -608,10 +608,10 @@ export default function FavoritesPage() {
 
             <section className={homeStyles.section} aria-label="收藏卡包">
               <div className={homeStyles.header}>
-                <p style={{ fontSize: 15, fontWeight: 700, color: "rgba(255,255,255,0.62)", margin: 0 }}>卡包</p>
+                <p style={{ fontSize: 15, fontWeight: 700, color: "#6b7280", margin: 0 }}>卡包</p>
               </div>
               {favoritedPacks.length === 0 ? (
-                <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 700 }}>尚未收藏任何卡包</div>
+                <div style={{ color: "#6b7280", fontSize: 13, fontWeight: 700 }}>尚未收藏任何卡包</div>
               ) : (
                 <div
                   ref={packListRef}
@@ -692,7 +692,7 @@ export default function FavoritesPage() {
             {favoritedTrades.length > 0 ? (
               <section className={homeStyles.section} aria-label="收藏交換">
                 <div className={homeStyles.header}>
-                  <p style={{ fontSize: 15, fontWeight: 700, color: "rgba(255,255,255,0.62)", margin: 0 }}>交換</p>
+                  <p style={{ fontSize: 15, fontWeight: 700, color: "#6b7280", margin: 0 }}>交換</p>
                 </div>
                 <div
                   ref={tradeListRef}

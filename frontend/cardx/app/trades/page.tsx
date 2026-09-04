@@ -183,14 +183,14 @@ function parseMyTrades(raw: string | null): MyTradeRecord[] {
 function myTradeStatusMeta(status: MyTradeStatus): { label: string; color: string; bg: string } {
   switch (status) {
     case "matching":
-      return { label: "配對中", color: "rgba(120,200,255,0.95)", bg: "rgba(34,131,246,0.16)" };
+      return { label: "配對中", color: "#1d4ed8", bg: "rgba(34, 131, 246, 0.14)" };
     case "chatting":
-      return { label: "私聊中", color: "rgba(140,235,180,0.95)", bg: "rgba(46,204,113,0.14)" };
+      return { label: "私聊中", color: "#047857", bg: "rgba(16, 185, 129, 0.14)" };
     case "completed":
-      return { label: "已完成", color: "rgba(255,255,255,0.82)", bg: "rgba(255,255,255,0.10)" };
+      return { label: "已完成", color: "#374151", bg: "#f3f4f6" };
     case "cancelled":
     default:
-      return { label: "已取消", color: "rgba(255,150,160,0.92)", bg: "rgba(237,29,73,0.14)" };
+      return { label: "已取消", color: "#dc2626", bg: "rgba(220, 38, 38, 0.12)" };
   }
 }
 
@@ -461,7 +461,7 @@ export default function TradesPage() {
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     letterSpacing: "-0.36px",
-                    color: "#ffffff",
+                    color: "#111827",
                     fontFamily:
                       'Montserrat, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif',
                     fontSize: 18,
@@ -513,7 +513,7 @@ export default function TradesPage() {
                       left: 12,
                       top: "50%",
                       transform: "translateY(-50%)",
-                      color: "rgba(255, 255, 255, 0.65)",
+                      color: "#6b7280",
                       pointerEvents: "none",
                       display: "grid",
                       placeItems: "center",
@@ -533,8 +533,8 @@ export default function TradesPage() {
                       height: 38,
                       borderRadius: 12,
                       border: 0,
-                      background: "rgba(255, 255, 255, 0.06)",
-                      color: "rgba(255, 255, 255, 0.92)",
+                      background: "#f3f4f6",
+                      color: "#111827",
                       padding: searchActive ? "0 40px 0 40px" : "0 14px 0 40px",
                       fontSize: 14,
                       fontWeight: 800,
@@ -561,8 +561,8 @@ export default function TradesPage() {
                         placeItems: "center",
                         borderRadius: 10,
                         border: 0,
-                        background: "rgba(0, 0, 0, 0.12)",
-                        color: "rgba(255, 255, 255, 0.75)",
+                        background: "#e5e7eb",
+                        color: "#374151",
                         cursor: "pointer",
                         padding: 0,
                       }}
@@ -608,8 +608,8 @@ export default function TradesPage() {
                     display: "inline-flex",
                     alignItems: "center",
                     borderRadius: 14,
-                    border: "1px solid rgba(255, 255, 255, 0.12)",
-                    background: "rgba(255, 255, 255, 0.04)",
+                    border: "1px solid #e5e7eb",
+                    background: "#f3f4f6",
                     padding: 4,
                     gap: 4,
                   }}
@@ -640,7 +640,7 @@ export default function TradesPage() {
                         borderRadius: 12,
                         border: "1px solid transparent",
                         background: "transparent",
-                        color: "rgba(255, 255, 255, 0.92)",
+                        color: "#111827",
                         fontSize: 13,
                         fontWeight: 850,
                         cursor: "pointer",
@@ -677,7 +677,7 @@ export default function TradesPage() {
                         borderRadius: 12,
                         border: "1px solid transparent",
                         background: "transparent",
-                        color: "rgba(255, 255, 255, 0.92)",
+                        color: "#111827",
                         fontSize: 13,
                         fontWeight: 850,
                         cursor: "pointer",
@@ -688,7 +688,7 @@ export default function TradesPage() {
                     </button>
                   )}
                 </div>
-                <div style={{ color: "rgba(255,255,255,0.62)", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap" }}>
+                <div style={{ color: "#6b7280", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap" }}>
                   搜尋：{queryTrimmed}
                 </div>
               </div>
@@ -696,9 +696,9 @@ export default function TradesPage() {
 
             <section aria-label="我的提案" style={{ marginTop: 14 }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-                <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", letterSpacing: "0.02em" }}>我的提案</div>
+                <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", letterSpacing: "0.02em" }}>我的提案</div>
                 {myTrades.length > 0 ? (
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.55)" }}>{myTrades.length} 筆</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{myTrades.length} 筆</div>
                 ) : null}
               </div>
 
@@ -707,10 +707,10 @@ export default function TradesPage() {
                   style={{
                     marginTop: 10,
                     borderRadius: 14,
-                    border: "1px dashed rgba(255,255,255,0.16)",
-                    background: "rgba(255,255,255,0.03)",
+                    border: "1px dashed #d1d5db",
+                    background: "#f9fafb",
                     padding: "16px 14px",
-                    color: "rgba(255,255,255,0.62)",
+                    color: "#6b7280",
                     fontSize: 13,
                     fontWeight: 800,
                   }}
@@ -737,8 +737,8 @@ export default function TradesPage() {
                           gap: 8,
                           textDecoration: "none",
                           borderRadius: 14,
-                          border: "1px solid rgba(255,255,255,0.10)",
-                          background: "rgba(255,255,255,0.04)",
+                          border: "1px solid #e5e7eb",
+                          background: "#ffffff",
                           padding: "12px 14px",
                           minWidth: 0,
                         }}
@@ -748,7 +748,7 @@ export default function TradesPage() {
                             style={{
                               fontSize: 13,
                               fontWeight: 950,
-                              color: "rgba(255,255,255,0.94)",
+                              color: "#111827",
                               overflow: "hidden",
                               textOverflow: "ellipsis",
                               whiteSpace: "nowrap",
@@ -776,7 +776,7 @@ export default function TradesPage() {
                           style={{
                             fontSize: 12,
                             fontWeight: 800,
-                            color: "rgba(255,255,255,0.68)",
+                            color: "#6b7280",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
@@ -784,7 +784,7 @@ export default function TradesPage() {
                         >
                           我有：{t.offerSummary || "—"} · 想要：{t.wantSummary || "—"}
                         </div>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.48)" }}>{formatMyTradeTime(t.updatedAtIso)}</div>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: "#6b7280" }}>{formatMyTradeTime(t.updatedAtIso)}</div>
                       </Link>
                     );
                   })}

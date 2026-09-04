@@ -280,14 +280,14 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
           minHeight: "100vh",
           display: "grid",
           placeItems: "center",
-          background: "radial-gradient(1200px 600px at 20% -10%, rgba(43,124,255,0.12), rgba(0,0,0,0)), #0b1016",
-          color: "rgba(255,255,255,0.92)",
+          background: "radial-gradient(1200px 600px at 20% -10%, rgba(43,124,255,0.06), rgba(0,0,0,0)), #f9fafb",
+          color: "#111827",
           padding: 24,
         }}
       >
         <div style={{ width: "min(520px, 100%)", display: "grid", gap: 12 }}>
           <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.2px" }}>正在取得 LINE 許可</div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.64)", lineHeight: 1.6 }}>
+          <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6 }}>
             {liffStatus === "error"
               ? liffError ?? "取得許可失敗。"
               : "首次使用會出現授權畫面，請同意後回到此頁。"}
@@ -400,7 +400,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                   onClick={() => setProfileOpen((v) => !v)}
                 >
                   <span className={styles.avatar} style={avatarStyle} aria-hidden="true" />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#ffffffd6", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#374151", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {authUser.displayName}
                   </span>
                   <svg
@@ -536,7 +536,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                       <use href="#icon-notifications" />
                     </svg>
                     {bellUnread ? (
-                      <span aria-hidden="true" style={{ position: "absolute", top: 3, right: 5, width: 8, height: 8, borderRadius: "50%", background: "#ed1d49", boxShadow: "0 0 0 2px #111923" }} />
+                      <span aria-hidden="true" style={{ position: "absolute", top: 3, right: 5, width: 8, height: 8, borderRadius: "50%", background: "rgb(var(--primary))", boxShadow: "0 0 0 2px #f3f4f6" }} />
                     ) : null}
                   </Link>
                   <span className={styles.verticalDivider} aria-hidden="true" />

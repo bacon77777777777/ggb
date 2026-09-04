@@ -400,11 +400,11 @@ function TradeDetailPageInner() {
   const glowOpacity = ritualFlash ? 1 : 0;
   const buttonBg = canActivate
     ? "radial-gradient(circle at 30% 25%, rgba(255,255,255,0.35), rgba(34,131,246,0.95) 40%, rgba(12,86,190,0.95) 70%, rgba(6,32,70,0.9))"
-    : "radial-gradient(circle at 30% 25%, rgba(255,255,255,0.18), rgba(255,255,255,0.12) 40%, rgba(255,255,255,0.06) 75%)";
+    : "radial-gradient(circle at 30% 25%, #ffffff, #f3f4f6 40%, #e5e7eb 75%)";
 
   const buttonShadow = canActivate
-    ? "0 18px 40px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.22), inset 0 8px 18px rgba(255,255,255,0.22)"
-    : "0 10px 26px rgba(0,0,0,0.38), inset 0 0 0 1px rgba(255,255,255,0.16)";
+    ? "0 14px 30px rgba(12,86,190,0.28), inset 0 0 0 1px rgba(255,255,255,0.22), inset 0 8px 18px rgba(255,255,255,0.22)"
+    : "0 6px 16px rgba(0,0,0,0.10), inset 0 0 0 1px #e5e7eb";
 
   const acceptedProposal = useMemo(() => proposals.find((p) => p.id === acceptedProposalId) ?? null, [acceptedProposalId, proposals]);
 
@@ -510,10 +510,10 @@ function TradeDetailPageInner() {
       <div style={{ padding: "20px 0 96px" }}>
         <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 16px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 18 }}>
-            <Link href="/trades" style={{ color: "rgba(255,255,255,0.82)", textDecoration: "none", fontSize: 13, fontWeight: 800 }}>
+            <Link href="/trades" style={{ color: "#374151", textDecoration: "none", fontSize: 13, fontWeight: 800 }}>
               ← 返回交換
             </Link>
-            <div style={{ color: "rgba(255,255,255,0.62)", fontSize: 13, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div style={{ color: "#6b7280", fontSize: 13, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {detail.user} · {gameLabel(detail.game)}
               {tradeStatus === "MATCHED" ? " · 交換中" : ""}
             </div>
@@ -525,10 +525,10 @@ function TradeDetailPageInner() {
               minHeight: stageMinH,
               borderRadius: 18,
               overflow: "hidden",
-              border: "1px solid rgba(255,255,255,0.10)",
+              border: "1px solid #e5e7eb",
               background:
-                "radial-gradient(900px 520px at 18% 34%, rgba(34,131,246,0.22), transparent 58%), radial-gradient(900px 520px at 82% 34%, rgba(237,29,73,0.18), transparent 58%), linear-gradient(180deg, rgba(14,18,26,0.92), rgba(8,10,14,0.92))",
-              boxShadow: "0 24px 80px rgba(0,0,0,0.55)",
+                "radial-gradient(900px 520px at 18% 34%, rgba(34,131,246,0.10), transparent 58%), radial-gradient(900px 520px at 82% 34%, rgba(237,29,73,0.08), transparent 58%), linear-gradient(180deg, #ffffff, #f9fafb)",
+              boxShadow: "0 10px 40px -10px rgba(0,0,0,0.08)",
             }}
           >
             {!isMobile ? (
@@ -539,7 +539,7 @@ function TradeDetailPageInner() {
                     position: "absolute",
                     inset: 0,
                     background:
-                      "linear-gradient(135deg, rgba(34,131,246,0.18) 0%, rgba(34,131,246,0.03) 44%, rgba(0,0,0,0) 50%, rgba(237,29,73,0.03) 56%, rgba(237,29,73,0.16) 100%)",
+                      "linear-gradient(135deg, rgba(34,131,246,0.10) 0%, rgba(34,131,246,0.02) 44%, rgba(0,0,0,0) 50%, rgba(237,29,73,0.02) 56%, rgba(237,29,73,0.09) 100%)",
                     pointerEvents: "none",
                   }}
                 />
@@ -548,7 +548,7 @@ function TradeDetailPageInner() {
                   style={{
                     position: "absolute",
                     inset: 0,
-                    background: "linear-gradient(135deg, transparent 49.35%, rgba(255,255,255,0.18) 50%, transparent 50.65%)",
+                    background: "linear-gradient(135deg, transparent 49.35%, rgba(17,24,39,0.10) 50%, transparent 50.65%)",
                     pointerEvents: "none",
                     opacity: 0.9,
                   }}
@@ -559,7 +559,7 @@ function TradeDetailPageInner() {
                     position: "absolute",
                     inset: 0,
                     background:
-                      "linear-gradient(135deg, transparent 48.4%, rgba(34,131,246,0.0) 49.2%, rgba(120, 200, 255, 0.95) 50%, rgba(34,131,246,0.0) 50.8%, transparent 51.6%)",
+                      "linear-gradient(135deg, transparent 48.4%, rgba(34,131,246,0.0) 49.2%, rgba(34,131,246,0.95) 50%, rgba(34,131,246,0.0) 50.8%, transparent 51.6%)",
                     pointerEvents: "none",
                     opacity: glowOpacity,
                     filter: "blur(0.2px)",
@@ -579,61 +579,61 @@ function TradeDetailPageInner() {
             >
               <div style={{ padding: sidePad, display: "grid", gridTemplateRows: "auto 1fr auto", gap: 14 }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-                  <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(255,255,255,0.9)", letterSpacing: "0.02em" }}>對方提出</div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.65)" }}>{detail.user}</div>
+                  <div style={{ fontSize: 13, fontWeight: 950, color: "#111827", letterSpacing: "0.02em" }}>對方提出</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{detail.user}</div>
                 </div>
 
                 <div style={{ display: "grid", alignContent: "start", gap: 12 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "132px 1fr", gap: 16, alignItems: "center", minWidth: 0 }}>
-                    <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", filter: "drop-shadow(0 18px 26px rgba(0,0,0,0.55))" }}>
+                    <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", filter: "drop-shadow(0 12px 20px rgba(0,0,0,0.18))" }}>
                       <Image src={detail.offer.imageUrl} alt="" fill sizes="180px" style={{ objectFit: "cover", borderRadius: 12 }} unoptimized />
                     </div>
                     <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
-                      <div style={{ fontSize: 24, fontWeight: 950, color: "rgba(255,255,255,0.96)", lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <div style={{ fontSize: 24, fontWeight: 950, color: "#111827", lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis" }}>
                         {detail.offer.subtitle}
                       </div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.74)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {detail.offer.title}
                       </div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {detail.offer.meta}
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ height: 1, background: "rgba(255,255,255,0.10)" }} />
+                  <div style={{ height: 1, background: "#e5e7eb" }} />
 
                   <div style={{ display: "grid", gap: 8 }}>
-                    <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.78)" }}>對方想換</div>
+                    <div style={{ fontSize: 12, fontWeight: 900, color: "#374151" }}>對方想換</div>
                     <div style={{ display: "grid", gridTemplateColumns: "56px 1fr", gap: 12, alignItems: "center", minWidth: 0 }}>
                       <div style={{ position: "relative", width: 56, height: 56, borderRadius: 12, overflow: "hidden" }}>
                         <Image src={detail.want.imageUrl} alt="" fill sizes="56px" style={{ objectFit: "cover" }} unoptimized />
                       </div>
                       <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.90)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {detail.want.subtitle}
                         </div>
-                        <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.74)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {detail.want.title}
                         </div>
-                        <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {detail.want.meta}
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ height: 1, background: "rgba(255,255,255,0.10)" }} />
+                  <div style={{ height: 1, background: "#e5e7eb" }} />
 
                   <div style={{ display: "grid", gap: 8 }}>
-                    <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.78)" }}>備註</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.70)", lineHeight: "18px" }}>
+                    <div style={{ fontSize: 12, fontWeight: 900, color: "#374151" }}>備註</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", lineHeight: "18px" }}>
                       希望能換到同系列，語言不限，鑑定可談。
                     </div>
                   </div>
                 </div>
 
-                <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.60)" }}>{leftStatusText}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{leftStatusText}</div>
               </div>
 
               {isMobile ? (
@@ -654,10 +654,10 @@ function TradeDetailPageInner() {
                       transform: ritualFlash ? "scale(1.03)" : undefined,
                       transition: "transform 220ms ease",
                       borderRadius: 999,
-                      border: canActivate ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.16)",
+                      border: canActivate ? "1px solid rgba(255,255,255,0.22)" : "1px solid #e5e7eb",
                       background: buttonBg,
                       boxShadow: buttonShadow,
-                      color: canActivate ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.62)",
+                      color: canActivate ? "#ffffff" : "#6b7280",
                       cursor: canActivate ? "pointer" : "not-allowed",
                       display: "grid",
                       placeItems: "center",
@@ -666,7 +666,7 @@ function TradeDetailPageInner() {
                   >
                     <div style={{ display: "grid", placeItems: "center", gap: 4 }}>
                       <div style={{ fontSize: 12, fontWeight: 950, letterSpacing: "0.02em" }}>{isOwner ? (tradeStatus === "MATCHED" ? "交換中" : "等待提案") : "送出提案"}</div>
-                      <div style={{ fontSize: 10, fontWeight: 800, color: canActivate ? "rgba(255,255,255,0.78)" : "rgba(255,255,255,0.50)" }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: canActivate ? "rgba(255,255,255,0.85)" : "#9ca3af" }}>
                         {isOwner ? "STATUS" : canActivate ? "READY" : "LOCKED"}
                       </div>
                     </div>
@@ -676,32 +676,32 @@ function TradeDetailPageInner() {
 
               <div style={{ padding: sidePad, display: "grid", gridTemplateRows: "auto 1fr auto", gap: 14, opacity: tradeStatus === "MATCHED" && !isOwner ? 0.78 : 1 }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-                  <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(255,255,255,0.9)", letterSpacing: "0.02em" }}>你提出</div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.65)" }}>{gameLabel(detail.game)}</div>
+                  <div style={{ fontSize: 13, fontWeight: 950, color: "#111827", letterSpacing: "0.02em" }}>你提出</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{gameLabel(detail.game)}</div>
                 </div>
 
                 <div style={{ display: "grid", alignContent: "start", gap: 12 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "132px 1fr", gap: 16, alignItems: "center", minWidth: 0 }}>
-                    <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", filter: "drop-shadow(0 18px 26px rgba(0,0,0,0.55))" }}>
+                    <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", filter: "drop-shadow(0 12px 20px rgba(0,0,0,0.18))" }}>
                       <Image src={selectedOffer.imageUrl} alt="" fill sizes="180px" style={{ objectFit: "cover", borderRadius: 12 }} unoptimized />
                     </div>
                     <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
-                      <div style={{ fontSize: 24, fontWeight: 950, color: "rgba(255,255,255,0.96)", lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <div style={{ fontSize: 24, fontWeight: 950, color: "#111827", lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis" }}>
                         {selectedOffer.subtitle}
                       </div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.74)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {selectedOffer.title}
                       </div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {selectedOffer.meta}
                       </div>
                     </div>
                   </div>
-                  <div style={{ height: 1, background: "rgba(255,255,255,0.10)" }} />
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)" }}>此交換為指定卡牌，確認後即可送出提案。</div>
+                  <div style={{ height: 1, background: "#e5e7eb" }} />
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>此交換為指定卡牌，確認後即可送出提案。</div>
                 </div>
 
-                <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.60)" }}>{rightStatusText}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{rightStatusText}</div>
               </div>
             </div>
 
@@ -725,10 +725,10 @@ function TradeDetailPageInner() {
                   transform: ritualFlash ? "translate(-50%, -50%) scale(1.03)" : "translate(-50%, -50%)",
                   transition: "transform 220ms ease",
                   borderRadius: 999,
-                  border: canActivate ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.16)",
+                  border: canActivate ? "1px solid rgba(255,255,255,0.22)" : "1px solid #e5e7eb",
                   background: buttonBg,
                   boxShadow: buttonShadow,
-                  color: canActivate ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.62)",
+                  color: canActivate ? "#ffffff" : "#6b7280",
                   cursor: canActivate ? "pointer" : "not-allowed",
                   display: "grid",
                   placeItems: "center",
@@ -737,7 +737,7 @@ function TradeDetailPageInner() {
               >
                 <div style={{ display: "grid", placeItems: "center", gap: 4 }}>
                   <div style={{ fontSize: 12, fontWeight: 950, letterSpacing: "0.02em" }}>{isOwner ? (tradeStatus === "MATCHED" ? "交換中" : "等待提案") : "送出提案"}</div>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: isOwner ? "rgba(255,255,255,0.62)" : canActivate ? "rgba(255,255,255,0.78)" : "rgba(255,255,255,0.50)" }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: isOwner ? "#9ca3af" : canActivate ? "rgba(255,255,255,0.85)" : "#9ca3af" }}>
                     {isOwner ? "STATUS" : canActivate ? "READY" : "LOCKED"}
                   </div>
                 </div>
@@ -750,15 +750,15 @@ function TradeDetailPageInner() {
               style={{
                 marginTop: 16,
                 borderRadius: 16,
-                border: "1px solid rgba(255,255,255,0.10)",
-                background: "rgba(255,255,255,0.03)",
+                border: "1px solid #e5e7eb",
+                background: "#ffffff",
                 padding: "16px 18px",
                 display: "grid",
                 gap: 14,
               }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(255,255,255,0.92)", letterSpacing: "0.02em" }}>交換進度</div>
+                <div style={{ fontSize: 13, fontWeight: 950, color: "#111827", letterSpacing: "0.02em" }}>交換進度</div>
                 <span
                   style={{
                     fontSize: 11,
@@ -768,20 +768,20 @@ function TradeDetailPageInner() {
                     whiteSpace: "nowrap",
                     color:
                       flow.status === "completed"
-                        ? "rgba(140,235,180,0.95)"
+                        ? "#047857"
                         : flow.status === "rejected"
-                          ? "rgba(255,150,160,0.92)"
+                          ? "#dc2626"
                           : flow.status === "disputed"
-                            ? "rgba(255,200,120,0.95)"
-                            : "rgba(120,200,255,0.95)",
+                            ? "#b45309"
+                            : "#1d4ed8",
                     background:
                       flow.status === "completed"
-                        ? "rgba(46,204,113,0.14)"
+                        ? "rgba(16, 185, 129, 0.14)"
                         : flow.status === "rejected"
-                          ? "rgba(237,29,73,0.14)"
+                          ? "rgba(220, 38, 38, 0.12)"
                           : flow.status === "disputed"
-                            ? "rgba(255,160,40,0.14)"
-                            : "rgba(34,131,246,0.16)",
+                            ? "rgba(245, 158, 11, 0.16)"
+                            : "rgba(34, 131, 246, 0.14)",
                   }}
                 >
                   {flowStatusLabel(flow.status)}
@@ -805,7 +805,7 @@ function TradeDetailPageInner() {
                     {flowSteps.map((step, idx) => {
                       const reached = idx <= currentIdx && flow.status !== "rejected";
                       const isCurrent = idx === currentIdx && !halted;
-                      const dotColor = reached ? (isCurrent ? "rgba(120,200,255,0.98)" : "rgba(34,131,246,0.85)") : "rgba(255,255,255,0.18)";
+                      const dotColor = reached ? (isCurrent ? "rgba(12,86,190,0.95)" : "rgba(34,131,246,0.85)") : "#e5e7eb";
                       return (
                         <div key={step.key} style={{ display: "flex", alignItems: "center", flex: idx === flowSteps.length - 1 ? "0 0 auto" : "1 1 auto", minWidth: 0 }}>
                           <div style={{ display: "grid", justifyItems: "center", gap: 6, flex: "0 0 auto" }}>
@@ -823,7 +823,7 @@ function TradeDetailPageInner() {
                                 fontSize: 11,
                                 fontWeight: 900,
                                 whiteSpace: "nowrap",
-                                color: reached ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.45)",
+                                color: reached ? "#111827" : "#6b7280",
                               }}
                             >
                               {step.label}
@@ -837,7 +837,7 @@ function TradeDetailPageInner() {
                                 height: 2,
                                 margin: "0 8px 20px",
                                 borderRadius: 1,
-                                background: idx < currentIdx && flow.status !== "rejected" ? "rgba(34,131,246,0.75)" : "rgba(255,255,255,0.12)",
+                                background: idx < currentIdx && flow.status !== "rejected" ? "rgba(34,131,246,0.75)" : "#e5e7eb",
                               }}
                             />
                           ) : null}
@@ -857,7 +857,7 @@ function TradeDetailPageInner() {
                     disabled={!proposals.some((p) => p.status === "pending" || p.status === "needsInfo" || p.status === "chatting")}
                   />
                   <ActionButton tone="red" label="拒絕" onClick={rejectTrade} />
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.55)" }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
                     接受後將鎖定此交換，其餘提案自動拒絕；也可在下方列表逐一確認。
                   </div>
                 </div>
@@ -866,7 +866,7 @@ function TradeDetailPageInner() {
               {flow.status === "accepted" || flow.status === "shipping" ? (
                 <div style={{ display: "grid", gap: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <label htmlFor="tracking-number" style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.78)", whiteSpace: "nowrap" }}>
+                    <label htmlFor="tracking-number" style={{ fontSize: 12, fontWeight: 900, color: "#374151", whiteSpace: "nowrap" }}>
                       物流單號
                     </label>
                     <input
@@ -878,9 +878,9 @@ function TradeDetailPageInner() {
                         width: "min(240px, 100%)",
                         height: 36,
                         borderRadius: 10,
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        background: "rgba(255,255,255,0.06)",
-                        color: "rgba(255,255,255,0.92)",
+                        border: "1px solid #e5e7eb",
+                        background: "#ffffff",
+                        color: "#111827",
                         padding: "0 12px",
                         fontSize: 13,
                         fontWeight: 800,
@@ -896,7 +896,7 @@ function TradeDetailPageInner() {
                     <ActionButton tone="green" label="確認收貨" onClick={confirmReceived} />
                   </div>
                   {flow.status === "shipping" && flow.trackingNumber ? (
-                    <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)" }}>已寄送 · 單號：{flow.trackingNumber}</div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>已寄送 · 單號：{flow.trackingNumber}</div>
                   ) : null}
                   <div>
                     {!disputeOpen ? (
@@ -908,7 +908,7 @@ function TradeDetailPageInner() {
                           background: "transparent",
                           padding: 0,
                           cursor: "pointer",
-                          color: "rgba(255,255,255,0.48)",
+                          color: "#6b7280",
                           fontSize: 12,
                           fontWeight: 800,
                           textDecoration: "underline",
@@ -919,7 +919,7 @@ function TradeDetailPageInner() {
                       </button>
                     ) : (
                       <div style={{ display: "grid", gap: 8 }}>
-                        <label htmlFor="dispute-note" style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,200,120,0.95)" }}>
+                        <label htmlFor="dispute-note" style={{ fontSize: 12, fontWeight: 900, color: "#b45309" }}>
                           爭議說明
                         </label>
                         <textarea
@@ -931,9 +931,9 @@ function TradeDetailPageInner() {
                             width: "min(480px, 100%)",
                             minHeight: 72,
                             borderRadius: 10,
-                            border: "1px solid rgba(255,255,255,0.12)",
-                            background: "rgba(255,255,255,0.06)",
-                            color: "rgba(255,255,255,0.92)",
+                            border: "1px solid #e5e7eb",
+                            background: "#ffffff",
+                            color: "#111827",
                             padding: "8px 12px",
                             fontSize: 13,
                             fontWeight: 700,
@@ -953,7 +953,7 @@ function TradeDetailPageInner() {
                               background: "transparent",
                               padding: 0,
                               cursor: "pointer",
-                              color: "rgba(255,255,255,0.55)",
+                              color: "#6b7280",
                               fontSize: 12,
                               fontWeight: 800,
                             }}
@@ -968,21 +968,21 @@ function TradeDetailPageInner() {
               ) : null}
 
               {flow.status === "completed" ? (
-                <div style={{ fontSize: 13, fontWeight: 800, color: "rgba(140,235,180,0.92)" }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#047857" }}>
                   交換已完成，感謝使用 CardX 交換服務。
                   {flow.trackingNumber ? `（單號：${flow.trackingNumber}）` : ""}
                 </div>
               ) : null}
 
               {flow.status === "rejected" ? (
-                <div style={{ fontSize: 13, fontWeight: 800, color: "rgba(255,150,160,0.88)" }}>已拒絕目前所有提案，此交換暫時關閉。</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#dc2626" }}>已拒絕目前所有提案，此交換暫時關閉。</div>
               ) : null}
 
               {flow.status === "disputed" ? (
                 <div style={{ display: "grid", gap: 6 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "rgba(255,200,120,0.92)" }}>爭議處理中，客服將於 1-3 個工作天內聯繫雙方。</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "#b45309" }}>爭議處理中，客服將於 1-3 個工作天內聯繫雙方。</div>
                   {flow.disputeNote ? (
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.62)" }}>爭議說明：{flow.disputeNote}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#6b7280" }}>爭議說明：{flow.disputeNote}</div>
                   ) : null}
                 </div>
               ) : null}
@@ -1013,11 +1013,11 @@ function TradeDetailPageInner() {
             style={{
               width: "min(560px, calc(100vw - 32px))",
               borderRadius: 16,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(17, 25, 35, 0.96)",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+              border: "1px solid #e5e7eb",
+              background: "#ffffff",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
               padding: 16,
-              color: "rgba(255,255,255,0.92)",
+              color: "#111827",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
@@ -1030,9 +1030,9 @@ function TradeDetailPageInner() {
                   width: 32,
                   height: 32,
                   borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "rgba(255,255,255,0.82)",
+                  border: "1px solid #e5e7eb",
+                  background: "#f3f4f6",
+                  color: "#374151",
                   display: "grid",
                   placeItems: "center",
                   padding: 0,
@@ -1046,21 +1046,21 @@ function TradeDetailPageInner() {
               </button>
             </div>
 
-            <div style={{ marginTop: 12, height: 1, background: "rgba(255,255,255,0.10)" }} />
+            <div style={{ marginTop: 12, height: 1, background: "#e5e7eb" }} />
 
             <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
               <div style={{ display: "grid", gap: 6 }}>
-                <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.72)" }}>對方提出</div>
-                <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.92)" }}>{detail.offer.subtitle}</div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)" }}>{detail.offer.meta}</div>
+                <div style={{ fontSize: 12, fontWeight: 900, color: "#374151" }}>對方提出</div>
+                <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>{detail.offer.subtitle}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{detail.offer.meta}</div>
               </div>
 
-              <div style={{ height: 1, background: "rgba(255,255,255,0.10)" }} />
+              <div style={{ height: 1, background: "#e5e7eb" }} />
 
               <div style={{ display: "grid", gap: 6 }}>
-                <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.72)" }}>你提出</div>
-                <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.92)" }}>{selectedOffer?.subtitle ?? "—"}</div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)" }}>{selectedOffer?.meta ?? "—"}</div>
+                <div style={{ fontSize: 12, fontWeight: 900, color: "#374151" }}>你提出</div>
+                <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>{selectedOffer?.subtitle ?? "—"}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{selectedOffer?.meta ?? "—"}</div>
               </div>
             </div>
 
@@ -1072,9 +1072,9 @@ function TradeDetailPageInner() {
                   height: 40,
                   padding: "0 14px",
                   borderRadius: 12,
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "rgba(255,255,255,0.86)",
+                  border: "1px solid #e5e7eb",
+                  background: "#f3f4f6",
+                  color: "#111827",
                   fontSize: 13,
                   fontWeight: 900,
                   cursor: "pointer",
@@ -1092,9 +1092,9 @@ function TradeDetailPageInner() {
                   height: 40,
                   padding: "0 14px",
                   borderRadius: 12,
-                  border: "1px solid rgba(77,163,255,0.35)",
-                  background: "rgba(77,163,255,0.18)",
-                  color: "rgba(255,255,255,0.92)",
+                  border: "1px solid #2283f6",
+                  background: "#2283f6",
+                  color: "#ffffff",
                   fontSize: 13,
                   fontWeight: 900,
                   cursor: "pointer",
@@ -1111,7 +1111,7 @@ function TradeDetailPageInner() {
         <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 16px" }}>
           <div style={{ marginTop: 18 }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-              <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", letterSpacing: "0.02em" }}>收到的提案</div>
+              <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", letterSpacing: "0.02em" }}>收到的提案</div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <button
                   type="button"
@@ -1121,7 +1121,7 @@ function TradeDetailPageInner() {
                     background: "transparent",
                     padding: 0,
                     cursor: "pointer",
-                    color: proposalFilter === "active" ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.60)",
+                    color: proposalFilter === "active" ? "#111827" : "#6b7280",
                     fontSize: 12,
                     fontWeight: 900,
                     textDecoration: proposalFilter === "active" ? "underline" : "none",
@@ -1130,7 +1130,7 @@ function TradeDetailPageInner() {
                 >
                   進行中
                 </button>
-                <div style={{ width: 1, height: 12, background: "rgba(255,255,255,0.14)" }} />
+                <div style={{ width: 1, height: 12, background: "#e5e7eb" }} />
                 <button
                   type="button"
                   onClick={() => setProposalFilter("pending")}
@@ -1139,7 +1139,7 @@ function TradeDetailPageInner() {
                     background: "transparent",
                     padding: 0,
                     cursor: "pointer",
-                    color: proposalFilter === "pending" ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.60)",
+                    color: proposalFilter === "pending" ? "#111827" : "#6b7280",
                     fontSize: 12,
                     fontWeight: 900,
                     textDecoration: proposalFilter === "pending" ? "underline" : "none",
@@ -1148,7 +1148,7 @@ function TradeDetailPageInner() {
                 >
                   待處理
                 </button>
-                <div style={{ width: 1, height: 12, background: "rgba(255,255,255,0.14)" }} />
+                <div style={{ width: 1, height: 12, background: "#e5e7eb" }} />
                 <button
                   type="button"
                   onClick={() => setProposalFilter("all")}
@@ -1157,7 +1157,7 @@ function TradeDetailPageInner() {
                     background: "transparent",
                     padding: 0,
                     cursor: "pointer",
-                    color: proposalFilter === "all" ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.60)",
+                    color: proposalFilter === "all" ? "#111827" : "#6b7280",
                     fontSize: 12,
                     fontWeight: 900,
                     textDecoration: proposalFilter === "all" ? "underline" : "none",
@@ -1169,7 +1169,7 @@ function TradeDetailPageInner() {
               </div>
             </div>
 
-            <div style={{ marginTop: 10, borderTop: "1px solid rgba(255,255,255,0.10)" }}>
+            <div style={{ marginTop: 10, borderTop: "1px solid #e5e7eb" }}>
               {proposalsFiltered.map((p) => {
                 const isPending = p.status === "pending" || p.status === "needsInfo";
                 const accepted = p.id === acceptedProposalId || p.status === "accepted";
@@ -1183,18 +1183,18 @@ function TradeDetailPageInner() {
                       gap: 12,
                       alignItems: "center",
                       padding: "12px 2px",
-                      borderBottom: "1px solid rgba(255,255,255,0.08)",
+                      borderBottom: "1px solid #e5e7eb",
                     }}
                   >
-                    <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.86)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 12, fontWeight: 900, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {p.fromUser}
                     </div>
 
                     <div style={{ minWidth: 0, display: "grid", gap: 2 }}>
-                      <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(255,255,255,0.92)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div style={{ fontSize: 13, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {p.offered.subtitle}
                       </div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         卡況：{p.condition} · 補差：{p.topUp}
                       </div>
                     </div>
@@ -1211,8 +1211,8 @@ function TradeDetailPageInner() {
                             height: 28,
                             padding: 0,
                             borderRadius: 8,
-                            border: "1px solid rgba(255,255,255,0.12)",
-                            background: "rgba(255,255,255,0.04)",
+                            border: "1px solid #e5e7eb",
+                            background: "#f3f4f6",
                             overflow: "hidden",
                             cursor: "pointer",
                             position: "relative",
@@ -1232,9 +1232,9 @@ function TradeDetailPageInner() {
                             height: 32,
                             padding: "0 10px",
                             borderRadius: 10,
-                            border: "1px solid rgba(255,255,255,0.14)",
-                            background: "rgba(255,255,255,0.06)",
-                            color: "rgba(255,255,255,0.92)",
+                            border: "1px solid #e5e7eb",
+                            background: "#f3f4f6",
+                            color: "#111827",
                             fontSize: 12,
                             fontWeight: 950,
                             cursor: "pointer",
@@ -1244,7 +1244,7 @@ function TradeDetailPageInner() {
                           確認提案
                         </button>
                       ) : (
-                        <div style={{ textAlign: "right", fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.72)" }}>{statusText}</div>
+                        <div style={{ textAlign: "right", fontSize: 12, fontWeight: 900, color: "#374151" }}>{statusText}</div>
                       )}
                     </div>
                   </div>
@@ -1255,7 +1255,7 @@ function TradeDetailPageInner() {
         </div>
       ) : (
         <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 16px" }}>
-          <div style={{ marginTop: 18, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12, color: "rgba(255,255,255,0.62)", fontSize: 12, fontWeight: 800 }}>
+          <div style={{ marginTop: 18, borderTop: "1px solid #e5e7eb", paddingTop: 12, color: "#6b7280", fontSize: 12, fontWeight: 800 }}>
             {tradeStatus === "MATCHED"
               ? `此交換已與 ${acceptedProposal?.fromUser ?? "對方"} 鎖定進行中，暫不接受新提案。`
               : "此交換開放提案中。"}
@@ -1285,15 +1285,15 @@ function TradeDetailPageInner() {
             style={{
               width: "min(980px, calc(100vw - 32px))",
               borderRadius: 16,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(17, 25, 35, 0.96)",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+              border: "1px solid #e5e7eb",
+              background: "#ffffff",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
               padding: 12,
-              color: "rgba(255,255,255,0.92)",
+              color: "#111827",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.78)" }}>
+              <div style={{ fontSize: 12, fontWeight: 900, color: "#374151" }}>
                 {photoImages.length ? `${photoIndex + 1} / ${photoImages.length}` : ""}
               </div>
               <button
@@ -1305,9 +1305,9 @@ function TradeDetailPageInner() {
                   width: 32,
                   height: 32,
                   borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "rgba(255,255,255,0.82)",
+                  border: "1px solid #e5e7eb",
+                  background: "#f3f4f6",
+                  color: "#374151",
                   display: "grid",
                   placeItems: "center",
                   padding: 0,
@@ -1321,7 +1321,7 @@ function TradeDetailPageInner() {
               </button>
             </div>
 
-            <div style={{ marginTop: 10, position: "relative", width: "100%", aspectRatio: "16 / 10", borderRadius: 14, overflow: "hidden", background: "rgba(0,0,0,0.35)" }}>
+            <div style={{ marginTop: 10, position: "relative", width: "100%", aspectRatio: "16 / 10", borderRadius: 14, overflow: "hidden", background: "#f3f4f6" }}>
               {photoImages[photoIndex] ? (
                 <Image src={photoImages[photoIndex]} alt="" fill sizes="980px" style={{ objectFit: "contain" }} unoptimized />
               ) : null}
@@ -1336,9 +1336,9 @@ function TradeDetailPageInner() {
                     height: 36,
                     padding: "0 12px",
                     borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    background: "rgba(255,255,255,0.06)",
-                    color: "rgba(255,255,255,0.86)",
+                    border: "1px solid #e5e7eb",
+                    background: "#f3f4f6",
+                    color: "#111827",
                     fontSize: 12,
                     fontWeight: 900,
                     cursor: "pointer",
@@ -1353,9 +1353,9 @@ function TradeDetailPageInner() {
                     height: 36,
                     padding: "0 12px",
                     borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    background: "rgba(255,255,255,0.06)",
-                    color: "rgba(255,255,255,0.86)",
+                    border: "1px solid #e5e7eb",
+                    background: "#f3f4f6",
+                    color: "#111827",
                     fontSize: 12,
                     fontWeight: 900,
                     cursor: "pointer",

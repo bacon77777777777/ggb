@@ -249,7 +249,7 @@ export default function OrdersPage() {
     if (!hasAny) return null;
     const total = orders.length + openings.length;
     return (
-      <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap" }}>
+      <div style={{ fontSize: 12, fontWeight: 850, color: "#6b7280", whiteSpace: "nowrap" }}>
         共 {total.toLocaleString()} 筆
       </div>
     );
@@ -309,8 +309,8 @@ export default function OrdersPage() {
 
                 {!hasAny ? (
                 <SurfaceCard>
-                  <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.86)" }}>尚無訂單</div>
-                  <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)" }}>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>尚無訂單</div>
+                  <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
                     先到市集或卡包完成一次交易，就會出現在這裡
                   </div>
                   <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -326,25 +326,25 @@ export default function OrdersPage() {
                 <div style={{ display: "grid", gap: 12 }}>
                 {orders.length && (view === "all" || view === "market") ? (
                   <SurfaceCard style={{ display: "grid", gap: 10 }}>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.86)" }}>市集訂單</div>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>市集訂單</div>
                     <div style={{ display: "grid", gap: 10 }}>
                       {orders.map((o) => (
                         <SurfaceRowLink key={o.id} href={`/orders/${o.id}`}>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {o.title}
                             </div>
                             <div style={{ marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                               <Pill tone={statusTone(o.status)}>{statusLabel(o.status)}</Pill>
-                              <span style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.55)" }}>
+                              <span style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
                                 {new Date(o.createdAt).toLocaleString("zh-TW")}
                               </span>
                             </div>
                           </div>
                           <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                            <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>{twd(o.totalAmount)}</div>
+                            <div style={{ fontSize: 14, fontWeight: 950, color: "#111827" }}>{twd(o.totalAmount)}</div>
                             {o.shipment?.trackingNo ? (
-                              <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.58)" }}>{o.shipment.trackingNo}</div>
+                              <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{o.shipment.trackingNo}</div>
                             ) : null}
                           </div>
                         </SurfaceRowLink>
@@ -355,30 +355,30 @@ export default function OrdersPage() {
 
                 {openings.length && (view === "all" || view === "pack") ? (
                   <SurfaceCard style={{ display: "grid", gap: 10 }}>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.86)" }}>卡包開抽</div>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>卡包開抽</div>
                     <div style={{ display: "grid", gap: 10 }}>
                       {openings.map((o) => (
                         <SurfaceRowLink key={o.id} href={`/openings/${o.id}`}>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {o.title}
                             </div>
                             <div style={{ marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                               <Pill tone={statusTone(o.status)}>{statusLabel(o.status)}</Pill>
-                              <span style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.55)" }}>
+                              <span style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
                                 {new Date(o.createdAt).toLocaleString("zh-TW")}
                               </span>
                             </div>
                             {o.prize?.name ? (
-                              <div style={{ marginTop: 6, fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.70)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <div style={{ marginTop: 6, fontSize: 12, fontWeight: 850, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 得獎：{o.prize.name}
                               </div>
                             ) : null}
                           </div>
                           <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                            <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>{twd(o.totalAmount)}</div>
+                            <div style={{ fontSize: 14, fontWeight: 950, color: "#111827" }}>{twd(o.totalAmount)}</div>
                             {o.shipment?.trackingNo ? (
-                              <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.58)" }}>{o.shipment.trackingNo}</div>
+                              <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{o.shipment.trackingNo}</div>
                             ) : null}
                           </div>
                         </SurfaceRowLink>

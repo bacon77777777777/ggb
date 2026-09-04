@@ -74,20 +74,20 @@ export default function RewardsPage() {
 
             <SurfaceCard style={{ marginTop: 14, width: "100%" }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-                <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.72)" }}>目前 points</div>
-                <div style={{ fontSize: 18, fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>{totalPoints.toLocaleString()}</div>
+                <div style={{ fontSize: 13, fontWeight: 900, color: "#374151" }}>目前 points</div>
+                <div style={{ fontSize: 18, fontWeight: 950, color: "#111827" }}>{totalPoints.toLocaleString()}</div>
               </div>
-              <div style={{ marginTop: 10, height: 8, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+              <div style={{ marginTop: 10, height: 8, borderRadius: 999, background: "#f3f4f6", overflow: "hidden" }}>
                 <div style={{ width: `${tierPct * 100}%`, height: "100%", background: "rgba(34,131,246,0.80)" }} />
               </div>
-              <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.58)" }}>
+              <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
                 距離 Silver 還差 {(nextTierNeed - totalPoints).toLocaleString()} points
               </div>
             </SurfaceCard>
 
             <div style={{ marginTop: 14, display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", width: "100%" }}>
               <SurfaceCard style={{ display: "grid", gap: 10 }}>
-                <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.86)" }}>可領取</div>
+                <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>可領取</div>
                 <div style={{ display: "grid", gap: 10 }}>
                   {rewards.map((r) => {
                     const claimed = claimedById[r.id] || r.claimed;
@@ -96,7 +96,7 @@ export default function RewardsPage() {
                         key={r.id}
                         style={{
                           borderRadius: 16,
-                          background: "rgba(255,255,255,0.06)",
+                          background: "#f3f4f6",
                           padding: 12,
                           display: "flex",
                           alignItems: "center",
@@ -105,8 +105,8 @@ export default function RewardsPage() {
                         }}
                       >
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 900, color: "rgba(255,255,255,0.92)", lineHeight: 1.2 }}>{r.title}</div>
-                          <div style={{ marginTop: 4, fontSize: 12, fontWeight: 750, color: "rgba(255,255,255,0.58)" }}>{r.description}</div>
+                          <div style={{ fontSize: 14, fontWeight: 900, color: "#111827", lineHeight: 1.2 }}>{r.title}</div>
+                          <div style={{ marginTop: 4, fontSize: 12, fontWeight: 750, color: "#6b7280" }}>{r.description}</div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flex: "0 0 auto" }}>
                           <Pill tone="muted">+{r.points.toLocaleString()}</Pill>
@@ -121,17 +121,17 @@ export default function RewardsPage() {
               </SurfaceCard>
 
               <SurfaceCard style={{ display: "grid", gap: 10 }}>
-                <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.86)" }}>等級福利</div>
+                <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>等級福利</div>
                 <div style={{ display: "grid", gap: 10 }}>
                   {tiers.map((t) => (
-                    <div key={t.level} style={{ borderRadius: 16, background: "rgba(255,255,255,0.06)", padding: 12, display: "grid", gap: 8 }}>
+                    <div key={t.level} style={{ borderRadius: 16, background: "#f3f4f6", padding: 12, display: "grid", gap: 8 }}>
                       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-                        <div style={{ fontSize: 14, fontWeight: 900, color: "rgba(255,255,255,0.92)" }}>{t.level}</div>
+                        <div style={{ fontSize: 14, fontWeight: 900, color: "#111827" }}>{t.level}</div>
                         <Pill tone="muted">{t.need.toLocaleString()} pts</Pill>
                       </div>
                       <div style={{ display: "grid", gap: 4 }}>
                         {t.perks.map((p) => (
-                          <div key={p} style={{ fontSize: 12, fontWeight: 750, color: "rgba(255,255,255,0.62)" }}>
+                          <div key={p} style={{ fontSize: 12, fontWeight: 750, color: "#6b7280" }}>
                             {p}
                           </div>
                         ))}

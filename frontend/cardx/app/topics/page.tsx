@@ -269,8 +269,8 @@ function TopicsPageInner() {
                           borderRadius: 999,
                           border: 0,
                           cursor: "pointer",
-                          background: active ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.04)",
-                          color: active ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.68)",
+                          background: active ? "#111827" : "#f3f4f6",
+                          color: active ? "#ffffff" : "#374151",
                           fontSize: 13,
                           fontWeight: 800,
                           whiteSpace: "nowrap",
@@ -281,7 +281,7 @@ function TopicsPageInner() {
                     );
                   })}
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.55)" }}>{filtered.length.toLocaleString()} 個話題</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#6b7280" }}>{filtered.length.toLocaleString()} 個話題</div>
               </div>
 
               <section className={homeStyles.section} aria-label="話題列表">
@@ -320,9 +320,9 @@ function TopicsPageInner() {
                         }}
                         style={{
                           borderRadius: 16,
-                          background: "#1c2532",
+                          background: "#ffffff",
                           overflow: "hidden",
-                          boxShadow: "0px 2px 15px 0px rgba(0,0,0,0.10)",
+                          boxShadow: "0 0 0 1px #e5e7eb, 0 10px 40px -10px rgba(0,0,0,0.08)",
                           padding: 12,
                           display: "flex",
                           flexDirection: "column",
@@ -337,8 +337,8 @@ function TopicsPageInner() {
                           <div className={homeStyles.topicTitle}>{x.question}</div>
                           <div className={homeStyles.topicRing} style={{ ["--p" as never]: yes }}>
                             <div className={homeStyles.topicRingInner}>
-                              <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", lineHeight: 1 }}>{yes}%</div>
-                              <div style={{ fontSize: 10, fontWeight: 850, color: "rgba(255,255,255,0.55)", lineHeight: 1, marginTop: 2 }}>是</div>
+                              <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", lineHeight: 1 }}>{yes}%</div>
+                              <div style={{ fontSize: 10, fontWeight: 850, color: "#6b7280", lineHeight: 1, marginTop: 2 }}>是</div>
                             </div>
                           </div>
                         </div>
@@ -409,9 +409,9 @@ function TopicsPageInner() {
             style={{
               width: "min(720px, 96vw)",
               borderRadius: 18,
-              border: "1px solid rgba(255, 255, 255, 0.10)",
-              background: "rgba(17, 25, 35, 0.92)",
-              boxShadow: "0 18px 60px rgba(0, 0, 0, 0.6)",
+              border: "1px solid #e5e7eb",
+              background: "#ffffff",
+              boxShadow: "0 18px 60px rgba(0, 0, 0, 0.18)",
               padding: 16,
               position: "relative",
             }}
@@ -422,9 +422,9 @@ function TopicsPageInner() {
               onClick={() => setSelectedId(null)}
               style={{
                 appearance: "none",
-                border: "1px solid rgba(255,255,255,0.14)",
-                background: "rgba(0,0,0,0.18)",
-                color: "rgba(255,255,255,0.9)",
+                border: "1px solid #e5e7eb",
+                background: "#f3f4f6",
+                color: "#374151",
                 width: 38,
                 height: 38,
                 borderRadius: 12,
@@ -452,21 +452,21 @@ function TopicsPageInner() {
               return (
                 <>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 12, paddingRight: 44 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 12, overflow: "hidden", background: "rgba(255,255,255,0.06)", flex: "0 0 auto" }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 12, overflow: "hidden", background: "#f3f4f6", flex: "0 0 auto" }}>
                       <img alt="" src={avatarSrc(selected.id)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                     </div>
                     <div style={{ minWidth: 0, flex: "1 1 auto" }}>
-                      <div style={{ fontSize: 16, fontWeight: 950, color: "rgba(255,255,255,0.92)", lineHeight: 1.25 }}>
+                      <div style={{ fontSize: 16, fontWeight: 950, color: "#111827", lineHeight: 1.25 }}>
                         {selected.question}
                       </div>
-                      <div style={{ marginTop: 6, fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.55)" }}>
+                      <div style={{ marginTop: 6, fontSize: 12, fontWeight: 850, color: "#6b7280" }}>
                         {tagLabel(selected.tag)} · {selected.voters.toLocaleString()} 人參與投票
                       </div>
                     </div>
                     <div className={homeStyles.topicRing} style={{ ["--p" as never]: yes }}>
                       <div className={homeStyles.topicRingInner}>
-                        <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", lineHeight: 1 }}>{yes}%</div>
-                        <div style={{ fontSize: 10, fontWeight: 850, color: "rgba(255,255,255,0.55)", lineHeight: 1, marginTop: 2 }}>是</div>
+                        <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", lineHeight: 1 }}>{yes}%</div>
+                        <div style={{ fontSize: 10, fontWeight: 850, color: "#6b7280", lineHeight: 1, marginTop: 2 }}>是</div>
                       </div>
                     </div>
                   </div>
@@ -475,8 +475,8 @@ function TopicsPageInner() {
                     <div
                       style={{
                         borderRadius: 16,
-                        border: "1px solid rgba(255,255,255,0.10)",
-                        background: "rgba(255,255,255,0.04)",
+                        border: "1px solid #e5e7eb",
+                        background: "#f9fafb",
                         padding: 12,
                       }}
                     >
@@ -515,17 +515,17 @@ function TopicsPageInner() {
 
                       <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                          <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.78)" }}>是</div>
-                          <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>{yes}%</div>
+                          <div style={{ fontSize: 12, fontWeight: 900, color: "#374151" }}>是</div>
+                          <div style={{ fontSize: 12, fontWeight: 950, color: "#111827" }}>{yes}%</div>
                         </div>
-                        <div style={{ height: 10, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                        <div style={{ height: 10, borderRadius: 999, background: "#f3f4f6", overflow: "hidden" }}>
                           <div style={{ width: `${yes}%`, height: "100%", background: "rgba(102,187,106,0.52)" }} />
                         </div>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                          <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.78)" }}>否</div>
-                          <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>{no}%</div>
+                          <div style={{ fontSize: 12, fontWeight: 900, color: "#374151" }}>否</div>
+                          <div style={{ fontSize: 12, fontWeight: 950, color: "#111827" }}>{no}%</div>
                         </div>
-                        <div style={{ height: 10, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                        <div style={{ height: 10, borderRadius: 999, background: "#f3f4f6", overflow: "hidden" }}>
                           <div style={{ width: `${no}%`, height: "100%", background: "rgba(239,83,80,0.52)" }} />
                         </div>
                       </div>
@@ -534,23 +534,23 @@ function TopicsPageInner() {
                     <div
                       style={{
                         borderRadius: 16,
-                        border: "1px solid rgba(255,255,255,0.10)",
-                        background: "rgba(255,255,255,0.04)",
+                        border: "1px solid #e5e7eb",
+                        background: "#f9fafb",
                         padding: 12,
                       }}
                     >
-                      <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>最新動態</div>
+                      <div style={{ fontSize: 13, fontWeight: 950, color: "#111827" }}>最新動態</div>
                       <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
                         {activity.map((a, idx) => (
                           <div key={`a_${idx}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                              <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.78)", whiteSpace: "nowrap" }}>{a.left}</div>
-                              <div style={{ width: 1, height: 14, background: "rgba(255,255,255,0.12)" }} />
-                              <div style={{ fontSize: 12, fontWeight: 750, color: "rgba(255,255,255,0.62)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <div style={{ fontSize: 12, fontWeight: 900, color: "#374151", whiteSpace: "nowrap" }}>{a.left}</div>
+                              <div style={{ width: 1, height: 14, background: "#e5e7eb" }} />
+                              <div style={{ fontSize: 12, fontWeight: 750, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {a.mid}
                               </div>
                             </div>
-                            <div style={{ fontSize: 12, fontWeight: 750, color: "rgba(255,255,255,0.45)", whiteSpace: "nowrap" }}>{a.right}</div>
+                            <div style={{ fontSize: 12, fontWeight: 750, color: "#6b7280", whiteSpace: "nowrap" }}>{a.right}</div>
                           </div>
                         ))}
                       </div>

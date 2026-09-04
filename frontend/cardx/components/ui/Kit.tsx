@@ -45,7 +45,7 @@ export function PageHeader({
               overflow: "hidden",
               textOverflow: "ellipsis",
               letterSpacing: "-0.36px",
-              color: "#ffffff",
+              color: "#111827",
               fontFamily: 'Montserrat, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif',
               fontSize: 18,
               fontWeight: 600,
@@ -53,7 +53,7 @@ export function PageHeader({
           >
             {title}
           </h1>
-          {subtitle ? <div style={{ marginLeft: 8, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.55)" }}>{subtitle}</div> : null}
+          {subtitle ? <div style={{ marginLeft: 8, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{subtitle}</div> : null}
         </div>
       </div>
       {right ? (
@@ -73,7 +73,7 @@ export function SurfaceCard({
   style?: CSSProperties;
 }) {
   return (
-    <div style={{ borderRadius: 18, border: 0, background: "rgba(0,0,0,0.12)", padding: 14, ...style }}>{children}</div>
+    <div style={{ borderRadius: 18, border: 0, background: "#ffffff", boxShadow: "0 0 0 1px #e5e7eb, 0 10px 40px -10px rgba(0,0,0,0.08)", padding: 14, ...style }}>{children}</div>
   );
 }
 
@@ -91,7 +91,7 @@ export function SurfaceRowLink({
       href={href}
       style={{
         borderRadius: 16,
-        background: "rgba(255,255,255,0.06)",
+        background: "#f3f4f6",
         padding: 12,
         textDecoration: "none",
         color: "inherit",
@@ -116,12 +116,12 @@ export function Pill({
 }) {
   const palette =
     tone === "success"
-      ? { bg: "rgba(20, 184, 166, 0.18)", fg: "rgba(94, 234, 212, 0.95)" }
+      ? { bg: "rgba(16, 185, 129, 0.14)", fg: "#047857" }
       : tone === "danger"
-        ? { bg: "rgba(255, 77, 79, 0.16)", fg: "rgba(255, 120, 120, 0.95)" }
+        ? { bg: "rgba(220, 38, 38, 0.12)", fg: "#dc2626" }
         : tone === "info"
-          ? { bg: "rgba(34, 131, 246, 0.18)", fg: "rgba(147, 197, 253, 0.95)" }
-          : { bg: "rgba(255, 255, 255, 0.10)", fg: "rgba(255, 255, 255, 0.82)" };
+          ? { bg: "rgba(34, 131, 246, 0.14)", fg: "#1d4ed8" }
+          : { bg: "#f3f4f6", fg: "#374151" };
   return (
     <span
       style={{
@@ -160,8 +160,8 @@ export function SecondaryButton({
     height: 38,
     borderRadius: 12,
     border: 0,
-    background: "rgba(255,255,255,0.06)",
-    color: "rgba(255,255,255,0.82)",
+    background: "#f3f4f6",
+    color: "#374151",
     fontSize: 13,
     fontWeight: 900,
     cursor: "pointer",
@@ -252,7 +252,7 @@ export function TextField({
 }) {
   return (
     <div style={{ display: "grid", gap: 6 }}>
-      <label style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.66)" }}>{label}</label>
+      <label style={{ fontSize: 12, fontWeight: 850, color: "#6b7280" }}>{label}</label>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -263,8 +263,8 @@ export function TextField({
           height: 40,
           borderRadius: 12,
           border: 0,
-          background: "rgba(255,255,255,0.06)",
-          color: "rgba(255,255,255,0.92)",
+          background: "#f3f4f6",
+          color: "#111827",
           padding: "0 12px",
           fontSize: 14,
           fontWeight: 800,
@@ -284,8 +284,8 @@ export function KeyValueRow({
 }) {
   return (
     <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-      <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.66)" }}>{label}</div>
-      <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(255,255,255,0.92)", textAlign: "right" }}>{value}</div>
+      <div style={{ fontSize: 12, fontWeight: 850, color: "#6b7280" }}>{label}</div>
+      <div style={{ fontSize: 13, fontWeight: 950, color: "#111827", textAlign: "right" }}>{value}</div>
     </div>
   );
 }

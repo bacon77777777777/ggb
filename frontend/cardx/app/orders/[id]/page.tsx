@@ -456,8 +456,8 @@ export default function OrderDetailPage() {
                           borderRadius: 16,
                           display: "grid",
                           placeItems: "center",
-                          background: active ? "rgba(43,124,255,0.26)" : "rgba(255,255,255,0.06)",
-                          color: "rgba(255,255,255,0.82)",
+                          background: active ? "rgba(43,124,255,0.26)" : "#f3f4f6",
+                          color: "#374151",
                         }}
                       >
                         <UiIcon href={t.icon} size={20} />
@@ -479,8 +479,8 @@ export default function OrderDetailPage() {
                       height: 38,
                       borderRadius: 12,
                       border: 0,
-                      background: "rgba(255,255,255,0.06)",
-                      color: "rgba(255,255,255,0.86)",
+                      background: "#f3f4f6",
+                      color: "#111827",
                       display: "grid",
                       placeItems: "center",
                       cursor: "pointer",
@@ -493,7 +493,7 @@ export default function OrderDetailPage() {
                     style={{
                       fontSize: 14,
                       fontWeight: 950,
-                      color: "rgba(255,255,255,0.92)",
+                      color: "#111827",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
@@ -508,8 +508,8 @@ export default function OrderDetailPage() {
               {!order ? (
                 <div style={{ marginTop: 12 }}>
                   <SurfaceCard>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.86)" }}>找不到訂單</div>
-                    <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)" }}>訂單可能已被清除</div>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>找不到訂單</div>
+                    <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>訂單可能已被清除</div>
                   </SurfaceCard>
                 </div>
               ) : (
@@ -520,13 +520,13 @@ export default function OrderDetailPage() {
                         <img
                           alt=""
                           src="/cardx/placeholder.svg"
-                          style={{ width: 54, height: 54, borderRadius: 16, objectFit: "cover", background: "rgba(0,0,0,0.18)", flex: "0 0 auto" }}
+                          style={{ width: 54, height: 54, borderRadius: 16, objectFit: "cover", background: "#f3f4f6", flex: "0 0 auto" }}
                         />
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {order.title}
                           </div>
-                          <div style={{ marginTop: 6, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.55)" }}>
+                          <div style={{ marginTop: 6, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
                             {new Date(order.createdAt).toLocaleString("zh-TW")}
                           </div>
                         </div>
@@ -540,10 +540,10 @@ export default function OrderDetailPage() {
                       <div style={{ display: "grid", gap: 8 }}>
                         {timeline.map((t) => (
                           <div key={t.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                            <div style={{ fontSize: 12, fontWeight: 900, color: t.active ? "rgba(255,255,255,0.86)" : "rgba(255,255,255,0.48)" }}>
+                            <div style={{ fontSize: 12, fontWeight: 900, color: t.active ? "#111827" : "#6b7280" }}>
                               {t.label}
                             </div>
-                            <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap" }}>
+                            <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", whiteSpace: "nowrap" }}>
                               {t.at ? new Date(t.at).toLocaleString("zh-TW") : "-"}
                             </div>
                           </div>
@@ -554,26 +554,26 @@ export default function OrderDetailPage() {
                     <SurfaceCard style={{ display: "grid", gap: 10 }}>
                       {order.shipment ? (
                         <div style={{ display: "grid", gap: 6 }}>
-                          <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.86)" }}>
+                          <div style={{ fontSize: 12, fontWeight: 900, color: "#111827" }}>
                             {order.shipment.carrier} · {order.shipment.trackingNo}
                           </div>
-                          <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.62)" }}>狀態：{order.shipment.status}</div>
+                          <div style={{ fontSize: 12, fontWeight: 850, color: "#6b7280" }}>狀態：{order.shipment.status}</div>
                         </div>
                       ) : (
-                        <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.58)" }}>尚未建立物流資訊</div>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>尚未建立物流資訊</div>
                       )}
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                         <SecondaryButton
                           onClick={markShipped}
                           disabled={order.status !== "paid" && order.status !== "packing"}
-                          style={{ height: 36, borderRadius: 12, background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.86)" }}
+                          style={{ height: 36, borderRadius: 12, background: "#f3f4f6", color: "#111827" }}
                         >
                           模擬賣家出貨
                         </SecondaryButton>
                         <SecondaryButton
                           onClick={markDelivered}
                           disabled={order.status !== "shipped"}
-                          style={{ height: 36, borderRadius: 12, background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.86)" }}
+                          style={{ height: 36, borderRadius: 12, background: "#f3f4f6", color: "#111827" }}
                         >
                           模擬送達
                         </SecondaryButton>
@@ -612,7 +612,7 @@ export default function OrderDetailPage() {
                           發起爭議
                         </SecondaryButton>
                       </div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)", lineHeight: "18px" }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", lineHeight: "18px" }}>
                         退款或爭議送出後，平台會暫停放款並進入處理流程。
                       </div>
                     </SurfaceCard>
@@ -623,15 +623,15 @@ export default function OrderDetailPage() {
                       <KeyValueRow label="商品小計" value={twd(order.amountSubtotal)} />
                       <KeyValueRow label="運費" value={twd(order.shippingFee)} />
                       <KeyValueRow label="平台服務費" value={twd(order.platformFee)} />
-                      <div style={{ height: 1, background: "rgba(255,255,255,0.08)", marginTop: 2, marginBottom: 2 }} />
-                      <KeyValueRow label={<span style={{ fontWeight: 950, color: "rgba(255,255,255,0.74)" }}>總額</span>} value={<span style={{ fontSize: 16 }}>{twd(order.totalAmount)}</span>} />
+                      <div style={{ height: 1, background: "#e5e7eb", marginTop: 2, marginBottom: 2 }} />
+                      <KeyValueRow label={<span style={{ fontWeight: 950, color: "#374151" }}>總額</span>} value={<span style={{ fontSize: 16 }}>{twd(order.totalAmount)}</span>} />
                     </SurfaceCard>
 
                     <SurfaceCard style={{ display: "grid", gap: 8 }}>
-                      <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.86)" }}>
+                      <div style={{ fontSize: 12, fontWeight: 900, color: "#111827" }}>
                         {order.addressSnapshot.name} · {order.addressSnapshot.phone}
                       </div>
-                      <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.70)" }}>{order.addressSnapshot.addressLine}</div>
+                      <div style={{ fontSize: 12, fontWeight: 850, color: "#374151" }}>{order.addressSnapshot.addressLine}</div>
                     </SurfaceCard>
                   </div>
                 </div>

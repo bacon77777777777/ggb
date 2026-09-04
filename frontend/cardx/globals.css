@@ -8,40 +8,61 @@
   fill: currentColor;
 }
 
+/*
+ * 老闆 2026-09-04：桌機版（cardx）從暗色系改成淺色系，跟手機端一樣。
+ * 色票不自己發明，一律對到手機端的 `frontend/app/globals.css` 與 `tailwind.config.js`：
+ *   頁面底 #f9fafb（neutral-50）｜卡片／面板 #ffffff｜次級填色 #f3f4f6（neutral-100）
+ *   分隔線 #e5e7eb（neutral-200）｜主文字 #111827｜次文字 #374151｜輔助 #6b7280｜更淡 #9ca3af
+ * 品牌色一律用 rgb(var(--primary))（後台換主題色時桌機才會跟著變），不要再寫死 #ed1d49。
+ */
 .cardx-root {
-  --background: #0e141d;
-  --foreground: rgba(255, 255, 255, 0.9);
-  --surface: #111923;
-  --brand: #ed1d49;
+  /* ── 語意色票：cardx 這棵樹底下一律用這幾個變數，不要各自寫死色碼 ── */
+  --cx-bg: #f9fafb; /* 頁面底 */
+  --cx-surface: #ffffff; /* 卡片／面板／頂欄／側欄 */
+  --cx-surface-2: #f3f4f6; /* 次級填色：欄位、標籤底、膠囊 */
+  --cx-text: #111827; /* 主要文字 */
+  --cx-text-soft: #374151; /* 次要文字 */
+  --cx-text-dim: #6b7280; /* 輔助文字（標籤、說明） */
+  --cx-text-faint: #9ca3af; /* 更淡的文字（佔位、單位） */
+  --cx-border: #e5e7eb; /* 分隔線／外框 */
+  --cx-hover: rgba(0, 0, 0, 0.04); /* hover：淺底上用黑霧，不是白霧 */
+  --cx-hover-strong: rgba(0, 0, 0, 0.08); /* hover 再深一階／active */
 
-  --Background-Secondary: #a7b5ca;
-  --Background-Tertiary: #55657e;
-  --Background-Quaternary: #2a3546;
-  --Background-Quinary: #202a39;
-  --Background-Senary: #1c2532;
-  --color_red: #ed1d49;
+  --background: var(--cx-bg);
+  --foreground: var(--cx-text);
+  --surface: var(--cx-surface);
+  --brand: rgb(var(--primary));
+
+  --Background-Secondary: #374151;
+  --Background-Tertiary: #6b7280;
+  --Background-Quaternary: #e5e7eb;
+  --Background-Quinary: #f3f4f6;
+  --Background-Senary: #ffffff;
+  --color_red: rgb(var(--primary));
+  /* 彩色 3D 按鈕（紅／藍／綠／紫）上的文字與圖示，維持白色 */
   --color_white: #fff;
 
-  --ui-color-brand-500: #ed1d49;
-  --ui-color-bg-900: #0e141d;
-  --ui-color-surface-800: #111923;
-  --ui-color-surface-700: #161f2c;
-  --ui-color-text-100: #fff;
-  --ui-color-text-80: rgba(255, 255, 255, 0.8);
-  --ui-color-text-60: rgba(255, 255, 255, 0.6);
-  --ui-color-border-20: rgba(255, 255, 255, 0.2);
+  --ui-color-brand-500: rgb(var(--primary));
+  --ui-color-bg-900: #f9fafb;
+  --ui-color-surface-800: #ffffff;
+  --ui-color-surface-700: #f3f4f6;
+  --ui-color-text-100: #111827;
+  --ui-color-text-80: #374151;
+  --ui-color-text-60: #6b7280;
+  --ui-color-border-20: #e5e7eb;
   --ui-radius-8: 8px;
   --ui-radius-12: 12px;
   --ui-radius-16: 16px;
-  --ui-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.25);
-  --ui-shadow-2: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --ui-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --ui-shadow-2: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
   --ui-container-max: 1690px;
   --ui-container-gutter: clamp(16px, 3vw, 24px);
 }
 
 .bonus-cabinet[data-v-4ec444f2] {
   align-items: center;
-  background-color: #ffffff1f;
+  /* 保底色（正常情況被 .background 的橘色漸層蓋住）：淺色版改淺灰，文字仍在彩色底上故維持白色 */
+  background-color: #f3f4f6;
   border-radius: 8px;
   color: #fff;
   display: flex;
@@ -61,11 +82,11 @@
 }
 
 .bonus-cabinet[data-v-4ec444f2]:hover {
-  background-color: #ffffff33;
+  background-color: #e5e7eb;
 }
 
 .bonus-cabinet[data-v-4ec444f2]:active {
-  background-color: #ffffff1f;
+  background-color: #f3f4f6;
 }
 
 .bonus-cabinet .background[data-v-4ec444f2] {
@@ -376,7 +397,8 @@
 
 /* ── 以下原本是 html／body 層級的規則，全部收進 .cardx-root（只影響 768 以上的 cardx 版面，手機端不碰）── */
 .cardx-root {
-  color-scheme: dark;
+  /* 淺色版：捲軸／表單原生元件也要跟著變淺（留 dark 的話捲軸還是深色的） */
+  color-scheme: light;
   color: var(--foreground);
   background: var(--background);
   font-family: var(--font-geist-mono), "Montserrat Variable", Montserrat, "PingFang SC", "Hiragino Sans GB",

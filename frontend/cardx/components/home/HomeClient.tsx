@@ -98,7 +98,7 @@ export function HomeProductCard({ product, meta, followed, onToggleFollow }: {
           <HeartIcon />
         </button>
         {product.is_hot ? (
-          <div className={styles.backgroundBorderShad}><p className={styles.a18} style={{ color: "#ff6b6b" }}>熱門</p></div>
+          <div className={styles.backgroundBorderShad}><p className={styles.a18} style={{ color: "#dc2626" }}>熱門</p></div>
         ) : null}
       </div>
       <div className={styles.frame1}>
@@ -587,7 +587,7 @@ export function HomeClient() {
         <div className={styles.sectionLobby}>
           {/* 吸頂那條改成兩列：類別 tab（樣式照最新消息頁的分段式）＋ 二級膠囊＋排序（老闆 2026-09-04） */}
           <div className={styles.nav} style={{ flexDirection: "column", alignItems: "stretch", justifyContent: "flex-start", gap: 8 }}>
-            <div style={{ display: "flex", gap: 8, borderRadius: 14, background: "rgba(255,255,255,0.04)", padding: 6, overflowX: "auto", scrollbarWidth: "none" }}>
+            <div style={{ display: "flex", gap: 8, borderRadius: 14, background: "#f3f4f6", padding: 6, overflowX: "auto", scrollbarWidth: "none" }}>
               {view.primaryTabs.map((t) => {
                 const active = t.id === view.activePrimaryTab;
                 return (
@@ -598,9 +598,9 @@ export function HomeClient() {
                     style={{
                       flex: "1 0 auto", height: 42, border: 0, borderRadius: 10, padding: "0 14px", cursor: "pointer",
                       fontSize: 14, fontWeight: 600, transition: "all 200ms ease", whiteSpace: "nowrap",
-                      background: active ? "rgba(255,255,255,0.08)" : "transparent",
-                      color: active ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.58)",
-                      boxShadow: active ? "0 1px 0 rgba(255,255,255,0.06), 0 4px 18px rgba(0,0,0,0.25)" : "none",
+                      background: active ? "#ffffff" : "transparent",
+                      color: active ? "#111827" : "#6b7280",
+                      boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.08)" : "none",
                     }}
                   >
                     {t.label}
@@ -662,7 +662,7 @@ export function HomeClient() {
               ))}
             </div>
             <div ref={sentinelRef} aria-hidden="true" style={{ height: 1 }} />
-            <div style={{ textAlign: "center", padding: "24px 0 8px", fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.45)" }}>
+            <div style={{ textAlign: "center", padding: "24px 0 8px", fontSize: 13, fontWeight: 700, color: "#9ca3af" }}>
               {visibleCount < view.items.length ? "載入中…" : view.items.length > 0 ? "到底了" : catalogLoaded ? "此分類暫無商品" : ""}
             </div>
           </section>

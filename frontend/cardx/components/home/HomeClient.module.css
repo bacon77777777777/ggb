@@ -570,7 +570,7 @@
   position: relative;
   margin-left: 7px;
   border-radius: 300px;
-  background: #2a3546;
+  background: #e5e7eb;
   width: 55px;
   height: 7px;
   overflow: hidden;
@@ -597,7 +597,7 @@
 .main2 .banner .frame4 .item3 {
   margin-left: 7px;
   border-radius: 300px;
-  background: #2a3546;
+  background: #e5e7eb;
   width: 15px;
   height: 7px;
   overflow: hidden;
@@ -637,7 +637,7 @@
   flex-shrink: 0;
   line-height: 12px;
   letter-spacing: 0;
-  color: #8b94a3;
+  color: #6b7280;
   font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
   font-size: 12px;
   font-weight: 700;
@@ -661,7 +661,7 @@
   /* 行高 14→16→18：老闆 2026-09-04 兩次「第二行往下 2px」，兩行的框跟著 28→32→36 */
   line-height: 18px;
   letter-spacing: 0;
-  color: #ffffff;
+  color: #111827;
   font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
   font-size: 14px;
   font-weight: 700;
@@ -672,7 +672,7 @@
 .main2 .main .sectionLobby .rectangle2 {
   position: relative;
   flex-shrink: 0;
-  background-color: #c4c4c4;
+  background-color: #f3f4f6;
   width: 240px;
   height: 240px;
   overflow: hidden;
@@ -689,10 +689,10 @@
   align-items: center;
   justify-content: center;
   column-gap: 10px;
-  border: 1px solid #2b3135;
+  border: 1px solid #e5e7eb;
   border-radius: 100px;
-  box-shadow: 0px 2px 2px 0px rgba(0, 0, 0, 0.1607843137);
-  background: #0f0f14;
+  box-shadow: 0px 2px 2px 0px rgba(0, 0, 0, 0.08);
+  background: #ffffff;
   padding: 5px 8px;
   width: 48px;
   height: 24px;
@@ -701,7 +701,7 @@
   flex-shrink: 0;
   line-height: 12px;
   letter-spacing: 0;
-  color: #66bb6a;
+  color: #047857;
   font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
   font-size: 12px;
   font-weight: 600;
@@ -742,7 +742,7 @@
   line-height: 24px;
   white-space: nowrap;
   letter-spacing: -0.36px;
-  color: #ffffff;
+  color: #111827;
   font-family: Montserrat, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
   font-size: 18px;
   font-weight: 600;
@@ -782,7 +782,7 @@
   column-gap: 3px;
   line-height: 18px;
   letter-spacing: 0;
-  color: #c9ced6;
+  color: #111827;
   font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
   font-size: 18px;
   font-weight: 800;
@@ -792,21 +792,21 @@
   font-size: 17px;
   font-weight: 700;
   line-height: 17px;
-  color: #c9ced6;
+  color: #111827;
 }
 .main2 .main .sectionLobby .frame1 .frame2 .heading62225 .priceSep {
   font-size: 14px;
   font-weight: 700;
   line-height: 14px;
   font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
-  color: rgba(201, 206, 214, 0.8);
+  color: #6b7280;
 }
 .main2 .main .sectionLobby .frame1 .frame2 .heading62225 .priceUnit {
   font-size: 14px;
   font-weight: 700;
   line-height: 14px;
   font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
-  color: rgba(201, 206, 214, 0.55);
+  color: #9ca3af;
 }
 .main2 .main .sectionLobby .frame1 .frame2 .overlayBorder {
   display: inline-flex;
@@ -814,9 +814,9 @@
   align-items: center;
   justify-content: center;
   column-gap: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1607843137);
+  border: 1px solid #e5e7eb;
   border-radius: 100px;
-  background: rgba(0, 0, 0, 0.1607843137);
+  background: #f3f4f6;
   padding: 3px 8px;
   height: 22px;
 }
@@ -826,8 +826,8 @@
   flex-shrink: 0;
   align-items: flex-start;
   border-radius: 16px;
-  box-shadow: 0px 2px 15px 0px rgba(0, 0, 0, 0.1019607843);
-  background: #1c2532;
+  box-shadow: 0px 0px 0px 1px #e5e7eb, 0px 10px 40px -10px rgba(0, 0, 0, 0.08);
+  background: #ffffff;
   overflow: hidden;
 }
 .main2 .main .sectionLobby .nav {
@@ -849,7 +849,7 @@
   flex-shrink: 0;
   align-items: center;
   column-gap: 12px;
-  border: 1px solid #161f2c;
+  border: 1px solid #2283f6;
   border-radius: 12px;
   background: #2283f6;
   padding: 9px 15px;
@@ -897,9 +897,9 @@
   flex-shrink: 0;
   align-items: center;
   column-gap: 12px;
-  border: 1px solid #161f2c;
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
-  background: #1c2532;
+  background: #ffffff;
   padding: 9px 15px;
 }
 .main2 .main .sectionLobby .nav .container9 .link7 .background12 {
@@ -915,7 +915,7 @@
   flex-shrink: 0;
   line-height: 18px;
   letter-spacing: -0.28px;
-  color: #93acd3;
+  color: #374151;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 14px;
   font-weight: 700;
@@ -926,7 +926,7 @@
   align-items: center;
   justify-content: space-between;
   border-radius: 12px;
-  background: #161f2c;
+  background: #f3f4f6;
   padding: 13px 98px 13px 12px;
   width: 170px;
   min-width: 170px;
@@ -939,7 +939,7 @@
   height: 21px;
   line-height: 21px;
   letter-spacing: 0;
-  color: #3c485c;
+  color: #6b7280;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 14px;
 }
@@ -983,14 +983,14 @@
   flex-shrink: 0;
   align-items: flex-start;
   border-radius: 16px;
-  box-shadow: 0px 2px 15px 0px rgba(0, 0, 0, 0.1019607843);
-  background: #1c2532;
+  box-shadow: 0px 0px 0px 1px #e5e7eb, 0px 10px 40px -10px rgba(0, 0, 0, 0.08);
+  background: #ffffff;
   overflow: hidden;
 }
 .main2 .main .sectionLobby .section2 .frame14 .item5 .rectangle22 {
   position: relative;
   flex-shrink: 0;
-  background-color: #c4c4c4;
+  background-color: #f3f4f6;
   width: 240px;
   height: 240px;
   overflow: hidden;
@@ -1003,10 +1003,10 @@
   position: absolute;
   top: 11px;
   left: 11px;
-  border: 1px solid #2b3135;
+  border: 1px solid #e5e7eb;
   border-radius: 100px;
-  box-shadow: 0px 2px 2px 0px rgba(0, 0, 0, 0.1607843137);
-  background: #0f0f14;
+  box-shadow: 0px 2px 2px 0px rgba(0, 0, 0, 0.08);
+  background: #ffffff;
   width: 48px;
   height: 24px;
 }
@@ -1016,8 +1016,8 @@
   flex-shrink: 0;
   align-items: flex-start;
   border-radius: 16px;
-  box-shadow: 0px 2px 15px 0px rgba(0, 0, 0, 0.1019607843);
-  background: #1c2532;
+  box-shadow: 0px 0px 0px 1px #e5e7eb, 0px 10px 40px -10px rgba(0, 0, 0, 0.08);
+  background: #ffffff;
   overflow: hidden;
 }
 .main2 .main .sectionLobby .section2 .frame14 .item6 .frame13 {
@@ -1042,9 +1042,9 @@
   align-items: center;
   justify-content: center;
   column-gap: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1607843137);
+  border: 1px solid #e5e7eb;
   border-radius: 100px;
-  background: rgba(0, 0, 0, 0.1607843137);
+  background: #f3f4f6;
   padding: 4px 11px;
   height: 26px;
 }
@@ -1077,7 +1077,7 @@
   flex-shrink: 0;
   align-items: center;
   align-self: stretch;
-  background: #19212c;
+  background: #f3f4f6;
   padding-top: 40px;
   row-gap: 19px;
 }
@@ -1090,7 +1090,7 @@
   margin-left: 325px;
   border-width: 0px 0px 1px;
   border-style: solid;
-  border-color: #2a3546;
+  border-color: #e5e7eb;
   padding-right: 1px;
   padding-bottom: 20px;
 }
@@ -1101,7 +1101,7 @@
   height: 16px;
   line-height: 16px;
   letter-spacing: 0;
-  color: #a7b5ca;
+  color: #374151;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1119,7 +1119,7 @@
   height: 16px;
   line-height: 16px;
   letter-spacing: 0;
-  color: #a7b5ca;
+  color: #374151;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1141,7 +1141,7 @@
   height: 14px;
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1159,7 +1159,7 @@
   height: 16px;
   line-height: 16px;
   letter-spacing: 0;
-  color: #a7b5ca;
+  color: #374151;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1173,7 +1173,7 @@
   height: 159px;
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1202,13 +1202,13 @@
   height: 87px;
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-size: 11px;
 }
 .main2 .footer .horizontalBorder12 .autoWrapper28 .list4 .text47 .text45 {
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Montserrat, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 600;
@@ -1216,7 +1216,7 @@
 .main2 .footer .horizontalBorder12 .autoWrapper28 .list4 .text47 .text46 {
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1239,7 +1239,7 @@
   height: 14px;
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1259,7 +1259,7 @@
   height: 14px;
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1287,7 +1287,7 @@
   height: 62px;
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1325,7 +1325,7 @@
   height: 14px;
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Montserrat, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 600;
@@ -1357,7 +1357,7 @@
   height: 14px;
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Montserrat, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 600;
@@ -1389,7 +1389,7 @@
   height: 14px;
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Montserrat, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 600;
@@ -1402,7 +1402,7 @@
   height: 14px;
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1450,7 +1450,7 @@
   height: 14px;
   line-height: 13px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1484,7 +1484,7 @@
   height: 14px;
   line-height: 13px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1518,7 +1518,7 @@
   height: 14px;
   line-height: 13px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1552,7 +1552,7 @@
   height: 14px;
   line-height: 13px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Montserrat, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 600;
@@ -1580,7 +1580,7 @@
   height: 14px;
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1611,7 +1611,7 @@
   height: 14px;
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1658,7 +1658,7 @@
   line-height: 24px;
   letter-spacing: -0.22px;
   white-space: nowrap;
-  color: #55657e;
+  color: #6b7280;
   font-family: Montserrat, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 600;
@@ -1690,7 +1690,7 @@
   height: 14px;
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1714,7 +1714,7 @@
   height: 38px;
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #55657e;
+  color: #6b7280;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1737,7 +1737,7 @@
 .main2 .footer .horizontalBorder12 .autoWrapper36 .autoWrapper35 .border2 {
   display: flex;
   align-items: center;
-  border: 1px solid #ffffff;
+  border: 1px solid #e5e7eb;
   border-radius: 14px;
   padding: 8px 4px 7px;
 }
@@ -1749,7 +1749,7 @@
   height: 11px;
   line-height: 28px;
   letter-spacing: 0;
-  color: #ffffff;
+  color: #111827;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 9px;
   font-weight: 700;
@@ -1767,7 +1767,7 @@
   height: 65px;
   line-height: 14px;
   letter-spacing: 0;
-  color: #55657e;
+  color: #6b7280;
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 9px;
 }
@@ -1779,7 +1779,7 @@
   height: 79px;
   line-height: 14px;
   letter-spacing: 0;
-  color: #55657e;
+  color: #6b7280;
   font-family: Montserrat, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
   font-size: 9px;
   font-weight: 500;
@@ -1789,7 +1789,7 @@
   flex-shrink: 0;
   border-width: 0px 0px 1px;
   border-style: solid;
-  border-color: rgba(85, 101, 126, 0.1490196078);
+  border-color: #e5e7eb;
   width: 1041px;
   height: 81px;
   overflow-y: auto;
@@ -2057,8 +2057,7 @@
   position: sticky;
   top: var(--header-height);
   z-index: 45;
-  background: rgba(14, 20, 29, 0.86);
-  backdrop-filter: blur(10px);
+  background: #f9fafb;
 }
 
 .main2 .carouselDots {
@@ -2083,7 +2082,7 @@
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: rgba(85, 101, 126, 0.5);
+  background: #e5e7eb;
 }
 
 .main2 .carouselDots .item {
@@ -2094,7 +2093,7 @@
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: rgba(85, 101, 126, 0.5);
+  background: #e5e7eb;
 }
 
 .main2 .carouselDots .carouselDotActive {
@@ -2128,8 +2127,8 @@
   height: 52px;
   border-radius: 16px;
   border: 0;
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.9);
+  background: #f3f4f6;
+  color: #111827;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2148,10 +2147,10 @@
   width: 30px;
   height: 30px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.18);
+  background: #e5e7eb;
   display: grid;
   place-items: center;
-  color: rgba(255, 255, 255, 0.82);
+  color: #374151;
   flex: 0 0 auto;
 }
 
@@ -2159,7 +2158,7 @@
   font-size: 14px;
   font-weight: 900;
   letter-spacing: -0.2px;
-  color: rgba(255, 255, 255, 0.9);
+  color: #111827;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2168,8 +2167,8 @@
 .accountTabsDropdownChevron {
   width: 10px;
   height: 10px;
-  border-right: 2px solid rgba(255, 255, 255, 0.65);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.65);
+  border-right: 2px solid #6b7280;
+  border-bottom: 2px solid #6b7280;
   transform: rotate(45deg);
   transition: transform 140ms ease;
   margin-left: 10px;
@@ -2186,9 +2185,8 @@
   left: 0;
   right: 0;
   border-radius: 16px;
-  background: rgba(13, 19, 28, 0.92);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.68);
+  background: #ffffff;
+  box-shadow: 0 0 0 1px #e5e7eb, 0 24px 70px rgba(0, 0, 0, 0.15);
   padding: 10px;
   z-index: 40;
 }
@@ -2207,7 +2205,7 @@
 }
 
 .accountTabsDropdownItem:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: #f3f4f6;
 }
 
 .accountTabsDropdownItemActive {
@@ -2217,20 +2215,21 @@
 .accountTabBtn {
   width: 184px;
   height: 86px;
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.7);
+  background: #ffffff;
+  color: #374151;
   box-shadow: none;
 }
 
 .accountTabBtnActive {
   background: linear-gradient(180deg, rgba(43, 124, 255, 0.28), rgba(43, 124, 255, 0.12));
-  color: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.45);
+  color: #1d4ed8;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.12);
 }
 
 .accountCard {
-  background: rgba(255, 255, 255, 0.05);
+  background: #ffffff;
   border: 0;
+  box-shadow: 0 0 0 1px #e5e7eb, 0 10px 40px -10px rgba(0, 0, 0, 0.08);
   padding: 16px;
   box-sizing: border-box;
 }
@@ -2361,7 +2360,7 @@
   height: 42px;
   border-radius: 12px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
+  background: #f3f4f6;
   flex: 0 0 auto;
 }
 
@@ -2370,7 +2369,7 @@
   flex: 1 1 auto;
   font-size: 16px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.92);
+  color: #111827;
   line-height: 1.35;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -2382,7 +2381,7 @@
   width: 52px;
   height: 52px;
   border-radius: 999px;
-  background: conic-gradient(var(--ring-color, rgba(102, 187, 106, 0.92)) calc(var(--p) * 1%), rgba(255, 255, 255, 0.1) 0);
+  background: conic-gradient(var(--ring-color, rgba(102, 187, 106, 0.92)) calc(var(--p) * 1%), #e5e7eb 0);
   padding: 3px;
   flex: 0 0 auto;
 }
@@ -2391,7 +2390,7 @@
   width: 100%;
   height: 100%;
   border-radius: 999px;
-  background: #1c2532;
+  background: #ffffff;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2448,7 +2447,7 @@
 .topicVoters {
   font-size: 12px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.55);
+  color: #6b7280;
 }
 
 .main2 .main .sectionLobby .section,
@@ -2493,7 +2492,7 @@
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: #f3f4f6;
 }
 
 .main2 .main .sectionLobby .section .frame12 .a2022PaniniPrizm353B {
@@ -2507,8 +2506,9 @@
   gap: 0;
   padding: 12px 0 0;
   border-radius: 14px;
-  background: #1c2532;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
   overflow: hidden;
   width: 100%;
   align-self: stretch;
@@ -2543,8 +2543,8 @@
   height: 44px;
   border-radius: 44px;
   overflow: hidden;
-  background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0));
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
   flex: 0 0 auto;
 }
 
@@ -2567,7 +2567,7 @@
   font-weight: 500;
   font-size: 16px;
   line-height: 24px;
-  color: #c7c6ca;
+  color: #111827;
   letter-spacing: 0.1px;
   white-space: nowrap;
   overflow: hidden;
@@ -2585,7 +2585,7 @@
   font-weight: 400;
   font-size: 12px;
   line-height: 16px;
-  color: #9d9d9d;
+  color: #6b7280;
   letter-spacing: 0.4px;
   white-space: nowrap;
   overflow: hidden;
@@ -2593,16 +2593,16 @@
 }
 
 .main2 .tradeDeltaPill {
-  background: #0f0f14;
+  background: #f3f4f6;
   border-radius: 100px;
   padding: 6px 9px;
-  border: 1px solid #2b3135;
-  box-shadow: 0px 1.5px 0.75px rgba(0, 0, 0, 0.16);
+  border: 1px solid #e5e7eb;
+  box-shadow: 0px 1.5px 0.75px rgba(0, 0, 0, 0.06);
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "PingFang TC", "PingFang SC", "Hiragino Sans", "Microsoft JhengHei", "Microsoft YaHei", Arial, sans-serif;
   font-weight: 600;
   font-size: 12px;
   line-height: 12px;
-  color: #66bb6a;
+  color: #047857;
   white-space: nowrap;
   flex: 0 0 auto;
 }
@@ -2640,7 +2640,7 @@
   font-weight: 400;
   font-size: 12px;
   line-height: 16px;
-  color: #c4c6d0;
+  color: #6b7280;
   letter-spacing: 0.4px;
 }
 
@@ -2671,8 +2671,8 @@
   position: relative;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.12);
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
   width: 100%;
   height: 100%;
 }
@@ -2706,7 +2706,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #c7c6ca;
+  color: #ffffff;
   font-family: Roboto, Inter, system-ui, -apple-system, BlinkMacSystemFont, "PingFang TC", "PingFang SC", "Hiragino Sans", "Microsoft JhengHei", "Microsoft YaHei", Arial, sans-serif;
   font-weight: 500;
   font-size: 10px;
@@ -2721,7 +2721,7 @@
 .main2 .tradeSwapIcon {
   width: 24px;
   height: 24px;
-  color: #c7c6ca;
+  color: #6b7280;
   flex: 0 0 auto;
   align-self: center;
   margin-top: 6px;
@@ -2731,7 +2731,7 @@
   display: flex;
   gap: 4px;
   align-items: center;
-  color: #c4c6d0;
+  color: #374151;
   font-family: Roboto, Inter, system-ui, -apple-system, BlinkMacSystemFont, "PingFang TC", "PingFang SC", "Hiragino Sans", "Microsoft JhengHei", "Microsoft YaHei", Arial, sans-serif;
   font-weight: 400;
   font-size: 12px;
@@ -2743,12 +2743,12 @@
 }
 
 .main2 .tradeFooter {
-  background: #293342;
+  background: #f3f4f6;
   width: 100%;
   padding: 8px 0;
   display: flex;
   justify-content: center;
-  color: #9d9d9d;
+  color: #6b7280;
   font-family: Roboto, Inter, system-ui, -apple-system, BlinkMacSystemFont, "PingFang TC", "PingFang SC", "Hiragino Sans", "Microsoft JhengHei", "Microsoft YaHei", Arial, sans-serif;
   font-weight: 400;
   font-size: 12px;
@@ -2763,13 +2763,13 @@
   right: 11px;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.16);
+  background: #ffffff;
   width: 36px;
   height: 36px;
   padding: 0;
-  color: rgba(255, 255, 255, 0.55);
+  color: #6b7280;
   line-height: 0;
   cursor: pointer;
   z-index: 2;
@@ -2782,7 +2782,7 @@
 }
 
 .main2 .favoriteButton:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #f3f4f6;
 }
 
 .main2 .favoriteButton[aria-pressed=true]:hover {
@@ -2805,7 +2805,7 @@
 .main2 .tradeLabel {
   font-size: 12px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.7);
+  color: #374151;
   line-height: 18px;
   letter-spacing: -0.24px;
 }
@@ -2818,7 +2818,7 @@
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: #f3f4f6;
 }
 
 .main2 .tradeCardImage {
@@ -2842,7 +2842,7 @@
   position: absolute;
   inset: -1px;
   border-radius: 5px;
-  border: 1px dashed rgba(255, 255, 255, 0.6);
+  border: 1px dashed #9ca3af;
 }
 
 .main2 .tradeTitle {
@@ -2851,7 +2851,7 @@
   font-weight: 700;
   letter-spacing: -0.24px;
   line-height: 18px;
-  color: #ffffff;
+  color: #111827;
   width: 124px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2875,11 +2875,11 @@
 }
 
 .main2 .tradeUser {
-  color: #ffffff;
+  color: #111827;
 }
 
 .main2 .tradeMetaAction {
-  color: rgba(255, 255, 255, 0.6);
+  color: #6b7280;
 }
 
 .main2 .tradeActions {
@@ -2917,10 +2917,10 @@
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(0, 0, 0, 0.16);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
   padding: 0;
-  color: rgba(255, 255, 255, 0.55);
+  color: #6b7280;
   line-height: 0;
   cursor: pointer;
 }
@@ -2932,7 +2932,7 @@
 }
 
 .main2 .tradeFavoriteButton:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #f3f4f6;
 }
 
 .main2 .tradeFavoriteButton[aria-pressed=true]:hover {
@@ -3039,15 +3039,15 @@
   max-height: var(--hc-slot-h);
   border-radius: 14px;
   object-fit: contain;
-  background: rgba(255, 255, 255, 0.04);
+  background: #f3f4f6;
   scroll-snap-align: start;
   scroll-snap-stop: always;
 }
 
 .main2 .footer {
   margin-top: 28px;
-  background: #111923;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: #f3f4f6;
+  border-top: 1px solid #e5e7eb;
   padding: 32px 0 18px;
 }
 
@@ -3070,13 +3070,13 @@
   font-size: 16px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #fff;
+  color: #111827;
 }
 
 .main2 .footerDesc {
   font-size: 12px;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.62);
+  color: #6b7280;
   max-width: 40ch;
 }
 
@@ -3089,7 +3089,7 @@
 .main2 .footerTitle {
   font-size: 11px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.65);
+  color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -3097,12 +3097,12 @@
 .main2 .footerLink {
   font-size: 13px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.72);
+  color: #374151;
   text-decoration: none;
 }
 
 .main2 .footerLink:hover {
-  color: #fff;
+  color: #111827;
 }
 
 .main2 .footerBottom {
@@ -3110,7 +3110,7 @@
   margin-inline: auto;
   margin-top: 18px;
   padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid #e5e7eb;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3119,7 +3119,7 @@
 
 .main2 .footerCopy {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: #6b7280;
 }
 
 .main2 .footerSocial {
@@ -3236,7 +3236,7 @@
 }
 
 .main2 .main .sectionLobby a.text10:hover {
-  color: #ffffff;
+  color: #111827;
 }
 
 /* --- 平台保障 section --- */
@@ -3259,21 +3259,21 @@
   display: flex;
   flex-direction: column;
   row-gap: 8px;
-  border: 1px solid #2a3546;
+  border: 1px solid #e5e7eb;
   border-radius: 14px;
-  background: #1c2532;
+  background: #ffffff;
   padding: 20px;
 }
 
 .main2 .trustTitle {
-  color: #ffffff;
+  color: #111827;
   font-size: 16px;
   font-weight: 700;
   line-height: 22px;
 }
 
 .main2 .trustDesc {
-  color: #93acd3;
+  color: #6b7280;
   font-size: 13px;
   font-weight: 500;
   line-height: 19px;

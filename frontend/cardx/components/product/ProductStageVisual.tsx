@@ -51,12 +51,39 @@ const noop = () => {};
 /** 舞台底部操作列的高度（老闆 2026-09-04：立即開抽放在機台下方、同一個舞台裡） */
 const CONTROLS_H = 72;
 
-/** pushSignal：每 +1 推一下機台（轉蛋機晃 200ms，照手機 handlePush） */export function ProductStageVisual({ product, theme, isSoldOut, controls, pushSignal = 0, fillHeight = false }: { product: ProductRow; theme: string | null; isSoldOut: boolean; controls?: ReactNode; pushSignal?: number; /** 桌機：容器吃父層高度（滿高）而不是正方形，機台照高度 fit、置中 */ fillHeight?: boolean }) {
+/**
+ * pushSignal：每 +1 推一下機台（轉蛋機晃 200ms，照手機 handlePush）。
+ * 有接真抽獎的頁面改傳 machineState／onHoleClick 那組，機台就會照演出走；
+ * 沒傳的地方（純展示）維持原本只認 pushSignal 的行為。
+ */
+export function ProductStageVisual({
+  product, theme, isSoldOut, controls, pushSignal = 0, fillHeight = false,
+  machineState, shakeRepeats, pushSoundMode, hasHighTierPending, disableButtons, onHoleClick,
+}: {
+  product: ProductRow;
+  theme: string | null;
+  isSoldOut: boolean;
+  controls?: ReactNode;
+  pushSignal?: number;
+  /** 桌機：容器吃父層高度（滿高）而不是正方形，機台照高度 fit、置中 */
+  fillHeight?: boolean;
+  /** 抽獎演出狀態（useGachaDraw）。沒給就只吃 pushSignal 的晃動 */
+  machineState?: "idle" | "shaking" | "spinning" | "dropping" | "waiting" | "result";
+  shakeRepeats?: number;
+  pushSoundMode?: "manual" | "auto";
+  /** 金蛋（大賞或試試看） */
+  hasHighTierPending?: boolean;
+  disableButtons?: boolean;
+  /** 點取物口看結果 */
+  onHoleClick?: () => void;
+}) {
   const boxRef = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const width = size.w;
   const [loaded, setLoaded] = useState(false);
   const [gachaState, setGachaState] = useState<"idle" | "shaking">("idle");
+  /* 蛋箱裡的商品圖：預設顯示，點一下收起看機台、再點一下回來（跟手機頁同一個手感） */
+  const [showProductImage, setShowProductImage] = useState(true);
   useEffect(() => {
     if (!pushSignal) return;
     setGachaState("shaking");
@@ -79,6 +106,9 @@ const CONTROLS_H = 72;
     setSize({ w: Math.round(r.width), h: Math.round(r.height) });
     return () => ro.disconnect();
   }, []);
+
+  // 外部有接抽獎就照它的狀態演，沒有就只有「推一下」的晃動
+  const liveState = machineState ?? gachaState;
 
   let kind: "image" | "gacha" | "blindbox" | "card" = "image";
   let Machine: AnyMachine | null = null;
@@ -111,7 +141,7 @@ const CONTROLS_H = 72;
         ...(fillHeight ? { height: "100%" } : { aspectRatio: "1 / 1" }),
         overflow: "hidden",
         borderRadius: 16,
-        background: kind === "card" ? skyGradientCss(skyProgressNow()) : "#1c2532",
+        background: kind === "card" ? skyGradientCss(skyProgressNow()) : "#f3f4f6",
       }}
     >
       {kind === "image" ? (
@@ -124,10 +154,26 @@ const CONTROLS_H = 72;
           <div style={{ position: "relative", width: MACHINE_W, height: MACHINE_H }}>
             {kind === "gacha" && Machine ? (
               <>
-                <Machine state={gachaState} shakeRepeats={1} pushSoundMode="manual" hideButtons disableButtons isSoldOut={isSoldOut} onLoaded={() => setLoaded(true)} />
-                {/* 蛋箱裡的商品圖：手機版預設就顯示，座標照它（375 寬的機台框） */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={image} alt="" style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", top: 30, width: 232, height: 200, objectFit: "contain", zIndex: 20, pointerEvents: "none" }} />
+                <Machine
+                  state={liveState}
+                  shakeRepeats={shakeRepeats ?? 1}
+                  pushSoundMode={pushSoundMode ?? "manual"}
+                  hideButtons
+                  disableButtons={disableButtons ?? true}
+                  hasHighTierPending={hasHighTierPending}
+                  onHoleClick={onHoleClick}
+                  isSoldOut={isSoldOut}
+                  onLoaded={() => setLoaded(true)}
+                />
+                {/* 蛋箱裡的商品圖：預設顯示，點一下收起、再點一下又出現（座標照手機版的 375 寬機台框）。
+                    收起後留一塊透明的點擊區在原位，不然圖藏起來就沒有東西可以點回來 */}
+                <div
+                  onClick={() => setShowProductImage((v) => !v)}
+                  style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", top: 30, width: 232, height: 200, zIndex: 20, cursor: "pointer", opacity: showProductImage ? 1 : 0, transition: "opacity 200ms ease-out" }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", pointerEvents: "none" }} />
+                </div>
               </>
             ) : null}
             {kind === "blindbox" && Machine ? (
@@ -144,8 +190,13 @@ const CONTROLS_H = 72;
                   onLoaded={() => setLoaded(true)}
                 />
                 {theme === "blindbox_mode5" ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={image} alt="" style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", top: 112, width: 232, height: 190, objectFit: "contain", zIndex: 20, pointerEvents: "none" }} />
+                  <div
+                    onClick={() => setShowProductImage((v) => !v)}
+                    style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", top: 112, width: 232, height: 190, zIndex: 20, cursor: "pointer", opacity: showProductImage ? 1 : 0, transition: "opacity 200ms ease-out" }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", pointerEvents: "none" }} />
+                  </div>
                 ) : null}
               </>
             ) : null}
@@ -164,15 +215,17 @@ const CONTROLS_H = 72;
 
       {kind !== "image" ? <MachineLoadingOverlay show={!loaded} /> : null}
 
+      {/* 操作列靠下對齊、底下留 12：內容比 CONTROLS_H 高的時候（按鈕上面多一顆「N 人正在看」）
+          多出來的往上溢出蓋到機台（老闆 2026-09-04 說沒關係），按鈕本身才不會被舞台底邊切掉 */}
       {controls ? (
-        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: CONTROLS_H, zIndex: 40, display: "flex", alignItems: "center", padding: "0 16px", background: "linear-gradient(180deg, rgba(28,37,50,0) 0%, rgba(28,37,50,0.92) 40%, #1c2532 100%)" }}>
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: CONTROLS_H, zIndex: 40, display: "flex", alignItems: "flex-end", padding: "0 16px 12px", background: "linear-gradient(180deg, rgba(243,244,246,0) 0%, rgba(243,244,246,0.92) 40%, #f3f4f6 100%)" }}>
           {controls}
         </div>
       ) : null}
 
       {isSoldOut ? (
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: stageH || "100%", zIndex: 30, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.45)" }}>
-          <span style={{ padding: "8px 18px", borderRadius: 999, background: "rgba(0,0,0,0.7)", color: "#fff", fontSize: 14, fontWeight: 900 }}>已完抽</span>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: stageH || "100%", zIndex: 30, display: "grid", placeItems: "center", background: "rgba(249,250,251,0.72)" }}>
+          <span style={{ padding: "8px 18px", borderRadius: 999, background: "#111827", color: "#fff", fontSize: 14, fontWeight: 900, boxShadow: "0 10px 40px -10px rgba(0,0,0,0.2)" }}>已完抽</span>
         </div>
       ) : null}
     </div>

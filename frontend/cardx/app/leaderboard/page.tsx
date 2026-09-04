@@ -21,9 +21,9 @@ function TabButton({ active, label, onClick }: { active: boolean; label: string;
         fontSize: 14,
         fontWeight: 600,
         transition: "all 200ms ease",
-        background: active ? "rgba(255,255,255,0.08)" : "transparent",
-        color: active ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.58)",
-        boxShadow: active ? "0 1px 0 rgba(255,255,255,0.06), 0 4px 18px rgba(0,0,0,0.25)" : "none",
+        background: active ? "#ffffff" : "transparent",
+        color: active ? "#111827" : "#6b7280",
+        boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06), 0 4px 12px -6px rgba(0,0,0,0.12)" : "none",
       }}
     >
       {label}
@@ -208,7 +208,7 @@ function LeaderboardPageInner() {
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     letterSpacing: "-0.36px",
-                    color: "#ffffff",
+                    color: "#111827",
                     fontFamily:
                       'Montserrat, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif',
                     fontSize: 18,
@@ -225,18 +225,17 @@ function LeaderboardPageInner() {
                     alignItems: "center",
                     gap: 6,
                     borderRadius: 10,
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    background: "rgba(17, 25, 35, 0.72)",
+                    border: "1px solid #e5e7eb",
+                    background: "#ffffff",
                     padding: isMobile ? "6px 8px" : "8px 10px",
-                    backdropFilter: "blur(10px)",
                     whiteSpace: "nowrap",
                   }}
                 >
-                  <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style={{ color: "rgba(255,255,255,0.58)" }}>
+                  <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style={{ color: "#6b7280" }}>
                     <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" />
                     <polyline points="12 6 12 12 16 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  {!isMobile ? <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.58)" }}>結算倒數：</span> : null}
+                  {!isMobile ? <span style={{ fontSize: 12, fontWeight: 600, color: "#6b7280" }}>結算倒數：</span> : null}
                   <div
                     style={{
                       display: "flex",
@@ -249,10 +248,10 @@ function LeaderboardPageInner() {
                     <span
                       style={{
                         borderRadius: 6,
-                        background: "rgba(255,255,255,0.06)",
+                        background: "#f3f4f6",
                         padding: isMobile ? "2px 5px" : "2px 6px",
                         fontSize: isMobile ? 11 : 12,
-                        color: "rgba(255,255,255,0.86)",
+                        color: "#111827",
                       }}
                     >
                       {String(timeLeft.days).padStart(2, "0")}d
@@ -260,10 +259,10 @@ function LeaderboardPageInner() {
                     <span
                       style={{
                         borderRadius: 6,
-                        background: "rgba(255,255,255,0.06)",
+                        background: "#f3f4f6",
                         padding: isMobile ? "2px 5px" : "2px 6px",
                         fontSize: isMobile ? 11 : 12,
-                        color: "rgba(255,255,255,0.86)",
+                        color: "#111827",
                       }}
                     >
                       {String(timeLeft.hours).padStart(2, "0")}h
@@ -271,10 +270,10 @@ function LeaderboardPageInner() {
                     <span
                       style={{
                         borderRadius: 6,
-                        background: "rgba(255,255,255,0.06)",
+                        background: "#f3f4f6",
                         padding: isMobile ? "2px 5px" : "2px 6px",
                         fontSize: isMobile ? 11 : 12,
-                        color: "rgba(255,255,255,0.86)",
+                        color: "#111827",
                       }}
                     >
                       {String(timeLeft.minutes).padStart(2, "0")}m
@@ -282,10 +281,10 @@ function LeaderboardPageInner() {
                     <span
                       style={{
                         borderRadius: 6,
-                        background: "rgba(255,255,255,0.06)",
+                        background: "#f3f4f6",
                         padding: isMobile ? "2px 5px" : "2px 6px",
                         fontSize: isMobile ? 11 : 12,
-                        color: "rgba(255,255,255,0.86)",
+                        color: "#111827",
                       }}
                     >
                       {String(timeLeft.seconds).padStart(2, "0")}s
@@ -332,8 +331,8 @@ function LeaderboardPageInner() {
                               width: avatarSize,
                               height: avatarSize,
                               borderRadius: 999,
-                              border: "1px solid rgba(255,255,255,0.16)",
-                              boxShadow: "0 10px 30px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(0,0,0,0.25)",
+                              border: "1px solid #e5e7eb",
+                              boxShadow: "0 6px 18px rgba(0,0,0,0.12), inset 0 0 0 1px rgba(0,0,0,0.06)",
                               display: "grid",
                               placeItems: "center",
                               overflow: "hidden",
@@ -350,7 +349,7 @@ function LeaderboardPageInner() {
                               style={{
                                 fontSize: isMobile ? 11 : 12,
                                 fontWeight: 650,
-                                color: "rgba(255,255,255,0.86)",
+                                color: "#111827",
                                 maxWidth: nameW,
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
@@ -360,18 +359,18 @@ function LeaderboardPageInner() {
                             >
                               {item.username}
                             </div>
-                            <div style={{ fontSize: isMobile ? 14 : 16, fontWeight: 800, color: "rgba(255,255,255,0.92)", lineHeight: 1.15, textAlign: "center" }}>
+                            <div style={{ fontSize: isMobile ? 14 : 16, fontWeight: 800, color: "#111827", lineHeight: 1.15, textAlign: "center" }}>
                               {formatInt(points)}
                             </div>
-                            <div style={{ fontSize: isMobile ? 11 : 12, fontWeight: 500, color: "rgba(255,255,255,0.46)", lineHeight: 1.05 }}>points</div>
+                            <div style={{ fontSize: isMobile ? 11 : 12, fontWeight: 500, color: "#6b7280", lineHeight: 1.05 }}>points</div>
                           </div>
                           <div
                             style={{
                               width: 68,
                               height: podiumH,
                               borderRadius: "8px 8px 0 0",
-                              background: "linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04))",
-                              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10)",
+                              background: "linear-gradient(180deg, #e5e7eb, #f3f4f6)",
+                              boxShadow: "inset 0 0 0 1px #e5e7eb",
                             }}
                           />
                         </div>
@@ -381,7 +380,7 @@ function LeaderboardPageInner() {
               </div>
 
               <div style={{ marginTop: 14, width: "100%" }}>
-                <div style={{ display: "flex", gap: 8, borderRadius: 14, background: "rgba(255,255,255,0.04)", padding: 6 }}>
+                <div style={{ display: "flex", gap: 8, borderRadius: 14, background: "#f3f4f6", padding: 6 }}>
                   <TabButton active={tab === "weekly"} label="週榜" onClick={() => setTabAndUrl("weekly")} />
                   <TabButton active={tab === "all_time"} label="總榜" onClick={() => setTabAndUrl("all_time")} />
                 </div>
@@ -392,8 +391,8 @@ function LeaderboardPageInner() {
                   marginTop: 14,
                   borderRadius: 18,
                   overflow: "hidden",
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  background: "rgba(0,0,0,0.12)",
+                  border: "1px solid #e5e7eb",
+                  background: "#ffffff",
                   width: "100%",
                 }}
               >
@@ -405,9 +404,9 @@ function LeaderboardPageInner() {
                         gridTemplateColumns: "64px minmax(0, 1fr) 160px 140px 160px",
                         gap: 12,
                         padding: "14px 16px",
-                        borderBottom: "1px solid rgba(255,255,255,0.08)",
-                        background: "rgba(255,255,255,0.03)",
-                        color: "rgba(255,255,255,0.46)",
+                        borderBottom: "1px solid #e5e7eb",
+                        background: "#f9fafb",
+                        color: "#6b7280",
                         fontSize: 12,
                         fontWeight: 600,
                       }}
@@ -431,21 +430,21 @@ function LeaderboardPageInner() {
                             gridTemplateColumns: "64px minmax(0, 1fr) 160px 140px 160px",
                             gap: 12,
                             padding: "14px 16px",
-                            borderBottom: "1px solid rgba(255,255,255,0.08)",
+                            borderBottom: "1px solid #e5e7eb",
                             alignItems: "center",
-                            background: hoveredRank === e.displayRank ? "rgba(255,255,255,0.03)" : "transparent",
+                            background: hoveredRank === e.displayRank ? "#f9fafb" : "transparent",
                             transition: "background 160ms ease",
                           }}
                         >
-                          <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.62)" }}>{e.displayRank}</div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: "#6b7280" }}>{e.displayRank}</div>
                           <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                             <div
                               style={{
                                 width: 28,
                                 height: 28,
                                 borderRadius: 999,
-                                border: "1px solid rgba(255,255,255,0.12)",
-                                background: "rgba(255,255,255,0.06)",
+                                border: "1px solid #e5e7eb",
+                                background: "#f9fafb",
                                 display: "block",
                                 overflow: "hidden",
                                 flex: "0 0 auto",
@@ -453,13 +452,13 @@ function LeaderboardPageInner() {
                             >
                               <img alt="" src={avatarSrc(e.username)} style={{ width: "100%", height: "100%", display: "block", borderRadius: 999 }} />
                             </div>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.86)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {e.username}
                             </div>
                           </div>
-                          <div style={{ textAlign: "right", fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.70)" }}>{formatUsd(e.volumeUsd)}</div>
-                          <div style={{ textAlign: "right", fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.70)" }}>{formatInt(e.pulls)}</div>
-                          <div style={{ textAlign: "right", fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.92)" }}>{formatInt(points)}</div>
+                          <div style={{ textAlign: "right", fontSize: 13, fontWeight: 600, color: "#374151" }}>{formatUsd(e.volumeUsd)}</div>
+                          <div style={{ textAlign: "right", fontSize: 13, fontWeight: 600, color: "#374151" }}>{formatInt(e.pulls)}</div>
+                          <div style={{ textAlign: "right", fontSize: 13, fontWeight: 700, color: "#111827" }}>{formatInt(points)}</div>
                         </div>
                       );
                     })}

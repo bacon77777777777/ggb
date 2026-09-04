@@ -136,8 +136,8 @@ function EventsPageInner() {
                         </div>
                         <div style={{ padding: "12px 14px 14px", display: "grid", gap: 10 }}>
                           <div style={{ display: "grid", gap: 4 }}>
-                            <div style={{ fontSize: 15, fontWeight: 900, color: "rgba(255,255,255,0.92)", lineHeight: 1.2 }}>{e.title}</div>
-                            <div style={{ fontSize: 12, fontWeight: 750, color: "rgba(255,255,255,0.62)", lineHeight: 1.35 }}>{e.subtitle}</div>
+                            <div style={{ fontSize: 15, fontWeight: 900, color: "#111827", lineHeight: 1.2 }}>{e.title}</div>
+                            <div style={{ fontSize: 12, fontWeight: 750, color: "#6b7280", lineHeight: 1.35 }}>{e.subtitle}</div>
                           </div>
                           <div
                             style={{ display: "flex", justifyContent: "flex-end" }}
@@ -146,7 +146,7 @@ function EventsPageInner() {
                           >
                             <SecondaryButton
                               onClick={() => router.push(e.ctaHref)}
-                              style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.86)" }}
+                              style={{ background: "#f3f4f6", color: "#111827" }}
                             >
                               {e.ctaLabel}
                             </SecondaryButton>
@@ -186,8 +186,8 @@ function EventsPageInner() {
             style={{
               width: "min(860px, 96vw)",
               borderRadius: 18,
-              background: "rgba(17, 25, 35, 0.92)",
-              boxShadow: "0 18px 60px rgba(0, 0, 0, 0.6)",
+              background: "#ffffff",
+              boxShadow: "0 18px 60px rgba(0, 0, 0, 0.18)",
               overflow: "hidden",
               position: "relative",
             }}
@@ -204,17 +204,17 @@ function EventsPageInner() {
             <div style={{ padding: 16, display: "grid", gap: 12 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ display: "grid", gap: 6 }}>
-                  <div style={{ fontSize: 18, fontWeight: 950, color: "rgba(255,255,255,0.92)", lineHeight: 1.2 }}>{selected.title}</div>
-                  <div style={{ fontSize: 13, fontWeight: 750, color: "rgba(255,255,255,0.62)", lineHeight: 1.4 }}>{selected.subtitle}</div>
+                  <div style={{ fontSize: 18, fontWeight: 950, color: "#111827", lineHeight: 1.2 }}>{selected.title}</div>
+                  <div style={{ fontSize: 13, fontWeight: 750, color: "#6b7280", lineHeight: 1.4 }}>{selected.subtitle}</div>
                 </div>
                 <Button3D color="blue" onClick={() => router.push(selected.ctaHref)} style={{ height: 40 }}>
                   {selected.ctaLabel}
                 </Button3D>
               </div>
 
-              <SurfaceCard style={{ borderRadius: 16, background: "rgba(255,255,255,0.04)" }}>
-                <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>活動說明</div>
-                <div style={{ marginTop: 8, fontSize: 13, fontWeight: 750, color: "rgba(255,255,255,0.72)", lineHeight: 1.7 }}>
+              <SurfaceCard style={{ borderRadius: 16, background: "#f9fafb" }}>
+                <div style={{ fontSize: 13, fontWeight: 950, color: "#111827" }}>活動說明</div>
+                <div style={{ marginTop: 8, fontSize: 13, fontWeight: 750, color: "#374151", lineHeight: 1.7 }}>
                   這裡是活動內容示例，用於展示版型。後續接上後端活動資料後，可替換成真實規則、時間與獎勵內容。
                 </div>
               </SurfaceCard>

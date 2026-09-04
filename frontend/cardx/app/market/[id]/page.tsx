@@ -266,14 +266,14 @@ function PriceHistoryChart({
         </defs>
         {yTicks.map((t, idx) => (
           <g key={`yt_${idx}`}>
-            <line x1={0} x2={w} y1={t.y} y2={t.y} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+            <line x1={0} x2={w} y1={t.y} y2={t.y} stroke="#e5e7eb" strokeWidth="1" />
             <text
               x={w - 8}
               y={clamp(t.y, 12, h - 12)}
               textAnchor="end"
               dominantBaseline="middle"
               fontSize="11"
-              fill="rgba(255,255,255,0.42)"
+              fill="#9ca3af"
             >
               {formatTwd(t.v).replace("NT$", "")}
             </text>
@@ -296,7 +296,7 @@ function PriceHistoryChart({
 
         {activePoint && activeX != null && activeY != null ? (
           <g>
-            <line x1={activeX} x2={activeX} y1={0} y2={h} stroke="rgba(255,255,255,0.10)" strokeWidth="1" />
+            <line x1={activeX} x2={activeX} y1={0} y2={h} stroke="#9ca3af" strokeWidth="1" />
             <circle cx={activeX} cy={activeY} r="4" fill={stroke} />
             <circle cx={activeX} cy={activeY} r="8" fill={stroke} opacity="0.12" />
           </g>

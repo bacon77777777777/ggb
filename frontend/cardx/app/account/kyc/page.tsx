@@ -75,10 +75,10 @@ function writeKyc(next: KycRecord) {
 
 function StatusPill({ status }: { status: KycStatus }) {
   const { label, bg, fg } = useMemo(() => {
-    if (status === "approved") return { label: "已通過", bg: "rgba(20, 184, 166, 0.18)", fg: "rgba(94, 234, 212, 0.95)" };
-    if (status === "reviewing") return { label: "審核中", bg: "rgba(34, 131, 246, 0.18)", fg: "rgba(147, 197, 253, 0.95)" };
-    if (status === "rejected") return { label: "未通過", bg: "rgba(255, 77, 79, 0.16)", fg: "rgba(255, 120, 120, 0.95)" };
-    return { label: "未提交", bg: "rgba(255, 255, 255, 0.10)", fg: "rgba(255, 255, 255, 0.82)" };
+    if (status === "approved") return { label: "已通過", bg: "rgba(20, 184, 166, 0.18)", fg: "#0f766e" };
+    if (status === "reviewing") return { label: "審核中", bg: "rgba(34, 131, 246, 0.18)", fg: "#1d4ed8" };
+    if (status === "rejected") return { label: "未通過", bg: "rgba(255, 77, 79, 0.16)", fg: "#dc2626" };
+    return { label: "未提交", bg: "#f3f4f6", fg: "#374151" };
   }, [status]);
 
   return (
@@ -121,7 +121,7 @@ function SelectField({
 }) {
   return (
     <div style={{ display: "grid", gap: 6 }}>
-      <label style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.66)" }}>{label}</label>
+      <label style={{ fontSize: 12, fontWeight: 850, color: "#6b7280" }}>{label}</label>
       <select
         value={value}
         disabled={disabled}
@@ -130,9 +130,9 @@ function SelectField({
           width: "100%",
           height: 40,
           borderRadius: 12,
-          border: 0,
-          background: "rgba(255,255,255,0.06)",
-          color: value ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.46)",
+          border: "1px solid #e5e7eb",
+          background: "#ffffff",
+          color: value ? "#111827" : "#9ca3af",
           padding: "0 12px",
           fontSize: 14,
           fontWeight: 800,
@@ -144,7 +144,7 @@ function SelectField({
           {placeholder}
         </option>
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value} style={{ color: "#0e141d" }}>
+          <option key={opt.value} value={opt.value} style={{ color: "#111827" }}>
             {opt.label}
           </option>
         ))}
@@ -165,9 +165,9 @@ function RadioChip({ label, checked, onClick }: { label: string; checked: boolea
         height: 34,
         padding: "0 12px",
         borderRadius: 999,
-        border: "1px solid rgba(255,255,255,0.12)",
-        background: checked ? "rgba(34,131,246,0.18)" : "rgba(255,255,255,0.06)",
-        color: checked ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.72)",
+        border: "1px solid #e5e7eb",
+        background: checked ? "rgba(34,131,246,0.18)" : "#ffffff",
+        color: checked ? "#111827" : "#374151",
         fontSize: 12,
         fontWeight: 900,
         cursor: "pointer",
@@ -179,7 +179,7 @@ function RadioChip({ label, checked, onClick }: { label: string; checked: boolea
           width: 14,
           height: 14,
           borderRadius: 999,
-          border: "2px solid rgba(255,255,255,0.22)",
+          border: "2px solid #9ca3af",
           background: checked ? "rgba(34,131,246,0.95)" : "transparent",
           boxShadow: checked ? "0 0 0 3px rgba(34,131,246,0.18)" : "none",
         }}
@@ -560,8 +560,8 @@ function KycPageInner() {
                           borderRadius: 16,
                           display: "grid",
                           placeItems: "center",
-                          background: active ? "rgba(43,124,255,0.26)" : "rgba(255,255,255,0.06)",
-                          color: "rgba(255,255,255,0.82)",
+                          background: active ? "rgba(43,124,255,0.26)" : "#f3f4f6",
+                          color: "#374151",
                         }}
                       >
                         <UiIcon href={t.icon} size={20} />
@@ -576,7 +576,7 @@ function KycPageInner() {
             <div style={{ marginTop: 14, display: "grid", gap: 12, width: "100%" }}>
               {errorMsg ? (
                 <SurfaceCard style={{ borderRadius: 14, background: "rgba(255,77,79,0.10)", padding: "10px 12px" }}>
-                  <div style={{ color: "rgba(255,120,120,0.95)", fontSize: 12, fontWeight: 900 }}>{errorMsg}</div>
+                  <div style={{ color: "#dc2626", fontSize: 12, fontWeight: 900 }}>{errorMsg}</div>
                 </SurfaceCard>
               ) : null}
               <div
@@ -588,12 +588,12 @@ function KycPageInner() {
                   width: "100%",
                 }}
               >
-                <SurfaceCard style={{ borderRadius: 18, background: "rgba(0,0,0,0.12)", padding: 16 }}>
+                <SurfaceCard style={{ borderRadius: 18, padding: 16 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                    <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>KYC 驗證</div>
+                    <div style={{ fontSize: 14, fontWeight: 950, color: "#111827" }}>KYC 驗證</div>
                     <StatusPill status={kyc.status} />
                   </div>
-                  <div style={{ marginTop: 10, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)", lineHeight: 1.7 }}>
+                  <div style={{ marginTop: 10, fontSize: 12, fontWeight: 800, color: "#6b7280", lineHeight: 1.7 }}>
                     我們會盡最大努力，並採取必要措施以確保您的資料安全。完成驗證後，將能解鎖更完整的功能。
                   </div>
                   <div
@@ -602,13 +602,13 @@ function KycPageInner() {
                       marginTop: 14,
                       borderRadius: 16,
                       height: 220,
-                      background: "linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04))",
-                      border: "1px solid rgba(255,255,255,0.10)",
+                      background: "linear-gradient(135deg, #f3f4f6, #f9fafb)",
+                      border: "1px solid #e5e7eb",
                     }}
                   />
                 </SurfaceCard>
 
-                <SurfaceCard style={{ borderRadius: 18, background: "rgba(0,0,0,0.12)", padding: 16 }}>
+                <SurfaceCard style={{ borderRadius: 18, padding: 16 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       {[
@@ -624,9 +624,9 @@ function KycPageInner() {
                             borderRadius: 999,
                             display: "inline-flex",
                             alignItems: "center",
-                            border: "1px solid rgba(255,255,255,0.10)",
-                            background: s.active ? "rgba(34,131,246,0.22)" : "rgba(255,255,255,0.06)",
-                            color: s.active ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.46)",
+                            border: "1px solid #e5e7eb",
+                            background: s.active ? "rgba(34,131,246,0.22)" : "#ffffff",
+                            color: s.active ? "#111827" : "#9ca3af",
                             fontSize: 12,
                             fontWeight: 900,
                           }}
@@ -635,7 +635,7 @@ function KycPageInner() {
                         </div>
                       ))}
                     </div>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "rgba(255,77,79,0.92)", fontSize: 12, fontWeight: 900 }}>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "#dc2626", fontSize: 12, fontWeight: 900 }}>
                       <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: "rgba(255,77,79,0.92)" }} />
                       需要採取的行動
                     </div>
@@ -643,7 +643,7 @@ function KycPageInner() {
 
                   {kyc.status === "approved" ? (
                     <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
-                      <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.72)" }}>
+                      <div style={{ fontSize: 12, fontWeight: 850, color: "#374151" }}>
                         已完成驗證{typeof kyc.reviewedAt === "number" ? `（${new Date(kyc.reviewedAt).toLocaleString("zh-TW")}）` : ""}
                       </div>
                       <div style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -666,7 +666,7 @@ function KycPageInner() {
                                 });
                             }
                           }}
-                          style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.86)" }}
+                          style={{ background: "#f3f4f6", color: "#111827" }}
                         >
                           重新提交
                         </SecondaryButton>
@@ -737,17 +737,17 @@ function KycPageInner() {
                       <TextField label="居住地址" value={address} onChange={formLocked ? noop : setAddress} placeholder="居住地址" />
 
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                        <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.66)" }}>我是否政治公眾人物</div>
+                        <div style={{ fontSize: 12, fontWeight: 900, color: "#6b7280" }}>我是否政治公眾人物</div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <RadioChip label="No" checked={pep === false} onClick={formLocked ? noop : () => setPep(false)} />
                           <RadioChip label="Yes" checked={pep === true} onClick={formLocked ? noop : () => setPep(true)} />
                         </div>
                       </div>
 
-                      <div style={{ fontSize: 12, fontWeight: 750, color: "rgba(255,255,255,0.46)" }}>所有資料都經過安全存儲和加密。</div>
+                      <div style={{ fontSize: 12, fontWeight: 750, color: "#6b7280" }}>所有資料都經過安全存儲和加密。</div>
 
                       {kyc.status === "rejected" && kyc.rejectReason ? (
-                        <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,120,120,0.95)" }}>未通過原因：{kyc.rejectReason}</div>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: "#dc2626" }}>未通過原因：{kyc.rejectReason}</div>
                       ) : null}
 
                       <div style={{ display: "flex", justifyContent: "flex-end" }}>

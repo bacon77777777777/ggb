@@ -363,8 +363,8 @@ function OpeningDetailInner() {
                           borderRadius: 16,
                           display: "grid",
                           placeItems: "center",
-                          background: active ? "rgba(43,124,255,0.26)" : "rgba(255,255,255,0.06)",
-                          color: "rgba(255,255,255,0.82)",
+                          background: active ? "rgba(43,124,255,0.26)" : "#f3f4f6",
+                          color: "#374151",
                         }}
                       >
                         <UiIcon href={t.icon} size={20} />
@@ -386,8 +386,8 @@ function OpeningDetailInner() {
                       height: 38,
                       borderRadius: 12,
                       border: 0,
-                      background: "rgba(255,255,255,0.06)",
-                      color: "rgba(255,255,255,0.86)",
+                      background: "#f3f4f6",
+                      color: "#111827",
                       display: "grid",
                       placeItems: "center",
                       cursor: "pointer",
@@ -400,7 +400,7 @@ function OpeningDetailInner() {
                     style={{
                       fontSize: 14,
                       fontWeight: 950,
-                      color: "rgba(255,255,255,0.92)",
+                      color: "#111827",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
@@ -415,8 +415,8 @@ function OpeningDetailInner() {
               {!opening ? (
                 <div style={{ marginTop: 12 }}>
                   <SurfaceCard>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.86)" }}>找不到卡包紀錄</div>
-                    <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.62)" }}>紀錄可能已被清除</div>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>找不到卡包紀錄</div>
+                    <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>紀錄可能已被清除</div>
                   </SurfaceCard>
                 </div>
               ) : revealing ? (
@@ -454,7 +454,7 @@ function OpeningDetailInner() {
                           display: "grid",
                           placeItems: "center",
                           backfaceVisibility: "hidden",
-                          color: "rgba(255,255,255,0.55)",
+                          color: "#e5e7eb",
                           fontSize: 16,
                           fontWeight: 950,
                           letterSpacing: "2px",
@@ -467,8 +467,8 @@ function OpeningDetailInner() {
                           position: "absolute",
                           inset: 0,
                           borderRadius: 16,
-                          border: "1px solid rgba(255,255,255,0.16)",
-                          background: "rgba(255,255,255,0.06)",
+                          border: "1px solid #e5e7eb",
+                          background: "#ffffff",
                           overflow: "hidden",
                           transform: "rotateY(180deg)",
                           backfaceVisibility: "hidden",
@@ -479,14 +479,14 @@ function OpeningDetailInner() {
                         <img
                           alt=""
                           src={opening.prize.imageUrl || "/cardx/placeholder.svg"}
-                          style={{ width: "100%", height: "100%", objectFit: "cover", background: "rgba(0,0,0,0.18)" }}
+                          style={{ width: "100%", height: "100%", objectFit: "cover", background: "#f3f4f6" }}
                         />
                         <div style={{ padding: "8px 10px", display: "grid", gap: 4, background: "rgba(0,0,0,0.35)" }}>
                           <div
                             style={{
                               fontSize: 12,
                               fontWeight: 950,
-                              color: "rgba(255,255,255,0.94)",
+                              color: "#ffffff",
                               overflow: "hidden",
                               textOverflow: "ellipsis",
                               whiteSpace: "nowrap",
@@ -503,7 +503,7 @@ function OpeningDetailInner() {
                     style={{
                       fontSize: 13,
                       fontWeight: 900,
-                      color: "rgba(255,255,255,0.72)",
+                      color: "#374151",
                       animation: "cardxRevealFade 0.5s ease 1.1s both",
                     }}
                   >
@@ -518,13 +518,13 @@ function OpeningDetailInner() {
                         <img
                           alt=""
                           src={opening.imageUrl}
-                          style={{ width: 54, height: 54, borderRadius: 16, objectFit: "cover", background: "rgba(0,0,0,0.18)", flex: "0 0 auto" }}
+                          style={{ width: 54, height: 54, borderRadius: 16, objectFit: "cover", background: "#f3f4f6", flex: "0 0 auto" }}
                         />
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {opening.title}
                           </div>
-                          <div style={{ marginTop: 6, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.55)" }}>
+                          <div style={{ marginTop: 6, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
                             {new Date(opening.createdAt).toLocaleString("zh-TW")}
                           </div>
                         </div>
@@ -535,7 +535,7 @@ function OpeningDetailInner() {
                         </SecondaryButton>
                         <SecondaryButton
                           href={opening.packId ? `/packs/${opening.packId}` : "/packs"}
-                          style={{ height: 36, borderRadius: 12, background: "rgba(43,124,255,0.22)", color: "rgba(255,255,255,0.92)" }}
+                          style={{ height: 36, borderRadius: 12, background: "rgba(43,124,255,0.22)", color: "#111827" }}
                         >
                           再抽一次
                         </SecondaryButton>
@@ -543,15 +543,15 @@ function OpeningDetailInner() {
                     </SurfaceCard>
 
                     <SurfaceCard style={{ display: "grid", gap: 10 }}>
-                      <div style={{ borderRadius: 16, background: "rgba(255,255,255,0.06)", padding: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                      <div style={{ borderRadius: 16, background: "#f3f4f6", padding: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
                           <img
                             alt=""
                             src={opening.prize.imageUrl}
-                            style={{ width: 46, height: 46, borderRadius: 14, objectFit: "cover", background: "rgba(0,0,0,0.18)", flex: "0 0 auto" }}
+                            style={{ width: 46, height: 46, borderRadius: 14, objectFit: "cover", background: "#f3f4f6", flex: "0 0 auto" }}
                           />
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 950, color: "rgba(255,255,255,0.92)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {opening.prize.name}
                             </div>
                             <div style={{ marginTop: 6 }}>
@@ -565,19 +565,19 @@ function OpeningDetailInner() {
                     <SurfaceCard style={{ display: "grid", gap: 10 }}>
                       {opening.shipment ? (
                         <div style={{ display: "grid", gap: 6 }}>
-                          <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.86)" }}>
+                          <div style={{ fontSize: 12, fontWeight: 900, color: "#111827" }}>
                             {opening.shipment.carrier} · {opening.shipment.trackingNo}
                           </div>
-                          <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.62)" }}>狀態：{opening.shipment.status}</div>
+                          <div style={{ fontSize: 12, fontWeight: 850, color: "#6b7280" }}>狀態：{opening.shipment.status}</div>
                         </div>
                       ) : (
-                        <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.58)" }}>尚未建立物流資訊</div>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>尚未建立物流資訊</div>
                       )}
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                         <SecondaryButton
                           onClick={markDelivered}
                           disabled={opening.status !== "shipped"}
-                          style={{ height: 36, borderRadius: 12, background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.86)" }}
+                          style={{ height: 36, borderRadius: 12, background: "#f3f4f6", color: "#111827" }}
                         >
                           模擬送達
                         </SecondaryButton>
@@ -598,16 +598,16 @@ function OpeningDetailInner() {
                       <KeyValueRow label="開抽小計" value={twd(opening.amountSubtotal)} />
                       <KeyValueRow label="運費" value={twd(opening.shippingFee)} />
                       <KeyValueRow label="平台服務費" value={twd(opening.platformFee)} />
-                      <div style={{ height: 1, background: "rgba(255,255,255,0.08)", marginTop: 2, marginBottom: 2 }} />
-                      <KeyValueRow label={<span style={{ fontWeight: 950, color: "rgba(255,255,255,0.74)" }}>總額</span>} value={<span style={{ fontSize: 16 }}>{twd(opening.totalAmount)}</span>} />
+                      <div style={{ height: 1, background: "#e5e7eb", marginTop: 2, marginBottom: 2 }} />
+                      <KeyValueRow label={<span style={{ fontWeight: 950, color: "#374151" }}>總額</span>} value={<span style={{ fontSize: 16 }}>{twd(opening.totalAmount)}</span>} />
                     </SurfaceCard>
 
                     <SurfaceCard style={{ display: "grid", gap: 8 }}>
-                      <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.86)" }}>
+                      <div style={{ fontSize: 12, fontWeight: 900, color: "#111827" }}>
                         {opening.addressSnapshot.name} · {opening.addressSnapshot.phone}
                       </div>
-                      <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.70)" }}>{opening.addressSnapshot.addressLine}</div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.58)", lineHeight: "18px" }}>卡包開抽後將依地址寄送獎品。</div>
+                      <div style={{ fontSize: 12, fontWeight: 850, color: "#374151" }}>{opening.addressSnapshot.addressLine}</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", lineHeight: "18px" }}>卡包開抽後將依地址寄送獎品。</div>
                     </SurfaceCard>
                   </div>
                 </div>
