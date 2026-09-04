@@ -97,11 +97,7 @@ export default function PackDetailPage() {
   const [follows, setFollows] = useState<Set<number>>(new Set());
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
 
-  const layoutRef = useRef<HTMLDivElement | null>(null);
-  const stopRef = useRef<HTMLDivElement | null>(null);
   const fairnessInfoCloseRef = useRef<HTMLButtonElement | null>(null);
-  const [dockShiftY, setDockShiftY] = useState(0);
-  const [panelTop, setPanelTop] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [fairnessInfoOpen, setFairnessInfoOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -222,48 +218,16 @@ export default function PackDetailPage() {
   }, [viewingIndex, prizes]);
   const stepPrize = (dir: 1 | -1) => setViewingIndex((i) => (i == null || prizes.length === 0 ? i : (i + dir + prizes.length) % prizes.length));
 
-  /* ── 右側面板停靠（cardx 原本的邏輯，沒動） ── */
+  /* ── 1023 以下改成上下堆疊（舞台 → 面板 → 各區） ── */
   useEffect(() => {
-    let raf = 0;
-    function readHeaderHeightPx() {
-      const shell = document.querySelector<HTMLElement>('[class*="shell"]');
-      if (!shell) return 64;
-      const raw = window.getComputedStyle(shell).getPropertyValue("--header-height").trim();
-      const n = Number(raw.replace("px", ""));
-      return Number.isFinite(n) && n > 0 ? n : 64;
-    }
     function update() {
-      const wrap = layoutRef.current;
-      const stop = stopRef.current;
-      if (!wrap || !stop) { setDockShiftY(0); setPanelTop(null); setIsMobile(false); return; }
       const mobile = window.innerWidth <= 1023;
       setIsMobile((prev) => (prev === mobile ? prev : mobile));
-      if (mobile) { setDockShiftY(0); setPanelTop(null); return; }
-      const headerH = readHeaderHeightPx();
-      const measuredTop = Math.max(headerH + 20, Math.round(wrap.getBoundingClientRect().top));
-      setPanelTop((prev) => (prev === measuredTop ? prev : measuredTop));
-      const gap = 16;
-      const bottomGap = 20;
-      const panelH = window.innerHeight - measuredTop - bottomGap;
-      const scrollY = window.scrollY;
-      const stopY = stop.getBoundingClientRect().top + scrollY;
-      const threshold = scrollY + measuredTop + panelH + gap;
-      const overlap = Math.max(0, threshold - stopY);
-      setDockShiftY((prev) => (prev === overlap ? prev : overlap));
-    }
-    function onScroll() {
-      if (raf) return;
-      raf = window.requestAnimationFrame(() => { raf = 0; update(); });
     }
     update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-      if (raf) window.cancelAnimationFrame(raf);
-    };
-  }, [loading]);
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
 
   useEffect(() => {
     if (!fairnessInfoOpen && !rulesOpen) return;
@@ -348,13 +312,15 @@ export default function PackDetailPage() {
   });
 
   const panelInner = (
-    <div className={styles.infoCol} style={isMobile ? undefined : { height: "100%" }}>
+    <div className={styles.infoCol}>
       <h1 className={styles.title}>{product.name}</h1>
       <div className={styles.ownerRow}>
         <span>供應商</span>
         <span className={styles.ownerName}>{detail?.supplierName || "—"}</span>
       </div>
 
+      {/* 轉蛋不顯示配率表（老闆 2026-09-04：轉蛋用不到——只有一般版、也不公開張數） */}
+      {product.type !== "gacha" ? (
       <div className={styles.priceCard} aria-label="配率表">
         <div style={{ display: "grid", gap: 10 }}>
           <div className={styles.sectionHeader} style={{ marginBottom: 0 }}>配率表</div>
@@ -397,17 +363,8 @@ export default function PackDetailPage() {
           </div>
         </div>
 
-        <div className={styles.priceNow} aria-label={unit === "包" ? "每包" : "單抽"} style={{ gap: 4 }}>
-          <div className={styles.priceCardLabel}>{unit === "包" ? "每包" : "單抽"}</div>
-          <div className={styles.priceCardValue} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={asset("/images/gcoin.webp")} alt="G" style={{ width: 26, height: 26, display: "inline-block" }} />
-            <span>{product.price.toLocaleString()}</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.55)" }}>/ {unit}</span>
-          </div>
-        </div>
-
       </div>
+      ) : null}
     </div>
   );
 
@@ -429,6 +386,135 @@ export default function PackDetailPage() {
       ? "inset 0 0 0 2px rgba(255, 244, 200, 0.98), inset 0 0 0 5px rgba(215, 162, 71, 0.92), 0 0 0 1px rgba(0,0,0,0.22), 0 18px 40px rgba(0,0,0,0.35)"
       : undefined,
   });
+
+  const stage = themeResolved ? (
+    <ProductStageVisual key={`${product.id}-${theme}`} product={product} theme={theme} isSoldOut={isSoldOut} controls={actionButtons} pushSignal={pushSignal} />
+  ) : (
+    <div style={{ aspectRatio: "1 / 1", borderRadius: 16, background: "#1c2532" }} />
+  );
+
+  const sections = (
+    <>
+            <section className={styles.section} aria-label="商品資訊">
+              <div className={styles.sectionHeader}>商品資訊</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+                {infoCards.map((row) => (
+                  <div key={row.label} className={styles.itemDetailCard}>
+                    <div className={styles.itemDetailLabel}>{row.label}</div>
+                    <div className={styles.itemDetailValue}>{row.value}</div>
+                  </div>
+                ))}
+              </div>
+              {detail?.categories?.length ? (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+                  {detail.categories.map((c) => (
+                    <Link
+                      key={c.id}
+                      href={`/?menu=${encodeURIComponent(String(c.id))}`}
+                      style={{ padding: "6px 12px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.85)" }}
+                    >
+                      {c.name}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+              {product.description ? (
+                <div className={styles.itemDetailCard} style={{ marginTop: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, lineHeight: "20px", color: "rgba(255,255,255,0.82)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                    {product.description}
+                  </div>
+                </div>
+              ) : null}
+            </section>
+
+            {showCounts ? (
+              <section className={styles.section} aria-label="公平性驗證">
+                <div className={styles.sectionHeaderRow} style={{ justifyContent: "flex-start", gap: 4, alignItems: "center" }}>
+                  <div className={styles.sectionHeader} style={{ marginBottom: 0 }}>公平性驗證</div>
+                  <button
+                    type="button"
+                    aria-label="公平性驗證說明"
+                    onClick={() => setFairnessInfoOpen(true)}
+                    style={{ width: 24, height: 24, borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.72)", display: "grid", placeItems: "center", padding: 0, cursor: "pointer", flex: "0 0 auto" }}
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" style={{ display: "block" }}>
+                      <path fill="currentColor" d="M11 17h2v-6h-2v6zm1-8.75c.69 0 1.25-.56 1.25-1.25S12.69 5.75 12 5.75 10.75 6.31 10.75 7 11.31 8.25 12 8.25zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
+                    </svg>
+                  </button>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+                  <div className={styles.itemDetailCard}>
+                    <div className={styles.itemDetailLabel}>完整對照表</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                      {isSoldOut ? (
+                        <Link href={`/fairness/${product.id}`} className={styles.itemDetailValue} style={{ flex: "1 1 auto", color: "rgba(77,163,255,0.95)", textDecoration: "underline" }}>
+                          看完整對照表
+                        </Link>
+                      ) : (
+                        <span className={styles.itemDetailValue} style={{ flex: "1 1 auto" }}>完抽後公布</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.itemDetailCard}>
+                    <div className={styles.itemDetailLabel}>開賣時公布的驗證碼</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                      <span className={styles.itemDetailValue} style={{ flex: "1 1 auto" }}>
+                        {isSealed ? txidHash || "尚未生成，請稍後再試" : "這一檔沒有封存對照表"}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label="複製驗證碼"
+                        disabled={!txidHash}
+                        onClick={() => void navigator.clipboard.writeText(txidHash)}
+                        style={copyButtonStyle(!!txidHash)}
+                      >
+                        <CopyIcon />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            <section className={styles.section} aria-label="品項總覽">
+              <div className={styles.sectionHeader}>品項總覽</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 16 }}>
+                {lastOne ? (
+                  <div role="button" tabIndex={0} style={prizeCardStyle(true)} onClick={() => setViewingIndex(prizes.indexOf(lastOne))}>
+                    <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", background: "rgba(0,0,0,0.18)" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={lastOne.image_url || asset("/images/item_defaulet.webp")} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }} />
+                    </div>
+                    <div style={{ padding: 12, display: "grid", gap: 6, background: "linear-gradient(180deg, rgba(255, 246, 220, 0.98), rgba(220, 175, 90, 0.96))" }}>
+                      <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(0,0,0,0.68)" }}>最後賞</div>
+                      <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(0,0,0,0.92)", lineHeight: "16px" }}>{lastOne.name}</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(0,0,0,0.7)" }}>抽到最後一張籤就是你的</div>
+                    </div>
+                  </div>
+                ) : null}
+                {regularPrizes.map((x) => {
+                  const gone = showCounts && (x.remaining ?? 0) <= 0;
+                  return (
+                    <div key={x.id} role="button" tabIndex={0} style={{ ...prizeCardStyle(false), opacity: gone ? 0.5 : 1 }} onClick={() => setViewingIndex(prizes.indexOf(x))}>
+                      <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", background: "rgba(0,0,0,0.18)" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={x.image_url || asset("/images/item_defaulet.webp")} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }} />
+                      </div>
+                      <div style={{ padding: 12, display: "grid", gap: 6 }}>
+                        <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.62)" }}>{x.level}</div>
+                        <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(255,255,255,0.94)", lineHeight: "16px", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{x.name}</div>
+                        {showCounts ? (
+                          <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.85)" }}>剩餘 {x.remaining ?? 0} / {x.total ?? 0}</div>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+    </>
+  );
 
   return (
     <AppShell sidebarItems={defaultSidebarItems} hideBottomNavOnMobile>
@@ -465,168 +551,24 @@ export default function PackDetailPage() {
           </div>
         </nav>
 
-        <div
-          aria-label="商品詳情版型"
-          ref={layoutRef}
-          style={{
-            position: "relative",
-            paddingRight: isMobile ? 0 : "max(0px, calc((100vw - var(--sidebar-width) - (var(--app-gutter) * 2) - 16px) / 2 + 16px))",
-          }}
-        >
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
-            {isMobile ? (
-              <section className={styles.hero} aria-label="商品舞台與面板">
-                <div className={styles.mediaCol}>
-                  {themeResolved ? <ProductStageVisual key={`${product.id}-${theme}`} product={product} theme={theme} isSoldOut={isSoldOut} controls={actionButtons} pushSignal={pushSignal} /> : <div style={{ aspectRatio: "1 / 1", borderRadius: 16, background: "#1c2532" }} />}
-                </div>
-                {panelInner}
-              </section>
-            ) : (
-              <div className={styles.mediaCol} aria-label="商品舞台">
-                {themeResolved ? <ProductStageVisual key={`${product.id}-${theme}`} product={product} theme={theme} isSoldOut={isSoldOut} controls={actionButtons} pushSignal={pushSignal} /> : <div style={{ aspectRatio: "1 / 1", borderRadius: 16, background: "#1c2532" }} />}
-              </div>
-            )}
-
-            <div style={{ display: "grid", gap: 16 }}>
-              <section className={styles.section} aria-label="商品資訊">
-                <div className={styles.sectionHeader}>商品資訊</div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
-                  {infoCards.map((row) => (
-                    <div key={row.label} className={styles.itemDetailCard}>
-                      <div className={styles.itemDetailLabel}>{row.label}</div>
-                      <div className={styles.itemDetailValue}>{row.value}</div>
-                    </div>
-                  ))}
-                </div>
-                {detail?.categories?.length ? (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-                    {detail.categories.map((c) => (
-                      <Link
-                        key={c.id}
-                        href={`/?menu=${encodeURIComponent(String(c.id))}`}
-                        style={{ padding: "6px 12px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.85)" }}
-                      >
-                        {c.name}
-                      </Link>
-                    ))}
-                  </div>
-                ) : null}
-                {product.description ? (
-                  <div className={styles.itemDetailCard} style={{ marginTop: 12 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, lineHeight: "20px", color: "rgba(255,255,255,0.82)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                      {product.description}
-                    </div>
-                  </div>
-                ) : null}
-              </section>
-
-              {showCounts ? (
-                <section className={styles.section} aria-label="公平性驗證">
-                  <div className={styles.sectionHeaderRow} style={{ justifyContent: "flex-start", gap: 4, alignItems: "center" }}>
-                    <div className={styles.sectionHeader} style={{ marginBottom: 0 }}>公平性驗證</div>
-                    <button
-                      type="button"
-                      aria-label="公平性驗證說明"
-                      onClick={() => setFairnessInfoOpen(true)}
-                      style={{ width: 24, height: 24, borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.72)", display: "grid", placeItems: "center", padding: 0, cursor: "pointer", flex: "0 0 auto" }}
-                    >
-                      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" style={{ display: "block" }}>
-                        <path fill="currentColor" d="M11 17h2v-6h-2v6zm1-8.75c.69 0 1.25-.56 1.25-1.25S12.69 5.75 12 5.75 10.75 6.31 10.75 7 11.31 8.25 12 8.25zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
-                      </svg>
-                    </button>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
-                    <div className={styles.itemDetailCard}>
-                      <div className={styles.itemDetailLabel}>完整對照表</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                        {isSoldOut ? (
-                          <Link href={`/fairness/${product.id}`} className={styles.itemDetailValue} style={{ flex: "1 1 auto", color: "rgba(77,163,255,0.95)", textDecoration: "underline" }}>
-                            看完整對照表
-                          </Link>
-                        ) : (
-                          <span className={styles.itemDetailValue} style={{ flex: "1 1 auto" }}>完抽後公布</span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className={styles.itemDetailCard}>
-                      <div className={styles.itemDetailLabel}>開賣時公布的驗證碼</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                        <span className={styles.itemDetailValue} style={{ flex: "1 1 auto" }}>
-                          {isSealed ? txidHash || "尚未生成，請稍後再試" : "這一檔沒有封存對照表"}
-                        </span>
-                        <button
-                          type="button"
-                          aria-label="複製驗證碼"
-                          disabled={!txidHash}
-                          onClick={() => void navigator.clipboard.writeText(txidHash)}
-                          style={copyButtonStyle(!!txidHash)}
-                        >
-                          <CopyIcon />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-              ) : null}
-
-              <section className={styles.section} aria-label="品項總覽">
-                <div className={styles.sectionHeader}>品項總覽</div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 16 }}>
-                  {lastOne ? (
-                    <div role="button" tabIndex={0} style={prizeCardStyle(true)} onClick={() => setViewingIndex(prizes.indexOf(lastOne))}>
-                      <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", background: "rgba(0,0,0,0.18)" }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={lastOne.image_url || asset("/images/item_defaulet.webp")} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }} />
-                      </div>
-                      <div style={{ padding: 12, display: "grid", gap: 6, background: "linear-gradient(180deg, rgba(255, 246, 220, 0.98), rgba(220, 175, 90, 0.96))" }}>
-                        <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(0,0,0,0.68)" }}>最後賞</div>
-                        <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(0,0,0,0.92)", lineHeight: "16px" }}>{lastOne.name}</div>
-                        <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(0,0,0,0.7)" }}>抽到最後一張籤就是你的</div>
-                      </div>
-                    </div>
-                  ) : null}
-                  {regularPrizes.map((x) => {
-                    const gone = showCounts && (x.remaining ?? 0) <= 0;
-                    return (
-                      <div key={x.id} role="button" tabIndex={0} style={{ ...prizeCardStyle(false), opacity: gone ? 0.5 : 1 }} onClick={() => setViewingIndex(prizes.indexOf(x))}>
-                        <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", background: "rgba(0,0,0,0.18)" }}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={x.image_url || asset("/images/item_defaulet.webp")} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }} />
-                        </div>
-                        <div style={{ padding: 12, display: "grid", gap: 6 }}>
-                          <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.62)" }}>{x.level}</div>
-                          <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(255,255,255,0.94)", lineHeight: "16px", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{x.name}</div>
-                          {showCounts ? (
-                            <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.85)" }}>剩餘 {x.remaining ?? 0} / {x.total ?? 0}</div>
-                          ) : null}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
+        {/* 版面（老闆 2026-09-04）：左邊舞台固定（sticky），右邊一欄捲動：標題／配率表 → 商品資訊 → 公平性驗證 → 品項總覽 */}
+        {isMobile ? (
+          <section className={styles.hero} aria-label="商品舞台與面板">
+            <div className={styles.mediaCol}>{stage}</div>
+            {panelInner}
+            <div style={{ display: "grid", gap: 16 }}>{sections}</div>
+          </section>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 24, alignItems: "start" }}>
+            <div className={styles.mediaCol} aria-label="商品舞台" style={{ position: "sticky", top: "calc(var(--header-height) + 20px)" }}>
+              {stage}
+            </div>
+            <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
+              {panelInner}
+              {sections}
             </div>
           </div>
-
-          {!isMobile ? (
-            <aside
-              aria-label="右側操作面板"
-              style={{
-                position: "fixed",
-                top: panelTop == null ? "calc(var(--header-height) + 20px)" : `${panelTop}px`,
-                right: "var(--app-gutter)",
-                width: "calc((100vw - var(--sidebar-width) - (var(--app-gutter) * 2) - 16px) / 2)",
-                height: panelTop == null ? "calc(100dvh - var(--header-height) - 40px)" : `calc(100dvh - ${panelTop}px - 20px)`,
-                zIndex: 30,
-                transform: dockShiftY > 0 ? `translateY(${-dockShiftY}px)` : undefined,
-                overflowY: "auto",
-              }}
-            >
-              {panelInner}
-            </aside>
-          ) : null}
-        </div>
+        )}
 
         <div className={styles.mobileActionBar} aria-label="行動操作">
           <div className={styles.mobileActionGrid}>{actionButtons}</div>
@@ -682,7 +624,6 @@ export default function PackDetailPage() {
           </div>
         ) : null}
 
-        <div ref={stopRef} aria-hidden="true" style={{ height: 1 }} />
         {recommendations.length > 0 ? (
           <div className={homeStyles.main2}>
             <div className={homeStyles.main}>
