@@ -103,10 +103,10 @@ function HomeProductCard({ product, meta, followed, onToggleFollow }: {
       </div>
       <div className={styles.frame1}>
         <p className={styles.a2022PaniniPrizm353B}>
-          {/* 名稱前面掛類別標籤，跟手機版 ProductCard 同一顆、同一組 class（老闆 2026-09-04）；
+          {/* 名稱前面掛類別標籤，跟手機版 ProductCard 同一顆；字 11px、內距加大（老闆：8px 在桌機太小），手機那份不動；
               -webkit-box 裡只准放純 inline，跟手機那邊踩過的 Safari 刪節號誤判同一條 */}
           {product.type ? (
-            <ProductBadge type={product.type as ProductType} className="inline align-[2px] mr-1 py-[3px] backdrop-blur-none" />
+            <ProductBadge type={product.type as ProductType} className="inline align-[1px] mr-1.5 px-1.5 py-[2px] text-[11px] rounded-[4px] backdrop-blur-none" />
           ) : null}
           <span className="inline">{product.name}</span>
         </p>
