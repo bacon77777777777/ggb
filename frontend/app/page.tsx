@@ -2132,7 +2132,7 @@ export default function Home() {
                 <div className="relative">
                   <div className="pointer-events-none absolute inset-x-0 -top-4 z-0 h-8 bg-neutral-50 dark:bg-neutral-950" />
                   <div className="relative z-10 flex min-w-0 items-center gap-3 border-b border-neutral-100 bg-neutral-50 py-3 dark:border-neutral-800 dark:bg-neutral-950">
-                    <h2 className="shrink-0 text-[18px] font-bold leading-none text-neutral-900 dark:text-white">
+                    <h2 className="shrink-0 text-[20px] font-bold leading-none text-neutral-900 dark:text-white">
                       {primaryTabs.find((t) => t.id === activePrimaryTab)?.label ?? '綜合'}
                     </h2>
                     {activePrimaryTab === 'all' && (
@@ -2148,7 +2148,7 @@ export default function Home() {
                             key={tab.id}
                             onClick={() => setActiveSecondaryTab(tab.id as typeof activeSecondaryTab)}
                             className={cn(
-                              "whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-black transition-colors",
+                              "h-9 whitespace-nowrap rounded-full px-4 text-[14px] font-bold transition-colors",
                               activeSecondaryTab === tab.id
                                 ? "bg-primary text-white"
                                 : "bg-white text-neutral-600 ring-1 ring-neutral-100 hover:bg-neutral-100 dark:bg-neutral-900 dark:text-neutral-300 dark:ring-neutral-800"
@@ -2160,13 +2160,13 @@ export default function Home() {
                       </div>
                     </div>
                     {activePrimaryTab !== 'exchange' && activePrimaryTab !== 'sell' && (
-                      <div className="flex shrink-0 items-center gap-1.5 text-[12px] text-neutral-500">
+                      <div className="flex shrink-0 items-center gap-1.5 text-[14px] text-neutral-500">
                         <input
                           type="text"
                           value={priceMin}
                           onChange={(e) => handlePriceChange(e.target.value, setPriceMin)}
                           placeholder="最小"
-                          className="h-8 w-[76px] rounded-lg bg-white px-2 text-center font-amount font-black ring-1 ring-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:bg-neutral-900 dark:ring-neutral-800"
+                          className="h-9 w-[84px] rounded-lg bg-white px-2 text-center font-amount text-[14px] font-black ring-1 ring-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:bg-neutral-900 dark:ring-neutral-800"
                         />
                         <span className="font-bold">-</span>
                         <input
@@ -2174,7 +2174,7 @@ export default function Home() {
                           value={priceMax}
                           onChange={(e) => handlePriceChange(e.target.value, setPriceMax)}
                           placeholder="最大"
-                          className="h-8 w-[76px] rounded-lg bg-white px-2 text-center font-amount font-black ring-1 ring-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:bg-neutral-900 dark:ring-neutral-800"
+                          className="h-9 w-[84px] rounded-lg bg-white px-2 text-center font-amount text-[14px] font-black ring-1 ring-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:bg-neutral-900 dark:ring-neutral-800"
                         />
                       </div>
                     )}
@@ -2185,7 +2185,7 @@ export default function Home() {
                             type="button"
                             onClick={() => setIsFilterOpen((prev) => !prev)}
                             className={cn(
-                              "flex h-8 items-center gap-2 rounded-lg bg-white px-3 text-[13px] font-bold text-neutral-700 ring-1 ring-neutral-100 transition-colors hover:bg-neutral-100 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-800",
+                              "flex h-9 items-center gap-2 rounded-lg bg-white px-3.5 text-[14px] font-bold text-neutral-700 ring-1 ring-neutral-100 transition-colors hover:bg-neutral-100 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-800",
                               isFilterOpen && "text-primary ring-primary"
                             )}
                           >
@@ -2208,7 +2208,7 @@ export default function Home() {
                                       setIsFilterOpen(false);
                                     }}
                                     className={cn(
-                                      "w-full px-4 py-2.5 text-left text-[13px] font-black transition-colors",
+                                      "w-full px-4 py-2.5 text-left text-[14px] font-bold transition-colors",
                                       (activePrimaryTab === 'sell' ? sellSortMode : sortMode) === opt.id
                                         ? "bg-primary/5 text-primary"
                                         : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white"
