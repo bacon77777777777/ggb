@@ -8,6 +8,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { PageHeaderBack } from '@/components/ui/PageHeader';
 import { createClient } from '@/lib/supabase/client';
+import { SidebarToggle } from '@/components/desktop/DesktopSidebar';
 import { Search, Bell, MessageCircle, LogOut, User as UserIcon, ChevronDown, ChevronLeft, X, History, Flame, Heart, CheckCircle2, Share2, Copy, MoreVertical, Flag, BookOpen } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
@@ -728,7 +729,8 @@ function NavbarInner() {
         surfaceClassName={isHomePage
           ? "bg-primary border-transparent md:bg-white md:dark:bg-neutral-900 md:border-neutral-100 md:dark:border-neutral-800"
           : undefined}
-        innerClassName={(isProductDetailPage || isAnnouncementInnerPage) ? "max-w-[960px] !px-4" : undefined}
+        /* ≥1024 導覽列內容橫跨整個視窗（電腦端外殼，照 cardx）；商品頁／公告內頁維持自己的寬 */
+        innerClassName={(isProductDetailPage || isAnnouncementInnerPage) ? "max-w-[960px] !px-4" : "lg:max-w-none lg:px-6"}
         className={cn(
           desktopOnlyNav && "hidden md:block",
           isProductDetailPage && "fixed left-0 right-0",
@@ -779,6 +781,8 @@ function NavbarInner() {
               </>
             )}
             
+            {/* 電腦端側欄的收合鈕（≥1024 才有，照 cardx 放在 logo 左邊） */}
+            {!isAnnouncementInnerPage && <SidebarToggle className="-ml-1 mr-1" />}
             <Link href="/" className={cn("flex items-center group shrink-0 md:relative", (isProductDetailPage || isAnnouncementInnerPage) ? "hidden" : (!showLogo && "hidden md:flex"))}>
               <div className="flex items-center gap-1.5 transition-transform group-hover:scale-105">
                 <Image
@@ -820,7 +824,7 @@ function NavbarInner() {
               </Link>
             )}
 
-            <div className={cn("hidden", !(isProductDetailPage || isAnnouncementInnerPage) && "md:flex items-center gap-3 lg:gap-5")}>
+            <div className={cn("hidden", !(isProductDetailPage || isAnnouncementInnerPage) && "md:flex lg:!hidden items-center gap-3 lg:gap-5")}>
               <Link
                 href="/"
                 className={cn(

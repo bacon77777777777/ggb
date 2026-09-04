@@ -15,7 +15,9 @@ import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import Image from 'next/image';
 import ProductBadge, { ProductType } from '@/components/ui/ProductBadge';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, Sparkles, Star, Box, Dna, Layers, Gift } from 'lucide-react';
+import { HOME_TABS_EVENT, SET_HOME_TAB_EVENT } from '@/lib/desktopShell';
+import DesktopBannerRow from '@/components/desktop/DesktopBannerRow';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { categoryState } from '@/lib/categoryFlags';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
@@ -113,6 +115,13 @@ export default function Home() {
   });
   const [follows, setFollows] = useState<Set<number>>(new Set());
   const [feedVariant, setFeedVariant] = useState<'v1' | 'v2'>('v2');
+  /*
+   * 電腦端（≥1024）首頁的兩種檢視（老闆 2026-09-04，照 cardx）：
+   *   sections：總覽 —— 推薦一列、每個分類一列，各自「查看全部」
+   *   grid：某一籤的完整格子（頂部頁籤那套：系列膠囊＋排序＋價格區間）
+   * 分類頁籤（非綜合）一律是 grid；綜合才分兩種。手機端不看這個值。
+   */
+  const [desktopView, setDesktopView] = useState<'sections' | 'grid'>('sections');
   const feedSeed = useRef<number>(Math.floor(Math.random() * 0xffffffff));
   const feedMeta = useRef<Map<string, { bucket: FeedBucket; position: number }>>(new Map());
   /*
@@ -200,10 +209,29 @@ export default function Home() {
   useEffect(() => {
     const handler = () => {
       setActivePrimaryTab('all');
+      setDesktopView('sections');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
     window.addEventListener('ggb:resetHome', handler);
     return () => window.removeEventListener('ggb:resetHome', handler);
+  }, []);
+
+  /*
+   * 電腦端左側欄（components/desktop/DesktopSidebar）跟首頁的頁籤講話（lib/desktopShell 有說明）：
+   * 側欄要切籤就發 SET_HOME_TAB_EVENT 過來；這裡把頁籤清單與選中項播出去給它畫。
+   * handlePrimaryTabChange 是元件裡的一般函式，用 ref 拿最新的那一份，事件只掛一次。
+   */
+  const primaryTabChangeRef = useRef<(id: PrimaryTabId) => void>(() => {});
+  primaryTabChangeRef.current = handlePrimaryTabChange;
+  const primaryTabsRef = useRef<{ id: PrimaryTabId; label: string }[]>([]);
+  useEffect(() => {
+    const onSet = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail as PrimaryTabId;
+      if (!primaryTabsRef.current.some((t) => t.id === id)) return;
+      primaryTabChangeRef.current(id);
+    };
+    window.addEventListener(SET_HOME_TAB_EVENT, onSet);
+    return () => window.removeEventListener(SET_HOME_TAB_EVENT, onSet);
   }, []);
 
   useEffect(() => {
@@ -524,6 +552,10 @@ export default function Home() {
     const menuTabs = menus.map((m) => ({ id: `menu:${m.id}` as PrimaryTabId, label: m.name }));
     return [...base, ...menuTabs];
   }, [flagStates, menus]);
+  primaryTabsRef.current = primaryTabs;
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(HOME_TABS_EVENT, { detail: { tabs: primaryTabs, active: activePrimaryTab } }));
+  }, [primaryTabs, activePrimaryTab]);
 
   /*
    * 這兩段是「頁籤不存在就別停在上面」的保護，但**功能旗標載完之前不能動手**。
@@ -1802,7 +1834,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24 transition-colors">
-      <div className="max-w-7xl mx-auto px-0 pt-0 sm:pt-4 md:hidden">
+      {/* 手機那棵樹：768–1023 平板也用它（老闆 2026-09-04），1024 以上才換電腦端 */}
+      <div className="max-w-7xl mx-auto px-0 pt-0 sm:pt-4 lg:hidden">
         <div className="px-2">
           <div className="rounded-none overflow-visible">
             <WinningMarquee />
@@ -1940,62 +1973,200 @@ export default function Home() {
         {renderProductSections()}
       </div>
 
-      <div className="hidden md:block">
-        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 md:pt-6 pb-10">
-          <div className="flex flex-col md:flex-row gap-4 lg:gap-6 items-start">
-            {!hidePrimaryTabs && (
-              <aside className="hidden md:block w-60 flex-shrink-0 sticky top-16">
-              <div className="bg-white dark:bg-neutral-900 rounded-2xl p-3 shadow-card border border-neutral-100 dark:border-neutral-800 transition-colors space-y-6">
-                <div className="space-y-1 lg:space-y-1">
-                  {primaryTabs.map((tab) => (
-                    <div key={tab.id}>
-                      <button
-                        onClick={() => setActivePrimaryTab(tab.id as typeof activePrimaryTab)}
-                        className={cn(
-                          "w-full text-left px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-xl text-[13px] lg:text-sm font-black transition-all flex items-center justify-between group",
-                          activePrimaryTab === tab.id
-                            ? "bg-primary text-white shadow-lg shadow-primary/20"
-                            : "text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white"
-                        )}
-                      >
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="truncate">{tab.label}</span>
-                          {tab.id === 'card' && (
-                            <span
-                              className={cn(
-                                "inline-flex items-center justify-center h-[20px] px-1.5 rounded-full text-[10px] font-black",
-                                activePrimaryTab === 'card'
-                                  ? "bg-primary/90 text-white"
-                                  : "bg-primary/10 text-primary"
-                              )}
-                            >
-                              新
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                      {tab.id === 'custom' && (
-                        <div className="mt-2 mb-1 border-t border-dashed border-neutral-200 dark:border-neutral-700" />
-                      )}
-                    </div>
+      {/* ── 電腦端（≥1024）：外殼是全站的左側欄（layout），這裡只有內容欄（老闆 2026-09-04：照 cardx 的首頁分區列，改亮色）──
+          總覽：跑馬燈 → 輪播圖 → 推薦一列 → 每個分類一列（各自「查看全部」）
+          單一籤：標題列（系列膠囊＋排序＋價格區間）→ 既有的商品格 renderProductSections() */}
+      <div className="hidden lg:block">
+        <div className="mx-auto max-w-[1440px] px-6 pt-4 pb-10">
+          <div className="mb-3 overflow-hidden rounded-[8px]">
+            <WinningMarquee />
+          </div>
+          {/* 輪播圖只在首頁總覽（老闆 2026-09-04：除了首頁以外其他不要有輪播區），
+              版型照 cardx：一列橫向多張卡片＋圓點（DesktopBannerRow） */}
+          {activePrimaryTab === 'all' && desktopView === 'sections' && (
+            <section className="mb-6">
+              {isLoading ? (
+                <div className="flex gap-5 overflow-hidden">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="w-[560px] shrink-0 animate-pulse rounded-xl bg-neutral-200 dark:bg-neutral-800" style={{ aspectRatio: '3 / 1' }} />
                   ))}
                 </div>
+              ) : (
+                <DesktopBannerRow
+                  banners={banners.map((b) => ({
+                    id: b.id,
+                    image: b.image_url,
+                    link: b.link_url || '#',
+                  }))}
+                  onBannerClick={handleBannerClick}
+                />
+              )}
+            </section>
+          )}
 
-                {activePrimaryTab !== 'exchange' && activePrimaryTab !== 'sell' && (
-                  <div>
-                    <div className="flex items-center gap-3 mb-3 lg:mb-4 px-1">
-                      <h2 className="text-[12px] lg:text-sm font-black text-neutral-900 dark:text-white uppercase tracking-widest">
-                        價格區間
-                      </h2>
+          {activePrimaryTab === 'all' && desktopView === 'sections' ? (
+            <div className="space-y-8">
+              {(() => {
+                /* 每一列的內容：推薦列吃綜合的推薦排序（filteredProducts），分類列照上架時間、
+                   完抽的排最後（跟 applySortAndFilter 的收尾一致）。card 的歸類規則同 filterByPrimaryTab */
+                const isEndedOrSoldOut = (p: ProductRow) =>
+                  (typeof p.remaining === 'number' && p.remaining <= 0) || p.status === 'ended';
+                const byLatestActiveFirst = (list: ProductRow[]) => {
+                  const sorted = [...list].sort((a, b) => {
+                    const da = a.created_at ? new Date(a.created_at).getTime() : 0;
+                    const db = b.created_at ? new Date(b.created_at).getTime() : 0;
+                    return db - da;
+                  });
+                  return [...sorted.filter((p) => !isEndedOrSoldOut(p)), ...sorted.filter(isEndedOrSoldOut)];
+                };
+                const belongsTo = (p: ProductRow, tabId: string) => {
+                  if (tabId === 'card') {
+                    const category = p.category || '';
+                    return p.type === 'card' || category.includes('卡') || category.toLowerCase().includes('card');
+                  }
+                  if (tabId.startsWith('menu:')) {
+                    const ids = menuProductIdsByMenuId[tabId.slice('menu:'.length)];
+                    return !!ids && ids.includes(Number(p.id));
+                  }
+                  return p.type === tabId;
+                };
+                const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+                  all: Sparkles, ichiban: Star, blindbox: Box, gacha: Dna, card: Layers, custom: Gift,
+                };
+                const rows = primaryTabs
+                  .filter((t) => t.id !== 'sell' && t.id !== 'exchange')
+                  .map((t) => ({
+                    ...t,
+                    label: t.id === 'all' ? '推薦' : t.label,
+                    items: t.id === 'all'
+                      ? filteredProducts.slice(0, 14)
+                      : byLatestActiveFirst(allProducts.filter((p) => belongsTo(p, t.id) && categoryState(p.type, flagStates, false) === 'on')).slice(0, 10),
+                  }))
+                  // 自建分類的商品清單是切到那一籤才抓的，還沒抓就先不列；沒商品的分類也不佔一列
+                  .filter((r) => r.id === 'all' || r.items.length > 0);
+
+                if (isLoading) {
+                  return (
+                    <div className="flex gap-3 overflow-hidden">
+                      {Array.from({ length: 7 }).map((_, i) => (
+                        <div key={i} className="w-[190px] shrink-0"><ProductCardSkeleton /></div>
+                      ))}
                     </div>
-                    <div className="px-1">
-                      <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+                  );
+                }
+                if (loadError) {
+                  return (
+                    <div className="flex flex-col items-center justify-center space-y-4 py-10">
+                      <div className="text-center text-sm font-bold text-neutral-500 dark:text-neutral-400">{loadError}</div>
+                      <button onClick={() => fetchData()} className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90">重試</button>
+                    </div>
+                  );
+                }
+                return rows.map((row, ri) => {
+                  const Icon = ICONS[row.id] ?? Layers;
+                  return (
+                    <section key={row.id} aria-label={row.label}>
+                      <div className="mb-3 flex items-center justify-between">
+                        <h2 className="flex items-center gap-2 text-[16px] font-bold leading-none text-neutral-900 dark:text-white">
+                          <Icon className="h-5 w-5 text-primary" />
+                          {row.label}
+                        </h2>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (row.id === 'all') setDesktopView('grid');
+                            else handlePrimaryTabChange(row.id);
+                            window.scrollTo({ top: 0, behavior: 'auto' });
+                          }}
+                          className="text-[13px] font-bold text-primary transition-colors hover:text-primary-dark hover:underline"
+                        >
+                          查看全部
+                        </button>
+                      </div>
+                      {row.items.length === 0 ? (
+                        <div className="py-8 text-center text-[13px] font-bold text-neutral-400">
+                          {categoryState(row.id, flagStates, false) === 'maintenance' ? '此分類暫時維護中' : '此分類暫無商品'}
+                        </div>
+                      ) : (
+                        /* 一列橫向捲（照 cardx）：卡片固定寬，寬螢幕一排看得到 7 張 */
+                        <div className="-mx-1 flex gap-3 overflow-x-auto overscroll-x-contain px-1 pb-1 scrollbar-hide">
+                          {row.items.map((product, index) => (
+                            <div key={product.id} className="w-[190px] shrink-0">
+                              <ProductCard
+                                id={product.id.toString()}
+                                name={product.name}
+                                image={product.image_url || ''}
+                                price={product.price}
+                                remaining={product.remaining}
+                                total={product.total_count}
+                                cardsPerPack={(product as any).cards_per_pack}
+                                isHot={product.is_hot}
+                                type={product.type}
+                                status={product.status}
+                                series={product.series}
+                                feedBucket={row.id === 'all' ? feedMeta.current.get(String(product.id))?.bucket : undefined}
+                                feedPosition={row.id === 'all' ? feedMeta.current.get(String(product.id))?.position : undefined}
+                                priority={ri === 0 && index < 7}
+                                onNavigate={() => {
+                                  persistHomeState();
+                                  if (row.id === 'all') {
+                                    import('@/lib/trackEvent').then(({ trackEvent }) => {
+                                      trackEvent('product_click', { productId: product.id, series: product.series ?? undefined });
+                                    });
+                                  }
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+                  );
+                });
+              })()}
+            </div>
+          ) : (
+            <div {...swipePrimaryTabs}>
+              {/* 標題列：這一籤的名字＋系列膠囊＋排序＋價格區間 */}
+              <div className="sticky top-[57px] z-30 mb-4">
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-x-0 -top-4 z-0 h-8 bg-neutral-50 dark:bg-neutral-950" />
+                  <div className="relative z-10 flex min-w-0 items-center gap-3 border-b border-neutral-100 bg-neutral-50 py-3 dark:border-neutral-800 dark:bg-neutral-950">
+                    <h2 className="shrink-0 text-[18px] font-bold leading-none text-neutral-900 dark:text-white">
+                      {primaryTabs.find((t) => t.id === activePrimaryTab)?.label ?? '綜合'}
+                    </h2>
+                    {activePrimaryTab === 'all' && (
+                      <button type="button" onClick={() => { setDesktopView('sections'); window.scrollTo({ top: 0, behavior: 'auto' }); }}
+                        className="shrink-0 text-[13px] font-bold text-neutral-400 transition-colors hover:text-primary">
+                        回總覽
+                      </button>
+                    )}
+                    <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain scrollbar-hide">
+                      <div className={cn("flex items-center gap-1.5", secondaryTabs.length <= 1 && "hidden")}>
+                        {secondaryTabs.map((tab: { id: string; label: string }) => (
+                          <button
+                            key={tab.id}
+                            onClick={() => setActiveSecondaryTab(tab.id as typeof activeSecondaryTab)}
+                            className={cn(
+                              "whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-black transition-colors",
+                              activeSecondaryTab === tab.id
+                                ? "bg-primary text-white"
+                                : "bg-white text-neutral-600 ring-1 ring-neutral-100 hover:bg-neutral-100 dark:bg-neutral-900 dark:text-neutral-300 dark:ring-neutral-800"
+                            )}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {activePrimaryTab !== 'exchange' && activePrimaryTab !== 'sell' && (
+                      <div className="flex shrink-0 items-center gap-1.5 text-[12px] text-neutral-500">
                         <input
                           type="text"
                           value={priceMin}
                           onChange={(e) => handlePriceChange(e.target.value, setPriceMin)}
                           placeholder="最小"
-                          className="w-full bg-neutral-100 dark:bg-neutral-800 rounded-xl px-3 py-2 text-center font-black font-amount focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          className="h-8 w-[76px] rounded-lg bg-white px-2 text-center font-amount font-black ring-1 ring-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:bg-neutral-900 dark:ring-neutral-800"
                         />
                         <span className="font-bold">-</span>
                         <input
@@ -2003,98 +2174,30 @@ export default function Home() {
                           value={priceMax}
                           onChange={(e) => handlePriceChange(e.target.value, setPriceMax)}
                           placeholder="最大"
-                          className="w-full bg-neutral-100 dark:bg-neutral-800 rounded-xl px-3 py-2 text-center font-black font-amount focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          className="h-8 w-[76px] rounded-lg bg-white px-2 text-center font-amount font-black ring-1 ring-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:bg-neutral-900 dark:ring-neutral-800"
                         />
                       </div>
-                      <button className="w-full py-3 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-black uppercase tracking-widest hover:bg-primary dark:hover:bg-primary hover:text-white dark:hover:text-white transition-colors">
-                        套用篩選
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-              </aside>
-            )}
-
-            <main className="min-w-0 flex-1" {...swipePrimaryTabs}>
-              <div className="mb-3 rounded-[8px] overflow-hidden">
-                <WinningMarquee />
-              </div>
-
-              <section className="mb-4">
-                {isLoading ? (
-                  <BannerSkeleton />
-                ) : (
-                  <HeroBanner
-                    banners={banners.map((b) => ({
-                      id: b.id,
-                      image: b.image_url,
-                      link: b.link_url || '#',
-                    }))}
-                    onBannerClick={handleBannerClick}
-                  />
-                )}
-              </section>
-
-              {hasAnyPrimaryFeature && (
-              <div className="sticky top-16 z-30 mb-4">
-                <div className="relative">
-                  <div className="pointer-events-none absolute inset-x-0 -top-6 h-10 bg-neutral-50 dark:bg-neutral-950 z-0" />
-                  <div className="relative z-10 bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 px-3 py-2">
-                    {/* min-w-0 是必要的：flex 子項預設 min-width:auto，會被裡面的
-                        頁籤撐開而不是自己捲動。頁籤一多（綜合／轉蛋有 20 顆）
-                        整條列就把桌機的內容欄撐到 1650px，連帶把輪播圖與商品格
-                        一起撐爆、整頁出現橫向捲軸 */}
-                    <div className="flex min-w-0 items-center gap-2">
-                      <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain scrollbar-hide">
-                        <div className="flex items-center gap-1.5">
-                          {secondaryTabs.map((tab: { id: string; label: string }) => (
-                            <button
-                              key={tab.id}
-                              onClick={() => {
-                                setActiveSecondaryTab(tab.id as typeof activeSecondaryTab);
-                                      }}
-                              className={cn(
-                                "px-3 py-1 rounded-full text-[12px] font-black whitespace-nowrap transition-colors",
-                                activeSecondaryTab === tab.id
-                                  ? "bg-primary text-white"
-                                  : "bg-neutral-100 text-neutral-600"
-                              )}
-                            >
-                              {tab.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="relative flex-shrink-0">
-                        {activePrimaryTab !== 'exchange' && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => setIsFilterOpen((prev) => !prev)}
-                              className={cn(
-                                "flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-xl text-[13px] font-black text-neutral-600 dark:text-neutral-400 hover:border-primary hover:text-primary shadow-soft transition-all active:scale-95",
-                                isFilterOpen && "border-primary text-primary"
-                              )}
-                            >
-                              <span>排序方式</span>
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 24 24"
-                                className="w-4 h-4"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                fill="none"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M4 4h16" />
-                                <path d="M6 12h12" />
-                                <path d="M10 20h4" />
-                              </svg>
-                            </button>
-                            {isFilterOpen && (
-                              <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-neutral-900 rounded-lg shadow-modal border border-neutral-100 dark:border-neutral-800 py-2 z-40">
+                    )}
+                    <div className="relative shrink-0">
+                      {activePrimaryTab !== 'exchange' && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setIsFilterOpen((prev) => !prev)}
+                            className={cn(
+                              "flex h-8 items-center gap-2 rounded-lg bg-white px-3 text-[13px] font-bold text-neutral-700 ring-1 ring-neutral-100 transition-colors hover:bg-neutral-100 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-800",
+                              isFilterOpen && "text-primary ring-primary"
+                            )}
+                          >
+                            <span>{sortOptions.find((o) => o.id === (activePrimaryTab === 'sell' ? sellSortMode : sortMode))?.label ?? '排序方式'}</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M4 4h16" /><path d="M6 12h12" /><path d="M10 20h4" />
+                            </svg>
+                          </button>
+                          {isFilterOpen && (
+                            <>
+                              <div className="fixed inset-0 z-30" onClick={() => setIsFilterOpen(false)} />
+                              <div className="absolute right-0 z-40 mt-2 w-44 rounded-lg border border-neutral-100 bg-white py-2 shadow-modal dark:border-neutral-800 dark:bg-neutral-900">
                                 {sortOptions.map((opt) => (
                                   <button
                                     key={opt.id}
@@ -2105,32 +2208,29 @@ export default function Home() {
                                       setIsFilterOpen(false);
                                     }}
                                     className={cn(
-                                      "w-full text-left px-4 py-2.5 text-[13px] font-black transition-colors",
+                                      "w-full px-4 py-2.5 text-left text-[13px] font-black transition-colors",
                                       (activePrimaryTab === 'sell' ? sellSortMode : sortMode) === opt.id
                                         ? "bg-primary/5 text-primary"
-                                        : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white"
+                                        : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white"
                                     )}
                                   >
                                     {opt.label}
                                   </button>
                                 ))}
                               </div>
-                            )}
-                          </>
-                        )}
-                      </div>
+                            </>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
-              )}
-
               {renderProductSections()}
-            </main>
-          </div>
+            </div>
+          )}
         </div>
       </div>
-
       {activePrimaryTab === 'sell' && (
         <Link
           href="/sell/new"

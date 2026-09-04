@@ -4,6 +4,9 @@ import './globals.css';
 import Navbar from '@/components/Navbar';
 import FooterWrapper from '@/components/FooterWrapper';
 import MobileTabbar from '@/components/MobileTabbar';
+import DesktopSidebar from '@/components/desktop/DesktopSidebar';
+import DesktopFrame from '@/components/desktop/DesktopFrame';
+import { DesktopShellProvider } from '@/contexts/DesktopShellContext';
 import { RouteTransitionProvider } from '@/components/ui/RouteTransition';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { QueryProvider } from '@/components/QueryProvider';
@@ -244,7 +247,12 @@ export default async function RootLayout({
                       有 transform 的祖先會讓 position:fixed 失效，滿版就蓋不住整個畫面 */}
                   <AppSplashAd />
                   <ColdStartOnResume />
+                  {/* 電腦端外殼（老闆 2026-09-04，照 cardx）：導覽列橫跨整個視窗，
+                      側欄從它下緣貼到底，內容與頁尾往右讓出側欄的寬。768 以下側欄不存在 */}
+                  <DesktopShellProvider>
                   <Navbar />
+                  <DesktopSidebar />
+                  <DesktopFrame>
                   <main className="flex-grow">
                     <ServiceWorkerRegistrar />
                     <NativeAppBootstrap />
@@ -256,6 +264,8 @@ export default async function RootLayout({
                     <PathnameKeyed>{children}</PathnameKeyed>
                   </main>
                   <FooterWrapper />
+                  </DesktopFrame>
+                  </DesktopShellProvider>
                   <MobileTabbar />
                   </RouteTransitionProvider>
                 </PromotionsProvider>
