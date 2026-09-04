@@ -35,7 +35,7 @@ export default function MissionPage() {
   const swipeTabs = useSwipeTabs(['daily', 'weekly', 'achievement'] as const, activeTab, setActiveTab);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [consecutiveDays, setConsecutiveDays] = useState(0);
+  const [totalDays, setTotalDays] = useState(0);
   const [checkedInToday, setCheckedInToday] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
   const [scale, setScale] = useState(1);
@@ -65,7 +65,7 @@ export default function MissionPage() {
       if (error) {
         console.error('Error fetching check-in status:', error);
       } else if (data) {
-        setConsecutiveDays(data.consecutive_days);
+        setTotalDays(data.total_days ?? 0);
         setCheckedInToday(!!data.checked_in_today);
       }
     } catch (error) {
@@ -167,7 +167,7 @@ export default function MissionPage() {
         showToast(`簽到成功！獲得 ${data.reward} 積分`, 'success');
         // 先把畫面切成「今天簽過了」，不等重讀狀態
         setCheckedInToday(true);
-        if (typeof data.consecutive_days === 'number') setConsecutiveDays(data.consecutive_days);
+        if (typeof data.total_days === 'number') setTotalDays(data.total_days);
         playSuccessSound();
         await refreshProfile();
         fetchCheckInStatus();
@@ -294,7 +294,7 @@ export default function MissionPage() {
           }}
         >
           <MissionFrame 
-            consecutiveDays={consecutiveDays}
+            totalDays={totalDays}
             checkedInToday={checkedInToday}
             points={user?.points || 0}
             isGuest={!user}

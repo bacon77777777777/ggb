@@ -208,8 +208,8 @@ const ACHIEVEMENT_BADGE_IMAGE: Record<string, string> = {
 };
 
 interface MissionFrameProps {
-  /** 總連續簽到天數（含今天，若今天已簽）。抬頭「已連續簽到 N 天」直接顯示它 */
-  consecutiveDays: number;
+  /** 累計簽到天數（含今天，若今天已簽）。抬頭「累計簽到 N 天」直接顯示它 */
+  totalDays: number;
   /** 今天簽過了：按鈕變「今日已簽到」，簽到列可以把第 7 格打勾 */
   checkedInToday: boolean;
   points: number;
@@ -224,7 +224,7 @@ interface MissionFrameProps {
 }
 
 function MissionFrame({ 
-  consecutiveDays, 
+  totalDays, 
   checkedInToday,
   points, 
   isGuest = false,
@@ -246,15 +246,15 @@ function MissionFrame({
 
   /**
    * 這一輪簽到列要打勾的格數（0–7）。
-   * 獎勵每 7 天一輪（第 7 天 100、第 8 天回到 20），但 consecutiveDays 是總連續天數、會一直往上數。
-   * 直接拿它判斷，第 8 天起會永遠停在「6 格打勾＋第 7 格待領」，玩家以為明天又有 100，實際是 20。
-   * 今天剛簽完第 7／14／21… 天：整排 7 格打勾；隔天還沒簽：整排清空、從第 1 格重來。
+   * 簽到是「累計」不是「連續」（老闆 2026-09-04）：漏簽不歸零，總共簽滿 7 次那次拿 100、之後回到 20。
+   * totalDays 會一直往上數，直接拿它判斷，第 8 次起會永遠停在「6 格打勾＋第 7 格待領」，玩家以為明天又有 100。
+   * 今天剛簽完第 7／14／21… 次：整排 7 格打勾；隔天還沒簽：整排清空、從第 1 格重來。
    */
   const cycleDone = useMemo(() => {
-    const pos = consecutiveDays % 7;
-    if (pos === 0 && consecutiveDays > 0 && checkedInToday) return 7;
+    const pos = totalDays % 7;
+    if (pos === 0 && totalDays > 0 && checkedInToday) return 7;
     return pos;
-  }, [consecutiveDays, checkedInToday]);
+  }, [totalDays, checkedInToday]);
 
   const sortedMissions = useMemo(() => {
     const filtered = missions.filter(m => m.type === activeTab);
@@ -470,11 +470,11 @@ function MissionFrame({
           </div>
           <p className="absolute font-sans font-normal leading-[normal] left-[35px] not-italic text-[32px] text-white top-[27px]">簽到拿積分</p>
           <div className="absolute content-stretch flex gap-[12px] items-end justify-end leading-[normal] left-[37px] not-italic top-[103px]">
-            <p className="font-sans font-medium relative shrink-0 text-neutral-900 text-[28px]">已連續簽到</p>
-            <p className="font-['DIN_Alternate:Bold',sans-serif] relative shrink-0 text-accent-orange text-[32px] font-bold">{consecutiveDays}</p>
+            <p className="font-sans font-medium relative shrink-0 text-neutral-900 text-[28px]">累計簽到</p>
+            <p className="font-['DIN_Alternate:Bold',sans-serif] relative shrink-0 text-accent-orange text-[32px] font-bold">{totalDays}</p>
             <p className="font-sans font-medium relative shrink-0 text-neutral-900 text-[28px]">天</p>
           </div>
-          <p className="-translate-x-full absolute font-sans font-normal leading-[normal] left-[672px] not-italic text-neutral-400 text-[24px] text-right top-[34px] whitespace-nowrap">每連續簽到7天，可獲得額外積分</p>
+          <p className="-translate-x-full absolute font-sans font-normal leading-[normal] left-[672px] not-italic text-neutral-400 text-[24px] text-right top-[34px] whitespace-nowrap">每簽到7天，可獲得額外積分</p>
           
           {/* 七天簽到列：看的是「這一輪」的進度（cycleDone），不是總連續天數 */}
           <div className="absolute content-stretch flex gap-[7px] items-center left-[22px] top-[164px]">
@@ -735,8 +735,8 @@ function MissionFrame({
          * 玩家照著做卻拿不到，比沒寫還糟。
          */
         rules={[
-          "每天簽到拿 20 積分，連續簽到到第 7 天那一次拿 100 積分，之後重新算一輪。每天 00:00 換日。",
-          "中間漏簽一天，連續天數就從頭算起。",
+          "每天簽到拿 20 積分，簽滿 7 天那一次拿 100 積分，之後重新算一輪。每天 00:00 換日。",
+          "漏簽不會歸零，哪天回來都接著上次的天數繼續算。",
           "每日任務每天 00:00 換一批，每週任務每週一 00:00 換一批，沒領完就過期。",
           "積分也可以從這些地方拿：綁定 LINE 一次送 300、每邀請 5 位好友送 100、去排行榜膜拜大神每天 10。",
           "積分可以在抽獎時拿來付款，1 枚代幣等於 4 積分（例：50 代幣的商品用 200 積分抽）。",
