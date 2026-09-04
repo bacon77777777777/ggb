@@ -62,12 +62,18 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
       return next;
     });
   }, []);
+  // 帶 query 的項目（五個類別都走 /packs?cat=…）要連 query 一起比，不然五個會一起亮
+  const [search, setSearch] = useState("");
+  useEffect(() => { setSearch(window.location.search); }, [pathname]);
   const isActive = useCallback(
     (href: string) => {
+      if (href === "#") return false;
+      const q = href.indexOf("?");
+      if (q >= 0) return pathname === href.slice(0, q) && search === href.slice(q);
       if (href === "/") return pathname === "/";
       return pathname === href || pathname.startsWith(`${href}/`);
     },
-    [pathname]
+    [pathname, search]
   );
 
   const leftMenuGroups = useMemo(() => {
@@ -88,6 +94,13 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
   }, [sidebarItems]);
 
   const iconForLabel = useCallback((label: string) => {
+    // 老闆 2026-09-04 的側欄清單多出來的項目：先用 sprite 裡現有的 19 顆圖示對，重複難免，之後再換
+    const extra: Record<string, string> = {
+      "一番賞": "#icon-gift", "盒玩": "#icon-box", "轉蛋": "#icon-casino", "抽卡": "#icon-docs", "自製賞": "#icon-missions",
+      "挑戰機台": "#icon-sport", "交易所": "#icon-bag-dollar", "商城": "#icon-bag-dollar", "卡牌交換": "#icon-swap",
+      "情報": "#icon-docs", "通知": "#icon-notifications",
+    };
+    if (extra[label]) return extra[label];
     return label === "收藏"
       ? "#icon-like"
       : label === "近期"
@@ -431,24 +444,23 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
             </svg>
           </button>
 
-          <Link href="/" className={styles.logoDesktopLink} aria-label="CardX">
-            <span className={styles.logoText}>
-              CARD<span className={styles.logoTextAccent}>X</span>
-            </span>
+          <Link href="/" className={styles.logoDesktopLink} aria-label="吉吉比">
+            {/* 老闆 2026-09-04：logo 換成吉吉比 */}
+            <img src="/images/logo.png" alt="吉吉比" style={{ height: 35, width: "auto", display: "block" }} />
           </Link>
 
           <Link
-            href="/rewards"
+            href="/missions"
             className={`bonus-cabinet ${styles.bonusCabinet}`}
             data-v-4ec444f2=""
-            aria-label="獎勵"
+            aria-label="簽到"
           >
             <span className="background" data-v-4ec444f2="" aria-hidden="true" />
             <span className={styles.bonusIconWrap} aria-hidden="true">
               <img className={styles.bonusIcon} src="/cardx/placeholder.svg" alt="" aria-hidden="true" />
             </span>
             <span className={styles.bonusText} aria-hidden="true">
-              獎勵
+              簽到
             </span>
           </Link>
 
@@ -933,13 +945,11 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
         </div>
 
         <div className={styles.headerMobile} aria-label="Header">
-          <Link href="/" className={styles.logoMobileLink} aria-label="CardX">
-            <span className={styles.logoTextMobile}>
-              C<span className={styles.logoTextAccent}>X</span>
-            </span>
+          <Link href="/" className={styles.logoMobileLink} aria-label="吉吉比">
+            <img src="/images/logo.png" alt="吉吉比" style={{ height: 32, width: "auto", display: "block" }} />
           </Link>
 
-          <Link href="/rewards" className={styles.bonusPillMobile} aria-label="獎勵">
+          <Link href="/missions" className={styles.bonusPillMobile} aria-label="簽到">
             <span className={styles.bonusPillMobileIcon} aria-hidden="true" />
           </Link>
 
@@ -1077,7 +1087,9 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                           className={`${styles.leftMenuItem} ${isActive(item.href) ? styles.leftMenuItemActive : ""} ${
                             idx === group.length - 1 ? styles.leftMenuItemLast : ""
                           }`}
-                          href={item.href}
+                          href={item.disabled ? "#" : item.href}
+                          onClick={item.disabled ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+                          aria-disabled={item.disabled || undefined}
                         >
                           <span className={styles.leftMenuItemIcon} aria-hidden="true">
                             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
@@ -1105,7 +1117,9 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                         <Link
                           key={`c_${item.href}_${item.label}_${groupIdx}_${idx}`}
                           className={`${styles.collapsedItem} ${isActive(item.href) ? styles.collapsedItemActive : ""}`}
-                          href={item.href}
+                          href={item.disabled ? "#" : item.href}
+                          onClick={item.disabled ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+                          aria-disabled={item.disabled || undefined}
                           title={item.label}
                           aria-label={item.label}
                         >
@@ -1158,8 +1172,9 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                   className={`${styles.leftMenuItem} ${isActive(item.href) ? styles.leftMenuItemActive : ""} ${
                     idx === group.length - 1 ? styles.leftMenuItemLast : ""
                   }`}
-                  href={item.href}
-                  onClick={closeMobileMenu}
+                  href={item.disabled ? "#" : item.href}
+                          onClick={item.disabled ? (e: React.MouseEvent) => e.preventDefault() : closeMobileMenu}
+                  aria-disabled={item.disabled || undefined}
                 >
                   <span className={styles.leftMenuItemIcon} aria-hidden="true">
                     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">

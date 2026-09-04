@@ -41,5 +41,5 @@ export type PackPreview = {
 };
 
 export type SidebarItem =
-  | { kind: "link"; label: string; href: string }
+  | { kind: "link"; label: string; href: string; disabled?: boolean }
   | { kind: "divider" };
