@@ -81,18 +81,27 @@
   border: 0;
   background: transparent;
   padding: 0;
-  width: 24px;
-  height: 24px;
+  /* 36 的方形熱區（原本 24，跟旁邊 36 高的膠囊比起來太小）；往左縮 6 讓圖標留在原位 */
+  width: 36px;
+  height: 36px;
+  margin-left: -6px;
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
   color: #ffffff;
+  transition: background-color 120ms ease;
 }
 
 .iconHamburger:hover {
-  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+.iconHamburger:active {
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .hamburgerIcon {
@@ -109,11 +118,8 @@
   align-items: center;
   margin-left: 12px;
   overflow: hidden;
-  /* logo 主體就是紅的，直接放在紅底上會糊掉，墊一張白底片。
-     高度對齊頂欄其他控制項的 36px，不然它會比旁邊高一截 */
-  background: #ffffff;
-  border-radius: 10px;
-  padding: 0 10px;
+  /* logo 自帶白色貼紙描邊＋黑影，直接放紅底就看得清，不墊白底片（老闆 2026-09-05：logo 怎麼有白底）。
+     高度對齊頂欄其他控制項的 36px */
   height: 36px;
 }
 
@@ -127,9 +133,7 @@
   display: inline-flex;
   align-items: center;
   overflow: hidden;
-  background: #ffffff;
-  border-radius: 10px;
-  padding: 3px 8px;
+  height: 36px;
 }
 
 .logoMobile {
@@ -192,14 +196,14 @@
   line-height: 16px;
   letter-spacing: -0.24px;
   color: #ffffff;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 
 .squarePill {
   margin-left: 8px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.18);
+  background: #ffffff;
   padding: 6px;
   width: 36px;
   height: 36px;
@@ -208,35 +212,66 @@
   justify-content: center;
   border: 0;
   cursor: pointer;
-  color: #ffffff;
-}
-
-.squarePill:hover {
-  background: rgba(255, 255, 255, 0.3);
-  color: #ffffff;
+  color: #1f2937;
 }
 
 .loginPill {
   margin-left: auto;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.18);
-  padding: 7px 17px 9px 15px;
+  background: #ffffff;
+  padding: 0 16px;
   height: 36px;
   border: 0;
   cursor: pointer;
-  color: #ffffff;
-  font-size: 12px;
+  color: #1f2937;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: -0.24px;
+  letter-spacing: -0.2px;
   line-height: 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-.loginPill:hover {
-  background: rgba(255, 255, 255, 0.3);
-  color: #ffffff;
+/* ── 頂欄控制項的互動（老闆 2026-09-05：白霧底看不出邊界、hover 整顆變灰很突兀）──
+   搜尋／登入／暱稱／設定膠囊一律實心白底＋深灰墨色：
+   hover 墨色轉品牌紅＋陰影微浮起，按下壓成淺灰，鍵盤焦點畫白框。
+   `.cardx-root a { color: inherit }` 權重 (0,1,1) 比單一 class 高，
+   <a> 的顏色要掛在 .headerDesktop 底下 (0,2,0) 才蓋得過 */
+.headerDesktop .squarePill,
+.headerDesktop .loginPill,
+.headerDesktop .profilePill,
+.headerDesktop .overlayPill {
+  background: #ffffff;
+  color: #1f2937;
+  transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.headerDesktop .squarePill:hover,
+.headerDesktop .loginPill:hover,
+.headerDesktop .profilePill:hover,
+.headerDesktop .profilePill[aria-expanded="true"] {
+  background: #ffffff;
+  color: rgb(var(--primary));
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22);
+}
+
+.headerDesktop .squarePill:active,
+.headerDesktop .loginPill:active,
+.headerDesktop .profilePill:active {
+  background: #f3f4f6;
+  box-shadow: none;
+  transform: translateY(1px);
+}
+
+.headerDesktop .squarePill:focus-visible,
+.headerDesktop .loginPill:focus-visible,
+.headerDesktop .profilePill:focus-visible,
+.headerDesktop .iconGroupBtn:focus-visible,
+.headerDesktop .iconHamburger:focus-visible,
+.headerDesktop .logoDesktopLink:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
 }
 
 .authedRight {
@@ -248,8 +283,14 @@
 
 .registerBtn {
   margin-left: 8px;
-  width: 56px;
+  width: 62px;
   height: 36px;
+}
+
+/* 註冊字級跟登入一樣 14（老闆 2026-09-05：按鈕字太小）。
+   .button-3d_sm .button-3d__text[data-v] 是 (0,3,0)，這裡要疊到 (0,4,0) 才蓋得過 */
+.headerDesktop .registerBtn:global(.button-3d_sm) :global(.button-3d__text) {
+  font-size: 14px;
 }
 
 .registerBtn :global(.button-3d__text) {
@@ -265,7 +306,7 @@
 .overlayPill {
   margin-left: 16px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.18);
+  background: #ffffff;
   padding: 7px 7px 6px;
   width: 79px;
   min-width: 79px;
@@ -275,12 +316,7 @@
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  color: #ffffff;
-}
-
-.overlayPill:hover {
-  background: rgba(255, 255, 255, 0.3);
-  color: #ffffff;
+  color: #1f2937;
 }
 
 .overlayFlag {
@@ -290,9 +326,9 @@
 }
 
 .verticalDivider {
-  background: rgba(255, 255, 255, 0.35);
+  background: #e5e7eb;
   width: 1px;
-  height: 23px;
+  height: 22px;
 }
 
 .bellPill {
@@ -505,7 +541,7 @@
 .profilePill {
   appearance: none;
   border: 0;
-  background: rgba(255, 255, 255, 0.18);
+  background: #ffffff;
   height: 36px;
   padding: 0 10px 0 0;
   border-radius: 8px;
@@ -515,7 +551,17 @@
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  color: #ffffff;
+  color: #1f2937;
+}
+
+.profileName {
+  font-size: 14px;
+  font-weight: 700;
+  color: inherit;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .settingsWrap {
@@ -712,15 +758,17 @@
   width: 100%;
   accent-color: #2b7cff;
 }
-.profilePill:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
 .profileArrow {
   width: 18px;
   height: 18px;
-  color: #374151;
+  color: #9ca3af;
   transform: rotate(90deg);
+  transition: color 120ms ease, transform 120ms ease;
+}
+
+.profilePill:hover .profileArrow,
+.profilePill[aria-expanded="true"] .profileArrow {
+  color: currentColor;
 }
 
 .profileArrowOpen {
@@ -747,6 +795,8 @@
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 18px 50px -12px rgba(0, 0, 0, 0.18);
   padding: 12px;
   z-index: 60;
+  /* 卡片掛在白字的頂欄底下，字色要自己定，不然 <a> 會 inherit 到頂欄的白 */
+  color: #374151;
 }
 
 .profilePanelTop {
@@ -853,8 +903,20 @@
   text-decoration: none;
 }
 
-.profileMenuItem:hover {
+/* (0,2,0) 才蓋得過 .cardx-root a 的 inherit */
+.profileMenu .profileMenuItem {
+  color: #374151;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.profileMenu .profileMenuItem:hover {
+  background: #ffffff;
   color: #111827;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.profileMenuItem:hover .profileMenuIcon {
+  color: rgb(var(--primary));
 }
 
 .profileMenuIcon {
@@ -882,6 +944,7 @@
 }
 
 .profileLogout:hover {
+  background: #e5e7eb;
   color: #111827;
 }
 
@@ -2030,11 +2093,9 @@
   height: 36px;
 }
 
-/* 老闆 2026-09-04：設定／鈴鐺／聊聊那顆膠囊 hover 不要整顆亮，個別圖標亮 */
-.iconGroup:hover {
-  background: #f3f4f6;
-  color: #374151;
-}
+/* 老闆 2026-09-04：設定／鈴鐺／聊聊那顆膠囊 hover 不要整顆亮，個別圖標亮。
+   2026-09-05：膠囊改實心白底之後整顆就不再變色（原本 hover 會從白霧跳成淺灰）；
+   圖標 hover／展開中 → 品牌紅淡底＋紅墨色，跟其他膠囊同一套語彙 */
 .iconGroupBtn {
   appearance: none;
   border: 0;
@@ -2046,14 +2107,21 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: inherit;
+  color: #374151;
   cursor: pointer;
   position: relative;
-  transition: background-color 0.1s ease-in-out, color 0.1s ease-in-out;
+  transition: background-color 120ms ease, color 120ms ease;
 }
-.iconGroupBtn:hover {
-  background: rgba(0, 0, 0, 0.08);
-  color: #111827;
+.headerDesktop .iconGroupBtn {
+  color: #374151;
+}
+.headerDesktop .iconGroupBtn:hover,
+.headerDesktop .iconGroupBtn[aria-expanded="true"] {
+  background: rgb(var(--primary) / 0.1);
+  color: rgb(var(--primary));
+}
+.headerDesktop .iconGroupBtn:active {
+  background: rgb(var(--primary) / 0.18);
 }
 
 

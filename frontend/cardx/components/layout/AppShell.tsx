@@ -331,8 +331,8 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
           </button>
 
           <Link href="/" className={styles.logoDesktopLink} aria-label="吉吉比">
-            {/* 老闆 2026-09-04：logo 換成吉吉比 */}
-            <img src={asset("/images/logo.png")} alt="吉吉比" style={{ height: 28, width: "auto", display: "block" }} />
+            {/* 老闆 2026-09-04：logo 換成吉吉比。09-05 拿掉白底片，圖放大到 32 */}
+            <img src={asset("/images/logo.png")} alt="吉吉比" style={{ height: 32, width: "auto", display: "block" }} />
           </Link>
 
           <Link
@@ -377,7 +377,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                   onClick={() => setProfileOpen((v) => !v)}
                 >
                   <span className={styles.avatar} style={avatarStyle} aria-hidden="true" />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#374151", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span className={styles.profileName}>
                     {authUser.displayName}
                   </span>
                   <svg
@@ -520,7 +520,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                       <use href="#icon-notifications" />
                     </svg>
                     {bellUnread ? (
-                      <span aria-hidden="true" style={{ position: "absolute", top: 3, right: 5, width: 8, height: 8, borderRadius: "50%", background: "rgb(var(--primary))", boxShadow: "0 0 0 2px #f3f4f6" }} />
+                      <span aria-hidden="true" style={{ position: "absolute", top: 3, right: 5, width: 8, height: 8, borderRadius: "50%", background: "rgb(var(--primary))", boxShadow: "0 0 0 2px #ffffff" }} />
                     ) : null}
                   </Link>
                   <span className={styles.verticalDivider} aria-hidden="true" />
