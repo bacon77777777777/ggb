@@ -608,6 +608,7 @@ export function HomeClient() {
                   ariaLabel="排序"
                   icon={<FilterIcon />}
                   borderless
+                  fit
                 />
               </div>
             </div>

@@ -45,6 +45,7 @@ export function PillSelect<T extends string>({
   ariaLabel,
   icon,
   borderless,
+  fit,
 }: {
   value: T;
   onChange: (next: T) => void;
@@ -52,6 +53,8 @@ export function PillSelect<T extends string>({
   ariaLabel: string;
   icon: ReactNode;
   borderless?: boolean;
+  /** 寬度只到最長的那個選項（老闆 2026-09-04：排序下拉不用這麼寬），不用固定寬 */
+  fit?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number>(() => Math.max(0, options.findIndex((o) => o.key === value)));
@@ -157,9 +160,9 @@ export function PillSelect<T extends string>({
       style={{
         position: "relative",
         flex: "0 1 auto",
-        width: "clamp(160px, 18vw, 220px)",
-        minWidth: 140,
-        maxWidth: 240,
+        width: fit ? "max-content" : "clamp(160px, 18vw, 220px)",
+        minWidth: fit ? 0 : 140,
+        maxWidth: fit ? "none" : 240,
       }}
     >
       <div
@@ -217,7 +220,18 @@ export function PillSelect<T extends string>({
           userSelect: "none",
         }}
       >
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selectedLabel}</span>
+        {fit ? (
+          /* 把所有選項疊在同一格、只顯示選中的那個：寬度就是最長的選項，切換時不會跳寬 */
+          <span style={{ display: "grid", whiteSpace: "nowrap" }}>
+            {options.map((o) => (
+              <span key={o.key} style={{ gridArea: "1 / 1", visibility: o.key === value ? "visible" : "hidden" }} aria-hidden={o.key !== value}>
+                {o.label}
+              </span>
+            ))}
+          </span>
+        ) : (
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selectedLabel}</span>
+        )}
       </button>
 
       {open ? (
