@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { HOME_TABS_EVENT, SET_HOME_TAB_EVENT } from '@/lib/desktopShell';
 import CardxPage from '@/components/cardx/CardxPage';
+import { useMinWidth } from '@/lib/useMinWidth';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { categoryState } from '@/lib/categoryFlags';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
@@ -93,6 +94,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [supabase] = useState(() => createClient());
+  const isMd = useMinWidth(768);
   const queryClient = useQueryClient();
   const { flags, states: flagStates, isLoading: isFlagsLoading } = useFeatureFlags();
   const { user } = useAuth();
@@ -1832,11 +1834,17 @@ export default function Home() {
     );
   };
 
+  /*
+   * 768 以上：cardx 的首頁（老闆 2026-09-04，整套原封不動搬）；768 以下：我們原本的手機版。
+   * 用寬度決定掛哪一棵、不用 CSS 藏 —— 手機那棵藏著時「最新上架」彈窗照樣掛上去並把 body 的捲動鎖住，
+   * 桌機新訪客整頁捲不動（2026-09-04 實測）。量到寬度前先不畫（一個 frame）。
+   * 自己做的桌機分區列在 git（ef502c66）
+   */
+  if (isMd === null) return null;
+  if (isMd) return <CardxPage page="home" />;
   return (
     <>
-    {/* 768 以下：我們原本的手機版（整棵一字沒動，含扇形選單、最新上架彈窗）；
-        768 以上：cardx 的首頁（老闆 2026-09-04，整套原封不動搬）。自己做的桌機分區列在 git（ef502c66） */}
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24 transition-colors md:hidden">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24 transition-colors">
       <div className="max-w-7xl mx-auto px-0 pt-0 sm:pt-4">
         <div className="px-2">
           <div className="rounded-none overflow-visible">
@@ -2044,7 +2052,6 @@ export default function Home() {
 
       <PromoPopup placement="home" />
     </div>
-    <CardxPage page="home" />
     </>
   );
 }

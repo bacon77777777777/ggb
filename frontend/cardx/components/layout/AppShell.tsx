@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { SidebarItem } from "@/cardx/lib/types";
 import { supabaseBrowser } from "@/cardx/lib/supabase/browser";
 import styles from "./AppShell.module.css";
@@ -115,8 +115,8 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
     });
   }, []);
   // 帶 query 的項目（五個類別都走 /packs?cat=…）要連 query 一起比，不然五個會一起亮
-  const [search, setSearch] = useState("");
-  useEffect(() => { setSearch(window.location.search); }, [pathname]);
+  const searchParams = useSearchParams();
+  const search = searchParams.toString() ? `?${searchParams.toString()}` : "";
   const isActive = useCallback(
     (href: string) => {
       if (href === "#") return false;
