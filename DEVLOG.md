@@ -4,6 +4,88 @@
 
 ---
 
+## v2026.09.05a｜2026-09-05｜桌機版（≥1024）改淺色系＋全站接真資料；商品頁接上真抽獎；門檻從 768 提到 1024
+
+v2026.09.04i 把 cardx 整套搬進來時是「暗色系、全是 mock」，這一版把它變成能用的東西：
+顏色改成跟手機端同一套、每一頁接真資料、平台沒有的功能整個移除。**手機端 768 以下與資料庫都沒有動。**
+
+**一、商品頁（`cardx/app/packs/[id]`）**
+- 舞台底部改「推一下（藍）｜G 金額／抽（紅、撐滿）｜試試看（紫）」三顆同一套 3D 樣式，
+  「立即開抽」四個字拿掉、金額搬進紅鈕當按鈕文字；上方加「N 人正在看」（跟手機同一顆膠囊）。
+  ⚠️ 那組字要用 `display:flex` 不能 `inline-flex`：外層 `.button-3d__text` 的 line-height 是 20px，
+  inline 級的盒子照基線對齊、底下多留一截 descender，整組字會偏上。
+  操作列改靠下對齊、底下留 12 —— 內容比 `CONTROLS_H`(72) 高時往上溢出蓋機台，按鈕才不會被舞台底邊裁掉。
+- **接上真抽獎**：紅鈕開 `PurchaseConfirmationModal` → `/api/gacha` → 機台演出 → `GachaResultModal`，
+  跟手機商品頁同一支 API、同一組演出時間（晃 2 秒、掉 0.8 秒、停在取物口等點）。試試看與推一下也接上。
+  抽獎邏輯照抄一份在 `hooks/useGachaDraw.ts`，**不是把手機的元件重構掉** —— 它的演出與機台狀態綁在同一個
+  元件裡，抽出來要動到 768 以下的畫面。
+- 舞台的商品圖點一下收起、再點一下回來（同手機手感），收起後原位留透明點擊區。
+- 資訊改成跟手機一致：補促銷列與注意事項、品項卡標已收集／未收集、拿掉手機沒有的商品描述與分類標籤、
+  拿掉轉蛋不該公開的單品機率。品項圖滿版不留內距、賞等用全站同一顆 `GradeBadge`（轉蛋／盒玩不顯示）。
+- 品項彈窗在 1024 以上改左右分欄（圖滿版、叉叉在右上角），1023 以下維持底部抽屜；
+  只有商品頁帶 `split`，中獎結果／倉庫／挑戰機台一律照舊。
+- 抽卡舞台寬度也吃滿（卡包是一排橫的，上下裁掉沒關係），桌機留 14% 邊。
+  ⚠️ 一開始吃滿 100% 時機台層高 707、舞台可視高只有 658，置中後上緣切掉 25px，
+  `PackShowcase3D` 右上角那顆靜音鈕剛好在那一段裡 —— 那就是「靜音圖標不見了」的原因。
+
+**二、換色：暗 → 淺（約 900 處）**
+色票一律對到 `tailwind.config.js` 與 `app/globals.css` 既有的值：頁面底 `#f9fafb`、卡片 `#ffffff`、
+次級填色 `#f3f4f6`、分隔線 `#e5e7eb`、文字 `#111827`／`#374151`／`#6b7280`／`#9ca3af`。
+**判斷依據是「這個顏色掛在哪個屬性上」而不是數值**：同一個 `rgba(255,255,255,0.1)` 在 `color` 是文字、
+在 `background` 是填色、在 `border` 是分隔線，三者換成不同的東西。深色底上的毛玻璃配半透明底在淺色實色底
+沒有意義，一併拿掉。範本的介面藍（`#2283f6`／`#007bff`）改吃 `rgb(var(--primary))`，後台換主題色時桌機
+會跟著變。保留三種藍：推一下的 3D 藍按鈕、交換擂台的藍紅兩側（那是「對方拿出／對方想要」的區分）、
+分類徽章與稱號的顏色（那是資料不是介面）。
+⚠️ 稱號在淺底上要做成**實心膠囊**：金、綠當文字色時對比只有 2:1，手機版排行榜本來就是填色膠囊配白字。
+
+**三、接真資料（不新增任何資料表）**
+商品列表→`fetchHomeCatalog`＋現成的 `cardx/lib/useHomeCatalogView`；排行榜→`/api/public/ranking`；
+情報→`/api/public/news`；收藏→`product_follows`；近期瀏覽→本機只記商品編號、標題價格回 DB 查；
+任務→`get_user_missions`／`claim_task_reward`／`daily_check_in`；活動→**新開** `/api/public/events`
+（anon client，照 `/api/public/news` 的寫法，封面取 hero 段落的背景圖）；交易所與卡牌交換→`app/market/data.ts`
+與 `exchange_*` 那組表，含上架、購買、下架、改價、啟動碼開單，兩者都掛 `useFeatureGate`；
+會員中心／配送訂單／抽獎紀錄／申請寄送→`users`／`orders`／`draw_records`／`recharge_records`／
+`user_coupons`／`user_addresses`，桌機表格直接用 `components/profile/desktop` 既有那五支。
+
+**四、移除平台根本沒有的功能**（DB 沒有對應資料表，不建表）
+實名認證（整個功能不存在，頁面改導回會員中心，結帳的實名門檻一併拿掉）、獎勵中心的 Bronze/Silver/Gold
+等級制度（改成顯示真的有的簽到／優惠券／邀請獎勵／稱號）、話題投票（沒有投票表，改成站上真的熱門關鍵字，
+點了去搜尋）、卡牌走勢（`card_market_prices` 前台沒有讀取權限，改接交易所實際成交行情，側欄名稱一併改
+「成交行情」）、開箱紀錄（`openings` 這張表不存在，改接 `draw_records`）。
+交易所與交換的愛心也拿掉 —— 只寫在這台裝置的瀏覽器、收藏頁又看不到。
+
+**五、一併導正的三個地雷**
+1. `cardx/lib/supabase/browser.ts` 只讀 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`、**沒有 fallback 到
+   `ANON_KEY`**（全站其他地方都有），所以 `supabaseBrowser()` 永遠回 `null`，七個頁面靜默走 localStorage
+   假資料還「看起來會動」。整支刪掉，全部改用 `lib/supabase/client` 的 `createClient()`。
+2. 地址查的是 `addresses`，**正確表名是 `user_addresses`**（migration 683），而且 DB 有「最多三筆、單一預設」
+   的 trigger 與 RLS，前台要同步回寫 `users` 的三個鏡像欄位。
+3. 訂單頁用的 `shipped`／`refund_pending`／`dispute_open` **都不是合法狀態**（只有 submitted／processing／
+   picked_up／shipping／delivered／cancelled），而且前台本來就不該直接 update 訂單。沒有對應 RPC 的動作
+   直接移除按鈕，取消配送走 `cancel_my_delivery_order`。
+
+**六、外殼**
+- **頁尾**：cardx 路由被 `FooterWrapper` 排除，而 cardx 自己的頁尾寫在首頁元件裡、內容還是範本的假東西
+  （CardX、support@cardx.example、Discord 全連 /info）—— 等於「首頁有假頁尾，其他 25 頁沒有頁尾」。
+  改成 `CardxFooter` 放進 `AppShell`，連結與客服信箱跟主站頁尾同一份。
+- **頂欄改品牌紅底**，控制項一律白字＋白霧底。兩個坑：logo 主體就是紅的、直接放紅底會糊掉，要墊白底片；
+  cardx globals 有 `.cardx-root a { color: inherit }`，權重比 `.squarePill`／`.loginPill` 高，
+  只改那些 class 的 color 對 `<a>` 沒用，要讓頂欄本身就是白字。簽到膠囊的底色本來是深棕（暗色版設計，
+  橘漸層疊上去才亮），紅底上變濁棕，改橘底。
+- 餘額與儲值從頂欄收進暱稱展開的卡片，取代原本的等級條 —— 那是範本的假東西（永遠 1 等、進度固定 9.97%）。
+- 側欄補上任務與獎勵；商城與通知本來是死連結，改連到站上原本那兩頁。
+- 首頁輪播沒設連結時不要包成 `<a>`：原本會變成 `href="#"`，游標是手指、點下去什麼都沒發生。
+- 完抽的商品照手機端 `ProductCard` 蓋圖章（黑幕＋`sale.svg`），不是整張卡調淡也不是文字膠囊。
+
+**七、斷點：cardx 從 768 提高到 1024**（老闆指定 769～1023 用手機端版型，該段商品格自己會變三欄）
+門檻散在五個地方，**缺一個就會兩套外殼疊在一起或都不出現**，清單留在 `CardxPage` 的檔頭：
+`CardxPage` 的 `hidden lg:block`、`CardxRoute` 的寬度判斷、七個雙軌頁的 `useMinWidth(1024)`、
+`Navbar` 的 `lg:!hidden`、`FooterWrapper`（cardx 路由的頁尾改成只在 md～lg 這段顯示，
+因為那一段走手機端版型、沒有 `CardxFooter`）。另 `/trades` 補進 `lib/nativeApp.ts` 的 `BLOCKED_PREFIXES`
+—— 它跟 `/exchange` 是同一件事。
+
+---
+
 ## v2026.09.04i｜2026-09-04｜768 以上整套換成 cardx 的 UI（原封不動搬，含英文字型）；768 以下手機端一字不動
 
 老闆 2026-09-04 晚上定案：不重刻了，把 `/Users/bacon/cardx/web` 的 UI **原封不動**搬過來（暗色系沒關係），
