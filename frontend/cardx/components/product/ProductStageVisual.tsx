@@ -12,7 +12,6 @@ import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNod
 import type { Database } from "@/types/database.types";
 import { asset } from "@/lib/asset";
 import { MachineLoadingOverlay } from "@/components/ui/MachineLoadingOverlay";
-import { SoundToggle } from "@/components/ui/SoundToggle";
 import { skyGradientCss, skyProgressNow } from "@/lib/oceanSky";
 
 type ProductRow = Database["public"]["Tables"]["products"]["Row"];
@@ -221,11 +220,6 @@ export function ProductStageVisual({
 
       {kind !== "image" ? <MachineLoadingOverlay show={!loaded} /> : null}
 
-      {/* 靜音鈕固定在舞台右上（老闆 2026-09-05）。掛在舞台這一層而不是機台裡面 ——
-          機台整台有 scale()，放進去按鈕會跟著被縮放，抽卡那種沒有機台的更是整個不見 */}
-      <div style={{ position: "absolute", top: 12, right: 12, zIndex: 45 }}>
-        <SoundToggle variant="glass" />
-      </div>
 
       {/* 操作列靠下對齊、底下留 12：內容比 CONTROLS_H 高的時候（按鈕上面多一顆「N 人正在看」）
           多出來的往上溢出蓋到機台（老闆 2026-09-04 說沒關係），按鈕本身才不會被舞台底邊切掉 */}
