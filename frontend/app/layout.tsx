@@ -1,6 +1,10 @@
 
 import type { Metadata } from 'next';
 import './globals.css';
+/* cardx 的 UI（768 以上）：它的 globals 已收進 .cardx-root，不會碰到手機端 */
+import '@/cardx/globals.css';
+import { Geist, Geist_Mono } from 'next/font/google';
+import CardxIconSprite from '@/cardx/CardxIconSprite';
 import Navbar from '@/components/Navbar';
 import FooterWrapper from '@/components/FooterWrapper';
 import MobileTabbar from '@/components/MobileTabbar';
@@ -33,6 +37,10 @@ import AppUpdateGate from '@/components/native/AppUpdateGate';
 import PaymentReturnBridge from '@/components/native/PaymentReturnBridge';
 import { Suspense } from 'react';
 import { asset } from '@/lib/asset';
+
+/* cardx 用的英文字型（老闆 2026-09-04：英文字體都搬）。只是掛 CSS 變數，我們自己的樣式沒引用，手機端無感 */
+const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
+const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
 
 const siteUrl = getSiteUrl();
 
@@ -148,7 +156,7 @@ export default async function RootLayout({
   const themeCss = await getThemeCss();
 
   return (
-    <html lang="zh-TW">
+    <html lang="zh-TW" className={`${geistSans.variable} ${geistMono.variable}`}>
       <head>
         {/* 先把連線建起來：字型在 googleapis（CSS）與 gstatic（字檔）兩個網域，
             不 preconnect 的話 DNS＋TLS 要等到解析出 @font-face 才開始 */}
@@ -215,6 +223,7 @@ export default async function RootLayout({
           全螢幕的 Android 有效，iOS 完全不支援），所以只能在橫向時蓋一層。
           放在最外層、AuthProvider 之外：不管哪一頁、載入到哪個階段都要蓋得住。
         */}
+        <CardxIconSprite />
         <div id="rotate-hint" aria-hidden>
           <div className="rh-inner">
             <div className="rh-icon">

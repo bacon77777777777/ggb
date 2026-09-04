@@ -1,5 +1,8 @@
 'use client';
 
+import CardxPage from '@/components/cardx/CardxPage';
+import { useMinWidth } from '@/lib/useMinWidth';
+
 import React, { useEffect, useState, useCallback, useLayoutEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -42,7 +45,7 @@ interface RankingRpcItem {
     流體動畫疊在上面不動。頁面打底與 InkFlowField 容器都用這條，reduce-motion 時只剩它。 */
 const RANK_BG = 'linear-gradient(180deg, #1C1D22 0%, #2C2D33 100%)';
 
-export default function RankingPage() {
+function RankingPageMobile() {
   const router = useRouter();
 
   /* 動態島文字：整頁是深藍色流體背景（頂欄在頂端時是透明的，深色來自底下
@@ -415,4 +418,14 @@ export default function RankingPage() {
       )}
     </>
   );
+}
+
+/**
+ * 768 以下：我們原本的手機版（RankingPageMobile，一字沒動）；
+ * 768 以上：cardx 的頁面（老闆 2026-09-04，整套原封不動搬）。量到寬度才掛其中一棵（手機那棵有 effect，藏著也會跑）。
+ */
+export default function RankingPage() {
+  const isMd = useMinWidth(768);
+  if (isMd === null) return null;
+  return isMd ? <CardxPage page="leaderboard" /> : <RankingPageMobile />;
 }

@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils';
 import { setSoundMuted } from '@/lib/soundPrefs';
 import { useSoundMuted } from '@/hooks/useSoundMuted';
+import { stageIconButtonClass } from '@/components/shop/desktop/ProductStage';
 
 /**
  * 聲音開關 —— 浮在機台右上角的半透明圓鈕
@@ -84,9 +85,13 @@ export const RAISED_STYLE_GOLD: React.CSSProperties = {
  * 用 marginTop 疊加而不是改 top：呼叫端的 `top-N` class 各不相同，疊加才不用
  * 一個個換算。機台在導航列底下的頁（轉蛋／盒玩商品頁）不需要，維持關閉。
  */
+/**
+ * `glass`：電腦版舞台用的 40px 毛玻璃鈕（照 packs.com，樣式定義在 ProductStage 的
+ * `stageIconButtonClass`，跟返回／收藏／分享同一顆）。
+ */
 export function SoundToggle({ className, variant = 'raised', safeTop = false }: {
   className?: string;
-  variant?: 'flat' | 'raised';
+  variant?: 'flat' | 'raised' | 'glass';
   safeTop?: boolean;
 }) {
   const muted = useSoundMuted();
@@ -98,10 +103,10 @@ export function SoundToggle({ className, variant = 'raised', safeTop = false }: 
       aria-label={muted ? '開啟音效' : '關閉音效'}
       aria-pressed={muted}
       className={cn(
-        'pointer-events-auto w-[38px] h-[38px] rounded-full',
-        variant === 'raised' ? '' : 'backdrop-blur-sm',
+        variant === 'glass' ? stageIconButtonClass : 'pointer-events-auto w-[38px] h-[38px] rounded-full',
+        variant === 'flat' && 'backdrop-blur-sm bg-black/30',
         'flex items-center justify-center text-white transition-all active:scale-95',
-        variant === 'raised' ? 'active:translate-y-[1px]' : 'bg-black/30',
+        variant === 'raised' && 'active:translate-y-[1px]',
         className,
       )}
       style={{

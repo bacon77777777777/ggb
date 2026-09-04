@@ -1,5 +1,8 @@
 'use client';
 
+import CardxPage from '@/components/cardx/CardxPage';
+import { useMinWidth } from '@/lib/useMinWidth';
+
 import { useEffect, useLayoutEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -265,7 +268,7 @@ function rememberBeforeLeaving(id: string) {
 }
 
 // ─── 主頁 ────────────────────────────────────────────────────────────────────
-export default function NewsPage() {
+function NewsPageMobile() {
   // 從快取起手：第一幀就有完整內容，捲動位置才還原得回去
   const [all, setAll]         = useState<NewsItem[]>(() => listCache?.items ?? []);
   const [isLoading, setIsLoading] = useState(() => !listCache);
@@ -511,4 +514,14 @@ export default function NewsPage() {
       </div>
     </div>
   );
+}
+
+/**
+ * 768 以下：我們原本的手機版（NewsPageMobile，一字沒動）；
+ * 768 以上：cardx 的頁面（老闆 2026-09-04，整套原封不動搬）。量到寬度才掛其中一棵（手機那棵有 effect，藏著也會跑）。
+ */
+export default function NewsPage() {
+  const isMd = useMinWidth(768);
+  if (isMd === null) return null;
+  return isMd ? <CardxPage page="news" /> : <NewsPageMobile />;
 }

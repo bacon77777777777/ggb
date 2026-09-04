@@ -1,0 +1,71 @@
+.section {
+  display: grid;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.titleWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon {
+  font-size: 20px;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.more {
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.more:hover {
+  color: #fff;
+}
+
+.navButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.navBtn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.navBtn:hover {
+  color: #fff;
+}
+
+.navBtn svg {
+  width: 20px;
+  height: 20px;
+}
+

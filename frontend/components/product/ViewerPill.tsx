@@ -25,7 +25,7 @@
  * 絕不碰 `draw_records`（那張表同時是庫存與銷量的依據）。
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { createClient } from '@/lib/supabase/client';
 import { useBottomBar } from '@/lib/useBottomBar';
@@ -187,7 +187,15 @@ interface Props {
   productId: string | number;
 }
 
-export default function ViewerPill({ productId }: Props) {
+/**
+ * `inline`：不做 portal、不 fixed，直接回傳膠囊本體，由呼叫端擺位置。
+ * 電腦版商品頁把它放在舞台右下角（老闆 2026-09-04：照 packs）。
+ */
+/**
+ * `render`：inline 時改用呼叫端給的外觀（電腦版舞台的膠囊要跟價格、剩餘長一樣），
+ * 數字還是這裡算。
+ */
+export default function ViewerPill({ productId, inline = false, render }: Props & { inline?: boolean; render?: (count: number) => ReactNode }) {
   const pid = String(productId);
   /*
    * real 初值 0 而不是 1：presence 還沒接上時不要先猜。
@@ -287,7 +295,7 @@ export default function ViewerPill({ productId }: Props) {
     return () => { supabase.removeChannel(channel); };
   }, [pid, tooBig]);
 
-  const bar = useBottomBar(base !== null);
+  const bar = useBottomBar(base !== null && !inline);
   if (base === null) return null;
 
   /*
@@ -336,6 +344,8 @@ export default function ViewerPill({ productId }: Props) {
    * 全程 pointer-events-none：它是裝飾，不能吃掉「立即抽獎」上緣的觸控 ——
    * 手指偏一點按到膠囊卻沒反應，玩家只會覺得按鈕壞了。
    */
+  if (inline) return render ? <>{render(count)}</> : body;
+
   if (bar) {
     return createPortal(
       <div className="pointer-events-none absolute bottom-full left-0 right-0 flex justify-center pb-2">

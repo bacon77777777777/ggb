@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { PageHeaderBack } from '@/components/ui/PageHeader';
 import { createClient } from '@/lib/supabase/client';
 import { SidebarToggle } from '@/components/desktop/DesktopSidebar';
+import { isCardxRoute } from '@/lib/cardxRoutes';
 import { Search, Bell, MessageCircle, LogOut, User as UserIcon, ChevronDown, ChevronLeft, X, History, Flame, Heart, CheckCircle2, Share2, Copy, MoreVertical, Flag, BookOpen } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
@@ -730,10 +731,13 @@ function NavbarInner() {
           ? "bg-primary border-transparent md:bg-white md:dark:bg-neutral-900 md:border-neutral-100 md:dark:border-neutral-800"
           : undefined}
         /* ≥1024 導覽列內容橫跨整個視窗（電腦端外殼，照 cardx）；商品頁／公告內頁維持自己的寬 */
-        innerClassName={(isProductDetailPage || isAnnouncementInnerPage) ? "max-w-[960px] !px-4" : "lg:max-w-none lg:px-6"}
+        innerClassName={isAnnouncementInnerPage ? "max-w-[960px] !px-4" : isProductDetailPage ? "max-w-[960px] !px-4 lg:max-w-none lg:px-6" : "lg:max-w-none lg:px-6"}
         className={cn(
+          /* 768 以上換 cardx 的頁面時，導覽列由它的 AppShell 接手（lib/cardxRoutes） */
+          isCardxRoute(pathname) && "md:!hidden",
           desktopOnlyNav && "hidden md:block",
-          isProductDetailPage && "fixed left-0 right-0",
+          /* 商品頁 ≥1024 跟首頁同一條導覽列（老闆 2026-09-04）：sticky、橫跨整個視窗；1024 以下維持手機那套 fixed */
+          isProductDetailPage && "fixed left-0 right-0 lg:sticky lg:top-0",
           (
             (pathname === '/profile' && (!activeTab || ['warehouse', 'delivery', 'draw-history', 'topup-history', 'follows', 'market'].includes(activeTab as string))) ||
             isTicketSelectionPage ||
@@ -753,7 +757,7 @@ function NavbarInner() {
             {(isProductDetailPage || isAnnouncementInnerPage) ? (
               showBackButton && (
                 /* 統一元件：樣式在 components/ui/PageHeader.tsx，改那裡全站同步 */
-                <PageHeaderBack title={getPageTitle()} onBack={handleBack} className="flex-1" />
+                <PageHeaderBack title={getPageTitle()} onBack={handleBack} className={cn("flex-1", isProductDetailPage && "lg:hidden")} />
               )
             ) : showBackButton && !isHomePage ? (
               /* 統一元件（老闆 2026-08-20：全站同一顆，按文字也能返回）：
@@ -783,7 +787,7 @@ function NavbarInner() {
             
             {/* 電腦端側欄的收合鈕（≥1024 才有，照 cardx 放在 logo 左邊） */}
             {!isAnnouncementInnerPage && <SidebarToggle className="-ml-1 mr-1" />}
-            <Link href="/" className={cn("flex items-center group shrink-0 md:relative", (isProductDetailPage || isAnnouncementInnerPage) ? "hidden" : (!showLogo && "hidden md:flex"))}>
+            <Link href="/" className={cn("flex items-center group shrink-0 md:relative", isAnnouncementInnerPage ? "hidden" : isProductDetailPage ? "hidden lg:flex" : (!showLogo && "hidden md:flex"))}>
               <div className="flex items-center gap-1.5 transition-transform group-hover:scale-105">
                 <Image
                   src={asset("/images/logo.png")}
@@ -978,9 +982,9 @@ function NavbarInner() {
               </button>
             )}
 
-            {/* Product Page Actions */}
+            {/* Product Page Actions（規則／分享／收藏）：≥1024 這三顆在商品頁右側面板裡，導覽列不重複放 */}
             {isProductDetailPage && (
-              <div className="flex items-center gap-0.5">
+              <div className="flex items-center gap-0.5 lg:hidden">
                 {rulesPath && (
                   <Link
                     href={rulesPath}
@@ -1190,7 +1194,7 @@ function NavbarInner() {
                 </div>
               </div>
             ) : (
-              !['/login', '/register', '/forgot-password', '/update-password'].includes(pathname) && !isProductDetailPage && !isExchangeDetailPage && !isMessagesDetailPage && !isNewsDetailPage && (
+              !['/login', '/register', '/forgot-password', '/update-password'].includes(pathname) && !isExchangeDetailPage && !isMessagesDetailPage && !isNewsDetailPage && (
                 <>
                   {/* 未登入時搜尋圖標只放首頁（見上方 isHomePage 那顆）。
                       常見問題／關於我們／條款／隱私／退換貨這些頁跟搜尋無關，
@@ -1199,7 +1203,7 @@ function NavbarInner() {
                       首頁不放（老闆 2026-09-03：移除）—— 首頁的搜尋框要吃滿整條，
                       未登入要登入走底部導航的「會員」。資訊頁也不放（見 NO_LOGIN_BUTTON_PATHS）。
                       其他頁維持 */}
-                  {!hideMobileLoginButton && (
+                  {!hideMobileLoginButton && !isProductDetailPage && (
                     <Link
                       href="/login"
                       className="md:hidden px-3 h-8 flex items-center rounded-full border border-primary text-primary text-[12px] font-black active:scale-95 transition-transform whitespace-nowrap"
@@ -1211,8 +1215,8 @@ function NavbarInner() {
                   <Link
                     href="/login"
                     className={cn(
-                      "hidden md:flex bg-primary text-white px-5 h-9 items-center rounded-full hover:bg-primary/90 transition-colors text-[13px] font-black whitespace-nowrap",
-                      isProductDetailPage && "hidden md:flex"
+                      "bg-primary text-white px-5 h-9 items-center rounded-full hover:bg-primary/90 transition-colors text-[13px] font-black whitespace-nowrap",
+                      isProductDetailPage ? "hidden lg:flex" : "hidden md:flex"
                     )}
                   >
                     登入拿積分

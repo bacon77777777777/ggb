@@ -1,5 +1,8 @@
 'use client';
 
+import CardxPage from '@/components/cardx/CardxPage';
+import { useMinWidth } from '@/lib/useMinWidth';
+
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { MissionService } from '@/services/mission';
@@ -14,7 +17,7 @@ import { asset } from '@/lib/asset';
 import { useStatusBarText } from '@/components/native/StatusBarStyle';
 import { useRequireLogin } from '@/hooks/useRequireLogin';
 
-export default function MissionPage() {
+function MissionPageMobile() {
   const { user, refreshProfile, isLoading: authLoading } = useAuth();
 
   /* 動態島文字：整頁底色是 #ff2d14 橘紅，白字。 */
@@ -309,4 +312,14 @@ export default function MissionPage() {
       </div>
     </div>
   );
+}
+
+/**
+ * 768 以下：我們原本的手機版（MissionPageMobile，一字沒動）；
+ * 768 以上：cardx 的頁面（老闆 2026-09-04，整套原封不動搬）。量到寬度才掛其中一棵（手機那棵有 effect，藏著也會跑）。
+ */
+export default function MissionPage() {
+  const isMd = useMinWidth(768);
+  if (isMd === null) return null;
+  return isMd ? <CardxPage page="missions" /> : <MissionPageMobile />;
 }

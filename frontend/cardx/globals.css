@@ -1,0 +1,378 @@
+/*
+ * cardx 的 globals.css 原封不動搬過來（老闆 2026-09-04：768 以上整套用 cardx 的 UI），
+ * 只做一件事：把 html／body／:root 層級的規則收進 `.cardx-root`，
+ * 這樣它只管 cardx 那棵樹，手機端（768 以下）與我們自己的頁面完全不受影響。
+ * 來源：/Users/bacon/cardx/web/src/app/globals.css
+ */
+.cardx-root svg:not([fill]) {
+  fill: currentColor;
+}
+
+.cardx-root {
+  --background: #0e141d;
+  --foreground: rgba(255, 255, 255, 0.9);
+  --surface: #111923;
+  --brand: #ed1d49;
+
+  --Background-Secondary: #a7b5ca;
+  --Background-Tertiary: #55657e;
+  --Background-Quaternary: #2a3546;
+  --Background-Quinary: #202a39;
+  --Background-Senary: #1c2532;
+  --color_red: #ed1d49;
+  --color_white: #fff;
+
+  --ui-color-brand-500: #ed1d49;
+  --ui-color-bg-900: #0e141d;
+  --ui-color-surface-800: #111923;
+  --ui-color-surface-700: #161f2c;
+  --ui-color-text-100: #fff;
+  --ui-color-text-80: rgba(255, 255, 255, 0.8);
+  --ui-color-text-60: rgba(255, 255, 255, 0.6);
+  --ui-color-border-20: rgba(255, 255, 255, 0.2);
+  --ui-radius-8: 8px;
+  --ui-radius-12: 12px;
+  --ui-radius-16: 16px;
+  --ui-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --ui-shadow-2: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --ui-container-max: 1690px;
+  --ui-container-gutter: clamp(16px, 3vw, 24px);
+}
+
+.bonus-cabinet[data-v-4ec444f2] {
+  align-items: center;
+  background-color: #ffffff1f;
+  border-radius: 8px;
+  color: #fff;
+  display: flex;
+  gap: 13px;
+  height: 36px;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 5px 18px 5px 5px;
+  position: relative;
+  text-decoration: none;
+  transition: background-color 0.1s ease-in-out;
+}
+
+.bonus-cabinet[data-v-4ec444f2] > *:not(.background) {
+  position: relative;
+  z-index: 1;
+}
+
+.bonus-cabinet[data-v-4ec444f2]:hover {
+  background-color: #ffffff33;
+}
+
+.bonus-cabinet[data-v-4ec444f2]:active {
+  background-color: #ffffff1f;
+}
+
+.bonus-cabinet .background[data-v-4ec444f2] {
+  background: radial-gradient(164.23% 68.81% at 100% 100%, #feab4acc 0, #fe8b4a2e 72.4%, #fe4a4a00),
+    radial-gradient(203.92% 89.64% at 9.37% -19.79%, #fecf4acc 0, #fe9a4a2e 72.4%, #fe8b4a00), #503221;
+  height: 100%;
+  left: 0;
+  opacity: 1;
+  position: absolute;
+  top: 0;
+  transition: filter 0.1s ease-in-out;
+  width: 100%;
+  z-index: 0;
+}
+
+.bonus-cabinet .background[data-v-4ec444f2]:after,
+.bonus-cabinet .background[data-v-4ec444f2]:before {
+  background: linear-gradient(90deg, #fecf4a00 2%, #fecf4a 54.57%, #fecf4a00 99.99%);
+  border-radius: 0 50px 0 0;
+  content: "";
+  height: 1px;
+  position: absolute;
+  width: 100%;
+}
+
+.bonus-cabinet .background[data-v-4ec444f2]:before {
+  left: 0;
+  top: 0;
+}
+
+.bonus-cabinet .background[data-v-4ec444f2]:after {
+  bottom: 0;
+  right: 0;
+}
+
+.bonus-cabinet:hover .background[data-v-4ec444f2] {
+  filter: brightness(1.12) saturate(1.05);
+}
+
+.button-3d[data-v-c8c96dbe],
+.button-3d[data-v-c8c96dbe]:after {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+
+.button-3d__text[data-v-c8c96dbe] {
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.button-3d[data-v-c8c96dbe] {
+  align-items: center;
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  display: inline-block;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  position: relative;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.button-3d[data-v-c8c96dbe]:after {
+  bottom: 0;
+  content: "";
+  display: block;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  z-index: 0;
+}
+
+.button-3d__outer[data-v-c8c96dbe] {
+  display: block;
+  height: 100%;
+  position: relative;
+  transition: transform 0.1s ease-in-out;
+  width: 100%;
+  z-index: 1;
+}
+
+.button-3d__inner[data-v-c8c96dbe] {
+  height: 100%;
+  width: 100%;
+}
+
+.button-3d__inner[data-v-c8c96dbe],
+.button-3d__icon[data-v-c8c96dbe] {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+}
+
+.button-3d__icon[data-v-c8c96dbe] {
+  color: var(--color_white);
+  flex-shrink: 0;
+}
+
+.button-3d__icon[data-v-c8c96dbe] .icon {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+.button-3d__icon img[data-v-c8c96dbe] {
+  width: 80%;
+}
+
+.button-3d__text[data-v-c8c96dbe] {
+  color: var(--color_white);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-weight: 600;
+}
+
+.button-3d_center .button-3d__inner[data-v-c8c96dbe] {
+  justify-content: center;
+}
+
+.button-3d_left .button-3d__inner[data-v-c8c96dbe] {
+  justify-content: flex-start;
+}
+
+.button-3d_right .button-3d__inner[data-v-c8c96dbe] {
+  justify-content: flex-end;
+}
+
+.button-3d_loading[data-v-c8c96dbe] {
+  pointer-events: none;
+}
+
+.button-3d_loading .button-3d__icon[data-v-c8c96dbe],
+.button-3d_loading .button-3d__text[data-v-c8c96dbe],
+.button-3d_loading .button-3d__text_double[data-v-c8c96dbe] {
+  opacity: 0;
+}
+
+.button-3d[data-v-c8c96dbe]:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.button-3d_red.button-3d[data-v-c8c96dbe]:after {
+  background-color: #61001d;
+}
+
+.button-3d_red.button-3d .button-3d__outer[data-v-c8c96dbe] {
+  background: linear-gradient(1turn, #c4003b 0.8%, #fb1949);
+  box-shadow: 0 3px 16px #ff234180, inset 0 4px 3px #ffffff4d;
+}
+
+.button-3d_red.button-3d:hover .button-3d__outer[data-v-c8c96dbe] {
+  background: linear-gradient(3360deg, #db0a49 0.8%, #fb2b57);
+  box-shadow: 0 3px 20px #ff234199, inset 0 4px 4px #ffffff5e;
+}
+
+.button-3d_red.button-3d:active .button-3d__outer[data-v-c8c96dbe] {
+  background: linear-gradient(1turn, #c4003b 0.8%, #fb1949);
+  box-shadow: 0 3px 16px #ff234166, inset 0 3px 3px #ffffff4d;
+}
+
+.button-3d_blue.button-3d[data-v-c8c96dbe]:after {
+  background-color: #052a80;
+}
+
+.button-3d_blue.button-3d .button-3d__outer[data-v-c8c96dbe] {
+  background: linear-gradient(1turn, #0c5eff 0.8%, #1398f9);
+  box-shadow: 0 3px 16px rgba(34, 131, 246, 0.5), inset 0 4px 3px rgba(255, 255, 255, 0.35);
+}
+
+.button-3d_blue.button-3d:hover .button-3d__outer[data-v-c8c96dbe] {
+  background: linear-gradient(1turn, #1b6bff 0.8%, #24a3ff);
+  box-shadow: 0 3px 20px rgba(34, 131, 246, 0.65), inset 0 4px 4px rgba(255, 255, 255, 0.42);
+}
+
+.button-3d_blue.button-3d:active .button-3d__outer[data-v-c8c96dbe] {
+  background: linear-gradient(1turn, #0c5eff 0.8%, #1398f9);
+  box-shadow: 0 3px 16px rgba(34, 131, 246, 0.42), inset 0 3px 3px rgba(255, 255, 255, 0.35);
+}
+
+.button-3d_green.button-3d[data-v-c8c96dbe]:after {
+  background-color: #004e11;
+}
+
+.button-3d_green.button-3d .button-3d__outer[data-v-c8c96dbe] {
+  background: linear-gradient(1turn, #009420 0.8%, #1bb83d);
+  box-shadow: 0 2px 24px #1bb83d66, inset 0 3px 3px #ffffff4d;
+}
+
+.button-3d_green.button-3d:hover .button-3d__outer[data-v-c8c96dbe] {
+  background: linear-gradient(1turn, #01a825 0.8%, #27ce4b);
+  box-shadow: 0 3px 28px #1bb83d80, inset 0 4px 4px #ffffff5e;
+}
+
+.button-3d_green.button-3d:active .button-3d__outer[data-v-c8c96dbe] {
+  background: linear-gradient(1turn, #009420 0.8%, #1bb83d);
+  box-shadow: 0 2px 24px #1bb83d66, inset 0 3px 3px #ffffff4d;
+}
+
+.button-3d_sm.button-3d[data-v-c8c96dbe] {
+  padding-bottom: 3px;
+}
+
+.button-3d_sm.button-3d[data-v-c8c96dbe]:after {
+  border-radius: 8px;
+  height: 33px;
+}
+
+.button-3d_sm.button-3d .button-3d__outer[data-v-c8c96dbe] {
+  border-radius: 8px;
+}
+
+.button-3d_sm.button-3d:hover .button-3d__outer[data-v-c8c96dbe] {
+  transform: translateY(-2px);
+}
+
+.button-3d_sm.button-3d:active .button-3d__outer[data-v-c8c96dbe] {
+  transform: translateY(1px);
+}
+
+.button-3d_sm:not(.button-3d_only-icon) .button-3d__outer[data-v-c8c96dbe] {
+  padding: 6.5px 16px;
+}
+
+.button-3d_sm .button-3d__text[data-v-c8c96dbe] {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 20px;
+  margin-bottom: 0;
+  margin-top: 0;
+}
+
+@font-face {
+  font-display: swap;
+  font-family: Montserrat Variable;
+  font-style: normal;
+  font-weight: 100 900;
+  src: url("/cardx/images/montserrat-cyrillic-ext-wght-normal.CO5hGrJv.woff2") format("woff2-variations");
+  unicode-range: u+0460-052f, u+1c80-1c8a, u+20b4, u+2de0-2dff, u+a640-a69f, u+fe2e-fe2f;
+}
+
+@font-face {
+  font-display: swap;
+  font-family: Montserrat Variable;
+  font-style: normal;
+  font-weight: 100 900;
+  src: url("/cardx/images/montserrat-cyrillic-wght-normal.EAA9jha_.woff2") format("woff2-variations");
+  unicode-range: u+0301, u+0400-045f, u+0490-0491, u+04b0-04b1, u+2116;
+}
+
+@font-face {
+  font-display: swap;
+  font-family: Montserrat Variable;
+  font-style: normal;
+  font-weight: 100 900;
+  src: url("/cardx/images/montserrat-vietnamese-wght-normal.k7S-YeeD.woff2") format("woff2-variations");
+  unicode-range: u+0102-0103, u+0110-0111, u+0128-0129, u+0168-0169, u+01a0-01a1, u+01af-01b0,
+    u+0300-0301, u+0303-0304, u+0308-0309, u+0323, u+0329, u+1ea0-1ef9, u+20ab;
+}
+
+@font-face {
+  font-display: swap;
+  font-family: Montserrat Variable;
+  font-style: normal;
+  font-weight: 100 900;
+  src: url("/cardx/images/montserrat-latin-ext-wght-normal.BsZE-iaG.woff2") format("woff2-variations");
+  unicode-range: u+0100-02ba, u+02bd-02c5, u+02c7-02cc, u+02ce-02d7, u+02dd-02ff, u+0304,
+    u+0308, u+0329, u+1d00-1dbf, u+1e00-1e9f, u+1ef2-1eff, u+2020, u+20a0-20ab, u+20ad-20c0,
+    u+2113, u+2c60-2c7f, u+a720-a7ff;
+}
+
+@font-face {
+  font-display: swap;
+  font-family: Montserrat Variable;
+  font-style: normal;
+  font-weight: 100 900;
+  src: url("/cardx/images/montserrat-latin-wght-normal.l_AIctKy.woff2") format("woff2-variations");
+  unicode-range: u+00??, u+0131, u+0152-0153, u+02bb-02bc, u+02c6, u+02da, u+02dc, u+0304,
+    u+0308, u+0329, u+2000-206f, u+20ac, u+2122, u+2191, u+2193, u+2212, u+2215, u+feff, u+fffd;
+}
+
+/* ── 以下原本是 html／body 層級的規則，全部收進 .cardx-root（只影響 768 以上的 cardx 版面，手機端不碰）── */
+.cardx-root {
+  color-scheme: dark;
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-geist-mono), "Montserrat Variable", Montserrat, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.cardx-root :where(*) {
+  font-family: inherit !important;
+}
+.cardx-root * {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+.cardx-root a {
+  color: inherit;
+  text-decoration: none;
+}

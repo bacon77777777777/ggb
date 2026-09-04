@@ -1,0 +1,1101 @@
+.page {
+  --detail-gap: 12px;
+  max-width: none;
+  margin: 0;
+  padding: 20px 0 96px;
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 18px;
+}
+
+.breadcrumbs a {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+}
+
+.breadcrumbBack {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.breadcrumbBackIcon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.82);
+  flex: 0 0 auto;
+}
+
+.breadcrumbBackText {
+  color: rgba(255, 255, 255, 0.78);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.breadcrumbSep {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.breadcrumbStrong {
+  color: rgba(255, 255, 255, 0.96);
+  font-weight: 800;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--detail-gap);
+  align-items: stretch;
+}
+
+.mediaCol {
+  min-width: 0;
+}
+
+.mediaCard {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.mediaStage {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.mediaInner {
+  position: relative;
+  padding: 0;
+  display: grid;
+  justify-items: center;
+  row-gap: var(--detail-gap);
+}
+
+.mediaMain {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+  overflow: hidden;
+}
+
+.mediaImage {
+  object-fit: contain;
+  border-radius: 0;
+  filter: none;
+}
+
+.mediaThumbRow {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: var(--detail-gap);
+  overflow: visible;
+  scrollbar-width: none;
+}
+
+.mediaThumbRow::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.mediaThumbButton {
+  position: relative;
+  flex: 0 0 auto;
+  width: 64px;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  cursor: pointer;
+  padding: 0;
+}
+
+.mediaThumbButtonActive {
+  border-color: rgba(34, 131, 246, 0.7);
+  box-shadow: 0 0 0 2px rgba(34, 131, 246, 0.16);
+}
+
+.mediaThumbImage {
+  object-fit: cover;
+}
+
+.mediaHud {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 6px 8px;
+  border: 0.5px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px) saturate(180%) brightness(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(180%) brightness(1.1);
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.4), inset 0 -0.5px 0 rgba(0, 0, 0, 0.15),
+    inset 0 0 8px rgba(255, 255, 255, 0.06);
+}
+
+.mediaHudDivider {
+  width: 1px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.16);
+  margin: 0 2px;
+}
+
+.mediaHudButton {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mediaHudButton:hover {
+  color: rgba(255, 255, 255, 0.92);
+  transform: scale(1.06);
+}
+
+.infoCol {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding-top: 4px;
+  height: 100%;
+}
+
+.title {
+  font-size: 32px;
+  line-height: 1.15;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.96);
+  letter-spacing: -0.015em;
+}
+
+.ownerRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.ownerName {
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 700;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--detail-gap);
+}
+
+.statCard {
+  gap: 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 12px;
+  display: grid;
+  min-width: 0;
+}
+
+.statCardLink {
+  cursor: pointer;
+}
+
+.statCardLink:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.statValueRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.statArrow {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.62);
+  display: grid;
+  place-items: center;
+}
+
+.statLabel {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.statValue {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.priceCard {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.priceCardFill {
+  flex: 1 1 auto;
+}
+
+.priceCardTop {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.priceCardLabel {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.priceNow {
+  display: grid;
+  gap: 2px;
+}
+
+.packRecommend {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 131, 246, 0.25);
+  background: rgba(34, 131, 246, 0.12);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+
+.packRecSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.packRecHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.packRecTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.packRecTitle {
+  font-size: 13px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.packRecSubtitle {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+}
+
+@media (min-width: 1024px) and (max-width: 1324px) {
+  .packRecSection {
+    display: none;
+  }
+
+  .priceCardFill {
+    flex: 0 0 auto;
+  }
+
+  .priceCardFill .actionGrid {
+    margin-top: 12px;
+  }
+}
+
+.packRecViewAll {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.packRecRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  overflow: hidden;
+  padding-bottom: 2px;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.packRecCard {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+}
+
+.packRecCardInner {
+  position: relative;
+  height: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(23, 23, 23, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+.packRecCardInner::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 11px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.06) 55%, rgba(0, 0, 0, 0.2));
+  pointer-events: none;
+}
+
+.packRecCardBg {
+  position: absolute;
+  inset: -40px;
+  filter: blur(40px);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.packRecCardBgImg {
+  object-fit: cover;
+}
+
+.packRecCardLabel {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  right: 0;
+  font-size: 10px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+  z-index: 1;
+}
+
+.packRecCardPrice {
+  position: absolute;
+  top: 30px;
+  left: 0;
+  right: 0;
+  font-size: 16px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.96);
+  letter-spacing: -0.02em;
+  text-align: center;
+  z-index: 1;
+}
+
+.packRecCardIcon {
+  position: absolute;
+  left: 50%;
+  bottom: -22px;
+  transform: translateX(-50%);
+  width: 72%;
+  height: 72%;
+  z-index: 1;
+  filter: drop-shadow(0px 12px 28px rgba(0, 0, 0, 0.5));
+}
+
+.packRecCardIconImg {
+  object-fit: contain;
+}
+
+.priceCardValue {
+  margin-top: 2px;
+  font-size: 28px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  letter-spacing: -0.02em;
+}
+
+.priceChip {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.18);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.actionGrid {
+  display: grid;
+  grid-template-columns: 48px 48px 1fr;
+  gap: 10px;
+  margin-top: 12px;
+  align-items: stretch;
+}
+
+.priceCardFill .actionGrid {
+  margin-top: auto;
+}
+
+.buyButton3d {
+  width: 100%;
+  display: block;
+}
+
+.buyButton3d.button-3d[data-v-c8c96dbe]:after {
+  height: 48px;
+  border-radius: 12px;
+}
+
+.buyButton3d.button-3d .button-3d__outer[data-v-c8c96dbe] {
+  width: 100%;
+  border-radius: 12px;
+}
+
+.primaryButton {
+  appearance: none;
+  border: 0;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.92));
+  color: rgba(0, 0, 0, 0.92);
+  font-weight: 800;
+  border-radius: 12px;
+  height: 48px;
+  padding: 0 18px;
+  cursor: pointer;
+}
+
+.primaryButton:hover {
+  filter: brightness(1.08);
+  transform: scale(1.01);
+}
+
+.secondaryButton {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 800;
+  border-radius: 12px;
+  height: 48px;
+  padding: 0 18px;
+  cursor: pointer;
+}
+
+.secondaryButton:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.chatIcon {
+  display: none;
+  width: 20px;
+  height: 20px;
+}
+
+.chatText {
+  display: inline;
+}
+
+.mobileActionBar {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(17, 25, 35, 0.92);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 60;
+}
+
+.mobileActionGrid {
+  display: grid;
+  grid-template-columns: 48px 48px 1fr;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.midSection {
+  margin-top: 16px;
+}
+
+.panelGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--detail-gap);
+}
+
+.toggle {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.12);
+  color: rgba(255, 255, 255, 0.68);
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.toggleActive {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.panelCard {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.panelHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.panelIcon {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.panelTitleRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.panelTitle {
+  font-size: 14px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.92);
+  white-space: nowrap;
+}
+
+.panelHint {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+
+.panelToggles {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panelBody {
+  padding: 12px 16px 16px;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.panelKpiRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.panelKpiValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.panelKpiChange {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.panelKpiChangeUp {
+  color: rgba(46, 204, 113, 0.95);
+  background: rgba(46, 204, 113, 0.12);
+  border: 1px solid rgba(46, 204, 113, 0.22);
+}
+
+.panelKpiChangeDown {
+  color: rgba(235, 87, 87, 0.95);
+  background: rgba(235, 87, 87, 0.12);
+  border: 1px solid rgba(235, 87, 87, 0.22);
+}
+
+.panelKpiSub {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.52);
+}
+
+.panelChartWrap {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.16);
+  padding: 12px;
+  flex: 1 1 auto;
+  display: grid;
+}
+
+.panelChart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.priceChartWrap {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.16);
+  flex: 1 1 auto;
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.priceChart {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.priceTooltip {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(17, 25, 35, 0.92);
+  padding: 8px 10px;
+  min-width: 140px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.priceTooltipValue {
+  font-size: 14px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.96);
+  letter-spacing: -0.01em;
+}
+
+.priceTooltipTime {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.panelBodyCenter {
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.comingSoonCard {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 0.5px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.26);
+  padding: 18px 20px;
+  text-align: center;
+  min-width: min(420px, 100%);
+}
+
+.comingSoonTitle {
+  font-size: 14px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.comingSoonSub {
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.52);
+}
+
+.panelList {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.panelListRow {
+  display: grid;
+  grid-template-columns: 92px 1fr 120px;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.panelListRow:first-child {
+  border-top: none;
+}
+
+.panelListLeft {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.panelListMid {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.panelListRight {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.56);
+  text-align: right;
+}
+
+.section {
+  margin-top: 26px;
+}
+
+.sectionHeader {
+  font-size: 14px;
+  font-weight: 950;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.02em;
+  margin-bottom: 12px;
+}
+
+.itemDetailsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.itemDetailCard {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 12px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.itemDetailLabel {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.itemDetailValue {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sectionHeaderRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.sectionLink {
+  color: rgba(255, 255, 255, 0.76);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.sectionLink:hover {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.relatedGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.relatedCard {
+  text-decoration: none;
+  color: inherit;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(17, 25, 35, 0.76);
+  overflow: hidden;
+  display: grid;
+}
+
+.relatedCard:hover {
+  border-color: rgba(34, 131, 246, 0.28);
+}
+
+.relatedMedia {
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  background: radial-gradient(circle at 20% 10%, rgba(237, 29, 73, 0.12), rgba(255, 255, 255, 0.02) 55%),
+    rgba(0, 0, 0, 0.18);
+}
+
+.relatedImage {
+  width: 100%;
+  height: auto;
+  max-width: 190px;
+  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.55));
+}
+
+.relatedBody {
+  padding: 12px 12px 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.relatedTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.relatedPriceRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.relatedPrice {
+  font-size: 15px;
+  font-weight: 950;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.relatedFmv {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+@media (max-width: 1023px) {
+  .page {
+    padding-bottom: 180px;
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+    gap: var(--detail-gap);
+  }
+
+  .mediaInner {
+    padding: 0;
+  }
+
+  .title {
+    font-size: 28px;
+  }
+
+  .priceCardValue {
+    font-size: 26px;
+  }
+
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .panelGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .panelHeader {
+    padding-inline: 16px;
+  }
+
+  .panelListRow {
+    grid-template-columns: 86px 1fr 110px;
+    padding-inline: 14px;
+  }
+
+  .comingSoonCard {
+    padding: 16px 16px;
+  }
+
+  .priceCard .actionGrid {
+    display: none;
+  }
+
+  .mobileActionBar {
+    display: block;
+  }
+
+  .chatIcon {
+    display: block;
+  }
+
+  .chatText {
+    display: none;
+  }
+
+  .secondaryButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .mobileActionBar .secondaryButton {
+    width: 48px;
+    min-width: 48px;
+  }
+}
+
+@media (min-width: 640px) {
+  .mediaInner {
+    padding: 0;
+  }
+
+  .actionGrid {
+    grid-template-columns: 48px 48px 1fr;
+  }
+
+  .itemDetailsGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .relatedGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .hero {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--detail-gap);
+  }
+
+  .panelGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--detail-gap);
+  }
+
+  .panelCard {
+    height: 400px;
+  }
+
+  .itemDetailsGrid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .relatedGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

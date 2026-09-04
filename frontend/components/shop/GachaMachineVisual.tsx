@@ -17,6 +17,8 @@ interface GachaMachineVisualProps {
   pushSoundMode?: 'manual' | 'auto';
   hasHighTierPending?: boolean;
   disableButtons?: boolean;
+  /** 電腦版舞台：三顆按鈕改畫在舞台底部，機台上的不畫（老闆 2026-09-04） */
+  hideButtons?: boolean;
 }
 
 const EGG_IMAGES = [asset('/images/gacha/begg.webp'), asset('/images/gacha/gegg.webp'), asset('/images/gacha/pegg.webp')];
@@ -49,6 +51,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
     pushSoundMode = 'auto',
     hasHighTierPending,
     disableButtons = false,
+    hideButtons = false,
   } = props;
   const createInitialEggs = (): Egg[] => {
     const count = 15;
@@ -475,6 +478,8 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
         </div>
       </div>
 
+      {!hideButtons && (
+        <>
       <ImageButton
         src={asset("/images/gacha/btn2.webp")}
         alt="推一下"
@@ -530,6 +535,8 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
           if (!isSoldOut && !disableButtons && onTrial) onTrial();
         }}
       />
+        </>
+      )}
 
       <div className="absolute inset-0 pointer-events-none">
         <Image

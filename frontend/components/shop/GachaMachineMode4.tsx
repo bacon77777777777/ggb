@@ -19,6 +19,8 @@ interface GachaMachineMode4Props {
   pushSoundMode?: 'manual' | 'auto';
   hasHighTierPending?: boolean;
   disableButtons?: boolean;
+  /** 電腦版舞台：三顆按鈕改畫在舞台底部，機台上的不畫（老闆 2026-09-04） */
+  hideButtons?: boolean;
 }
 
 const EGG_IMAGES = [asset('/images/gacha/begg.webp'), asset('/images/gacha/gegg.webp'), asset('/images/gacha/pegg.webp')];
@@ -50,6 +52,7 @@ export function GachaMachineMode4({
   pushSoundMode = 'auto',
   hasHighTierPending,
   disableButtons = false,
+  hideButtons = false,
 }: GachaMachineMode4Props) {
   const createInitialEggs = (): Egg[] => {
     const count = 15;
@@ -314,6 +317,8 @@ export function GachaMachineMode4({
         </div>
       </div>
 
+      {!hideButtons && (
+        <>
       {/* Buttons */}
       <ImageButton
         src={asset("/images/gacha/mode4/btn2.webp")}
@@ -346,6 +351,8 @@ export function GachaMachineMode4({
         style={{ left: '69.6%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
         onClick={() => { if (!isSoldOut && !disableButtons && onTrial) onTrial(); }}
       />
+        </>
+      )}
 
       {isSoldOut && (
         <div

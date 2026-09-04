@@ -1,5 +1,8 @@
 'use client';
 
+import CardxPage from '@/components/cardx/CardxPage';
+import { useMinWidth } from '@/lib/useMinWidth';
+
 import '../sell/market.css';
 import './exchange.css';
 
@@ -61,7 +64,7 @@ const FALLBACK = asset('/images/item_defaulet.webp');
 const HISTORY_KEY = 'ggb:market:searches';
 type Tab = 'market' | 'mine' | 'deals';
 
-export default function MarketPage() {
+function MarketPageMobile() {
   useFeatureGate('market');
   // 頂欄是主題色紅、延伸進狀態列 → 動態島那排字要白的（App 內才有作用）；
   // theme-color 取 .hdr 漸層（#ff7b00→#ff2d46）的中間色
@@ -733,4 +736,14 @@ export default function MarketPage() {
       <Toast text={toastText} />
     </div>
   );
+}
+
+/**
+ * 768 以下：我們原本的手機版（MarketPageMobile，一字沒動）；
+ * 768 以上：cardx 的頁面（老闆 2026-09-04，整套原封不動搬）。量到寬度才掛其中一棵（手機那棵有 effect，藏著也會跑）。
+ */
+export default function MarketPage() {
+  const isMd = useMinWidth(768);
+  if (isMd === null) return null;
+  return isMd ? <CardxPage page="market" /> : <MarketPageMobile />;
 }

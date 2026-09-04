@@ -27,6 +27,8 @@ interface PurchaseConfirmationModalProps {
   isProcessing: boolean;
   onConfirm: (quantity: number, options: { usePoints: boolean, couponId?: string }) => void;
   onTopUp?: () => void;
+  /** 開啟時的預設數量：電腦版舞台上先用加減選好、帶進來（老闆 2026-09-04） */
+  initialQuantity?: number;
 }
 
 export function PurchaseConfirmationModal({
@@ -37,9 +39,13 @@ export function PurchaseConfirmationModal({
   userPoints,
   isProcessing,
   onConfirm,
-  onTopUp
+  onTopUp,
+  initialQuantity,
 }: PurchaseConfirmationModalProps) {
   const [quantity, setQuantity] = useState(1);
+  // 用 ref 讀：下面的重置 effect 只能相依 isOpen（見那段註解），不能把它加進 deps
+  const initialQtyRef = useRef(initialQuantity);
+  initialQtyRef.current = initialQuantity;
   const { showAlert } = useAlert();
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const router = useRouter();
@@ -85,7 +91,7 @@ export function PurchaseConfirmationModal({
   useEffect(() => {
     if (!isOpen) return;
     setView('confirm');
-    setQuantity(1);
+    setQuantity(Math.max(1, Math.floor(initialQtyRef.current ?? 1)));
     setLockedQuantity(null);
   }, [isOpen]);
 

@@ -1,0 +1,65 @@
+.card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.media {
+  aspect-ratio: 16 / 9;
+  background: radial-gradient(
+    circle at 70% 30%,
+    rgba(29, 181, 237, 0.22),
+    rgba(255, 255, 255, 0.02) 55%,
+    rgba(255, 255, 255, 0.01)
+  );
+  display: grid;
+  place-items: center;
+}
+
+.image {
+  width: 55%;
+  height: auto;
+  opacity: 0.92;
+  filter: drop-shadow(0 12px 30px rgba(0, 0, 0, 0.45));
+}
+
+.body {
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.title {
+  font-size: 18px;
+  line-height: 1.25;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.95);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.price {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.tag {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.15);
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 800;
+  font-size: 12px;
+}

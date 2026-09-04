@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { categoryState, CATEGORY_LABELS } from '@/lib/categoryFlags';
 import { useDesktopShell } from '@/contexts/DesktopShellContext';
+import { isCardxRoute } from '@/lib/cardxRoutes';
 import {
   HOME_TABS_EVENT, SET_HOME_TAB_EVENT, RESET_HOME_EVENT,
   SIDEBAR_WIDTH, SIDEBAR_COLLAPSED_WIDTH, homeTabHref, type HomeTabsDetail,
@@ -139,6 +140,9 @@ export default function DesktopSidebar() {
 
   // 一般路由的 prefetch：首頁那顆跟分類共用 <Link>，不用另外處理
   void router;
+
+  // 768 以上換 cardx 的頁面時側欄是它的 AppShell 的（lib/cardxRoutes）
+  if (isCardxRoute(pathname)) return null;
 
   return (
     <aside

@@ -15,16 +15,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { useRouter } from 'next/navigation';
 import { PurchaseConfirmationModal } from '@/components/shop/PurchaseConfirmationModal';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ChevronLeft, BookOpen, Heart, Share2, Minus, Plus } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import PinchZoomImage from '@/components/ui/PinchZoomImage';
 import { SoundToggle } from '@/components/ui/SoundToggle';
 import { trackEvent } from '@/lib/trackEvent';
-import ProductBadge from '@/components/ui/ProductBadge';
+import { homeTabHref } from '@/lib/desktopShell';
 import { hapticHeavy, hapticLight, hapticMedium, hapticNotify } from '@/lib/haptics';
 import { asset } from '@/lib/asset';
 import ViewerPill from '@/components/product/ViewerPill';
 import { MachineLoadingOverlay } from '@/components/ui/MachineLoadingOverlay';
+import { cn } from '@/lib/utils';
+import { ProductStage, StageButton } from '@/components/shop/desktop/ProductStage';
+import { resolveProductBackUrl } from '@/lib/productNav';
+import { useProductFollow } from '@/hooks/useProductFollow';
 
 interface GachaProductDetailProps {
   product: Database['public']['Tables']['products']['Row'];
@@ -35,8 +40,20 @@ interface GachaProductDetailProps {
   machineLoading?: boolean;
 }
 
+/** 右側面板的 48px 方鈕（規則／收藏／分享）—— cardx 的 secondaryButton 改亮色 */
+const panelSquareBtn = 'flex h-12 w-12 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-700 transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800';
+
 /** 機台本身不畫按鈕的主題 —— 推一下／立即轉蛋／試試看改走頁面底部操作欄 */
 const BUTTONLESS_THEMES = ['gacha_mode2', 'gacha_mode5']
+
+/**
+ * 舞台標題上方的小標（packs 的「CARDS FROM」）：分類名。
+ * 舞台底色不再依機台主題換：老闆 2026-09-04 看了 packs 之後要「介面一模一樣」，
+ * 一律 packs 的紫色（`ProductStage` 的 `STAGE_BACKGROUND`）。
+ */
+const TYPE_LABEL: Record<string, string> = {
+  gacha: '轉蛋', blindbox: '盒玩', ichiban: '一番賞', card: '抽卡', custom: '自製賞',
+}
 
 const MACHINE_COMPONENTS: Record<string, React.ComponentType<React.ComponentProps<typeof GachaMachineVisual>>> = {
   gacha_classic: GachaMachineVisual,
@@ -56,7 +73,17 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
 
   const [scale, setScale] = useState(1);
   const [isMobile, setIsMobile] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(false);
+  /*
+   * 電腦版（≥ 1024）與手機版是兩棵不同的樹，只掛其中一棵 —— 以前是兩棵都掛、用 CSS 藏一棵，
+   * 機台（含物理模擬與圖片）等於載兩份。初值直接看視窗寬度：這個元件只在客戶端拿到商品資料後
+   * 才掛上，沒有 SSR 對不上的問題。
+   */
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
+  /**
+   * 平板（768–1023，老闆 2026-09-04）：機台區改成滿版正方形舞台，底下照手機的單欄往下排，
+   * 品項一排四個。768 以下一字不動。
+   */
+  const [isTablet, setIsTablet] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 768 && window.innerWidth < 1024);
 
   useEffect(() => {
     const BASE = 375;
@@ -67,6 +94,7 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
       const isDesk = w >= 1024;
       setIsMobile(isMob);
       setIsDesktop(isDesk);
+      setIsTablet(!isMob && !isDesk);
       if (isDesk) {
         // 左欄約 4/12 of (min(w,1280)-16px padding - 24px gap)
         const colW = Math.floor((Math.min(w, 1280) - 40) * 4 / 12);
@@ -95,6 +123,30 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
   // 商品圖預設顯示（老闆指定），點一下收起看蛋箱
   const [isEggBoxImageMode, setIsEggBoxImageMode] = useState(true);
   const [forceGoldEgg, setForceGoldEgg] = useState(false);
+
+  // ── 電腦版舞台（老闆 2026-09-04：照 packs.com，返回／規則／收藏／分享／數量都在框內）──
+  const [desktopQty, setDesktopQty] = useState(1);
+  const maxQty = Math.max(1, Math.min(20, typeof product.remaining === 'number' ? product.remaining : 20));
+  useEffect(() => { setDesktopQty(q => Math.min(Math.max(1, q), maxQty)); }, [maxQty]);
+  const { followed, toggle: toggleFollow } = useProductFollow(product.id, isDesktop);
+  /* 右側面板的「廠商」：跟 GachaCollectionList 一樣照 supplier_id 查名字 */
+  const [supplierName, setSupplierName] = useState<string | null>(null);
+  useEffect(() => {
+    const supplierId = (product as any).supplier_id;
+    if (!supplierId || !isDesktop) return;
+    let alive = true;
+    supabase.from('suppliers').select('name').eq('id', supplierId).maybeSingle()
+      .then(({ data }) => { if (alive && data?.name) setSupplierName(data.name as string); });
+    return () => { alive = false; };
+  }, [(product as any).supplier_id, supabase, isDesktop]);
+  const handleDesktopShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      showToast('連結已複製', 'success');
+    } catch {
+      showToast('複製失敗，請手動複製網址', 'error');
+    }
+  };
 
   const animTimersRef = useRef<number[]>([]);
   const clearAnimTimers = () => {
@@ -405,11 +457,12 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
     setMachineState('result');
   };
 
-  // 機台內容（手機/桌面共用 JSX 片段，由父層控制 scale 與容器）
-  const renderMachineInner = () => (
+  // 機台內容（手機/桌面共用 JSX 片段，由父層控制 scale 與容器）。
+  // 電腦版舞台自己算 scale、原點改左上（容器就是縮放後的尺寸）、機台上的按鈕不畫
+  const renderMachineInner = (opts: { scale?: number; origin?: 'top center' | 'top left'; hideButtons?: boolean } = {}) => (
     <div
       className="relative"
-      style={{ width: 375, transform: `scale(${scale})`, transformOrigin: 'top center' }}
+      style={{ width: 375, transform: `scale(${opts.scale ?? scale})`, transformOrigin: opts.origin ?? 'top center' }}
     >
       <div className="w-full max-w-[750px] mx-auto">
         <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
@@ -428,6 +481,7 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
                 pushSoundMode={pushSoundMode}
                 hasHighTierPending={forceGoldEgg || hasHighTierPending}
                 disableButtons={machineDisabled}
+                hideButtons={opts.hideButtons}
               />
             );
           })()}
@@ -468,9 +522,205 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
     </div>
   );
 
+  const stageDisabled = isSoldOut || machineDisabled;
+  const gcoin = <Image src={asset('/images/gcoin.webp')} alt="G" width={16} height={16} className="h-4 w-4 shrink-0" unoptimized />;
+
+  /*
+   * 中獎彈窗與購買彈窗兩棵樹共用。電腦版要當 overlays 塞進舞台**裡面**：
+   * 全螢幕只會畫 fullscreen 元素的子樹，掛在外面的 fixed 彈窗會整個看不到。
+   */
+  const modals = (
+    <>
+      <GachaResultModal isOpen={showResultModal} onClose={handleResultClose} results={wonPrizes} hideTicketNumber />
+      <PurchaseConfirmationModal
+        isOpen={isPurchaseModalOpen}
+        onClose={() => !isProcessing && setIsPurchaseModalOpen(false)}
+        onConfirm={handlePurchaseConfirm}
+        product={product}
+        userTokens={user?.tokens || 0}
+        userPoints={user?.points || 0}
+        isProcessing={isProcessing}
+        onTopUp={() => router.push('/topup')}
+        initialQuantity={isDesktop ? desktopQty : undefined}
+      />
+    </>
+  );
+
+  /* ── 舞台（≥1024）：紫色正方形，只放「玩」的東西（老闆 2026-09-04：左格保留紫色舞台）——
+     標題／價格／數量／立即轉蛋都在右側面板，這裡只剩推一下、試試看、音效 ── */
+  const renderStage = () => (
+      <ProductStage
+        machineWidth={375}
+        machineHeight={375 * 932 / 750}
+        renderMachine={(s) => renderMachineInner({ scale: s, origin: 'top left', hideButtons: true })}
+        bottomLeft={<SoundToggle variant="glass" />}
+        controls={
+          <div className="flex items-center gap-2.5">
+            <StageButton variant="glass" onClick={handlePush} disabled={stageDisabled}>推一下</StageButton>
+            <StageButton variant="glass" onClick={handleTrial} disabled={stageDisabled}>試試看</StageButton>
+          </div>
+        }
+        overlays={modals}
+      />
+  );
+
+  const typeLabel = TYPE_LABEL[product.type] ?? '轉蛋';
+  const totalPrice = product.price * desktopQty;
+
+  /* ── 右側面板（照 cardx `/packs/pack_001` 的 infoCol／priceCard，改亮色）：
+     分類小標、商品名 32px、廠商；卡片裡 單抽價、剩餘、幾人在看、數量、規則／收藏／分享＋立即轉蛋 ── */
+  const renderPanel = () => (
+    <div className="flex flex-col gap-3 pt-1">
+      <div className="text-[13px] font-bold uppercase tracking-[0.12em] text-neutral-500">{typeLabel}</div>
+      <h1 className="text-[32px] font-bold leading-[1.15] tracking-[-0.015em] text-neutral-900 dark:text-white">{product.name}</h1>
+      {supplierName && (
+        <div className="flex items-center gap-2 text-[14px] text-neutral-500">
+          <span>廠商</span>
+          <span className="font-bold text-neutral-900 dark:text-white">{supplierName}</span>
+        </div>
+      )}
+      <div className="mt-1 flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="grid gap-0.5">
+          <div className="text-[14px] text-neutral-500">單抽</div>
+          <div className="flex items-end gap-1.5">
+            <Image src={asset('/images/gcoin.webp')} alt="G" width={22} height={22} className="mb-1 h-[22px] w-[22px] shrink-0" unoptimized />
+            <span className="font-amount text-[28px] font-black leading-none tracking-[-0.02em] text-amount">{product.price.toLocaleString()}</span>
+            <span className="mb-0.5 text-[14px] text-neutral-400">/ 抽</span>
+          </div>
+        </div>
+        {typeof product.remaining === 'number' && (
+          <div className="flex items-center justify-between text-[14px]">
+            <span className="text-neutral-500">剩餘</span>
+            <span className="font-amount font-bold text-neutral-900 dark:text-white">
+              {product.remaining.toLocaleString()}
+              {typeof product.total_count === 'number' && product.total_count > 0 && (
+                <span className="text-neutral-400"> / {product.total_count.toLocaleString()}</span>
+              )}
+            </span>
+          </div>
+        )}
+        {(product as any).is_preorder && (
+          <div className="flex items-center justify-between text-[14px]">
+            <span className="text-neutral-500">預購</span>
+            <span className="font-bold text-yellow-700">
+              預計可配送 {(product as any).preorder_available_at
+                ? new Date((product as any).preorder_available_at).toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })
+                : '待公布'}
+            </span>
+          </div>
+        )}
+        <ViewerPill
+          productId={product.id}
+          inline
+          render={(n) => (
+            <div className="flex items-center gap-2 text-[14px] text-neutral-500">
+              <span className="relative flex h-[7px] w-[7px] items-center justify-center">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-red opacity-75" />
+                <span className="relative inline-flex h-[7px] w-[7px] rounded-full bg-accent-red" />
+              </span>
+              <span className="font-amount font-bold text-neutral-900 dark:text-white">{n}</span> 人正在看
+            </div>
+          )}
+        />
+        <div className="flex items-center justify-between border-t border-neutral-100 pt-3 text-[14px] dark:border-neutral-800">
+          <span className="text-neutral-500">數量</span>
+          <div className="inline-flex h-10 items-center rounded-xl bg-neutral-100 dark:bg-neutral-800">
+            <button type="button" aria-label="減少數量" disabled={stageDisabled || desktopQty <= 1}
+              onClick={() => setDesktopQty((q) => Math.max(1, q - 1))}
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-neutral-700 transition-colors hover:bg-neutral-200 disabled:opacity-40 disabled:hover:bg-transparent dark:text-neutral-200">
+              <Minus className="h-4 w-4 stroke-[2.5]" />
+            </button>
+            <div className="w-10 text-center font-amount text-[18px] font-black tabular-nums text-neutral-900 dark:text-white">{desktopQty}</div>
+            <button type="button" aria-label="增加數量" disabled={stageDisabled || desktopQty >= maxQty}
+              onClick={() => setDesktopQty((q) => Math.min(maxQty, q + 1))}
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-neutral-700 transition-colors hover:bg-neutral-200 disabled:opacity-40 disabled:hover:bg-transparent dark:text-neutral-200">
+              <Plus className="h-4 w-4 stroke-[2.5]" />
+            </button>
+          </div>
+        </div>
+        {/* 規則／收藏／分享三顆 48px 方鈕＋主鈕（cardx 的 actionGrid：48px 48px 1fr、間距 10） */}
+        <div className="mt-1 grid grid-cols-[48px_48px_48px_1fr] gap-2.5">
+          <Link href={`/${product.type}/rules`} aria-label="規則" title="規則" className={panelSquareBtn}>
+            <BookOpen className="h-[22px] w-[22px] stroke-[2]" />
+          </Link>
+          <button type="button" aria-label={followed ? '取消收藏' : '收藏'} title={followed ? '取消收藏' : '收藏'} aria-pressed={followed}
+            onClick={() => void toggleFollow()}
+            className={cn(panelSquareBtn, followed && 'border-accent-red/50 bg-accent-red/10 text-accent-red hover:bg-accent-red/15')}>
+            <Heart className={cn('h-[22px] w-[22px] stroke-[2]', followed && 'fill-current')} />
+          </button>
+          <button type="button" aria-label="分享" title="分享" onClick={handleDesktopShare} className={panelSquareBtn}>
+            <Share2 className="h-[22px] w-[22px] stroke-[2]" />
+          </button>
+          {/* 主鈕：cardx 的 button-3d（漸層＋內側高光＋底下 3px 厚度），顏色換成品牌紅 */}
+          <button
+            type="button"
+            onClick={handlePurchaseClick}
+            disabled={stageDisabled}
+            className="relative flex h-12 items-center justify-center gap-1.5 rounded-xl text-[15px] font-black text-white transition-transform hover:-translate-y-px active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+            style={{
+              background: 'linear-gradient(360deg, #c4003b 0.8%, #fb1949)',
+              boxShadow: '0 3px 0 0 #61001d, 0 6px 16px rgba(255,35,65,0.35), inset 0 4px 3px rgba(255,255,255,0.3)',
+            }}
+          >
+            {isSoldOut ? '已完抽' : (
+              <>
+                立即轉蛋
+                {gcoin}
+                <span className="font-amount text-[17px]">{totalPrice.toLocaleString()}</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  /* ── 電腦版（≥1024）：照 cardx 的 /packs/pack_001（老闆 2026-09-04）——
+     麵包屑 → 左欄：舞台 → 品項總覽／商品資訊／猜你喜歡；右欄：sticky 面板。
+     兩欄各半、間距 16（cardx 在 1920 是 812／812）。頂部導覽列跟首頁同一條（Navbar 那邊處理） ── */
+  const renderDesktop = () => (
+    <div className="pb-16">
+      {/* 不限最大寬（cardx 也沒限）：1920 時兩欄各 812，舞台才夠大 */}
+      <div className="px-6 pt-5">
+        {/* 麵包屑（老闆 2026-09-04 指定加）：‹ 首頁 / 轉蛋 / 商品名，照 cardx 的 breadcrumbs（13px、返回小方鈕 22px） */}
+        <nav aria-label="breadcrumb" className="mb-[18px] flex min-w-0 items-center gap-2.5 text-[13px] text-neutral-500">
+          <button
+            type="button"
+            aria-label="返回"
+            onClick={() => router.push(resolveProductBackUrl())}
+            className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-[8px] border border-neutral-200 bg-white text-neutral-700 transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
+          >
+            <ChevronLeft className="h-4 w-4 stroke-[2]" />
+          </button>
+          <Link href="/" className="shrink-0 text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-300">首頁</Link>
+          <span className="text-neutral-300 dark:text-neutral-600">/</span>
+          <Link href={homeTabHref(product.type)} className="shrink-0 text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-300">{typeLabel}</Link>
+          <span className="text-neutral-300 dark:text-neutral-600">/</span>
+          <span className="truncate font-extrabold text-neutral-900 dark:text-white">{product.name}</span>
+        </nav>
+
+        {/* 不用 items-start：右格要跟左欄一樣高，裡面的 sticky 才有空間黏住 */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="min-w-0">
+            {renderStage()}
+            <div className="mt-6">
+              <GachaCollectionList variant="desktop" productId={product.id} product={product} prizes={prizes} refreshKey={collectionRefreshKey} />
+            </div>
+          </div>
+          <div className="min-w-0">
+            <div className="sticky top-[73px]">
+              {renderPanel()}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen pt-[calc(3.5rem+env(safe-area-inset-top))] md:pt-0 bg-neutral-50 dark:bg-neutral-950">
-
+      {isDesktop ? renderDesktop() : (
+        <>
       {/* ── 手機/平板（< 1024px）：原始直式佈局，完全不動 ── */}
       <div className="block lg:hidden overflow-x-hidden pb-32">
         <div
@@ -484,74 +734,6 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
         </div>
         <div className="w-full max-w-[560px] mx-auto px-2 pb-2 mt-2">
           <GachaCollectionList productId={product.id} product={product} prizes={prizes} refreshKey={collectionRefreshKey} />
-        </div>
-      </div>
-
-      {/* ── 桌面（≥ 1024px）：左右分欄 ── */}
-      <div className="hidden lg:block pb-12">
-        <div className="max-w-7xl mx-auto px-2 pt-20 pb-6">
-          <div className="grid grid-cols-12 gap-6 items-start">
-
-            {/* 左欄：機台 + 資訊（sticky） */}
-            <div className="col-span-4 sticky top-20">
-              <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 overflow-hidden">
-                {/* 機台：明確高度 = 視覺高度，防止 overflow-hidden 切掉 */}
-                <div
-                  className="relative w-full overflow-hidden flex justify-center"
-                  style={{ height: Math.round(scale * 375 * 932 / 750) }}
-                >
-                  {renderMachineInner()}
-                  <SoundToggle className="absolute top-3 right-3 z-30" />
-                </div>
-
-                {/* 商品名稱 + 價格 + 剩餘 */}
-                <div className="p-5 space-y-3">
-                  <h1 className="text-lg font-black text-neutral-900 dark:text-neutral-50 leading-tight tracking-tight break-all">
-                    <span className="inline-block align-middle mr-2">
-                      <ProductBadge type={product.type as 'gacha' | 'blindbox' | 'ichiban' | 'card' | 'custom'} className="h-5 px-1.5 text-[10px]" />
-                    </span>
-                    <span className="align-middle">{product.name}</span>
-                  </h1>
-
-                  {(product as any).is_preorder && (
-                    <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-xl bg-yellow-50 text-yellow-700 border border-yellow-200">
-                      <span className="text-[11px] font-black">預購商品</span>
-                      <span className="text-[11px] font-bold">
-                        預計可配送日 {(product as any).preorder_available_at
-                          ? new Date((product as any).preorder_available_at).toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })
-                          : '待公布'}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex items-end justify-between gap-2 pb-4 border-b border-neutral-50 dark:border-neutral-800">
-                    <div className="flex items-baseline gap-2">
-                      <Image src={asset("/images/gcoin.webp")} alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-4xl font-black text-accent-red font-amount tracking-tighter leading-none">
-                          {product.price.toLocaleString()}
-                        </span>
-                        <span className="text-sm text-neutral-400 font-black uppercase tracking-widest">/ 抽</span>
-                      </div>
-                    </div>
-                    {typeof product.remaining === 'number' && (
-                      <div className="text-right shrink-0">
-                        <div className="text-[11px] text-neutral-400 font-bold">剩餘</div>
-                        <div className="text-xl font-black text-neutral-900 dark:text-white font-amount leading-none">
-                          {product.remaining.toLocaleString()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 右欄：品項列表 */}
-            <div className="col-span-8">
-              <GachaCollectionList productId={product.id} product={product} prizes={prizes} refreshKey={collectionRefreshKey} />
-            </div>
-          </div>
         </div>
       </div>
 
@@ -603,19 +785,11 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
       {/* 「N 人正在看」（老闆 2026-08-31：轉蛋與盒玩也要）。
           放在 BUTTONLESS_THEMES 的條件外面 —— 只有 mode5 有底部操作欄，
           其他主題的按鈕畫在機台上，那時膠囊會自己改貼畫面底 */}
-      <ViewerPill productId={product.id} />
 
-      <GachaResultModal isOpen={showResultModal} onClose={handleResultClose} results={wonPrizes} hideTicketNumber />
-      <PurchaseConfirmationModal
-        isOpen={isPurchaseModalOpen}
-        onClose={() => !isProcessing && setIsPurchaseModalOpen(false)}
-        onConfirm={handlePurchaseConfirm}
-        product={product}
-        userTokens={user?.tokens || 0}
-        userPoints={user?.points || 0}
-        isProcessing={isProcessing}
-        onTopUp={() => router.push('/topup')}
-      />
+          <ViewerPill productId={product.id} />
+          {modals}
+        </>
+      )}
     </div>
   );
 }

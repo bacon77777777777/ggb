@@ -4,6 +4,32 @@
 
 ---
 
+## v2026.09.04i｜2026-09-04｜768 以上整套換成 cardx 的 UI（原封不動搬，含英文字型）；768 以下手機端一字不動
+
+老闆 2026-09-04 晚上定案：不重刻了，把 `/Users/bacon/cardx/web` 的 UI **原封不動**搬過來（暗色系沒關係），
+768 以上全部用它，先看 UI 跟 RWD，缺什麼多什麼他再增減；**768 以下手機端完全不動**。
+
+**搬法（`frontend/cardx/`）**
+- 複製 cardx 的 `components/`、`lib/`、26 個頁面元件與 CSS Modules；`@/…` 的 import 改成 `@/cardx/…`；
+  HomeClient 的 SCSS 用 sass 編成 CSS（不在 frontend 裝 sass）；資產只搬用到的（placeholder.svg、一張 figma svg、
+  Montserrat woff2）到 `public/cardx/`，路徑跟著改。
+- 它的 `globals.css` 照搬，只把 html／body／:root 層級的規則收進 `.cardx-root`，所以只管 cardx 那棵樹；
+  SVG 圖示集抽成 `CardxIconSprite` 掛在 root layout；Geist／Geist Mono 用 next/font 掛在 `<html>`（只是 CSS 變數）。
+- 4 個原型檔型別不到 strict，加 `// @ts-nocheck`；`openings/page` 原本是 server 端 redirect，改成掛上去就轉。
+
+**接法**
+- `lib/cardxRoutes.ts` 列出哪些路由 768 以上換 cardx：`/`、`/item/[id]`、`/ranking`、`/mission`、`/news`、`/market(/[id])`、
+  以及 cardx 專屬的 `/packs(/[id])`、`/leaderboard`、`/missions`、`/trades…`、`/favorites`、`/recent`、`/events`、`/rewards`、
+  `/topics`、`/trends`、`/account…`、`/checkout`、`/openings…`、`/orders…`、`/info`（23 條新的薄路由，768 以下直接回首頁）。
+- `components/cardx/CardxPage`：`ssr:false` 動態載入 cardx 頁面，外包 `.cardx-root hidden md:block`。
+- 既有六頁：首頁整棵手機樹包 `md:hidden`（一字沒動）；商品頁／排行榜／任務／情報／市集改成
+  量到寬度才掛其中一棵（`lib/useMinWidth`）—— 手機那棵有 effect（機台、≥768 轉址）藏著也會跑。
+- 命中 cardx 路由時，768 以上我們的導覽列、側欄、頁尾、側欄讓位都關掉，由 cardx 的 AppShell 接手。
+- 資料現在全是 cardx 的 mock；第二階段再逐頁接真資料（首頁商品／輪播、列表、商品頁塞轉蛋機、排行榜、簽到任務、情報）。
+
+**沒動的**：768 以下所有畫面；`/news/[id]`、`/events/[slug]`、會員／儲值／搜尋等沒有 cardx 版的頁面（桌機仍是我們的導覽列＋側欄）。
+今天下午做的亮色側欄／首頁分區列／商品頁兩欄留在 git（ef502c66、3dd2909c…）。
+
 ## v2026.09.04h｜2026-09-04｜電腦端外殼＋首頁改版（照 cardx：頂部導覽列＋左側欄，亮色；首頁分區列）
 
 老闆定案（2026-09-04 下午）：電腦端用 cardx 的外殼與兩欄，亮色，商品頁左格保留紫色舞台；

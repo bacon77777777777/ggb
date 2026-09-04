@@ -13,6 +13,7 @@ import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
 import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
 import { fetchProductPromotion, type ProductPromotion } from '@/lib/promotions';
 import { asset } from '@/lib/asset';
+import { PrizeBrowser } from '@/components/shop/desktop/PrizeBrowser';
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 type Prize = Database['public']['Tables']['product_prizes']['Row'];
@@ -22,9 +23,16 @@ interface GachaCollectionListProps {
   product: ProductRow;
   prizes: Prize[];
   refreshKey?: number;
+  /**
+   * desktop：品項總覽改成電腦版的搜尋＋篩選格子（PrizeBrowser），大圖預覽由它自己管；
+   * 其餘（商品資訊／猜你喜歡）照舊。mobile 一字不動。
+   */
+  variant?: 'mobile' | 'desktop';
+  /** desktop 時品項格子一排幾個（平板單欄用 4，電腦右欄用 3） */
+  columns?: 2 | 3 | 4;
 }
 
-export function GachaCollectionList({ productId, product, prizes, refreshKey }: GachaCollectionListProps) {
+export function GachaCollectionList({ productId, product, prizes, refreshKey, variant = 'mobile', columns = 3 }: GachaCollectionListProps) {
   const { user } = useAuth();
   const [collectedIds, setCollectedIds] = useState<Set<number>>(new Set());
   const [recommendations, setRecommendations] = useState<ProductRow[]>([]);
@@ -108,8 +116,16 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
   ];
 
   return (
-    <div className="space-y-2 sm:space-y-5 w-full">
+    <div className={cn('w-full', variant === 'desktop' ? 'space-y-8' : 'space-y-2 sm:space-y-5')}>
 
+      {variant === 'desktop' ? (
+        <PrizeBrowser
+          prizes={displayPrizes}
+          collectedIds={user ? collectedIds : null}
+          columns={columns}
+        />
+      ) : (
+        <>
       {/* 品項總覽 */}
       <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
         <div className="p-2 sm:p-4 border-b border-neutral-50 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-800/30">
@@ -169,10 +185,16 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
           </tbody>
         </table>
       </div>
+        </>
+      )}
 
-      {/* 商品資訊 */}
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
-        <div className="px-3 sm:px-6 py-2 sm:py-4 border-b border-neutral-50 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-800/30">
+      {/* 商品資訊。desktop：不包卡片（老闆 2026-09-04：照 packs，不要每塊都一個容器） */}
+      <div className={variant === 'desktop'
+        ? 'pt-2'
+        : 'bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden'}>
+        <div className={variant === 'desktop'
+          ? 'pb-3 border-b border-neutral-100 dark:border-neutral-800'
+          : 'px-3 sm:px-6 py-2 sm:py-4 border-b border-neutral-50 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-800/30'}>
           <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight">
             商品資訊
           </h3>
@@ -180,7 +202,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
         <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
           {/* 促銷列：有進行中的方案才出現，紅色標出（例：開學買五送一） */}
           {promo && (
-            <div className="flex justify-between items-center py-2 sm:py-3 px-3 sm:px-6">
+            <div className={cn('flex justify-between items-center py-2 sm:py-3', variant === 'desktop' ? 'px-0' : 'px-3 sm:px-6')}>
               <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">
                 促銷
               </span>
@@ -190,7 +212,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
             </div>
           )}
           {infoRows.map(({ label, value }) => (
-            <div key={label} className="flex justify-between items-center py-2 sm:py-3 px-3 sm:px-6">
+            <div key={label} className={cn('flex justify-between items-center py-2 sm:py-3', variant === 'desktop' ? 'px-0' : 'px-3 sm:px-6')}>
               <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">
                 {label}
               </span>
@@ -200,7 +222,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
             </div>
           ))}
         </div>
-        <div className="px-3 sm:px-6 py-3 sm:py-5">
+        <div className={cn('py-3 sm:py-5', variant === 'desktop' ? 'px-0' : 'px-3 sm:px-6')}>
           <p className="text-[13px] sm:text-sm font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-2">
             注意事項
           </p>
@@ -237,7 +259,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
               查看更多
             </Link>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+          <div className={variant === 'desktop' ? (columns === 4 ? 'grid grid-cols-4 gap-4' : 'grid grid-cols-3 gap-4') : 'grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4'}>
             {recommendations.map((item) => (
               <ProductCard
                 key={item.id}
@@ -258,6 +280,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
         </div>
       )}
 
+      {variant !== 'desktop' && (
       <PrizeDetailSheet
         onPrev={previewIndex !== null && displayPrizes.length > 1
           ? () => setPreviewIndex(i => ((i ?? 0) - 1 + displayPrizes.length) % displayPrizes.length)
@@ -274,6 +297,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
         } : null}
         onClose={() => setPreviewIndex(null)}
       />
+      )}
     </div>
   );
 }

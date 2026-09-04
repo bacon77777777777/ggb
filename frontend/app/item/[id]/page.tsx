@@ -1,5 +1,8 @@
 'use client';
 
+import CardxPage from '@/components/cardx/CardxPage';
+import { useMinWidth } from '@/lib/useMinWidth';
+
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
@@ -427,7 +430,7 @@ const PackSelectionCarousel = forwardRef<PackSelectionCarouselHandle, PackSelect
 
 PackSelectionCarousel.displayName = 'PackSelectionCarousel';
 
-export default function ProductDetailPage() {
+function ProductDetailPageMobile() {
   const params = useParams();
   const router = useRouter();
   const { user, isAuthenticated, refreshProfile } = useAuth();
@@ -2911,4 +2914,15 @@ export default function ProductDetailPage() {
         )}
     </div>
   );
+}
+
+/**
+ * 768 以下：我們原本的商品頁（ProductDetailPageMobile，一字沒動）；
+ * 768 以上：cardx 的卡包詳情（老闆 2026-09-04，整套原封不動搬；資料現在還是它的 mock）。
+ * 這頁不用 CSS 藏：機台（物理模擬＋圖片）藏著也在跑，量到寬度才決定掛哪一棵。
+ */
+export default function ProductDetailPage() {
+  const isMd = useMinWidth(768);
+  if (isMd === null) return null;
+  return isMd ? <CardxPage page="packDetail" /> : <ProductDetailPageMobile />;
 }
