@@ -41,7 +41,7 @@ function HeartIcon() {
  * 商品小卡：外觀照 cardx /packs 的小卡，內容是我們的商品。
  * 推薦籤的卡帶 meta（桶別／位置）：看到一半記曝光、點了記點擊（跟手機版 ProductCard 同一套 lib/feed/events）。
  */
-function HomeProductCard({ product, meta, followed, onToggleFollow }: {
+export function HomeProductCard({ product, meta, followed, onToggleFollow }: {
   product: HomeProduct;
   meta?: { bucket: FeedBucket; position: number };
   followed: boolean;

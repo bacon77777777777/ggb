@@ -367,7 +367,10 @@
 .cardx-root :where(*) {
   font-family: inherit !important;
 }
-.cardx-root * {
+/* 零權重的 reset（:where）：cardx 自己的 CSS Module 照樣蓋得過它，
+   但我們掛進這棵樹的 tailwind 元件（機台、彈窗、載入遮罩）的 p-／m- 工具 class 也贏得了它。
+   原本 `.cardx-root *` 跟工具 class 同權重又排在後面，商品格的類別標籤內距就是這樣被歸零的（2026-09-04） */
+:where(.cardx-root *) {
   box-sizing: border-box;
   padding: 0;
   margin: 0;
