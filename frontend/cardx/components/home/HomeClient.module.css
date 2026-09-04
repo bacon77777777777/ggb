@@ -3296,3 +3296,9 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* 老闆 2026-09-04：二級頁籤那條（吸頂）上下各給 8px，膠囊不要貼著邊 */
+.main2 .main .sectionLobby .nav {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
