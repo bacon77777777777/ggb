@@ -2159,25 +2159,7 @@ export default function Home() {
                         ))}
                       </div>
                     </div>
-                    {activePrimaryTab !== 'exchange' && activePrimaryTab !== 'sell' && (
-                      <div className="flex shrink-0 items-center gap-1.5 text-[14px] text-neutral-500">
-                        <input
-                          type="text"
-                          value={priceMin}
-                          onChange={(e) => handlePriceChange(e.target.value, setPriceMin)}
-                          placeholder="最小"
-                          className="h-9 w-[84px] rounded-lg bg-white px-2 text-center font-amount text-[14px] font-black ring-1 ring-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:bg-neutral-900 dark:ring-neutral-800"
-                        />
-                        <span className="font-bold">-</span>
-                        <input
-                          type="text"
-                          value={priceMax}
-                          onChange={(e) => handlePriceChange(e.target.value, setPriceMax)}
-                          placeholder="最大"
-                          className="h-9 w-[84px] rounded-lg bg-white px-2 text-center font-amount text-[14px] font-black ring-1 ring-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:bg-neutral-900 dark:ring-neutral-800"
-                        />
-                      </div>
-                    )}
+                    {/* 價格區間（最小／最大）老闆 2026-09-04 指定拿掉 */}
                     <div className="relative shrink-0">
                       {activePrimaryTab !== 'exchange' && (
                         <>
