@@ -106,7 +106,7 @@ function HomeProductCard({ product, meta, followed, onToggleFollow }: {
           {/* 名稱前面掛類別標籤，跟手機版 ProductCard 同一顆；字 11px、內距加大（老闆：8px 在桌機太小），手機那份不動；
               -webkit-box 裡只准放純 inline，跟手機那邊踩過的 Safari 刪節號誤判同一條 */}
           {product.type ? (
-            <ProductBadge type={product.type as ProductType} className="inline align-[1px] mr-1.5 px-1.5 py-[2px] text-[11px] rounded-[4px] backdrop-blur-none" />
+            <ProductBadge type={product.type as ProductType} className={`${styles.typeBadge} inline align-[1px] text-[11px] rounded-[4px] backdrop-blur-none`} />
           ) : null}
           <span className="inline">{product.name}</span>
         </p>
