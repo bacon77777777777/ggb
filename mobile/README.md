@@ -112,3 +112,8 @@ App 圖示已由 `assets/icon.png` 產出全尺寸，但那只是把現有 logo 
 - `ios/` 與 `android/` 是 `cap add` 產生的，可以隨時刪掉重生；
   但 Info.plist 的權限說明、AndroidManifest 的權限宣告是**手動加的**，重生會不見。
   重生後對照 git diff 補回來。
+- **直向鎖定也是手動加的**（老闆 2026-09-04）：iPhone 的 `UISupportedInterfaceOrientations` 只留 Portrait
+  （iPad 那組 `~ipad` 維持四向，768 以上是電腦版排版、橫放可用）；Android 的 `MainActivity` 加
+  `android:screenOrientation="portrait"`。鎖在系統層，webview 不會進橫向，網頁那層轉向提示
+  （`frontend/app/layout.tsx` 的 `#rotate-hint`）在 App 裡就不會出現 —— 它留給瀏覽器用，
+  瀏覽器沒有任何 API 能鎖方向。原生設定改了要重新編譯、送審才生效。

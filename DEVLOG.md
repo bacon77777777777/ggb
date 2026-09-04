@@ -4,6 +4,18 @@
 
 ---
 
+## v2026.09.04g｜2026-09-04｜App 殼鎖直向（iPhone／Android），轉向提示留給瀏覽器
+
+- 老闆：「很多 App 橫向時不用引導轉回來，會自動鎖住」—— 對，別人是在系統層鎖，我們的殼沒鎖：
+  iPhone 的 Info.plist 允許直向＋左右橫向、Android 的 activity 沒設 `screenOrientation`，
+  一轉就真的進橫向，靠網頁那層 `#rotate-hint` 擋。
+- 改法：iPhone `UISupportedInterfaceOrientations` 只留 Portrait；Android `MainActivity` 加
+  `android:screenOrientation="portrait"`。iPad 不鎖（`~ipad` 維持四向）：768 以上是電腦版排版、橫放可用，
+  提示的 500px 高度門檻在 iPad 也不會觸發。
+- 網頁那層提示保留：iOS Safari 沒有鎖方向 API，Android Chrome 的 `screen.orientation.lock()` 只在全螢幕有效；
+  拿掉的話手機橫放寬度超過 768（iPhone 15 Pro 橫放 852px）會切到電腦版塞進 390px 高的畫面。
+- 原生設定，要重新編譯、送審才生效；README「已知限制」補了一條，重生原生專案時這兩處會不見。
+
 ## v2026.09.04f｜2026-09-04｜簽到改「累計」不「連續」：漏簽不歸零，回來接著算
 
 - 老闆 2026-09-04：「今天簽、明天沒簽、後天還是從第二天算，比較友善」。

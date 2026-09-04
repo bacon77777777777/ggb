@@ -92,11 +92,11 @@
 	<array>
 		<string>armv7</string>
 	</array>
+	<!-- iPhone 鎖直向（老闆 2026-09-04）：跟其他 App 一樣在系統層鎖，webview 不會進橫向，網頁那層轉向提示在 App 裡就不會出現。
+	     iPad 不鎖（下面 ~ipad 那組維持四向）：768 以上是電腦版排版，橫放可用。 -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>

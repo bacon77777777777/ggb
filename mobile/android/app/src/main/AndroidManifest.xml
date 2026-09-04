@@ -7,7 +7,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+        <!-- 鎖直向（老闆 2026-09-04）：在系統層鎖，webview 不會進橫向，網頁那層轉向提示在 App 裡就不會出現 -->
         <activity
+            android:screenOrientation="portrait"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"
             android:label="@string/title_activity_main"
