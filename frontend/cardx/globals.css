@@ -233,6 +233,26 @@
   box-shadow: 0 3px 16px #ff234166, inset 0 3px 3px #ffffff4d;
 }
 
+/* 紫色變體（老闆 2026-09-04：商品頁「試試看」用紫），照紅／藍的結構 */
+.button-3d_purple.button-3d[data-v-c8c96dbe]:after {
+  background-color: #2a0a5e;
+}
+
+.button-3d_purple.button-3d .button-3d__outer[data-v-c8c96dbe] {
+  background: linear-gradient(1turn, #6d28d9 0.8%, #9b5cf6);
+  box-shadow: 0 3px 16px #8b5cf680, inset 0 4px 3px #ffffff4d;
+}
+
+.button-3d_purple.button-3d:hover .button-3d__outer[data-v-c8c96dbe] {
+  background: linear-gradient(3360deg, #7c3aed 0.8%, #a78bfa);
+  box-shadow: 0 3px 20px #8b5cf699, inset 0 4px 4px #ffffff5e;
+}
+
+.button-3d_purple.button-3d:active .button-3d__outer[data-v-c8c96dbe] {
+  background: linear-gradient(1turn, #6d28d9 0.8%, #9b5cf6);
+  box-shadow: 0 3px 16px #8b5cf666, inset 0 3px 3px #ffffff4d;
+}
+
 .button-3d_blue.button-3d[data-v-c8c96dbe]:after {
   background-color: #052a80;
 }

@@ -51,10 +51,17 @@ const noop = () => {};
 /** 舞台底部操作列的高度（老闆 2026-09-04：立即開抽放在機台下方、同一個舞台裡） */
 const CONTROLS_H = 72;
 
-export function ProductStageVisual({ product, theme, isSoldOut, controls }: { product: ProductRow; theme: string | null; isSoldOut: boolean; controls?: ReactNode }) {
+/** pushSignal：每 +1 推一下機台（轉蛋機晃 200ms，照手機 handlePush） */export function ProductStageVisual({ product, theme, isSoldOut, controls, pushSignal = 0 }: { product: ProductRow; theme: string | null; isSoldOut: boolean; controls?: ReactNode; pushSignal?: number }) {
   const boxRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState(0);
   const [loaded, setLoaded] = useState(false);
+  const [gachaState, setGachaState] = useState<"idle" | "shaking">("idle");
+  useEffect(() => {
+    if (!pushSignal) return;
+    setGachaState("shaking");
+    const t = window.setTimeout(() => setGachaState("idle"), 200);
+    return () => window.clearTimeout(t);
+  }, [pushSignal]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const p = product as any;
   const image = product.image_url || asset(`/images/item/${String(product.id).padStart(5, "0")}.jpg`);
@@ -112,7 +119,7 @@ export function ProductStageVisual({ product, theme, isSoldOut, controls }: { pr
           <div style={{ position: "relative", width: MACHINE_W, height: MACHINE_H }}>
             {kind === "gacha" && Machine ? (
               <>
-                <Machine state="idle" hideButtons disableButtons isSoldOut={isSoldOut} onLoaded={() => setLoaded(true)} />
+                <Machine state={gachaState} shakeRepeats={1} pushSoundMode="manual" hideButtons disableButtons isSoldOut={isSoldOut} onLoaded={() => setLoaded(true)} />
                 {/* 蛋箱裡的商品圖：手機版預設就顯示，座標照它（375 寬的機台框） */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={image} alt="" style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", top: 30, width: 232, height: 200, objectFit: "contain", zIndex: 20, pointerEvents: "none" }} />

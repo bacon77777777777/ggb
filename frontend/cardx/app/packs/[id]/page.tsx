@@ -35,6 +35,14 @@ const RECENTS_KEY = "cardx.recent.detailVisits";
 /** 開賣前排籤、有封存對照表的玩法——這幾種才顯示公平性驗證與各賞剩餘張數（跟手機頁同一條規則） */
 const FAIR_ENGINE_TYPES = ["ichiban", "card", "custom"];
 const TYPE_LABEL: Record<string, string> = { ichiban: "一番賞", blindbox: "盒玩", gacha: "轉蛋", card: "抽卡", custom: "自製賞" };
+/** 注意事項（跟手機商品頁同一份文字） */
+const RULES: Record<string, string[]> = {
+  ichiban: ["一番賞為固定賞項隨機出獎，依抽到的賞別為主，無法指定特定賞別。", "抽出後即確認結果，不可退款或更換款式。", "實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。", "如遇商品缺貨，將以 G幣 原額退還，敬請見諒。", "商品圖片僅供參考，實物以實際配送為準。", "本平台保留對所有活動及商品之最終解釋權。"],
+  card: ["抽卡商品均為隨機出卡，抽到什麼出什麼。", "抽出後即確認結果，不可退款或更換款式。", "卡片由廠商備貨配送，配送時間約 3–7 個工作日。", "如遇商品缺貨，將以 G幣 原額退還，敬請見諒。", "商品圖片僅供參考，實物以實際配送為準。", "本平台保留對所有活動及商品之最終解釋權。"],
+  blindbox: ["盒玩商品均為隨機出獎，抽到什麼出什麼。", "抽出後即確認結果，不可退款或更換款式。", "實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。", "如遇商品缺貨，將以 G幣 原額退還，敬請見諒。", "商品圖片僅供參考，實物以實際配送為準。", "本平台保留對所有活動及商品之最終解釋權。"],
+  gacha: ["轉蛋商品均為隨機出獎，抽到什麼出什麼。", "轉出後即確認結果，不可退款或更換款式。", "實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。", "如遇商品缺貨，將以 G幣 原額退還，敬請見諒。", "商品圖片僅供參考，實物以實際配送為準。", "本平台保留對所有活動及商品之最終解釋權。"],
+  custom: ["自製賞商品均為隨機出獎，抽到什麼出什麼。", "抽出後即確認結果，不可退款或更換款式。", "實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。", "如遇商品缺貨，將以 G幣 原額退還，敬請見諒。", "商品圖片僅供參考，實物以實際配送為準。", "本平台保留對所有活動及商品之最終解釋權。"],
+};
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -48,17 +56,6 @@ function pushRecentVisit(entry: { kind: "packs"; id: string; ts: number; title: 
     const next = [entry, ...list.filter((x) => x && typeof x === "object" && !(x.kind === entry.kind && x.id === entry.id))].slice(0, 200);
     window.localStorage.setItem(RECENTS_KEY, JSON.stringify(next));
   } catch {}
-}
-
-function HeartIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
-      <path
-        fill="currentColor"
-        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-      />
-    </svg>
-  );
 }
 
 function CopyIcon() {
@@ -107,6 +104,9 @@ export default function PackDetailPage() {
   const [panelTop, setPanelTop] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [fairnessInfoOpen, setFairnessInfoOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [pushSignal, setPushSignal] = useState(0);
+  const [shareCopied, setShareCopied] = useState(false);
 
   /* ── 商品＋賞項（跟手機頁同一支、同一個 query key） ── */
   useEffect(() => {
@@ -266,14 +266,14 @@ export default function PackDetailPage() {
   }, [loading]);
 
   useEffect(() => {
-    if (!fairnessInfoOpen) return;
+    if (!fairnessInfoOpen && !rulesOpen) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const onKeyDown = (e: KeyboardEvent) => { if (e.key === "Escape") setFairnessInfoOpen(false); };
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === "Escape") { setFairnessInfoOpen(false); setRulesOpen(false); } };
     window.addEventListener("keydown", onKeyDown);
     window.requestAnimationFrame(() => fairnessInfoCloseRef.current?.focus());
     return () => { window.removeEventListener("keydown", onKeyDown); document.body.style.overflow = prevOverflow; };
-  }, [fairnessInfoOpen]);
+  }, [fairnessInfoOpen, rulesOpen]);
 
   if (loading && !detail) return <ProductLoadingScreen />;
 
@@ -288,50 +288,53 @@ export default function PackDetailPage() {
     );
   }
 
-  const actionButtons = (
-    <>
-      <Link
-        href="/messages"
-        className={styles.secondaryButton}
-        aria-label="私訊"
-        style={{ width: 48, minWidth: 48, height: 48, padding: 0, display: "grid", placeItems: "center" }}
-      >
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" style={{ display: "block" }}>
-          <use href="#icon-chat-3" />
-        </svg>
-      </Link>
-
-      <button
-        type="button"
-        className={styles.secondaryButton}
-        aria-label={followed ? "取消收藏" : "收藏"}
-        aria-pressed={followed}
-        onClick={() => void toggleFollow(Number(product.id))}
-        style={{
-          width: 48, minWidth: 48, height: 48, padding: 0, display: "grid", placeItems: "center",
-          color: followed ? "#ff4d4f" : undefined,
-          borderColor: followed ? "rgba(255, 77, 79, 0.55)" : undefined,
-          background: followed ? "rgba(255, 77, 79, 0.18)" : undefined,
-        }}
-      >
-        <HeartIcon />
-      </button>
-
-      <button
-        className={`button-3d button-3d_green button-3d_sm ${styles.buyButton3d}`}
-        data-v-c8c96dbe=""
-        type="button"
-        aria-label="立即開抽"
-        disabled={isSoldOut}
-        style={isSoldOut ? { opacity: 0.55, cursor: "not-allowed" } : undefined}
-      >
-        <span className="button-3d__outer" data-v-c8c96dbe="">
-          <span className="button-3d__inner" data-v-c8c96dbe="">
-            <span className="button-3d__text" data-v-c8c96dbe="">{isSoldOut ? "已完抽" : "立即開抽"}</span>
-          </span>
+  /* 舞台底部（老闆 2026-09-04）：左邊 G 金額／抽，右邊 推一下｜立即開抽｜試試看。聊聊與收藏移到麵包屑右邊 */
+  const hasMachine = product.type === "gacha";
+  const crumbIconStyle = (active: boolean): React.CSSProperties => ({
+    width: 36, height: 36, borderRadius: 999, padding: 0, display: "grid", placeItems: "center", cursor: "pointer", flex: "0 0 auto",
+    border: active ? "1px solid rgba(255,77,79,0.55)" : "1px solid rgba(255,255,255,0.12)",
+    background: active ? "rgba(255,77,79,0.18)" : "rgba(255,255,255,0.06)",
+    color: active ? "#ff4d4f" : "rgba(255,255,255,0.85)",
+  });
+  const handleShare = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) { await navigator.share({ title: product.name, url }); return; }
+    } catch { return; }
+    try { await navigator.clipboard.writeText(url); setShareCopied(true); window.setTimeout(() => setShareCopied(false), 1500); } catch {}
+  };
+  const btn3d = (color: "red" | "blue" | "purple", label: string, opts: { onClick?: () => void; disabled?: boolean; grow?: boolean } = {}) => (
+    <button
+      className={`button-3d button-3d_${color} button-3d_sm ${styles.buyButton3d}`}
+      data-v-c8c96dbe=""
+      type="button"
+      aria-label={label}
+      disabled={opts.disabled}
+      onClick={opts.onClick}
+      style={{ width: opts.grow ? undefined : "auto", flex: opts.grow ? "1 1 auto" : "0 0 auto", minWidth: 0, ...(opts.disabled ? { opacity: 0.55, cursor: "not-allowed" } : {}) }}
+    >
+      <span className="button-3d__outer" data-v-c8c96dbe="">
+        <span className="button-3d__inner" data-v-c8c96dbe="">
+          <span className="button-3d__text" data-v-c8c96dbe="">{label}</span>
         </span>
-      </button>
-    </>
+      </span>
+    </button>
+  );
+  const actionButtons = (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "0 0 auto", paddingRight: 6 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={asset("/images/gcoin.webp")} alt="G" style={{ width: 22, height: 22, display: "inline-block" }} />
+        <span style={{ fontSize: 20, fontWeight: 900, color: "#fff", lineHeight: 1 }}>{product.price.toLocaleString()}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.55)" }}>/ {unit}</span>
+      </div>
+      {/* 三顆同一套 3D 樣式：推一下藍、立即開抽紅（同儲值）、試試看紫（老闆 2026-09-04）。48 高靠 stretch 撐出來，這列不能 center */}
+      <div style={{ flex: "1 1 auto", display: "flex", alignItems: "stretch", justifyContent: "flex-end", gap: 8, minWidth: 0, height: 48 }}>
+        {hasMachine ? btn3d("blue", "推一下", { onClick: () => setPushSignal((n) => n + 1) }) : null}
+        {btn3d("red", isSoldOut ? "已完抽" : "立即開抽", { disabled: isSoldOut, grow: true })}
+        {btn3d("purple", "試試看")}
+      </div>
+    </div>
   );
 
   const rateRowStyle = (last: boolean): React.CSSProperties => ({
@@ -430,7 +433,7 @@ export default function PackDetailPage() {
   return (
     <AppShell sidebarItems={defaultSidebarItems} hideBottomNavOnMobile>
       <div className={styles.page}>
-        <nav className={styles.breadcrumbs} aria-label="breadcrumb">
+        <nav className={styles.breadcrumbs} aria-label="breadcrumb" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <Link href={`/?tab=${encodeURIComponent(product.type)}`} className={styles.breadcrumbBack} scroll={false} aria-label={`返回${typeLabel}`}>
             <span className={styles.breadcrumbBackIcon} aria-hidden="true">
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
@@ -445,6 +448,21 @@ export default function PackDetailPage() {
               <span className={styles.breadcrumbStrong}>{product.name}</span>
             </span>
           </Link>
+          {/* 麵包屑右邊：規則／分享／收藏（老闆 2026-09-04） */}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, flex: "0 0 auto", position: "relative" }}>
+            <button type="button" aria-label="規則" title="規則" onClick={() => setRulesOpen(true)} style={crumbIconStyle(false)}>
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><use href="#icon-docs" /></svg>
+            </button>
+            <button type="button" aria-label="分享" title="分享" onClick={() => void handleShare()} style={crumbIconStyle(false)}>
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z" /></svg>
+            </button>
+            <button type="button" aria-label={followed ? "取消收藏" : "收藏"} title="收藏" aria-pressed={followed} onClick={() => void toggleFollow(Number(product.id))} style={crumbIconStyle(followed)}>
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><use href="#icon-like" /></svg>
+            </button>
+            {shareCopied ? (
+              <div role="status" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", padding: "6px 10px", borderRadius: 8, background: "rgba(17,25,35,0.96)", border: "1px solid rgba(255,255,255,0.12)", fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.9)", whiteSpace: "nowrap", zIndex: 20 }}>已複製連結</div>
+            ) : null}
+          </div>
         </nav>
 
         <div
@@ -459,13 +477,13 @@ export default function PackDetailPage() {
             {isMobile ? (
               <section className={styles.hero} aria-label="商品舞台與面板">
                 <div className={styles.mediaCol}>
-                  {themeResolved ? <ProductStageVisual key={`${product.id}-${theme}`} product={product} theme={theme} isSoldOut={isSoldOut} controls={<div className={styles.actionGrid} style={{ width: "100%" }}>{actionButtons}</div>} /> : <div style={{ aspectRatio: "1 / 1", borderRadius: 16, background: "#1c2532" }} />}
+                  {themeResolved ? <ProductStageVisual key={`${product.id}-${theme}`} product={product} theme={theme} isSoldOut={isSoldOut} controls={actionButtons} pushSignal={pushSignal} /> : <div style={{ aspectRatio: "1 / 1", borderRadius: 16, background: "#1c2532" }} />}
                 </div>
                 {panelInner}
               </section>
             ) : (
               <div className={styles.mediaCol} aria-label="商品舞台">
-                {themeResolved ? <ProductStageVisual key={`${product.id}-${theme}`} product={product} theme={theme} isSoldOut={isSoldOut} controls={<div className={styles.actionGrid} style={{ width: "100%" }}>{actionButtons}</div>} /> : <div style={{ aspectRatio: "1 / 1", borderRadius: 16, background: "#1c2532" }} />}
+                {themeResolved ? <ProductStageVisual key={`${product.id}-${theme}`} product={product} theme={theme} isSoldOut={isSoldOut} controls={actionButtons} pushSignal={pushSignal} /> : <div style={{ aspectRatio: "1 / 1", borderRadius: 16, background: "#1c2532" }} />}
               </div>
             )}
 
@@ -644,6 +662,22 @@ export default function PackDetailPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        ) : null}
+
+        {rulesOpen ? (
+          <div role="presentation" onClick={() => setRulesOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.62)", display: "grid", placeItems: "center", padding: 16 }}>
+            <div role="dialog" aria-modal="true" aria-label="規則" onClick={(e) => e.stopPropagation()} style={{ width: "min(560px, calc(100vw - 32px))", borderRadius: 16, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(17, 25, 35, 0.96)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", padding: 16, color: "rgba(255,255,255,0.92)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <div style={{ fontSize: 14, fontWeight: 900 }}>注意事項</div>
+                <button type="button" aria-label="關閉" onClick={() => setRulesOpen(false)} style={{ width: 32, height: 32, borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.82)", display: "grid", placeItems: "center", padding: 0, cursor: "pointer", flex: "0 0 auto" }}>
+                  <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>×</span>
+                </button>
+              </div>
+              <ol style={{ marginTop: 12, paddingLeft: 20, display: "grid", gap: 8, fontSize: 13, fontWeight: 700, lineHeight: "18px", color: "rgba(255,255,255,0.82)", listStyle: "decimal" }}>
+                {(RULES[product.type] || RULES.custom).map((line, i) => <li key={i}>{line}</li>)}
+              </ol>
             </div>
           </div>
         ) : null}
