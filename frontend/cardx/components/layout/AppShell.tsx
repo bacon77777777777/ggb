@@ -339,6 +339,8 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
             className={`bonus-cabinet ${styles.bonusCabinet}`}
             data-v-4ec444f2=""
             aria-label="簽到"
+            /* 老闆 2026-09-04：圖標跟文字離近一點（原本固定 86 寬＋space-between 把兩個推到兩端） */
+            style={{ width: "auto", minWidth: 0, gap: 6, justifyContent: "center", padding: "5px 14px 5px 7px" }}
           >
             <span className="background" data-v-4ec444f2="" aria-hidden="true" />
             <span className={styles.bonusIconWrap} aria-hidden="true">
