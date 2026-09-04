@@ -2011,3 +2011,11 @@
   border-color: rgba(237, 29, 73, 0.55);
   color: rgba(255, 255, 255, 0.95);
 }
+
+/* 老闆 2026-09-04：頭像＋暱稱那顆比左右兩邊低了 3px——
+   .profileWrap 是 inline-block，裡面 36px 的膠囊被行框撐成 43px 又貼著上緣。改成 flex 置中就對齊了 */
+.profileWrap {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+}
