@@ -639,7 +639,7 @@
   letter-spacing: 0;
   color: #8b94a3;
   font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
 }
 .main2 .main .sectionLobby .a2022PaniniPrizm353B {
@@ -760,6 +760,8 @@
 }
 .main2 .main .sectionLobby .frame1 .frame2 {
   display: flex;
+  flex-wrap: nowrap;
+  column-gap: 6px;
   flex-shrink: 0;
   align-items: center;
   align-self: stretch;
@@ -767,6 +769,10 @@
 }
 .main2 .main .sectionLobby .frame1 .frame2 .heading62225 {
   flex-shrink: 0;
+  /* 一行排：數字 → G 圖標 → / → 單位，間距 3px（老闆 2026-09-04） */
+  display: inline-flex;
+  align-items: center;
+  column-gap: 3px;
   line-height: 18px;
   letter-spacing: 0;
   color: #c9ced6;
@@ -804,8 +810,8 @@
   border: 1px solid rgba(255, 255, 255, 0.1607843137);
   border-radius: 100px;
   background: rgba(0, 0, 0, 0.1607843137);
-  padding: 4px 11px;
-  height: 26px;
+  padding: 3px 8px;
+  height: 22px;
 }
 .main2 .main .sectionLobby .item4 {
   display: inline-flex;

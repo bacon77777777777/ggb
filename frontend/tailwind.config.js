@@ -8,6 +8,8 @@ module.exports = {
     // 漏掉的話那些 class 不會被產生 —— 畫面上是「元素在、顏色沒了」，
     // 例如 A賞 變成白字白底，看起來像整個標籤消失
     './lib/**/*.{js,ts,jsx,tsx}',
+    // cardx 那棵樹（768 以上的桌機 UI）雖然主要用 CSS Modules，商品格會直接掛 ProductBadge 這類 tailwind 元件
+    './cardx/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
     extend: {

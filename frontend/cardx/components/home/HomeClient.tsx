@@ -11,6 +11,7 @@ import { PillSelect, FilterIcon } from "@/cardx/components/ui/PillSelect";
 import { recordImpression, recordClick } from "@/lib/feed/events";
 import type { FeedBucket } from "@/lib/feed/assemble";
 import { asset } from "@/lib/asset";
+import ProductBadge, { type ProductType } from "@/components/ui/ProductBadge";
 import { filterBannersBySchedule } from "@/lib/schedule";
 import { isInternalUrl, toInternalPath } from "@/lib/internalUrl";
 
@@ -101,12 +102,21 @@ function HomeProductCard({ product, meta, followed, onToggleFollow }: {
         ) : null}
       </div>
       <div className={styles.frame1}>
-        <p className={styles.a2022PaniniPrizm353B}>{product.name}</p>
+        <p className={styles.a2022PaniniPrizm353B}>
+          {/* 名稱前面掛類別標籤，跟手機版 ProductCard 同一顆、同一組 class（老闆 2026-09-04）；
+              -webkit-box 裡只准放純 inline，跟手機那邊踩過的 Safari 刪節號誤判同一條 */}
+          {product.type ? (
+            <ProductBadge type={product.type as ProductType} className="inline align-[2px] mr-1 py-[3px] backdrop-blur-none" />
+          ) : null}
+          <span className="inline">{product.name}</span>
+        </p>
         <div className={styles.frame2}>
+          {/* 老闆 2026-09-04：數字在 G 圖標左邊、「/ 抽」靠緊、整排一行。
+              圖標一定要 inline：tailwind preflight 把 img 設成 block，原本圖標會自己佔一行把數字擠到第二行 */}
           <p className={styles.heading62225}>
-            <img src={asset("/images/gcoin.webp")} alt="G" style={{ width: 16, height: 16, verticalAlign: "-3px", marginRight: 4 }} />
             <span className={styles.priceValue}>{product.price.toLocaleString()}</span>
-            <span className={styles.priceSep}> / </span>
+            <img src={asset("/images/gcoin.webp")} alt="G" style={{ display: "inline-block", width: 14, height: 14 }} />
+            <span className={styles.priceSep}>/</span>
             <span className={styles.priceUnit}>{unit}</span>
           </p>
           {total > 0 ? (
