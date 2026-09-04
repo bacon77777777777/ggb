@@ -1978,8 +1978,8 @@ export default function Home() {
           單一籤：標題列（系列膠囊＋排序＋價格區間）→ 既有的商品格 renderProductSections() */}
       <div className="hidden lg:block">
         <div className="mx-auto max-w-[1440px] px-6 pt-4 pb-10">
-          <div className="mb-3 overflow-hidden rounded-[8px]">
-            <WinningMarquee />
+          <div className="mb-4">
+            <WinningMarquee size="desktop" />
           </div>
           {/* 輪播圖只在首頁總覽（老闆 2026-09-04：除了首頁以外其他不要有輪播區），
               版型照 cardx：一列橫向多張卡片＋圓點（DesktopBannerRow） */}
