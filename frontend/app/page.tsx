@@ -47,6 +47,7 @@ type ProductRow = Database['public']['Tables']['products']['Row'];
 type BannerRow = Database['public']['Tables']['banners']['Row'];
 
 type SortMode = 'latest' | 'hot' | 'price-asc' | 'price-desc' | 'sold-out';
+const SORT_MODES: readonly SortMode[] = ['latest', 'hot', 'price-asc', 'price-desc', 'sold-out'];
 
 /**
  * 輪播圖「首頁頁籤」可以指定的內建頁籤 id（網址 `/?tab=<id>`）。
@@ -476,10 +477,39 @@ export default function Home() {
     }
   }, []);
 
+  /**
+   * 把網址上的 tab／menu／series／sort 套回狀態。`returning`＝從商品頁返回，照原本的還原流程、不動。
+   * 系列同時走 ref（類別有變時由重設那個 effect 接手）與直接設（類別沒變時重設 effect 不會跑）。
+   */
+  const applyUrlState = useCallback((returning: boolean) => {
+    if (returning) return;
+    const params = new URL(window.location.href).searchParams;
+    const seriesParam = params.get('series');
+    const sortParam = params.get('sort');
+    const nextSecondary = seriesParam ? `series:${seriesParam}` : 'featured';
+    restoringSecondaryTabRef.current = seriesParam ? nextSecondary : null;
+    setSortMode(sortParam && (SORT_MODES as readonly string[]).includes(sortParam) ? (sortParam as SortMode) : 'latest');
+    const tab = homeTabFromHref(window.location.href);
+    if (tab) goToHomeTab(tab); else leaveDeepLinkedTab();
+    setActiveSecondaryTab(nextSecondary);
+  }, [goToHomeTab, leaveDeepLinkedTab, homeTabFromHref]);
+
+  /* 桌機（cardx 那棵）縮到手機：這個元件沒重掛、狀態是舊的，網址才是對的——切過來時重讀一次 */
+  const prevIsMdRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    const prev = prevIsMdRef.current;
+    prevIsMdRef.current = isMd;
+    if (prev === true && isMd === false) applyUrlState(false);
+  }, [isMd, applyUrlState]);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const tab = homeTabFromHref(window.location.href);
-    if (tab) goToHomeTab(tab);
+    /*
+     * 類別／二級籤／排序三個狀態都以網址為準（老闆 2026-09-04：桌機縮到手機、手機放大到桌機要停在同一籤，
+     * 桌機那棵 cardx 首頁讀寫同一組參數）：`/?tab=ichiban&series=寶可夢&sort=hot`。
+     * 從商品頁返回時網址是下面那個 effect 自己寫上去的，這時照原本的還原流程（含捲動位置），不走深連結那套。
+     */
+    applyUrlState(sessionStorage.getItem(homeRestoreKey) === '1');
 
     const onPop = () => {
       const next = homeTabFromHref(window.location.href);
@@ -1083,6 +1113,24 @@ export default function Home() {
     // 卡片圖載完才撐開版位，一次性的 scrollTo 會被夾住 —— 交給 restoreScrollTo 重試
     return restoreScrollTo(y);
   }, [isLoading, loadError, filteredProducts.length]);
+
+  const urlSyncMounted = useRef(false);
+  useEffect(() => {
+    if (!urlSyncMounted.current) { urlSyncMounted.current = true; return; }
+    const url = new URL(window.location.href);
+    const sp = url.searchParams;
+    sp.delete('tab'); sp.delete('menu'); sp.delete('series'); sp.delete('sort');
+    if (activePrimaryTab.startsWith('menu:')) sp.set('menu', activePrimaryTab.slice('menu:'.length));
+    else if (activePrimaryTab !== 'all' && activePrimaryTab !== 'exchange') sp.set('tab', activePrimaryTab);
+    if (activeSecondaryTab.startsWith('series:')) sp.set('series', activeSecondaryTab.slice('series:'.length));
+    if (sortMode !== 'latest') sp.set('sort', sortMode);
+    const q = sp.toString();
+    const next = `${url.pathname}${q ? `?${q}` : ''}${url.hash}`;
+    if (next !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+      // state 傳 null：Next 有接管 replaceState，傳 null 它才會把 useSearchParams 同步過去（傳它自己的 state 會被當成它自己在寫而跳過）
+      window.history.replaceState(null, '', next);
+    }
+  }, [activePrimaryTab, activeSecondaryTab, sortMode]);
 
   const persistHomeState = useCallback(() => {
     if (typeof window === 'undefined') return;

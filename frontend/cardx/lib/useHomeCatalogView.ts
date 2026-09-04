@@ -29,6 +29,7 @@ import { sessionIntent } from "@/lib/feed/session";
 import type { HomeProduct } from "@/lib/queries/home";
 
 export type SortMode = "latest" | "hot" | "price-asc" | "price-desc" | "sold-out";
+export const SORT_MODES: SortMode[] = ["latest", "hot", "price-asc", "price-desc", "sold-out"];
 export interface TabItem { id: string; label: string }
 export type FeedMetaMap = Map<string, { bucket: FeedBucket; position: number }>;
 
@@ -193,7 +194,7 @@ export function useHomeCatalogView(products: HomeProduct[], menus: { id: string;
       .map(([s]) => ({ id: `series:${s}`, label: s.length > 8 ? s.slice(0, 8) : s }));
     return [{ id: "featured", label: "推薦" }, ...series];
   }, [products, filterByPrimaryTab, userSeriesPref, globalSeriesPop]);
-  useEffect(() => { setActiveSecondaryTab("featured"); }, [activePrimaryTab]);
+  // 二級籤不在這裡自動重設：類別／二級籤／排序都以網址為準（HomeClient 讀 ?tab=&series=&sort= 來設）
 
   const sortOptions = useMemo<{ id: SortMode; label: string }[]>(() => [
     { id: "latest", label: activeSecondaryTab === "featured" ? "推薦" : "最新" },

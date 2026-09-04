@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./HomeClient.module.css";
 /* 輪播圖接真資料（老闆 2026-09-04）：跟手機首頁同一個 /api/public/home，照檔期過濾；圖不壓字，高度照卡、寬度隨圖 */
 import { fetchHomeCatalog, type HomeProduct } from "@/lib/queries/home";
-import { useHomeCatalogView, BUILT_IN_TAB_IDS } from "@/cardx/lib/useHomeCatalogView";
+import { useHomeCatalogView, BUILT_IN_TAB_IDS, SORT_MODES, type SortMode } from "@/cardx/lib/useHomeCatalogView";
 import { PillSelect, FilterIcon } from "@/cardx/components/ui/PillSelect";
 import { recordImpression, recordClick } from "@/lib/feed/events";
 import type { FeedBucket } from "@/lib/feed/assemble";
@@ -145,18 +145,35 @@ export function HomeClient() {
   const view = useHomeCatalogView(products, menus);
   const { secondaryTabs, activeSecondaryTab, setActiveSecondaryTab } = view;
   // 類別 tab 以網址為準（/?tab=… 或 /?menu=…）：側欄、頁面上的 tab 都改網址，這裡跟著切
+  /*
+   * 類別／二級籤／排序三個狀態都以網址為準（老闆 2026-09-04：桌機縮到手機、手機放大到桌機都要停在同一籤）：
+   * `/?tab=ichiban&series=寶可夢&sort=hot`。手機那棵也讀寫同一組參數（app/page.tsx）。
+   */
   const searchParams = useSearchParams();
   useEffect(() => {
     const menu = searchParams.get("menu");
     const tab = searchParams.get("tab");
-    const next = menu ? `menu:${menu}` : tab && (BUILT_IN_TAB_IDS as readonly string[]).includes(tab) ? tab : "all";
-    view.setActivePrimaryTab(next);
+    const series = searchParams.get("series");
+    const sort = searchParams.get("sort");
+    view.setActivePrimaryTab(menu ? `menu:${menu}` : tab && (BUILT_IN_TAB_IDS as readonly string[]).includes(tab) ? tab : "all");
+    view.setActiveSecondaryTab(series ? `series:${series}` : "featured");
+    view.setSortMode(sort && SORT_MODES.includes(sort as SortMode) ? (sort as SortMode) : "latest");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
-  const goPrimaryTab = (id: string) => {
-    const href = id === "all" ? "/" : id.startsWith("menu:") ? `/?menu=${encodeURIComponent(id.slice("menu:".length))}` : `/?tab=${id}`;
-    router.replace(href, { scroll: false });
+  const setUrl = (patch: { tab?: string; series?: string | null; sort?: string | null }) => {
+    const sp = new URLSearchParams(searchParams.toString());
+    if (patch.tab !== undefined) {
+      sp.delete("tab"); sp.delete("menu");
+      if (patch.tab.startsWith("menu:")) sp.set("menu", patch.tab.slice("menu:".length));
+      else if (patch.tab !== "all") sp.set("tab", patch.tab);
+    }
+    if (patch.series !== undefined) { if (patch.series) sp.set("series", patch.series); else sp.delete("series"); }
+    if (patch.sort !== undefined) { if (patch.sort && patch.sort !== "latest") sp.set("sort", patch.sort); else sp.delete("sort"); }
+    const q = sp.toString();
+    router.replace(q ? `/?${q}` : "/", { scroll: false });
   };
+  // 換類別：系列歸零、排序保留（跟手機一樣）
+  const goPrimaryTab = (id: string) => setUrl({ tab: id, series: null });
   /* 商品格：欄數照 /packs 的算法（卡寬 220～280 之間取欄數），捲到底再載 4 列 */
   const listRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -592,7 +609,7 @@ export function HomeClient() {
                       type="button"
                       className={active ? styles.link6 : styles.link7}
                       style={{ cursor: "pointer" }}
-                      onClick={() => setActiveSecondaryTab(t.id)}
+                      onClick={() => setUrl({ series: t.id.startsWith("series:") ? t.id.slice("series:".length) : null })}
                     >
                       <p className={active ? styles.text7 : styles.text8}>{t.label}</p>
                     </button>
@@ -603,7 +620,7 @@ export function HomeClient() {
               <div style={{ flexShrink: 0 }}>
                 <PillSelect
                   value={view.sortMode}
-                  onChange={(next) => view.setSortMode(next)}
+                  onChange={(next) => setUrl({ sort: next })}
                   options={view.sortOptions.map((o) => ({ key: o.id, label: o.label }))}
                   ariaLabel="排序"
                   icon={<FilterIcon />}
