@@ -91,49 +91,35 @@ function Helper({ text, text1 }: HelperProps) {
   );
 }
 
-type Text1Props = {
-  text: string;
+type DayBoxProps = {
+  /** 第幾天（1–7） */
+  day: number;
+  /** 這一輪已經簽到、要打勾 */
+  done: boolean;
 };
 
-function Text1({ text }: Text1Props) {
+/**
+ * 七天簽到列的一格。第 7 天 +100、其餘 +20。
+ * 已簽到＝主題色底＋打勾；未簽＝灰底＋金幣（第 7 天用橘色漸層突顯）。
+ */
+function DayBox({ day, done }: DayBoxProps) {
+  const reward = day === 7 ? '+100' : '+20';
+  const boxBg = done
+    ? 'bg-primary-soft'
+    : day === 7 ? 'bg-gradient-to-b from-[#fca062] to-[#feecde]' : 'bg-neutral-100';
   return (
     <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0">
-      <ImageAndText text="+20" additionalClassNames="bg-neutral-100" />
-      <p className="font-sans font-normal leading-[normal] not-italic relative shrink-0 text-neutral-400 text-[22px] text-right">{text}</p>
-    </div>
-  );
-}
-
-type ImageAndTextProps = {
-  text: string;
-  additionalClassNames?: string;
-};
-
-function ImageAndText({ text, additionalClassNames = "" }: ImageAndTextProps) {
-  return (
-    <div className={clsx("content-stretch flex flex-col gap-[8px] h-[104px] items-center justify-center overflow-clip pt-[6px] relative rounded-[8px] shrink-0 w-[88px]", additionalClassNames)}>
-      <div className="relative w-[88px] h-[60px] flex items-center justify-center">
-         <Image alt="" width={40} height={40} className="object-contain" src={imgCoin} unoptimized />
-      </div>
-      <p className="font-['DIN_Alternate:Bold',sans-serif] font-bold leading-[normal] min-w-full not-italic relative shrink-0 text-red-900 text-[26px] text-center w-[min-content] whitespace-pre-wrap">{text}</p>
-    </div>
-  );
-}
-
-type TextProps = {
-  text: string;
-};
-
-function Text({ text }: TextProps) {
-  return (
-    <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0">
-      <div className="bg-primary-soft content-stretch flex flex-col gap-[8px] h-[104px] items-center justify-center overflow-clip pt-[6px] relative rounded-[8px] shrink-0 w-[88px]">
+      <div className={clsx("content-stretch flex flex-col gap-[8px] h-[104px] items-center justify-center overflow-clip pt-[6px] relative rounded-[8px] shrink-0 w-[88px]", boxBg)}>
         <div className="relative w-[88px] h-[60px] flex items-center justify-center">
-           <img alt="" className="w-[40px] h-[40px] object-contain" src={imgCheck} />
+          {done
+            ? <img alt="" className="w-[40px] h-[40px] object-contain" src={imgCheck} />
+            : <Image alt="" width={40} height={40} className="object-contain" src={imgCoin} unoptimized />}
         </div>
-        <p className="font-['DIN_Alternate:Bold',sans-serif] font-bold leading-[normal] min-w-full not-italic relative shrink-0 text-red-900 text-[26px] text-center w-[min-content] whitespace-pre-wrap">{"+20"}</p>
+        <p className="font-['DIN_Alternate:Bold',sans-serif] font-bold leading-[normal] min-w-full not-italic relative shrink-0 text-red-900 text-[26px] text-center w-[min-content] whitespace-pre-wrap">{reward}</p>
       </div>
-      <p className="font-sans font-normal leading-[normal] not-italic relative shrink-0 text-neutral-900 text-[22px] text-right">{text}</p>
+      <p className={clsx("font-sans font-normal leading-[normal] not-italic relative shrink-0 text-[22px] text-right", done ? 'text-neutral-900' : 'text-neutral-400')}>
+        {done ? '已簽到' : `第${day}天`}
+      </p>
     </div>
   );
 }
@@ -222,7 +208,10 @@ const ACHIEVEMENT_BADGE_IMAGE: Record<string, string> = {
 };
 
 interface MissionFrameProps {
+  /** 總連續簽到天數（含今天，若今天已簽）。抬頭「已連續簽到 N 天」直接顯示它 */
   consecutiveDays: number;
+  /** 今天簽過了：按鈕變「今日已簽到」，簽到列可以把第 7 格打勾 */
+  checkedInToday: boolean;
   points: number;
   /** 未登入：積分改成「登入後顯示」，簽到／領取都會先跳登入提示 */
   isGuest?: boolean;
@@ -236,6 +225,7 @@ interface MissionFrameProps {
 
 function MissionFrame({ 
   consecutiveDays, 
+  checkedInToday,
   points, 
   isGuest = false,
   missions, 
@@ -253,6 +243,18 @@ function MissionFrame({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  /**
+   * 這一輪簽到列要打勾的格數（0–7）。
+   * 獎勵每 7 天一輪（第 7 天 100、第 8 天回到 20），但 consecutiveDays 是總連續天數、會一直往上數。
+   * 直接拿它判斷，第 8 天起會永遠停在「6 格打勾＋第 7 格待領」，玩家以為明天又有 100，實際是 20。
+   * 今天剛簽完第 7／14／21… 天：整排 7 格打勾；隔天還沒簽：整排清空、從第 1 格重來。
+   */
+  const cycleDone = useMemo(() => {
+    const pos = consecutiveDays % 7;
+    if (pos === 0 && consecutiveDays > 0 && checkedInToday) return 7;
+    return pos;
+  }, [consecutiveDays, checkedInToday]);
 
   const sortedMissions = useMemo(() => {
     const filtered = missions.filter(m => m.type === activeTab);
@@ -474,29 +476,23 @@ function MissionFrame({
           </div>
           <p className="-translate-x-full absolute font-sans font-normal leading-[normal] left-[672px] not-italic text-neutral-400 text-[24px] text-right top-[34px] whitespace-nowrap">每連續簽到7天，可獲得額外積分</p>
           
-          {/* Check-in Days - Dynamic Mock for now */}
+          {/* 七天簽到列：看的是「這一輪」的進度（cycleDone），不是總連續天數 */}
           <div className="absolute content-stretch flex gap-[7px] items-center left-[22px] top-[164px]">
-            {/* Logic to show days 1-7. If consecutiveDays is 2, then days 1,2 are "已簽到", 3 is current/next, etc. */}
-            {[1, 2, 3, 4, 5, 6].map((day) => {
-               if (day <= consecutiveDays) {
-                 return <Text key={day} text="已簽到" />;
-               } else {
-                 return <Text1 key={day} text={`第${day}天`} />;
-               }
-            })}
-            
-            <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0">
-              <ImageAndText text="+100" additionalClassNames="bg-gradient-to-b from-[#fca062] to-[#feecde]" />
-              <p className="font-sans font-normal leading-[normal] not-italic relative shrink-0 text-neutral-400 text-[22px] text-right">第7天</p>
-            </div>
+            {[1, 2, 3, 4, 5, 6, 7].map((day) => (
+              <DayBox key={day} day={day} done={day <= cycleDone} />
+            ))}
           </div>
           
+          {/* 今天簽過就不再是可按的樣子；原本按了只會跳「今日已簽到」的 toast */}
           <div 
-            className="absolute bg-gradient-to-r content-stretch flex from-[#ffa048] h-[86px] items-center justify-center left-[111px] rounded-[100px] shadow-[0px_10px_30px_0px_rgba(213,78,0,0.25)] to-[#fd4703] top-[345px] w-[480px] cursor-pointer active:scale-95 transition-transform" 
+            className={clsx(
+              "absolute bg-gradient-to-r content-stretch flex from-[#ffa048] h-[86px] items-center justify-center left-[111px] rounded-[100px] shadow-[0px_10px_30px_0px_rgba(213,78,0,0.25)] to-[#fd4703] top-[345px] w-[480px] transition-transform",
+              checkedInToday ? 'opacity-50 cursor-default' : 'cursor-pointer active:scale-95'
+            )}
             data-name="button"
-            onClick={() => { hapticMedium(); onCheckIn(); }}
+            onClick={() => { if (checkedInToday) return; hapticMedium(); onCheckIn(); }}
           >
-            <p className="font-sans font-medium leading-[normal] not-italic relative shrink-0 text-[32px] text-white">立即簽到</p>
+            <p className="font-sans font-medium leading-[normal] not-italic relative shrink-0 text-[32px] text-white">{checkedInToday ? '今日已簽到' : '立即簽到'}</p>
           </div>
         </div>
         
@@ -739,7 +735,7 @@ function MissionFrame({
          * 玩家照著做卻拿不到，比沒寫還糟。
          */
         rules={[
-          "每天簽到拿 20 積分，連續簽到到第 7 天那一次拿 100 積分，之後重新算一輪。",
+          "每天簽到拿 20 積分，連續簽到到第 7 天那一次拿 100 積分，之後重新算一輪。每天 00:00 換日。",
           "中間漏簽一天，連續天數就從頭算起。",
           "每日任務每天 00:00 換一批，每週任務每週一 00:00 換一批，沒領完就過期。",
           "積分也可以從這些地方拿：綁定 LINE 一次送 300、每邀請 5 位好友送 100、去排行榜膜拜大神每天 10。",
