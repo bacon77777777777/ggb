@@ -5,7 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./HomeClient.module.css";
 /* 輪播圖接真資料（老闆 2026-09-04）：跟手機首頁同一個 /api/public/home，照檔期過濾；圖不壓字，高度照卡、寬度隨圖 */
-import { fetchHomeCatalog } from "@/lib/queries/home";
+import { fetchHomeCatalog, type HomeProduct } from "@/lib/queries/home";
+import { useHomeSecondaryTabs } from "@/cardx/lib/useHomeSecondaryTabs";
 import { filterBannersBySchedule } from "@/lib/schedule";
 import { isInternalUrl, toInternalPath } from "@/lib/internalUrl";
 
@@ -26,17 +27,22 @@ export function HomeClient() {
   const bannerRef = useRef<HTMLDivElement | null>(null);
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [banners, setBanners] = useState<{ id: string; image: string; link: string }[]>([]);
+  const [products, setProducts] = useState<HomeProduct[]>([]);
   useEffect(() => {
     let alive = true;
     fetchHomeCatalog()
       .then((d) => {
         if (!alive) return;
+        setProducts(d.products);
         const rows = filterBannersBySchedule(d.banners);
         setBanners(rows.map((b) => ({ id: String(b.id), image: b.image_url, link: b.link_url || "#" })));
       })
       .catch(() => {});
     return () => { alive = false; };
   }, []);
+  /* 二級頁籤（推薦＋系列）：演算法照手機首頁，見 cardx/lib/useHomeSecondaryTabs */
+  const secondaryTabs = useHomeSecondaryTabs(products);
+  const [activeSecondaryTab, setActiveSecondaryTab] = useState("featured");
   const bannerCount = Math.max(1, banners.length);
   const bannerLoop = banners.length >= 2;
   const bannerCycleCount = bannerLoop ? 3 : 1;
@@ -408,33 +414,21 @@ export function HomeClient() {
         <div className={styles.sectionLobby}>
           <div className={styles.nav}>
             <div className={styles.container9}>
-              <div className={styles.link6}>
-                <p className={styles.text7}>精選</p>
-              </div>
-              <div className={styles.link7}>
-                <p className={styles.text8}>最新</p>
-              </div>
-              <div className={styles.link7}>
-                <p className={styles.text8}>未鑑定</p>
-              </div>
-              <div className={styles.link7}>
-                <p className={styles.text8}>鑑定</p>
-              </div>
-              <div className={styles.link7}>
-                <p className={styles.text8}>上漲</p>
-              </div>
-              <div className={styles.link7}>
-                <p className={styles.text8}>下跌</p>
-              </div>
-              <div className={styles.link7}>
-                <p className={styles.text8}>即將截止</p>
-              </div>
-              <div className={styles.link7}>
-                <p className={styles.text8}>10 年以上</p>
-              </div>
-              <div className={styles.link7}>
-                <p className={styles.text8}>廢卡</p>
-              </div>
+              {/* 綜合的二級頁籤（老闆 2026-09-04：改真資料、演算法同手機版）。選中：link6／text7，其餘：link7／text8 */}
+              {secondaryTabs.map((t) => {
+                const active = t.id === activeSecondaryTab;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={active ? styles.link6 : styles.link7}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => setActiveSecondaryTab(t.id)}
+                  >
+                    <p className={active ? styles.text7 : styles.text8}>{t.label}</p>
+                  </button>
+                );
+              })}
             </div>
           </div>
           <div className={styles.section}>
