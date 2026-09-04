@@ -371,6 +371,9 @@ export default function Home() {
   const sellSentinel = useSentinelRegistry();
   const secondaryTabsRef = useRef<HTMLDivElement>(null);
   const restoringSecondaryTabRef = useRef<string | null>(null);
+  /** 網址帶進來的二級籤：等類別真的切到那一籤才套（掛載那一輪類別還是初值，先套會被重設 effect 洗掉） */
+  const urlSecondaryRef = useRef<{ tab: string; secondary: string } | null>(null);
+  const secondaryResetRan = useRef(false);
   const restoringScrollRef = useRef<number | null>(null);
   /*
    * 返回時要接回去的「已載入幾筆」（老闆 2026-08-30）
@@ -487,10 +490,11 @@ export default function Home() {
     const seriesParam = params.get('series');
     const sortParam = params.get('sort');
     const nextSecondary = seriesParam ? `series:${seriesParam}` : 'featured';
-    restoringSecondaryTabRef.current = seriesParam ? nextSecondary : null;
     setSortMode(sortParam && (SORT_MODES as readonly string[]).includes(sortParam) ? (sortParam as SortMode) : 'latest');
     const tab = homeTabFromHref(window.location.href);
+    urlSecondaryRef.current = { tab: tab ?? 'all', secondary: nextSecondary };
     if (tab) goToHomeTab(tab); else leaveDeepLinkedTab();
+    // 類別沒變時重設 effect 不會跑，這裡直接設；類別有變時由重設 effect 用 urlSecondaryRef 接手
     setActiveSecondaryTab(nextSecondary);
   }, [goToHomeTab, leaveDeepLinkedTab, homeTabFromHref]);
 
@@ -747,6 +751,18 @@ export default function Home() {
 
   useEffect(() => {
     if (activePrimaryTab === 'exchange') setActivePrimaryTab('all');
+    // 網址帶進來的二級籤（見 applyUrlState）：類別到位才套；掛載那一輪先留著，之後換到別的籤就丟掉
+    const pending = urlSecondaryRef.current;
+    if (pending) {
+      if (pending.tab === activePrimaryTab) {
+        urlSecondaryRef.current = null;
+        setActiveSecondaryTab(pending.secondary);
+        secondaryResetRan.current = true;
+        return;
+      }
+      if (secondaryResetRan.current) urlSecondaryRef.current = null;
+    }
+    secondaryResetRan.current = true;
     if (restoringSecondaryTabRef.current) {
       setActiveSecondaryTab(restoringSecondaryTabRef.current);
       restoringSecondaryTabRef.current = null;
