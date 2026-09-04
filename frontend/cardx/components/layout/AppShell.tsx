@@ -398,6 +398,9 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                   onClick={() => setProfileOpen((v) => !v)}
                 >
                   <span className={styles.avatar} style={avatarStyle} aria-hidden="true" />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#ffffffd6", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {authUser.displayName}
+                  </span>
                   <svg
                     className={`${styles.profileArrow} ${profileOpen ? styles.profileArrowOpen : ""}`}
                     viewBox="0 0 24 24"
@@ -511,25 +514,35 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
               </div>
 
               <div ref={settingsWrapRef} className={styles.settingsWrap}>
-                <button
-                  className={styles.overlayPill}
-                  type="button"
-                  aria-label="語言與設定"
-                  aria-expanded={settingsOpen}
-                  onClick={(e) => {
-                    const target = e.target as HTMLElement;
-                    const onGear = !!target.closest("svg");
-                    if (!onGear) return;
-                    setProfileOpen(false);
-                    setSettingsOpen((v) => !v);
-                  }}
-                >
-                  <img className={styles.overlayFlag} src="/cardx/placeholder.svg" alt="" aria-hidden="true" />
+                {/* 老闆 2026-09-04：設定、鈴鐺、聊聊三顆放同一個膠囊，分隔線隔開 */}
+                <div className={styles.overlayPill} style={{ width: "auto", minWidth: 0, gap: 10, padding: "0 10px", cursor: "default" }}>
+                  <button
+                    type="button"
+                    aria-label="設定"
+                    aria-expanded={settingsOpen}
+                    onClick={() => { setProfileOpen(false); setSettingsOpen((v) => !v); }}
+                    style={{ appearance: "none", border: 0, background: "transparent", padding: 0, width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "inherit", cursor: "pointer", position: "relative" }}
+                  >
+                    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+                      <use href="#icon-settings" />
+                    </svg>
+                  </button>
                   <span className={styles.verticalDivider} aria-hidden="true" />
-                  <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
-                    <use href="#icon-settings" />
-                  </svg>
-                </button>
+                  <Link href="/announcements" aria-label="通知" style={{ appearance: "none", border: 0, background: "transparent", padding: 0, width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "inherit", cursor: "pointer", position: "relative" }}>
+                    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+                      <use href="#icon-notifications" />
+                    </svg>
+                    {bellUnread ? (
+                      <span aria-hidden="true" style={{ position: "absolute", top: 0, right: 0, width: 8, height: 8, borderRadius: "50%", background: "#ed1d49", boxShadow: "0 0 0 2px #111923" }} />
+                    ) : null}
+                  </Link>
+                  <span className={styles.verticalDivider} aria-hidden="true" />
+                  <Link href="/messages" aria-label="訊息" style={{ appearance: "none", border: 0, background: "transparent", padding: 0, width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "inherit", cursor: "pointer", position: "relative" }}>
+                    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+                      <use href="#icon-chat-3" />
+                    </svg>
+                  </Link>
+                </div>
                 {settingsOpen ? (
                   <div className={styles.settingsMenu} role="dialog" aria-label="設定">
                     <div className={styles.settingsGrid}>
@@ -671,20 +684,6 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                 ) : null}
               </div>
 
-              <Link href="/announcements" className={styles.bellPill} aria-label="通知" style={{ position: "relative" }}>
-                <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
-                  <use href="#icon-notifications" />
-                </svg>
-                {bellUnread ? (
-                  <span aria-hidden="true" style={{ position: "absolute", top: 7, right: 7, width: 8, height: 8, borderRadius: "50%", background: "#ed1d49", boxShadow: "0 0 0 2px #111923" }} />
-                ) : null}
-              </Link>
-
-              <Link href="/messages" className={styles.chatPill} aria-label="訊息">
-                <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
-                  <use href="#icon-chat-3" />
-                </svg>
-              </Link>
             </div>
           ) : (
             <div style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 8 }}>
