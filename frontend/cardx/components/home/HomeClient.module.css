@@ -645,7 +645,7 @@
 /* 商品名前的類別標籤（老闆 2026-09-04：左右要有 padding）。
    寫在 module 裡是因為 .cardx-root * 的 reset 會把 tailwind 的 px-/py-/mr- 歸零 */
 .main2 .main .sectionLobby .a2022PaniniPrizm353B .typeBadge {
-  padding: 2px 6px;
+  padding: 1px 6px; /* 上下 1px：標籤總高 16 剛好等於行高，2px 會超出品名框上緣被 overflow 裁掉（老闆 2026-09-04） */
   margin-right: 6px;
 }
 .main2 .main .sectionLobby .a2022PaniniPrizm353B {
@@ -654,12 +654,12 @@
   align-self: stretch;
   width: 100%;
   height: auto;
-  min-height: 32px;
-  max-height: 32px;
+  min-height: 36px;
+  max-height: 36px;
   overflow: hidden;
   text-overflow: ellipsis;
-  /* 行高 14→16：老闆 2026-09-04「第二行往下 2px」，兩行的框跟著 28→32 */
-  line-height: 16px;
+  /* 行高 14→16→18：老闆 2026-09-04 兩次「第二行往下 2px」，兩行的框跟著 28→32→36 */
+  line-height: 18px;
   letter-spacing: 0;
   color: #ffffff;
   font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
