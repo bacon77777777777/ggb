@@ -98,6 +98,8 @@ export default function PackDetailPage() {
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
 
   const fairnessInfoCloseRef = useRef<HTMLButtonElement | null>(null);
+  const navRef = useRef<HTMLElement | null>(null);
+  const [navH, setNavH] = useState(66);
   const [isMobile, setIsMobile] = useState(false);
   const [fairnessInfoOpen, setFairnessInfoOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -223,6 +225,9 @@ export default function PackDetailPage() {
     function update() {
       const mobile = window.innerWidth <= 1023;
       setIsMobile((prev) => (prev === mobile ? prev : mobile));
+      // 麵包屑那一列的高度：舞台滿高要扣掉它，不然一進頁面底部那排按鈕被視窗切掉
+      const n = navRef.current;
+      if (n) { const h = Math.round(n.getBoundingClientRect().height) + 16; setNavH((prev) => (prev === h ? prev : h)); }
     }
     update();
     window.addEventListener("resize", update);
@@ -254,11 +259,10 @@ export default function PackDetailPage() {
 
   /* 舞台底部（老闆 2026-09-04）：左邊 G 金額／抽，右邊 推一下｜立即開抽｜試試看。聊聊與收藏移到麵包屑右邊 */
   const hasMachine = product.type === "gacha";
+  // 麵包屑右邊三顆用 cardx 原本的方形次要按鈕（老闆 2026-09-04：「用原本方形那種」）
   const crumbIconStyle = (active: boolean): React.CSSProperties => ({
-    width: 36, height: 36, borderRadius: 999, padding: 0, display: "grid", placeItems: "center", cursor: "pointer", flex: "0 0 auto",
-    border: active ? "1px solid rgba(255,77,79,0.55)" : "1px solid rgba(255,255,255,0.12)",
-    background: active ? "rgba(255,77,79,0.18)" : "rgba(255,255,255,0.06)",
-    color: active ? "#ff4d4f" : "rgba(255,255,255,0.85)",
+    width: 48, minWidth: 48, height: 48, padding: 0, display: "grid", placeItems: "center", flex: "0 0 auto",
+    ...(active ? { color: "#ff4d4f", borderColor: "rgba(255, 77, 79, 0.55)", background: "rgba(255, 77, 79, 0.18)" } : {}),
   });
   const handleShare = async () => {
     const url = window.location.href;
@@ -387,10 +391,12 @@ export default function PackDetailPage() {
       : undefined,
   });
 
-  const stage = themeResolved ? (
-    <ProductStageVisual key={`${product.id}-${theme}`} product={product} theme={theme} isSoldOut={isSoldOut} controls={actionButtons} pushSignal={pushSignal} />
+  // 桌機舞台滿高（老闆 2026-09-04）：sticky 區高度 = 視窗 − 導覽列 − 上下各 20，機台在裡面 fit 高度
+  const stageBoxHeight = `calc(100dvh - var(--header-height) - 40px - ${navH}px)`;
+  const renderStage = (fill: boolean) => themeResolved ? (
+    <ProductStageVisual key={`${product.id}-${theme}`} product={product} theme={theme} isSoldOut={isSoldOut} controls={actionButtons} pushSignal={pushSignal} fillHeight={fill} />
   ) : (
-    <div style={{ aspectRatio: "1 / 1", borderRadius: 16, background: "#1c2532" }} />
+    <div style={fill ? { height: "100%", borderRadius: 16, background: "#1c2532" } : { aspectRatio: "1 / 1", borderRadius: 16, background: "#1c2532" }} />
   );
 
   const sections = (
@@ -520,7 +526,7 @@ export default function PackDetailPage() {
   return (
     <AppShell sidebarItems={defaultSidebarItems} hideBottomNavOnMobile>
       <div className={styles.page}>
-        <nav className={styles.breadcrumbs} aria-label="breadcrumb" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <nav ref={navRef} className={styles.breadcrumbs} aria-label="breadcrumb" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <Link href={`/?tab=${encodeURIComponent(product.type)}`} className={styles.breadcrumbBack} scroll={false} aria-label={`返回${typeLabel}`}>
             <span className={styles.breadcrumbBackIcon} aria-hidden="true">
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
@@ -537,14 +543,14 @@ export default function PackDetailPage() {
           </Link>
           {/* 麵包屑右邊：規則／分享／收藏（老闆 2026-09-04） */}
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, flex: "0 0 auto", position: "relative" }}>
-            <button type="button" aria-label="規則" title="規則" onClick={() => setRulesOpen(true)} style={crumbIconStyle(false)}>
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><use href="#icon-docs" /></svg>
+            <button type="button" className={styles.secondaryButton} aria-label="規則" title="規則" onClick={() => setRulesOpen(true)} style={crumbIconStyle(false)}>
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><use href="#icon-docs" /></svg>
             </button>
-            <button type="button" aria-label="分享" title="分享" onClick={() => void handleShare()} style={crumbIconStyle(false)}>
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z" /></svg>
+            <button type="button" className={styles.secondaryButton} aria-label="分享" title="分享" onClick={() => void handleShare()} style={crumbIconStyle(false)}>
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z" /></svg>
             </button>
-            <button type="button" aria-label={followed ? "取消收藏" : "收藏"} title="收藏" aria-pressed={followed} onClick={() => void toggleFollow(Number(product.id))} style={crumbIconStyle(followed)}>
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><use href="#icon-like" /></svg>
+            <button type="button" className={styles.secondaryButton} aria-label={followed ? "取消收藏" : "收藏"} title="收藏" aria-pressed={followed} onClick={() => void toggleFollow(Number(product.id))} style={crumbIconStyle(followed)}>
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg>
             </button>
             {shareCopied ? (
               <div role="status" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", padding: "6px 10px", borderRadius: 8, background: "rgba(17,25,35,0.96)", border: "1px solid rgba(255,255,255,0.12)", fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.9)", whiteSpace: "nowrap", zIndex: 20 }}>已複製連結</div>
@@ -555,14 +561,14 @@ export default function PackDetailPage() {
         {/* 版面（老闆 2026-09-04）：左邊舞台固定（sticky），右邊一欄捲動：標題／配率表 → 商品資訊 → 公平性驗證 → 品項總覽 */}
         {isMobile ? (
           <section className={styles.hero} aria-label="商品舞台與面板">
-            <div className={styles.mediaCol}>{stage}</div>
+            <div className={styles.mediaCol}>{renderStage(false)}</div>
             {panelInner}
             <div style={{ display: "grid", gap: 16 }}>{sections}</div>
           </section>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 24, alignItems: "start" }}>
-            <div className={styles.mediaCol} aria-label="商品舞台" style={{ position: "sticky", top: "calc(var(--header-height) + 20px)" }}>
-              {stage}
+            <div className={styles.mediaCol} aria-label="商品舞台" style={{ position: "sticky", top: "calc(var(--header-height) + 20px)", height: stageBoxHeight }}>
+              {renderStage(true)}
             </div>
             <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
               {panelInner}

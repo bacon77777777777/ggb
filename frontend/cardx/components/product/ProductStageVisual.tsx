@@ -51,9 +51,10 @@ const noop = () => {};
 /** 舞台底部操作列的高度（老闆 2026-09-04：立即開抽放在機台下方、同一個舞台裡） */
 const CONTROLS_H = 72;
 
-/** pushSignal：每 +1 推一下機台（轉蛋機晃 200ms，照手機 handlePush） */export function ProductStageVisual({ product, theme, isSoldOut, controls, pushSignal = 0 }: { product: ProductRow; theme: string | null; isSoldOut: boolean; controls?: ReactNode; pushSignal?: number }) {
+/** pushSignal：每 +1 推一下機台（轉蛋機晃 200ms，照手機 handlePush） */export function ProductStageVisual({ product, theme, isSoldOut, controls, pushSignal = 0, fillHeight = false }: { product: ProductRow; theme: string | null; isSoldOut: boolean; controls?: ReactNode; pushSignal?: number; /** 桌機：容器吃父層高度（滿高）而不是正方形，機台照高度 fit、置中 */ fillHeight?: boolean }) {
   const boxRef = useRef<HTMLDivElement | null>(null);
-  const [width, setWidth] = useState(0);
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  const width = size.w;
   const [loaded, setLoaded] = useState(false);
   const [gachaState, setGachaState] = useState<"idle" | "shaking">("idle");
   useEffect(() => {
@@ -71,10 +72,11 @@ const CONTROLS_H = 72;
     const el = boxRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver((entries) => {
-      for (const e of entries) setWidth(Math.round(e.contentRect.width));
+      for (const e of entries) setSize({ w: Math.round(e.contentRect.width), h: Math.round(e.contentRect.height) });
     });
     ro.observe(el);
-    setWidth(Math.round(el.getBoundingClientRect().width));
+    const r = el.getBoundingClientRect();
+    setSize({ w: Math.round(r.width), h: Math.round(r.height) });
     return () => ro.disconnect();
   }, []);
 
@@ -92,9 +94,12 @@ const CONTROLS_H = 72;
 
   // fit 高度（老闆 2026-09-04）：整台機台放進正方形——舞台是正方形，所以照高度縮、左右置中
   const bottomInset = controls ? CONTROLS_H : 0;
-  const stageH = Math.max(0, width - bottomInset);
-  const scale = width > 0 ? stageH / MACHINE_H : 0;
-  const machineLeft = width > 0 ? Math.round((width - MACHINE_W * scale) / 2) : 0;
+  const boxH = fillHeight ? size.h : width; // 滿高模式吃容器實際高度；否則是正方形
+  const stageH = Math.max(0, boxH - bottomInset);
+  // fit 高度，但寬度不夠時改以寬度為準（窄視窗）；機台在舞台區裡置中
+  const scale = width > 0 && stageH > 0 ? Math.min(stageH / MACHINE_H, width / MACHINE_W) : 0;
+  const machineLeft = Math.round((width - MACHINE_W * scale) / 2);
+  const machineTop = Math.round((stageH - MACHINE_H * scale) / 2);
   const useCustomPack = p.pack_style === "custom";
 
   return (
@@ -103,7 +108,7 @@ const CONTROLS_H = 72;
       style={{
         position: "relative",
         width: "100%",
-        aspectRatio: "1 / 1",
+        ...(fillHeight ? { height: "100%" } : { aspectRatio: "1 / 1" }),
         overflow: "hidden",
         borderRadius: 16,
         background: kind === "card" ? skyGradientCss(skyProgressNow()) : "#1c2532",
@@ -115,7 +120,7 @@ const CONTROLS_H = 72;
       ) : null}
 
       {kind !== "image" && scale > 0 ? (
-        <div style={{ position: "absolute", top: 0, left: machineLeft, width: MACHINE_W, transform: `scale(${scale})`, transformOrigin: "top left" }}>
+        <div style={{ position: "absolute", top: machineTop, left: machineLeft, width: MACHINE_W, transform: `scale(${scale})`, transformOrigin: "top left" }}>
           <div style={{ position: "relative", width: MACHINE_W, height: MACHINE_H }}>
             {kind === "gacha" && Machine ? (
               <>
