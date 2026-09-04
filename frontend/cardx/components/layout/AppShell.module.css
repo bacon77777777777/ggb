@@ -499,8 +499,9 @@
 .profilePill {
   appearance: none;
   border: 0;
-  /* 深色底、白字（老闆 2026-09-05）；頭像離容器左／上／下各 4px，不再貼邊 */
-  background: rgba(0, 0, 0, 0.5);
+  /* 底色跟旁邊的圖標圓底同一套（老闆 2026-09-05：黑 50% 太突兀）：黑 10%，hover／展開黑 20%。
+     白字；頭像離容器左／上／下各 4px，不再貼邊 */
+  background: rgba(0, 0, 0, 0.1);
   height: 36px;
   padding: 4px 10px 4px 4px;
   border-radius: 18px;
@@ -514,11 +515,11 @@
 
 .profilePill:hover,
 .profilePill[aria-expanded="true"] {
-  background: rgba(0, 0, 0, 0.62);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .profilePill:active {
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.26);
 }
 
 .profilePill .avatar {
