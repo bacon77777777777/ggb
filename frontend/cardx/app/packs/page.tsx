@@ -179,7 +179,7 @@ export default function PacksPage() {
                   商品
                 </h1>
                 {loaded ? (
-                  <span style={{ marginLeft: 10, fontSize: 12, fontWeight: 700, color: "#9ca3af", whiteSpace: "nowrap" }}>
+                  <span style={{ marginLeft: 10, fontSize: 12, fontWeight: 700, color: "#6b7280", whiteSpace: "nowrap" }}>
                     {items.length.toLocaleString()} 件
                   </span>
                 ) : null}
@@ -311,7 +311,7 @@ export default function PacksPage() {
               ) : null}
 
               {loaded && items.length > 0 ? (
-                <div style={{ textAlign: "center", padding: "24px 0 8px", fontSize: 13, fontWeight: 700, color: "#9ca3af" }}>
+                <div style={{ textAlign: "center", padding: "24px 0 8px", fontSize: 13, fontWeight: 700, color: "#6b7280" }}>
                   {visibleCount < items.length ? "載入中…" : "到底了"}
                 </div>
               ) : null}

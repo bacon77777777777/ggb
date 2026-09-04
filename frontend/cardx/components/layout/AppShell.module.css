@@ -109,15 +109,17 @@
   align-items: center;
   margin-left: 12px;
   overflow: hidden;
-  /* logo 主體就是紅的，直接放在紅底上會糊掉，墊一張白底片 */
+  /* logo 主體就是紅的，直接放在紅底上會糊掉，墊一張白底片。
+     高度對齊頂欄其他控制項的 36px，不然它會比旁邊高一截 */
   background: #ffffff;
   border-radius: 10px;
-  padding: 3px 10px;
+  padding: 0 10px;
+  height: 36px;
 }
 
 .logoDesktop {
-  width: 158px;
-  height: 35px;
+  width: 145px;
+  height: 32px;
   display: block;
 }
 

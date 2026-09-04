@@ -333,8 +333,16 @@ function LeaderboardPageInner() {
                                 <div style={{ fontSize: 13, fontWeight: 600, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                   {nicknameOf(e)}
                                 </div>
+                                {/* 稱號在淺底上要做成實心膠囊：金／綠這些色當文字色時對比只有 2:1 看不清，
+                                    手機版的排行榜也是填色膠囊＋白字 */}
                                 {e.title_name ? (
-                                  <span style={{ fontSize: 10, fontWeight: 800, color: TITLE_BG[e.title_color || "gold"] ?? TITLE_BG.gold, whiteSpace: "nowrap" }}>
+                                  <span
+                                    style={{
+                                      display: "inline-flex", alignItems: "center", height: 17, padding: "0 7px", borderRadius: 999,
+                                      background: TITLE_BG[e.title_color || "gold"] ?? TITLE_BG.gold,
+                                      color: "#ffffff", fontSize: 10, fontWeight: 800, whiteSpace: "nowrap",
+                                    }}
+                                  >
                                     {e.title_name}
                                   </span>
                                 ) : null}

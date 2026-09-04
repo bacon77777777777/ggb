@@ -332,7 +332,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
 
           <Link href="/" className={styles.logoDesktopLink} aria-label="吉吉比">
             {/* 老闆 2026-09-04：logo 換成吉吉比 */}
-            <img src="/images/logo.png" alt="吉吉比" style={{ height: 35, width: "auto", display: "block" }} />
+            <img src={asset("/images/logo.png")} alt="吉吉比" style={{ height: 28, width: "auto", display: "block" }} />
           </Link>
 
           <Link
@@ -685,7 +685,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
 
         <div className={styles.headerMobile} aria-label="Header">
           <Link href="/" className={styles.logoMobileLink} aria-label="吉吉比">
-            <img src="/images/logo.png" alt="吉吉比" style={{ height: 32, width: "auto", display: "block" }} />
+            <img src={asset("/images/logo.png")} alt="吉吉比" style={{ height: 26, width: "auto", display: "block" }} />
           </Link>
 
           <Link href="/missions" className={styles.bonusPillMobile} aria-label="簽到">

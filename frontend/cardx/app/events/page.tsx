@@ -57,6 +57,8 @@ export default function EventsPage() {
   const router = useRouter();
   const [events, setEvents] = useState<PublicEvent[] | null>(null);
   const [failed, setFailed] = useState(false);
+  /* 封面網址來自活動內容，指到不存在的圖就會破一塊；載不出來的改畫標題卡 */
+  const [brokenCovers, setBrokenCovers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let alive = true;
@@ -132,15 +134,20 @@ export default function EventsPage() {
                             style={{
                               position: "relative",
                               height: 160,
-                              background: e.cover ? "#f3f4f6" : `linear-gradient(135deg, ${e.accent_color || "#e5e7eb"}22, #f3f4f6)`,
+                              background: e.cover && !brokenCovers.has(e.slug) ? "#f3f4f6" : `linear-gradient(135deg, ${e.accent_color || "#e5e7eb"}22, #f3f4f6)`,
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
                             }}
                           >
-                            {e.cover ? (
+                            {e.cover && !brokenCovers.has(e.slug) ? (
                               // eslint-disable-next-line @next/next/no-img-element
-                              <img src={e.cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                              <img
+                                src={e.cover}
+                                alt=""
+                                onError={() => setBrokenCovers((prev) => new Set(prev).add(e.slug))}
+                                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                              />
                             ) : (
                               <div style={{ padding: "0 24px", fontSize: 16, fontWeight: 950, color: "#374151", textAlign: "center", lineHeight: 1.3 }}>
                                 {e.title}

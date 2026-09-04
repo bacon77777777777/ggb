@@ -108,7 +108,7 @@ export default function TopicsPage() {
                   <SurfaceCard style={{ display: "grid", gap: 12 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                       <div style={{ fontSize: 13, fontWeight: 950, color: "#111827" }}>正在熱門</div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "#9ca3af" }}>近 7 天</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>近 7 天</div>
                     </div>
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                       {topics.map((t, i) => {
@@ -153,7 +153,7 @@ export default function TopicsPage() {
                   <SurfaceCard style={{ display: "grid", gap: 12 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                       <div style={{ fontSize: 13, fontWeight: 950, color: "#111827" }}>熱門標籤</div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "#9ca3af" }}>近 30 天商品熱度</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>近 30 天商品熱度</div>
                     </div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       {tags.map((t) => (
@@ -181,7 +181,7 @@ export default function TopicsPage() {
                   </SurfaceCard>
                 ) : null}
 
-                <div style={{ fontSize: 12, fontWeight: 750, color: "#9ca3af" }}>點任何一個關鍵字，就會帶你去搜尋結果。</div>
+                <div style={{ fontSize: 12, fontWeight: 750, color: "#6b7280" }}>點任何一個關鍵字，就會帶你去搜尋結果。</div>
               </div>
             )}
           </div>

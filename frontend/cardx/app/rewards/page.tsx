@@ -63,7 +63,7 @@ function SectionTitle({ children, right }: { children: React.ReactNode; right?: 
 }
 
 function EmptyLine({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 12, fontWeight: 750, color: "#9ca3af", padding: "10px 0" }}>{children}</div>;
+  return <div style={{ fontSize: 12, fontWeight: 750, color: "#6b7280", padding: "10px 0" }}>{children}</div>;
 }
 
 export default function RewardsPage() {

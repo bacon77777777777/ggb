@@ -155,7 +155,7 @@ export function HomeClient() {
         setMenus(d.menus);
         setCatalogLoaded(true);
         const rows = filterBannersBySchedule(d.banners);
-        setBanners(rows.map((b) => ({ id: String(b.id), image: b.image_url, link: b.link_url || "#" })));
+        setBanners(rows.map((b) => ({ id: String(b.id), image: b.image_url, link: b.link_url || "" })));
       })
       .catch(() => {});
     return () => { alive = false; };
@@ -566,6 +566,11 @@ export function HomeClient() {
             if (!b) return null;
             const slideStyle = { display: "block", flexShrink: 0, height: 187, width: "auto", borderRadius: 12, overflow: "hidden" } as const;
             const img = <img src={b.image} alt="" style={{ height: 187, width: "auto", display: "block" }} draggable={false} />;
+            // 沒設連結的輪播圖不要包成 <a>：那會變成 href="#" 的死連結，
+            // 游標是手指、點下去卻什麼都沒發生
+            if (!b.link || b.link === "#") {
+              return <div key={`banner_${childIdx}`} style={slideStyle}>{img}</div>;
+            }
             return isInternalUrl(b.link) ? (
               <Link key={`banner_${childIdx}`} href={toInternalPath(b.link)} style={slideStyle}>{img}</Link>
             ) : (

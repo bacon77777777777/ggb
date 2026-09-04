@@ -372,7 +372,7 @@ export default function TrendsPage() {
                             {selectedDeals === null ? (
                               <div style={{ height: 40, borderRadius: 10, background: "#f3f4f6" }} />
                             ) : selectedDeals.length === 0 ? (
-                              <div style={{ fontSize: 12, fontWeight: 750, color: "#9ca3af" }}>近 90 天沒有成交紀錄。</div>
+                              <div style={{ fontSize: 12, fontWeight: 750, color: "#6b7280" }}>近 90 天沒有成交紀錄。</div>
                             ) : (
                               [...selectedDeals]
                                 .reverse()
@@ -402,7 +402,7 @@ export default function TrendsPage() {
             </div>
 
             {items && items.length > 0 ? (
-              <div style={{ marginTop: 12, fontSize: 12, fontWeight: 750, color: "#9ca3af" }}>
+              <div style={{ marginTop: 12, fontSize: 12, fontWeight: 750, color: "#6b7280" }}>
                 價格取自交易所玩家之間的實際成交，僅供參考。
               </div>
             ) : null}
