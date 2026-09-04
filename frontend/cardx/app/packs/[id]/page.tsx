@@ -395,7 +395,44 @@ export default function PackDetailPage() {
 
   const sections = (
     <>
-            <section className={styles.section} aria-label="商品資訊">
+            <section className={styles.section} aria-label="品項總覽">
+              <div className={styles.sectionHeader}>品項總覽</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 16 }}>
+                {lastOne ? (
+                  <div role="button" tabIndex={0} style={prizeCardStyle(true)} onClick={() => setViewingIndex(prizes.indexOf(lastOne))}>
+                    <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", background: "rgba(0,0,0,0.18)" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={lastOne.image_url || asset("/images/item_defaulet.webp")} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }} />
+                    </div>
+                    <div style={{ padding: 12, display: "grid", gap: 6, background: "linear-gradient(180deg, rgba(255, 246, 220, 0.98), rgba(220, 175, 90, 0.96))" }}>
+                      <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(0,0,0,0.68)" }}>最後賞</div>
+                      <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(0,0,0,0.92)", lineHeight: "16px" }}>{lastOne.name}</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(0,0,0,0.7)" }}>抽到最後一張籤就是你的</div>
+                    </div>
+                  </div>
+                ) : null}
+                {regularPrizes.map((x) => {
+                  const gone = showCounts && (x.remaining ?? 0) <= 0;
+                  return (
+                    <div key={x.id} role="button" tabIndex={0} style={{ ...prizeCardStyle(false), opacity: gone ? 0.5 : 1 }} onClick={() => setViewingIndex(prizes.indexOf(x))}>
+                      <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", background: "rgba(0,0,0,0.18)" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={x.image_url || asset("/images/item_defaulet.webp")} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }} />
+                      </div>
+                      <div style={{ padding: 12, display: "grid", gap: 6 }}>
+                        <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.62)" }}>{x.level}</div>
+                        <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(255,255,255,0.94)", lineHeight: "16px", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{x.name}</div>
+                        {showCounts ? (
+                          <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.85)" }}>剩餘 {x.remaining ?? 0} / {x.total ?? 0}</div>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+      <section className={styles.section} aria-label="商品資訊">
               <div className={styles.sectionHeader}>商品資訊</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
                 {infoCards.map((row) => (
@@ -477,43 +514,7 @@ export default function PackDetailPage() {
               </section>
             ) : null}
 
-            <section className={styles.section} aria-label="品項總覽">
-              <div className={styles.sectionHeader}>品項總覽</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 16 }}>
-                {lastOne ? (
-                  <div role="button" tabIndex={0} style={prizeCardStyle(true)} onClick={() => setViewingIndex(prizes.indexOf(lastOne))}>
-                    <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", background: "rgba(0,0,0,0.18)" }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={lastOne.image_url || asset("/images/item_defaulet.webp")} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }} />
-                    </div>
-                    <div style={{ padding: 12, display: "grid", gap: 6, background: "linear-gradient(180deg, rgba(255, 246, 220, 0.98), rgba(220, 175, 90, 0.96))" }}>
-                      <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(0,0,0,0.68)" }}>最後賞</div>
-                      <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(0,0,0,0.92)", lineHeight: "16px" }}>{lastOne.name}</div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(0,0,0,0.7)" }}>抽到最後一張籤就是你的</div>
-                    </div>
-                  </div>
-                ) : null}
-                {regularPrizes.map((x) => {
-                  const gone = showCounts && (x.remaining ?? 0) <= 0;
-                  return (
-                    <div key={x.id} role="button" tabIndex={0} style={{ ...prizeCardStyle(false), opacity: gone ? 0.5 : 1 }} onClick={() => setViewingIndex(prizes.indexOf(x))}>
-                      <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", background: "rgba(0,0,0,0.18)" }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={x.image_url || asset("/images/item_defaulet.webp")} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }} />
-                      </div>
-                      <div style={{ padding: 12, display: "grid", gap: 6 }}>
-                        <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.62)" }}>{x.level}</div>
-                        <div style={{ fontSize: 13, fontWeight: 950, color: "rgba(255,255,255,0.94)", lineHeight: "16px", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{x.name}</div>
-                        {showCounts ? (
-                          <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.85)" }}>剩餘 {x.remaining ?? 0} / {x.total ?? 0}</div>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-    </>
+          </>
   );
 
   return (
