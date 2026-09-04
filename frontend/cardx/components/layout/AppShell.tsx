@@ -2,10 +2,18 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { SidebarItem } from "@/cardx/lib/types";
 import { supabaseBrowser } from "@/cardx/lib/supabase/browser";
 import styles from "./AppShell.module.css";
+/* 接吉吉比的真資料（老闆 2026-09-04：頂部導航這些按鈕都用得到，先接真實資料）：
+   登入狀態／G 幣／頭像走 AuthContext，鈴鐺未讀跟手機版 Navbar 同一套算法，聲音開關接站上的靜音偏好 */
+import { useAuth } from "@/contexts/AuthContext";
+import { asset } from "@/lib/asset";
+import { createClient } from "@/lib/supabase/client";
+import { countUnread } from "@/lib/announcementRead";
+import { setSoundMuted } from "@/lib/soundPrefs";
+import { useSoundMuted } from "@/hooks/useSoundMuted";
 
 type Props = {
   sidebarItems: SidebarItem[];
@@ -26,18 +34,63 @@ declare global {
   }
 }
 
-type AuthUser =
-  | { provider: "google" | "email"; email?: string }
-  | { provider: "line"; userId: string; displayName: string; pictureUrl?: string };
+type AuthUser = { provider: "ggb"; email?: string; displayName: string; pictureUrl?: string; tokens: number; points: number };
 
 export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidth, children }: Props) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [headerElevated, setHeaderElevated] = useState(false);
-  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const pathname = usePathname();
+  const router = useRouter();
+  const { user: ggbUser, isAuthenticated, logout: ggbLogout } = useAuth();
+  const authUser: AuthUser | null = isAuthenticated && ggbUser
+    ? {
+        provider: "ggb",
+        email: ggbUser.email,
+        displayName: ggbUser.name || ggbUser.full_name || (ggbUser.email ? ggbUser.email.split("@")[0] : "") || "會員",
+        pictureUrl: ggbUser.avatar_url || undefined,
+        tokens: ggbUser.tokens ?? 0,
+        points: ggbUser.points ?? 0,
+      }
+    : null;
+  const avatarStyle = {
+    backgroundImage: `url("${authUser?.pictureUrl ?? asset("/images/avatar.webp")}")`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+  } as const;
+  /* 鈴鐺未讀：個人通知（排除私訊類）＋公告，跟手機版 Navbar 同一套 */
+  const [bellUnread, setBellUnread] = useState(false);
+  useEffect(() => {
+    if (!authUser) { setBellUnread(false); return; }
+    const supabase = createClient();
+    let alive = true;
+    const check = async () => {
+      try {
+        const { count } = await supabase
+          .from("notifications")
+          .select("id", { count: "exact", head: true })
+          .eq("is_read", false)
+          .not("type", "in", "(exchange_message,sell_message)");
+        if (!alive) return;
+        if ((count ?? 0) > 0) { setBellUnread(true); return; }
+        const res = await fetch("/api/announcements?limit=30");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!alive || !Array.isArray(data) || data.length === 0) return;
+        setBellUnread(countUnread(data as { id: string; published_at: string }[]) > 0);
+      } catch {}
+    };
+    void check();
+    const handler = () => { void check(); };
+    window.addEventListener("ggb:announcementsRead", handler);
+    return () => { alive = false; window.removeEventListener("ggb:announcementsRead", handler); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!authUser, pathname]);
   const [profileOpen, setProfileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsAllSound, setSettingsAllSound] = useState(true);
+  const soundMuted = useSoundMuted();
+  const settingsAllSound = !soundMuted;
+  const setSettingsAllSound = (fn: (v: boolean) => boolean) => setSoundMuted(!fn(settingsAllSound));
   const [settingsAnimations, setSettingsAnimations] = useState(true);
   const [settingsHideLockedGames, setSettingsHideLockedGames] = useState(false);
   const [settingsMusic, setSettingsMusic] = useState(60);
@@ -48,7 +101,6 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
   const profileWrapMobileRef = useRef<HTMLDivElement | null>(null);
   const profileCloseTimerRef = useRef<number | null>(null);
   const settingsWrapRef = useRef<HTMLDivElement | null>(null);
-  const pathname = usePathname();
   const liffId = process.env.NEXT_PUBLIC_LIFF_ID ?? "";
   const liffEnabled = !!liffId;
 
@@ -172,167 +224,8 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
     };
   }, []);
 
-  useEffect(() => {
-    if (liffEnabled) return;
-    const supabase = supabaseBrowser();
-    if (!supabase) return;
-    const sb = supabase;
 
-    async function syncFromSession() {
-      try {
-        const { data } = await sb.auth.getSession();
-        const session = data.session;
-        if (!session?.user) {
-          setAuthUser(null);
-          return;
-        }
-        const email = session.user.email ?? undefined;
-        const user = { provider: "email" as const, email };
-        setAuthUser(user);
-        try {
-          window.localStorage.setItem("cardx.auth.user", JSON.stringify(user));
-        } catch {}
-      } catch {
-        setAuthUser(null);
-      }
-    }
 
-    void syncFromSession();
-    const { data } = sb.auth.onAuthStateChange(() => {
-      void syncFromSession();
-    });
-
-    return () => {
-      data.subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    function readAuthUser(): AuthUser | null {
-      try {
-        const raw = window.localStorage.getItem("cardx.auth.user");
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== "object") return null;
-        if (parsed.provider === "google" || parsed.provider === "email") {
-          const email = typeof parsed.email === "string" ? parsed.email : undefined;
-          return { provider: parsed.provider, email };
-        }
-        if (parsed.provider === "line") {
-          const userId = typeof parsed.userId === "string" ? parsed.userId : "";
-          const displayName = typeof parsed.displayName === "string" ? parsed.displayName : "";
-          if (!userId || !displayName) return null;
-          const pictureUrl = typeof parsed.pictureUrl === "string" ? parsed.pictureUrl : undefined;
-          return { provider: "line", userId, displayName, pictureUrl };
-        }
-        return null;
-      } catch {
-        return null;
-      }
-    }
-
-    function sync() {
-      setAuthUser((prev) => {
-        const next = readAuthUser();
-        if (!next && !prev) return prev;
-        if (!next || !prev) return next;
-        if (next.provider !== prev.provider) return next;
-        if (next.provider === "line") {
-          if (prev.provider !== "line") return next;
-          if (next.userId === prev.userId && next.displayName === prev.displayName && next.pictureUrl === prev.pictureUrl) return prev;
-          return next;
-        }
-        if (prev.provider === "line") return next;
-        if (next.email === prev.email) return prev;
-        return next;
-      });
-    }
-
-    function onStorage(e: StorageEvent) {
-      if (e.key !== "cardx.auth.user") return;
-      sync();
-    }
-
-    sync();
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("focus", sync);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("focus", sync);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!liffEnabled) return;
-    if (liffStatus === "ready") return;
-    let cancelled = false;
-
-    async function waitForLiff() {
-      const startedAt = Date.now();
-      while (!window.liff) {
-        if (Date.now() - startedAt > 6000) return null;
-        await new Promise((r) => setTimeout(r, 50));
-      }
-      return window.liff;
-    }
-
-    async function init() {
-      setLiffStatus("loading");
-      setLiffError(null);
-      const liff = await waitForLiff();
-      if (!liff) {
-        if (!cancelled) {
-          setLiffStatus("error");
-          setLiffError("未載入 LINE LIFF SDK。");
-        }
-        return;
-      }
-
-      try {
-        await liff.init({ liffId });
-      } catch {
-        if (!cancelled) {
-          setLiffStatus("error");
-          setLiffError("LIFF 初始化失敗。");
-        }
-        return;
-      }
-
-      try {
-        if (!liff.isLoggedIn()) {
-          liff.login({ redirectUri: window.location.href });
-          return;
-        }
-      } catch {}
-
-      try {
-        const profile = await liff.getProfile();
-        const user: AuthUser = {
-          provider: "line",
-          userId: profile.userId,
-          displayName: profile.displayName,
-          pictureUrl: profile.pictureUrl,
-        };
-        if (!cancelled) {
-          setAuthUser(user);
-          try {
-            window.localStorage.setItem("cardx.auth.user", JSON.stringify(user));
-          } catch {}
-          setLiffStatus("ready");
-        }
-      } catch {
-        if (!cancelled) {
-          setLiffStatus("error");
-          setLiffError("無法取得 LINE 使用者資訊。");
-        }
-      }
-    }
-
-    void init();
-    return () => {
-      cancelled = true;
-    };
-  }, [liffEnabled, liffId, liffStatus]);
 
   useEffect(() => {
     if (!profileOpen) return;
@@ -374,18 +267,10 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
     }, 120);
   }, [cancelProfileClose]);
 
-  function logout() {
-    const supabase = supabaseBrowser();
-    setAuthUser(null);
+  async function logout() {
     setProfileOpen(false);
     setSettingsOpen(false);
-    try {
-      window.localStorage.removeItem("cardx.auth.user");
-    } catch {}
-    if (supabase) void supabase.auth.signOut();
-    try {
-      if (window.liff && window.liff.isLoggedIn()) window.liff.logout();
-    } catch {}
+    await ggbLogout();
   }
 
   if (liffEnabled && liffStatus !== "ready") {
@@ -457,41 +342,39 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
           >
             <span className="background" data-v-4ec444f2="" aria-hidden="true" />
             <span className={styles.bonusIconWrap} aria-hidden="true">
-              <img className={styles.bonusIcon} src="/cardx/placeholder.svg" alt="" aria-hidden="true" />
+              <img className={styles.bonusIcon} src={asset("/images/topbar/4b.png")} alt="" aria-hidden="true" />
             </span>
             <span className={styles.bonusText} aria-hidden="true">
               簽到
             </span>
           </Link>
 
-          <button className={styles.squarePill} type="button" aria-label="搜尋">
+          <Link href="/search" className={styles.squarePill} aria-label="搜尋">
             <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
               <use href="#icon-search" />
             </svg>
-          </button>
+          </Link>
 
           {authUser ? (
             <div className={styles.authedRight}>
               <div className={styles.balancePill} aria-label="資產">
-                <button className={styles.balanceTrigger} type="button" aria-label="資產明細">
-                  <span className={styles.balanceIcon} aria-hidden="true">
-                    $
-                  </span>
-                  <span className={styles.balanceText}>0.00000000</span>
+                <button className={styles.balanceTrigger} type="button" aria-label="儲值紀錄" onClick={() => router.push("/profile?tab=topup-history")}>
+                  <img src={asset("/images/gcoin.webp")} alt="G" style={{ width: 18, height: 18, display: "block" }} />
+                  <span className={styles.balanceText}>{authUser.tokens.toLocaleString()}</span>
                   <svg className={styles.chevronIcon} viewBox="0 0 24 24" aria-hidden="true">
                     <use href="#icon-chevron-right" />
                   </svg>
                 </button>
                 <Link
-                  href="/account"
+                  href="/topup"
                   className={`button-3d button-3d_red button-3d_sm ${styles.depositBtn}`}
                   data-v-c8c96dbe=""
-                  aria-label="充值"
+                  aria-label="儲值"
                 >
                   <span className="button-3d__outer" data-v-c8c96dbe="">
                     <span className="button-3d__inner" data-v-c8c96dbe="">
                       <span className="button-3d__text" data-v-c8c96dbe="">
-                        充值
+                        儲值
                       </span>
                     </span>
                   </span>
@@ -514,7 +397,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                   aria-expanded={profileOpen}
                   onClick={() => setProfileOpen((v) => !v)}
                 >
-                  <span className={styles.avatar} aria-hidden="true" />
+                  <span className={styles.avatar} style={avatarStyle} aria-hidden="true" />
                   <svg
                     className={`${styles.profileArrow} ${profileOpen ? styles.profileArrowOpen : ""}`}
                     viewBox="0 0 24 24"
@@ -535,16 +418,12 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                     onMouseLeave={() => scheduleProfileClose()}
                   >
                     <div className={styles.profilePanelTop}>
-                      <div className={styles.profileHeroAvatar} aria-hidden="true" />
+                      <div className={styles.profileHeroAvatar} style={avatarStyle} aria-hidden="true" />
                       <div className={styles.profileLevelPill} aria-hidden="true">
                         1 等級
                       </div>
                       <div className={styles.profileHeroName}>
-                        {authUser.provider === "line"
-                          ? authUser.displayName
-                          : authUser.email
-                            ? authUser.email.split("@")[0]
-                            : "User1095718"}
+                        {authUser.displayName}
                       </div>
 
                       <div className={styles.profileLevelRow} aria-hidden="true">
@@ -566,15 +445,39 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                     </div>
 
                     <div className={styles.profileMenuList} role="presentation">
-                      <Link className={styles.profileMenuItem} role="menuitem" href="/account" onClick={() => setProfileOpen(false)}>
+                      <Link className={styles.profileMenuItem} role="menuitem" href="/profile" onClick={() => setProfileOpen(false)}>
                         <span className={styles.profileMenuIcon} aria-hidden="true">
                           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                            <use href="#icon-bag-dollar" />
+                            <use href="#icon-settings" />
                           </svg>
                         </span>
-                        <span className={styles.profileMenuText}>我的帳戶</span>
+                        <span className={styles.profileMenuText}>會員中心</span>
                       </Link>
-                      <Link className={styles.profileMenuItem} role="menuitem" href="/favorites" onClick={() => setProfileOpen(false)}>
+                      <Link className={styles.profileMenuItem} role="menuitem" href="/profile?tab=warehouse" onClick={() => setProfileOpen(false)}>
+                        <span className={styles.profileMenuIcon} aria-hidden="true">
+                          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                            <use href="#icon-box" />
+                          </svg>
+                        </span>
+                        <span className={styles.profileMenuText}>倉庫</span>
+                      </Link>
+                      <Link className={styles.profileMenuItem} role="menuitem" href="/profile?tab=draw-history" onClick={() => setProfileOpen(false)}>
+                        <span className={styles.profileMenuIcon} aria-hidden="true">
+                          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                            <use href="#icon-docs" />
+                          </svg>
+                        </span>
+                        <span className={styles.profileMenuText}>抽獎紀錄</span>
+                      </Link>
+                      <Link className={styles.profileMenuItem} role="menuitem" href="/profile?tab=topup-history" onClick={() => setProfileOpen(false)}>
+                        <span className={styles.profileMenuIcon} aria-hidden="true">
+                          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                            <use href="#icon-recent" />
+                          </svg>
+                        </span>
+                        <span className={styles.profileMenuText}>儲值紀錄</span>
+                      </Link>
+                      <Link className={styles.profileMenuItem} role="menuitem" href="/profile?tab=follows" onClick={() => setProfileOpen(false)}>
                         <span className={styles.profileMenuIcon} aria-hidden="true">
                           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                             <use href="#icon-like" />
@@ -582,45 +485,21 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                         </span>
                         <span className={styles.profileMenuText}>收藏</span>
                       </Link>
-                      <Link className={styles.profileMenuItem} role="menuitem" href="/account/addresses" onClick={() => setProfileOpen(false)}>
-                        <span className={styles.profileMenuIcon} aria-hidden="true">
-                          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                            <use href="#icon-settings" />
-                          </svg>
-                        </span>
-                        <span className={styles.profileMenuText}>地址管理</span>
-                      </Link>
-                      <Link className={styles.profileMenuItem} role="menuitem" href="/orders" onClick={() => setProfileOpen(false)}>
-                        <span className={styles.profileMenuIcon} aria-hidden="true">
-                          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                            <use href="#icon-docs" />
-                          </svg>
-                        </span>
-                        <span className={styles.profileMenuText}>交易紀錄</span>
-                      </Link>
-                      <Link className={styles.profileMenuItem} role="menuitem" href="/recent" onClick={() => setProfileOpen(false)}>
-                        <span className={styles.profileMenuIcon} aria-hidden="true">
-                          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                            <use href="#icon-recent" />
-                          </svg>
-                        </span>
-                        <span className={styles.profileMenuText}>近期</span>
-                      </Link>
-                      <Link className={styles.profileMenuItem} role="menuitem" href="/topics" onClick={() => setProfileOpen(false)}>
+                      <Link className={styles.profileMenuItem} role="menuitem" href="/messages" onClick={() => setProfileOpen(false)}>
                         <span className={styles.profileMenuIcon} aria-hidden="true">
                           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                             <use href="#icon-chat-3" />
                           </svg>
                         </span>
-                        <span className={styles.profileMenuText}>話題</span>
+                        <span className={styles.profileMenuText}>訊息</span>
                       </Link>
-                      <Link className={styles.profileMenuItem} role="menuitem" href="/rewards" onClick={() => setProfileOpen(false)}>
+                      <Link className={styles.profileMenuItem} role="menuitem" href="/invite" onClick={() => setProfileOpen(false)}>
                         <span className={styles.profileMenuIcon} aria-hidden="true">
                           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                             <use href="#icon-gift" />
                           </svg>
                         </span>
-                        <span className={styles.profileMenuText}>獎勵</span>
+                        <span className={styles.profileMenuText}>邀請好友</span>
                       </Link>
                     </div>
 
@@ -792,20 +671,28 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                 ) : null}
               </div>
 
-              <button className={styles.bellPill} type="button" aria-label="通知">
+              <Link href="/announcements" className={styles.bellPill} aria-label="通知" style={{ position: "relative" }}>
                 <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
                   <use href="#icon-notifications" />
                 </svg>
-              </button>
+                {bellUnread ? (
+                  <span aria-hidden="true" style={{ position: "absolute", top: 7, right: 7, width: 8, height: 8, borderRadius: "50%", background: "#ed1d49", boxShadow: "0 0 0 2px #111923" }} />
+                ) : null}
+              </Link>
 
-              <button className={styles.chatPill} type="button" aria-label="聊天">
+              <Link href="/messages" className={styles.chatPill} aria-label="訊息">
                 <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
                   <use href="#icon-chat-3" />
                 </svg>
-              </button>
+              </Link>
             </div>
           ) : (
-            <div ref={settingsWrapRef} className={styles.settingsWrap} style={{ marginLeft: "auto" }}>
+            <div style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <Link href="/login" className={styles.loginPill} style={{ marginLeft: 0 }}>登入</Link>
+            <Link href="/register" className={`button-3d button-3d_red button-3d_sm ${styles.registerBtn}`} data-v-c8c96dbe="" aria-label="註冊" style={{ marginLeft: 0 }}>
+              <span className="button-3d__outer" data-v-c8c96dbe=""><span className="button-3d__inner" data-v-c8c96dbe=""><span className="button-3d__text" data-v-c8c96dbe="">註冊</span></span></span>
+            </Link>
+            <div ref={settingsWrapRef} className={styles.settingsWrap}>
               <button
                 className={styles.overlayPill}
                 type="button"
@@ -941,6 +828,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                 </div>
               ) : null}
             </div>
+            </div>
           )}
         </div>
 
@@ -950,7 +838,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
           </Link>
 
           <Link href="/missions" className={styles.bonusPillMobile} aria-label="簽到">
-            <span className={styles.bonusPillMobileIcon} aria-hidden="true" />
+            <span className={styles.bonusPillMobileIcon} style={{ backgroundImage: `url("${asset("/images/topbar/4b.png")}")` }} aria-hidden="true" />
           </Link>
 
           {authUser ? (
@@ -962,7 +850,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                 aria-expanded={profileOpen}
                 onClick={() => setProfileOpen((v) => !v)}
               >
-                <span className={styles.avatar} aria-hidden="true" />
+                <span className={styles.avatar} style={avatarStyle} aria-hidden="true" />
                 <svg
                   className={`${styles.profileArrow} ${profileOpen ? styles.profileArrowOpen : ""}`}
                   viewBox="0 0 24 24"
@@ -974,16 +862,12 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
               {profileOpen ? (
                 <div className={styles.profileMenu} role="menu" aria-label="個人選單">
                   <div className={styles.profilePanelTop}>
-                    <div className={styles.profileHeroAvatar} aria-hidden="true" />
+                    <div className={styles.profileHeroAvatar} style={avatarStyle} aria-hidden="true" />
                     <div className={styles.profileLevelPill} aria-hidden="true">
                       1 等級
                     </div>
                     <div className={styles.profileHeroName}>
-                      {authUser.provider === "line"
-                        ? authUser.displayName
-                        : authUser.email
-                          ? authUser.email.split("@")[0]
-                          : "User1095718"}
+                      {authUser.displayName}
                     </div>
 
                     <div className={styles.profileLevelRow} aria-hidden="true">
@@ -1005,15 +889,39 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                   </div>
 
                   <div className={styles.profileMenuList} role="presentation">
-                    <Link className={styles.profileMenuItem} role="menuitem" href="/account" onClick={() => setProfileOpen(false)}>
+                    <Link className={styles.profileMenuItem} role="menuitem" href="/profile" onClick={() => setProfileOpen(false)}>
                       <span className={styles.profileMenuIcon} aria-hidden="true">
                         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                          <use href="#icon-bag-dollar" />
+                          <use href="#icon-settings" />
                         </svg>
                       </span>
-                      <span className={styles.profileMenuText}>我的帳戶</span>
+                      <span className={styles.profileMenuText}>會員中心</span>
                     </Link>
-                    <Link className={styles.profileMenuItem} role="menuitem" href="/favorites" onClick={() => setProfileOpen(false)}>
+                    <Link className={styles.profileMenuItem} role="menuitem" href="/profile?tab=warehouse" onClick={() => setProfileOpen(false)}>
+                      <span className={styles.profileMenuIcon} aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                          <use href="#icon-box" />
+                        </svg>
+                      </span>
+                      <span className={styles.profileMenuText}>倉庫</span>
+                    </Link>
+                    <Link className={styles.profileMenuItem} role="menuitem" href="/profile?tab=draw-history" onClick={() => setProfileOpen(false)}>
+                      <span className={styles.profileMenuIcon} aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                          <use href="#icon-docs" />
+                        </svg>
+                      </span>
+                      <span className={styles.profileMenuText}>抽獎紀錄</span>
+                    </Link>
+                    <Link className={styles.profileMenuItem} role="menuitem" href="/profile?tab=topup-history" onClick={() => setProfileOpen(false)}>
+                      <span className={styles.profileMenuIcon} aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                          <use href="#icon-recent" />
+                        </svg>
+                      </span>
+                      <span className={styles.profileMenuText}>儲值紀錄</span>
+                    </Link>
+                    <Link className={styles.profileMenuItem} role="menuitem" href="/profile?tab=follows" onClick={() => setProfileOpen(false)}>
                       <span className={styles.profileMenuIcon} aria-hidden="true">
                         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                           <use href="#icon-like" />
@@ -1021,45 +929,21 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                       </span>
                       <span className={styles.profileMenuText}>收藏</span>
                     </Link>
-                    <Link className={styles.profileMenuItem} role="menuitem" href="/account/addresses" onClick={() => setProfileOpen(false)}>
-                      <span className={styles.profileMenuIcon} aria-hidden="true">
-                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                          <use href="#icon-settings" />
-                        </svg>
-                      </span>
-                      <span className={styles.profileMenuText}>地址管理</span>
-                    </Link>
-                    <Link className={styles.profileMenuItem} role="menuitem" href="/orders" onClick={() => setProfileOpen(false)}>
-                      <span className={styles.profileMenuIcon} aria-hidden="true">
-                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                          <use href="#icon-docs" />
-                        </svg>
-                      </span>
-                      <span className={styles.profileMenuText}>交易紀錄</span>
-                    </Link>
-                    <Link className={styles.profileMenuItem} role="menuitem" href="/recent" onClick={() => setProfileOpen(false)}>
-                      <span className={styles.profileMenuIcon} aria-hidden="true">
-                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                          <use href="#icon-recent" />
-                        </svg>
-                      </span>
-                      <span className={styles.profileMenuText}>近期</span>
-                    </Link>
-                    <Link className={styles.profileMenuItem} role="menuitem" href="/topics" onClick={() => setProfileOpen(false)}>
+                    <Link className={styles.profileMenuItem} role="menuitem" href="/messages" onClick={() => setProfileOpen(false)}>
                       <span className={styles.profileMenuIcon} aria-hidden="true">
                         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                           <use href="#icon-chat-3" />
                         </svg>
                       </span>
-                      <span className={styles.profileMenuText}>話題</span>
+                      <span className={styles.profileMenuText}>訊息</span>
                     </Link>
-                    <Link className={styles.profileMenuItem} role="menuitem" href="/rewards" onClick={() => setProfileOpen(false)}>
+                    <Link className={styles.profileMenuItem} role="menuitem" href="/invite" onClick={() => setProfileOpen(false)}>
                       <span className={styles.profileMenuIcon} aria-hidden="true">
                         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                           <use href="#icon-gift" />
                         </svg>
                       </span>
-                      <span className={styles.profileMenuText}>獎勵</span>
+                      <span className={styles.profileMenuText}>邀請好友</span>
                     </Link>
                   </div>
 
@@ -1069,7 +953,9 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                 </div>
               ) : null}
             </div>
-          ) : null}
+          ) : (
+            <Link href="/login" className={styles.loginPillMobile}>登入</Link>
+          )}
         </div>
       </header>
 
