@@ -82,7 +82,8 @@ function HomeProductCard({ product, meta, followed, onToggleFollow }: {
         className={styles.rectangle2}
         style={{
           backgroundImage: `url(${product.image_url || asset("/images/item_defaulet.webp")})`,
-          width: "100%", height: "auto", aspectRatio: "1 / 1", backgroundSize: "cover", backgroundPosition: "center",
+          // 商品圖整張放進去不裁（老闆 2026-09-04：商品圖要 fit）；直式卡包圖左右會留底色
+          width: "100%", height: "auto", aspectRatio: "1 / 1", backgroundSize: "contain", backgroundRepeat: "no-repeat", backgroundPosition: "center",
         }}
       >
         <button
