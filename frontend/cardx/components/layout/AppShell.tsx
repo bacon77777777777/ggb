@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { SidebarItem } from "@/cardx/lib/types";
 import styles from "./AppShell.module.css";
+import { CardxFooter } from "./CardxFooter";
 /* 接吉吉比的真資料（老闆 2026-09-04：頂部導航這些按鈕都用得到，先接真實資料）：
    登入狀態／G 幣／頭像走 AuthContext，鈴鐺未讀跟手機版 Navbar 同一套算法，聲音開關接站上的靜音偏好 */
 import { useAuth } from "@/contexts/AuthContext";
@@ -359,30 +360,6 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
 
           {authUser ? (
             <div className={styles.authedRight}>
-              <div className={styles.balancePill} aria-label="資產">
-                <button className={styles.balanceTrigger} type="button" aria-label="儲值紀錄" onClick={() => router.push("/profile?tab=topup-history")}>
-                  <img src={asset("/images/gcoin.webp")} alt="G" style={{ width: 18, height: 18, display: "block" }} />
-                  <span className={styles.balanceText}>{authUser.tokens.toLocaleString()}</span>
-                  <svg className={styles.chevronIcon} viewBox="0 0 24 24" aria-hidden="true">
-                    <use href="#icon-chevron-right" />
-                  </svg>
-                </button>
-                <Link
-                  href="/topup"
-                  className={`button-3d button-3d_red button-3d_sm ${styles.depositBtn}`}
-                  data-v-c8c96dbe=""
-                  aria-label="儲值"
-                >
-                  <span className="button-3d__outer" data-v-c8c96dbe="">
-                    <span className="button-3d__inner" data-v-c8c96dbe="">
-                      <span className="button-3d__text" data-v-c8c96dbe="">
-                        儲值
-                      </span>
-                    </span>
-                  </span>
-                </Link>
-              </div>
-
               <div
                 ref={profileWrapDesktopRef}
                 className={styles.profileWrap}
@@ -424,28 +401,35 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                   >
                     <div className={styles.profilePanelTop}>
                       <div className={styles.profileHeroAvatar} style={avatarStyle} aria-hidden="true" />
-                      <div className={styles.profileLevelPill} aria-hidden="true">
-                        1 等級
-                      </div>
                       <div className={styles.profileHeroName}>
                         {authUser.displayName}
                       </div>
 
-                      <div className={styles.profileLevelRow} aria-hidden="true">
-                        <div className={styles.profileLevelLeft}>1 等級</div>
-                        <div className={styles.profileLevelRight}>2 等級</div>
-                      </div>
-
-                      <div className={styles.profileProgressRow} aria-hidden="true">
-                        <div className={styles.profileProgressTrack}>
-                          <div className={styles.profileProgressFill} style={{ width: "9.97%" }} />
-                        </div>
-                        <div className={styles.profileProgressPct}>
-                          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                            <use href="#icon-gift" />
-                          </svg>
-                          <span>9.97%</span>
-                        </div>
+                      {/* 等級條是範本留下的假東西（永遠 1 等、9.97%），我們沒有等級制度。
+                          這一格改放餘額與儲值 —— 那本來在頂欄，老闆 2026-09-04 指定收進這張卡 */}
+                      <div className={styles.profileBalanceRow}>
+                        <button
+                          className={styles.profileBalanceValue}
+                          type="button"
+                          aria-label="儲值紀錄"
+                          onClick={() => { setProfileOpen(false); router.push("/profile?tab=topup-history"); }}
+                        >
+                          <img src={asset("/images/gcoin.webp")} alt="G" style={{ width: 20, height: 20, display: "block" }} />
+                          <span>{authUser.tokens.toLocaleString()}</span>
+                        </button>
+                        <Link
+                          href="/topup"
+                          className={`button-3d button-3d_red button-3d_sm ${styles.profileDepositBtn}`}
+                          data-v-c8c96dbe=""
+                          aria-label="儲值"
+                          onClick={() => setProfileOpen(false)}
+                        >
+                          <span className="button-3d__outer" data-v-c8c96dbe="">
+                            <span className="button-3d__inner" data-v-c8c96dbe="">
+                              <span className="button-3d__text" data-v-c8c96dbe="">儲值</span>
+                            </span>
+                          </span>
+                        </Link>
                       </div>
                     </div>
 
@@ -730,28 +714,35 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                 <div className={styles.profileMenu} role="menu" aria-label="個人選單">
                   <div className={styles.profilePanelTop}>
                     <div className={styles.profileHeroAvatar} style={avatarStyle} aria-hidden="true" />
-                    <div className={styles.profileLevelPill} aria-hidden="true">
-                      1 等級
-                    </div>
                     <div className={styles.profileHeroName}>
                       {authUser.displayName}
                     </div>
 
-                    <div className={styles.profileLevelRow} aria-hidden="true">
-                      <div className={styles.profileLevelLeft}>1 等級</div>
-                      <div className={styles.profileLevelRight}>2 等級</div>
-                    </div>
-
-                    <div className={styles.profileProgressRow} aria-hidden="true">
-                      <div className={styles.profileProgressTrack}>
-                        <div className={styles.profileProgressFill} style={{ width: "9.97%" }} />
-                      </div>
-                      <div className={styles.profileProgressPct}>
-                        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                          <use href="#icon-gift" />
-                        </svg>
-                        <span>9.97%</span>
-                      </div>
+                    {/* 等級條是範本留下的假東西（永遠 1 等、9.97%），我們沒有等級制度。
+                        這一格改放餘額與儲值 —— 那本來在頂欄，老闆 2026-09-04 指定收進這張卡 */}
+                    <div className={styles.profileBalanceRow}>
+                      <button
+                        className={styles.profileBalanceValue}
+                        type="button"
+                        aria-label="儲值紀錄"
+                        onClick={() => { setProfileOpen(false); router.push("/profile?tab=topup-history"); }}
+                      >
+                        <img src={asset("/images/gcoin.webp")} alt="G" style={{ width: 20, height: 20, display: "block" }} />
+                        <span>{authUser.tokens.toLocaleString()}</span>
+                      </button>
+                      <Link
+                        href="/topup"
+                        className={`button-3d button-3d_red button-3d_sm ${styles.profileDepositBtn}`}
+                        data-v-c8c96dbe=""
+                        aria-label="儲值"
+                        onClick={() => setProfileOpen(false)}
+                      >
+                        <span className="button-3d__outer" data-v-c8c96dbe="">
+                          <span className="button-3d__inner" data-v-c8c96dbe="">
+                            <span className="button-3d__text" data-v-c8c96dbe="">儲值</span>
+                          </span>
+                        </span>
+                      </Link>
                     </div>
                   </div>
 
@@ -905,6 +896,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
           >
             {children}
           </div>
+          <CardxFooter />
         </main>
       </div>
 

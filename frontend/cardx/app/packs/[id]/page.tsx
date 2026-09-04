@@ -77,9 +77,9 @@ const copyButtonStyle = (enabled: boolean): React.CSSProperties => ({
   width: 32,
   height: 32,
   borderRadius: 10,
-  border: enabled ? "1px solid rgba(77,163,255,0.35)" : "1px solid #e5e7eb",
-  background: enabled ? "rgba(77,163,255,0.12)" : "#ffffff",
-  color: enabled ? "rgba(77,163,255,0.95)" : "#9ca3af",
+  border: enabled ? "1px solid rgb(var(--primary) / 0.35)" : "1px solid #e5e7eb",
+  background: enabled ? "rgb(var(--primary) / 0.10)" : "#ffffff",
+  color: enabled ? "rgb(var(--primary))" : "#9ca3af",
   display: "grid",
   placeItems: "center",
   padding: 0,
@@ -373,7 +373,7 @@ export default function PackDetailPage() {
                   <div />
                   <div style={{ fontSize: 13, fontWeight: 900, color: "#111827", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>
                   <div aria-hidden="true" style={{ height: 8, borderRadius: 999, background: "#f3f4f6", overflow: "hidden" }}>
-                    <div style={{ width: `${clamp(pct, 0, 100)}%`, height: "100%", borderRadius: 999, background: "linear-gradient(90deg, rgba(34,131,246,0.85), rgba(36,163,255,0.85))" }} />
+                    <div style={{ width: `${clamp(pct, 0, 100)}%`, height: "100%", borderRadius: 999, background: "linear-gradient(90deg, rgb(var(--primary) / 0.9), rgb(var(--primary-light) / 0.9))" }} />
                   </div>
                   <div style={{ textAlign: "right", fontSize: 12, fontWeight: 950, color: "#111827", whiteSpace: "nowrap" }}>
                     {showCounts ? `${r.remaining ?? 0}/${r.total ?? 0}` : `${(Number(r.probability) || 0).toFixed(1)}%`}
@@ -540,7 +540,7 @@ export default function PackDetailPage() {
                     <div className={styles.itemDetailLabel}>完整對照表</div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                       {isSoldOut ? (
-                        <Link href={`/fairness/${product.id}`} className={styles.itemDetailValue} style={{ flex: "1 1 auto", color: "rgba(77,163,255,0.95)", textDecoration: "underline" }}>
+                        <Link href={`/fairness/${product.id}`} className={styles.itemDetailValue} style={{ flex: "1 1 auto", color: "rgb(var(--primary))", textDecoration: "underline" }}>
                           看完整對照表
                         </Link>
                       ) : (
@@ -657,7 +657,7 @@ export default function PackDetailPage() {
                   <div>這一檔開賣前就把每一張籤是什麼賞排好、封存起來，並公布一組驗證碼。之後任何人都改不了籤表。</div>
                   <div>完抽（{totalItems} 抽）之後公開完整對照表，你可以拿它重新算一次驗證碼，跟商品頁上的比對；一致就代表抽到的結果和大賞位置沒有被事後動過。</div>
                   <div>
-                    <Link href="/events/fairness" style={{ color: "rgba(77,163,255,0.95)", textDecoration: "underline" }}>看抽獎公平性說明</Link>
+                    <Link href="/events/fairness" style={{ color: "rgb(var(--primary))", textDecoration: "underline" }}>看抽獎公平性說明</Link>
                   </div>
                 </div>
               </div>

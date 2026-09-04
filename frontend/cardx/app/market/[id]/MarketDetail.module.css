@@ -135,8 +135,8 @@
 }
 
 .mediaThumbButtonActive {
-  border-color: rgba(34, 131, 246, 0.7);
-  box-shadow: 0 0 0 2px rgba(34, 131, 246, 0.16);
+  border-color: rgb(var(--primary) / 0.7);
+  box-shadow: 0 0 0 2px rgb(var(--primary) / 0.16);
 }
 
 .mediaThumbImage {
@@ -303,8 +303,8 @@
   height: 24px;
   padding: 0 10px;
   border-radius: 999px;
-  border: 1px solid rgba(34, 131, 246, 0.25);
-  background: rgba(34, 131, 246, 0.12);
+  border: 1px solid rgb(var(--primary) / 0.25);
+  background: rgb(var(--primary) / 0.12);
   color: #111827;
   font-size: 12px;
   font-weight: 900;
@@ -925,7 +925,7 @@
 }
 
 .relatedCard:hover {
-  border-color: rgba(34, 131, 246, 0.28);
+  border-color: rgb(var(--primary) / 0.28);
 }
 
 .relatedMedia {

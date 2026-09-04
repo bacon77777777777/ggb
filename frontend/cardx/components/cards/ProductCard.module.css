@@ -8,7 +8,7 @@
 }
 
 .card:focus-visible {
-  outline: 2px solid rgba(34, 131, 246, 0.9);
+  outline: 2px solid rgb(var(--primary) / 0.9);
   outline-offset: 2px;
 }
 

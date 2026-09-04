@@ -462,8 +462,8 @@ function CheckoutPageInner() {
                                 display: "flex",
                                 alignItems: "center",
                                 gap: 10,
-                                background: on ? "rgba(34,131,246,0.10)" : "#f3f4f6",
-                                boxShadow: on ? "0 0 0 2px rgba(34,131,246,0.45) inset" : "none",
+                                background: on ? "rgb(var(--primary) / 0.10)" : "#f3f4f6",
+                                boxShadow: on ? "0 0 0 2px rgb(var(--primary) / 0.45) inset" : "none",
                                 opacity: blocked ? 0.45 : 1,
                               }}
                             >
@@ -491,7 +491,7 @@ function CheckoutPageInner() {
                                   height: 20,
                                   borderRadius: 999,
                                   flex: "0 0 auto",
-                                  background: on ? "#2283f6" : "#ffffff",
+                                  background: on ? "rgb(var(--primary))" : "#ffffff",
                                   boxShadow: on ? "none" : "0 0 0 1px #d1d5db inset",
                                 }}
                               />
@@ -518,8 +518,8 @@ function CheckoutPageInner() {
                           textAlign: "left",
                           borderRadius: 14,
                           padding: 10,
-                          background: logisticsType === "HOME" ? "rgba(34,131,246,0.10)" : "#f3f4f6",
-                          boxShadow: logisticsType === "HOME" ? "0 0 0 2px rgba(34,131,246,0.45) inset" : "none",
+                          background: logisticsType === "HOME" ? "rgb(var(--primary) / 0.10)" : "#f3f4f6",
+                          boxShadow: logisticsType === "HOME" ? "0 0 0 2px rgb(var(--primary) / 0.45) inset" : "none",
                           fontSize: 13,
                           fontWeight: 900,
                           color: "#111827",
@@ -545,8 +545,8 @@ function CheckoutPageInner() {
                               textAlign: "left",
                               borderRadius: 14,
                               padding: 10,
-                              background: on ? "rgba(34,131,246,0.10)" : "#f3f4f6",
-                              boxShadow: on ? "0 0 0 2px rgba(34,131,246,0.45) inset" : "none",
+                              background: on ? "rgb(var(--primary) / 0.10)" : "#f3f4f6",
+                              boxShadow: on ? "0 0 0 2px rgb(var(--primary) / 0.45) inset" : "none",
                               fontSize: 13,
                               fontWeight: 900,
                               color: "#111827",
@@ -599,8 +599,8 @@ function CheckoutPageInner() {
                                   textAlign: "left",
                                   borderRadius: 14,
                                   padding: 10,
-                                  background: on ? "rgba(34,131,246,0.10)" : "#f3f4f6",
-                                  boxShadow: on ? "0 0 0 2px rgba(34,131,246,0.45) inset" : "none",
+                                  background: on ? "rgb(var(--primary) / 0.10)" : "#f3f4f6",
+                                  boxShadow: on ? "0 0 0 2px rgb(var(--primary) / 0.45) inset" : "none",
                                 }}
                               >
                                 <div style={{ fontSize: 12, fontWeight: 900, color: "#111827" }}>
@@ -651,7 +651,7 @@ function CheckoutPageInner() {
                               textAlign: "left",
                               borderRadius: 12,
                               padding: 10,
-                              background: couponId === null ? "rgba(34,131,246,0.10)" : "#f3f4f6",
+                              background: couponId === null ? "rgb(var(--primary) / 0.10)" : "#f3f4f6",
                               fontSize: 12,
                               fontWeight: 900,
                               color: "#111827",
@@ -670,7 +670,7 @@ function CheckoutPageInner() {
                                 textAlign: "left",
                                 borderRadius: 12,
                                 padding: 10,
-                                background: couponId === c.id ? "rgba(34,131,246,0.10)" : "#f3f4f6",
+                                background: couponId === c.id ? "rgb(var(--primary) / 0.10)" : "#f3f4f6",
                                 fontSize: 12,
                                 fontWeight: 900,
                                 color: "#111827",

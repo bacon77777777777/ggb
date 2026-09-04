@@ -425,7 +425,7 @@ function RankingPageMobile() {
  * 768 以上：cardx 的頁面（老闆 2026-09-04，整套原封不動搬）。量到寬度才掛其中一棵（手機那棵有 effect，藏著也會跑）。
  */
 export default function RankingPage() {
-  const isMd = useMinWidth(768);
+  const isMd = useMinWidth(1024);
   if (isMd === null) return null;
   return isMd ? <CardxPage page="leaderboard" /> : <RankingPageMobile />;
 }

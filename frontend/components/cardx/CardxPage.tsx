@@ -1,13 +1,21 @@
 'use client';
 
 /**
- * 768 以上掛 cardx 的頁面（老闆 2026-09-04：整套原封不動搬過來看 UI 與 RWD）。
+ * 1024 以上掛 cardx 的頁面。
+ *
+ * ⚠️ 門檻是 1024 不是 768（老闆 2026-09-04 晚上改的）：769～1023 這一段
+ * 改用手機端那套版型（商品格自己會從兩欄變三欄），cardx 這套側欄＋頂欄的
+ * 桌機外殼只在 1024 以上出現。改門檻時這幾個地方要一起動，缺一個就會兩套
+ * 外殼疊在一起或都不出現：
+ *   - 這裡的 `hidden lg:block`
+ *   - components/cardx/CardxRoute.tsx 的寬度判斷
+ *   - 各雙軌頁面（app 底下的 page.tsx）的 useMinWidth(1024)
+ *   - components/Navbar.tsx 的 lg:!hidden
+ *   - components/FooterWrapper.tsx
  *
  * cardx 的頁面全是 client 元件、自己帶 AppShell（頂部工具列＋側欄＋≤1023 的抽屜與底部導覽），
  * 這裡只負責兩件事：`ssr:false` 動態載入（它們讀 localStorage，也不需要 SSR），
- * 外面包一層 `.cardx-root hidden md:block`（cardx 的 globals 全收在 .cardx-root 底下；768 以下不顯示）。
- *
- * 資料現階段都是 cardx 的 mock（lib/mock），第二階段再逐頁接真資料。
+ * 外面包一層 `.cardx-root hidden lg:block`（cardx 的 globals 全收在 .cardx-root 底下；1024 以下不顯示）。
  */
 
 import dynamic from 'next/dynamic';
@@ -49,7 +57,7 @@ export type CardxPageKey = keyof typeof CARDX_PAGES;
 export default function CardxPage({ page }: { page: CardxPageKey }) {
   const Comp = CARDX_PAGES[page];
   return (
-    <div className="cardx-root hidden md:block" data-cardx-page={page}>
+    <div className="cardx-root hidden lg:block" data-cardx-page={page}>
       <Comp />
     </div>
   );

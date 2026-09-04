@@ -120,7 +120,7 @@ export function Pill({
       : tone === "danger"
         ? { bg: "rgba(220, 38, 38, 0.12)", fg: "#dc2626" }
         : tone === "info"
-          ? { bg: "rgba(34, 131, 246, 0.14)", fg: "#1d4ed8" }
+          ? { bg: "rgb(var(--primary) / 0.14)", fg: "rgb(var(--primary))" }
           : { bg: "#f3f4f6", fg: "#374151" };
   return (
     <span

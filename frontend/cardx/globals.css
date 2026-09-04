@@ -61,8 +61,9 @@
 
 .bonus-cabinet[data-v-4ec444f2] {
   align-items: center;
-  /* 保底色（正常情況被 .background 的橘色漸層蓋住）：淺色版改淺灰，文字仍在彩色底上故維持白色 */
-  background-color: #f3f4f6;
+  /* 保底色（正常情況被 .background 的橘色漸層蓋住）。頂欄是品牌紅底，
+     這裡若留淺灰，圖還沒畫出來的那一瞬間會是「灰底白字」看不見，所以用同色系的橘 */
+  background-color: #f08a24;
   border-radius: 8px;
   color: #fff;
   display: flex;

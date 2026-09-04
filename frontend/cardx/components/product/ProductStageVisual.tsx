@@ -224,8 +224,10 @@ export function ProductStageVisual({
       ) : null}
 
       {isSoldOut ? (
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: stageH || "100%", zIndex: 30, display: "grid", placeItems: "center", background: "rgba(249,250,251,0.72)" }}>
-          <span style={{ padding: "8px 18px", borderRadius: 999, background: "#111827", color: "#fff", fontSize: 14, fontWeight: 900, boxShadow: "0 10px 40px -10px rgba(0,0,0,0.2)" }}>已完抽</span>
+        /* 完抽照手機端 ProductCard 的做法：黑幕＋完抽圖章蓋在商品圖上，不是一顆文字膠囊 */
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: stageH || "100%", zIndex: 30, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.6)" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={asset("/images/sale.svg")} alt="完抽" style={{ width: "42%", maxWidth: 260, height: "auto", transform: "scale(1.1)" }} />
         </div>
       ) : null}
     </div>

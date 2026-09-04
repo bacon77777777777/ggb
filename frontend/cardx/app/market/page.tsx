@@ -686,7 +686,7 @@ export default function MarketPage() {
                               borderRadius: 999,
                               whiteSpace: "nowrap",
                               color: row.status === "sold" ? "#047857" : "#1d4ed8",
-                              background: row.status === "sold" ? "rgba(16,185,129,0.14)" : "rgba(34,131,246,0.14)",
+                              background: row.status === "sold" ? "rgba(16,185,129,0.14)" : "rgb(var(--primary) / 0.14)",
                             }}
                           >
                             {row.status === "sold" ? "已賣出" : "上架中"}
@@ -922,8 +922,8 @@ export default function MarketPage() {
                   height: 40,
                   padding: "0 16px",
                   borderRadius: 12,
-                  border: "1px solid #2283f6",
-                  background: "#2283f6",
+                  border: "1px solid rgb(var(--primary))",
+                  background: "rgb(var(--primary))",
                   color: "#ffffff",
                   fontSize: 13,
                   fontWeight: 900,

@@ -77,7 +77,7 @@ export function HomeProductCard({ product, meta, followed, onToggleFollow }: {
       tabIndex={0}
       onClick={go}
       onKeyDown={(e) => { if (e.key !== "Enter" && e.key !== " ") return; e.preventDefault(); go(); }}
-      style={{ width: "100%", maxWidth: "none", flex: "unset", cursor: "pointer", opacity: soldOut ? 0.6 : 1 }}
+      style={{ width: "100%", maxWidth: "none", flex: "unset", cursor: "pointer" }}
     >
       <div
         className={styles.rectangle2}
@@ -99,6 +99,15 @@ export function HomeProductCard({ product, meta, followed, onToggleFollow }: {
         </button>
         {product.is_hot ? (
           <div className={styles.backgroundBorderShad}><p className={styles.a18} style={{ color: "#dc2626" }}>熱門</p></div>
+        ) : null}
+        {soldOut ? (
+          <div
+            aria-label="已完抽"
+            style={{ position: "absolute", inset: 0, zIndex: 20, borderRadius: 8, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center" }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={asset("/images/sale.svg")} alt="完抽" style={{ width: "60%", maxWidth: 96, height: "auto", transform: "scale(1.1)" }} />
+          </div>
         ) : null}
       </div>
       <div className={styles.frame1}>
@@ -668,55 +677,6 @@ export function HomeClient() {
           </section>
         </div>
       </div>
-      <footer className={styles.footer} aria-label="Footer">
-        <div className={styles.footerInner}>
-          <div className={styles.footerBrand}>
-            <p className={styles.footerName}>CardX</p>
-            <p className={styles.footerDesc}>收藏、交換、探索卡牌，一站完成。</p>
-          </div>
-          <div className={styles.footerCol}>
-            <p className={styles.footerTitle}>產品</p>
-            <Link className={styles.footerLink} href="/market">
-              市場
-            </Link>
-            <Link className={styles.footerLink} href="/rewards">
-              獎勵
-            </Link>
-          </div>
-          <div className={styles.footerCol}>
-            <p className={styles.footerTitle}>資訊</p>
-            <Link className={styles.footerLink} href="/info">
-              最新消息
-            </Link>
-            <Link className={styles.footerLink} href="/info">
-              新手指南
-            </Link>
-          </div>
-          <div className={styles.footerCol}>
-            <p className={styles.footerTitle}>支援</p>
-            <a className={styles.footerLink} href="mailto:support@cardx.example">
-              support@cardx.example
-            </a>
-            <Link className={styles.footerLink} href="/info">
-              隱私權政策
-            </Link>
-          </div>
-        </div>
-        <div className={styles.footerBottom}>
-          <p className={styles.footerCopy}>© {new Date().getFullYear()} CardX</p>
-          <div className={styles.footerSocial} aria-label="Social">
-            <a className={styles.footerLink} href="/info">
-              X
-            </a>
-            <a className={styles.footerLink} href="/info">
-              Discord
-            </a>
-            <a className={styles.footerLink} href="/info">
-              Telegram
-            </a>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

@@ -486,7 +486,7 @@ function MarketItemPageMobile() {
  * 768 以上：cardx 的市集商品頁（老闆 2026-09-04，整套原封不動搬；資料是它的 mock）。
  */
 export default function MarketItemPage() {
-  const isMd = useMinWidth(768);
+  const isMd = useMinWidth(1024);
   if (isMd === null) return null;
   return isMd ? <CardxPage page="marketDetail" /> : <MarketItemPageMobile />;
 }

@@ -16,9 +16,7 @@
 }
 
 .shellScrolled .header {
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.08);
-  backdrop-filter: blur(10px);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.12);
 }
 
 .header {
@@ -32,8 +30,13 @@
   align-items: center;
   justify-content: center;
   padding: 14px 24px;
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  /* 頂欄走品牌色（老闆 2026-09-04）。裡面的控制項一律白字＋白霧底，
+     不要再用淺灰底 —— 那在紅底上會變成一塊塊灰補丁 */
+  background: rgb(var(--primary));
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  /* 頂欄一律白字：cardx 的 globals 有 `.cardx-root a { color: inherit }`，
+     權重比這裡的 .squarePill／.loginPill 高，只改那些 class 的 color 對 <a> 沒用 */
+  color: #ffffff;
   transition: background-color 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
 }
 
@@ -85,11 +88,11 @@
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  color: #374151;
+  color: #ffffff;
 }
 
 .iconHamburger:hover {
-  color: #111827;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .hamburgerIcon {
@@ -106,6 +109,10 @@
   align-items: center;
   margin-left: 12px;
   overflow: hidden;
+  /* logo 主體就是紅的，直接放在紅底上會糊掉，墊一張白底片 */
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 3px 10px;
 }
 
 .logoDesktop {
@@ -118,6 +125,9 @@
   display: inline-flex;
   align-items: center;
   overflow: hidden;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 3px 8px;
 }
 
 .logoMobile {
@@ -131,7 +141,7 @@
   font-size: 26px;
   font-weight: 800;
   letter-spacing: 1px;
-  color: #111827;
+  color: #ffffff;
   white-space: nowrap;
   line-height: 35px;
   user-select: none;
@@ -142,14 +152,14 @@
   font-size: 24px;
   font-weight: 800;
   letter-spacing: 0.5px;
-  color: #111827;
+  color: #ffffff;
   white-space: nowrap;
   line-height: 36px;
   user-select: none;
 }
 
 .logoTextAccent {
-  background: linear-gradient(135deg, #4d8eff 0%, #2f68ff 100%);
+  background: linear-gradient(135deg, rgb(var(--primary-light)) 0%, rgb(var(--primary)) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -187,7 +197,7 @@
 .squarePill {
   margin-left: 8px;
   border-radius: 8px;
-  background: #f3f4f6;
+  background: rgba(255, 255, 255, 0.18);
   padding: 6px;
   width: 36px;
   height: 36px;
@@ -196,23 +206,23 @@
   justify-content: center;
   border: 0;
   cursor: pointer;
-  color: #374151;
+  color: #ffffff;
 }
 
 .squarePill:hover {
-  background: rgba(0, 0, 0, 0.08);
-  color: #111827;
+  background: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
 }
 
 .loginPill {
   margin-left: auto;
   border-radius: 8px;
-  background: #f3f4f6;
+  background: rgba(255, 255, 255, 0.18);
   padding: 7px 17px 9px 15px;
   height: 36px;
   border: 0;
   cursor: pointer;
-  color: #374151;
+  color: #ffffff;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: -0.24px;
@@ -223,8 +233,8 @@
 }
 
 .loginPill:hover {
-  background: rgba(0, 0, 0, 0.08);
-  color: #111827;
+  background: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
 }
 
 .authedRight {
@@ -253,7 +263,7 @@
 .overlayPill {
   margin-left: 16px;
   border-radius: 8px;
-  background: #f3f4f6;
+  background: rgba(255, 255, 255, 0.18);
   padding: 7px 7px 6px;
   width: 79px;
   min-width: 79px;
@@ -263,12 +273,12 @@
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  color: #374151;
+  color: #ffffff;
 }
 
 .overlayPill:hover {
-  background: rgba(0, 0, 0, 0.08);
-  color: #111827;
+  background: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
 }
 
 .overlayFlag {
@@ -278,7 +288,7 @@
 }
 
 .verticalDivider {
-  background: #e5e7eb;
+  background: rgba(255, 255, 255, 0.35);
   width: 1px;
   height: 23px;
 }
@@ -286,7 +296,7 @@
 .bellPill {
   margin-left: 16px;
   border-radius: 8px;
-  background: #f3f4f6;
+  background: rgba(255, 255, 255, 0.18);
   padding: 7px 6px;
   width: 36px;
   height: 36px;
@@ -295,18 +305,18 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #374151;
+  color: #ffffff;
 }
 
 .bellPill:hover {
-  background: rgba(0, 0, 0, 0.08);
-  color: #111827;
+  background: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
 }
 
 .chatPill {
   margin-left: 8px;
   border-radius: 8px;
-  background: #f3f4f6;
+  background: rgba(255, 255, 255, 0.18);
   padding: 0;
   width: 36px;
   height: 36px;
@@ -315,7 +325,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #374151;
+  color: #ffffff;
 }
 
 .chatPill svg {
@@ -323,8 +333,8 @@
 }
 
 .chatPill:hover {
-  background: rgba(0, 0, 0, 0.08);
-  color: #111827;
+  background: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
 }
 
 .bonusPillMobile {
@@ -493,7 +503,7 @@
 .profilePill {
   appearance: none;
   border: 0;
-  background: #f3f4f6;
+  background: rgba(255, 255, 255, 0.18);
   height: 36px;
   padding: 0 10px 0 0;
   border-radius: 8px;
@@ -503,7 +513,7 @@
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  color: #374151;
+  color: #ffffff;
 }
 
 .settingsWrap {
@@ -701,7 +711,7 @@
   accent-color: #2b7cff;
 }
 .profilePill:hover {
-  background: rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .profileArrow {
@@ -1512,8 +1522,8 @@
   text-decoration: none;
   scroll-snap-align: start;
   background-color: #f3f4f6;
-  background-image: linear-gradient(113.61deg, #2283f600 70.57%, #2283f64d 100%),
-    linear-gradient(128.6deg, #2283f666 0%, #2283f600 48.3%);
+  background-image: linear-gradient(113.61deg, rgb(var(--primary) / 0.00) 70.57%, rgb(var(--primary) / 0.30) 100%),
+    linear-gradient(128.6deg, rgb(var(--primary) / 0.40) 0%, rgb(var(--primary) / 0.00) 48.3%);
 }
 
 .bannerCardInner {
@@ -1595,7 +1605,7 @@
 }
 
 .dotActive {
-  background: #007bff;
+  background: rgb(var(--primary));
 }
 
 .mainGrid {
@@ -2042,4 +2052,49 @@
 .iconGroupBtn:hover {
   background: rgba(0, 0, 0, 0.08);
   color: #111827;
+}
+
+
+/* 個人選單卡片裡的餘額與儲值（老闆 2026-09-04：從頂欄收進這張卡，取代假的等級條） */
+.profileBalanceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 10px 0 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f3f4f6;
+}
+
+.profileBalanceValue {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.profileBalanceValue:hover {
+  color: rgb(var(--primary));
+}
+
+.profileDepositBtn {
+  width: 64px;
+  height: 34px;
+  flex: 0 0 auto;
+}
+
+.profileDepositBtn :global(.button-3d__outer) {
+  padding-left: 15px;
+  padding-right: 15px;
 }

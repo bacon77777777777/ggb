@@ -78,7 +78,7 @@
   padding-right: 1px;
   padding-bottom: 1px;
   overflow: hidden;
-  background-image: linear-gradient(113.61deg, rgba(34, 131, 246, 0) 70.57%, rgba(34, 131, 246, 0.3019607843) 100%), linear-gradient(128.6deg, rgba(34, 131, 246, 0.4) 0%, rgba(34, 131, 246, 0) 48.3%);
+  background-image: linear-gradient(113.61deg, rgb(var(--primary) / 0) 70.57%, rgb(var(--primary) / 0.3019607843) 100%), linear-gradient(128.6deg, rgb(var(--primary) / 0.4) 0%, rgb(var(--primary) / 0) 48.3%);
 }
 .main2 .banner .frame3 .link .background2 .pictureImage17763391 {
   display: flex;
@@ -214,7 +214,7 @@
   padding-right: 1px;
   padding-bottom: 1px;
   overflow: hidden;
-  background-image: linear-gradient(113.61deg, rgba(34, 131, 246, 0) 70.57%, rgba(34, 131, 246, 0.3019607843) 100%), linear-gradient(128.6deg, rgba(34, 131, 246, 0.4) 0%, rgba(34, 131, 246, 0) 48.3%);
+  background-image: linear-gradient(113.61deg, rgb(var(--primary) / 0) 70.57%, rgb(var(--primary) / 0.3019607843) 100%), linear-gradient(128.6deg, rgb(var(--primary) / 0.4) 0%, rgb(var(--primary) / 0) 48.3%);
 }
 .main2 .banner .frame3 .link2 .background3 .pictureImage17764365 {
   display: flex;
@@ -290,7 +290,7 @@
   padding-right: 1px;
   padding-bottom: 1px;
   overflow: hidden;
-  background-image: linear-gradient(113.61deg, rgba(34, 131, 246, 0) 70.57%, rgba(34, 131, 246, 0.3019607843) 100%), linear-gradient(128.6deg, rgba(34, 131, 246, 0.4) 0%, rgba(34, 131, 246, 0) 48.3%);
+  background-image: linear-gradient(113.61deg, rgb(var(--primary) / 0) 70.57%, rgb(var(--primary) / 0.3019607843) 100%), linear-gradient(128.6deg, rgb(var(--primary) / 0.4) 0%, rgb(var(--primary) / 0) 48.3%);
 }
 .main2 .banner .frame3 .link3 .background4 .pictureImage17763314 {
   display: flex;
@@ -365,7 +365,7 @@
   padding-right: 1px;
   padding-bottom: 1px;
   overflow: hidden;
-  background-image: linear-gradient(113.61deg, rgba(34, 131, 246, 0) 70.57%, rgba(34, 131, 246, 0.3019607843) 100%), linear-gradient(128.6deg, rgba(34, 131, 246, 0.4) 0%, rgba(34, 131, 246, 0) 48.3%);
+  background-image: linear-gradient(113.61deg, rgb(var(--primary) / 0) 70.57%, rgb(var(--primary) / 0.3019607843) 100%), linear-gradient(128.6deg, rgb(var(--primary) / 0.4) 0%, rgb(var(--primary) / 0) 48.3%);
 }
 .main2 .banner .frame3 .link4 .background6 .pictureImage17722093 {
   display: flex;
@@ -455,7 +455,7 @@
   padding-right: 1px;
   padding-bottom: 1px;
   overflow: hidden;
-  background-image: linear-gradient(113.61deg, rgba(34, 131, 246, 0) 70.57%, rgba(34, 131, 246, 0.3019607843) 100%), linear-gradient(128.6deg, rgba(34, 131, 246, 0.4) 0%, rgba(34, 131, 246, 0) 48.3%);
+  background-image: linear-gradient(113.61deg, rgb(var(--primary) / 0) 70.57%, rgb(var(--primary) / 0.3019607843) 100%), linear-gradient(128.6deg, rgb(var(--primary) / 0.4) 0%, rgb(var(--primary) / 0) 48.3%);
 }
 .main2 .banner .frame3 .link5 .background8 .pictureImage17749762 {
   display: flex;
@@ -561,7 +561,7 @@
 .main2 .banner .frame4 .item {
   margin-left: 15px;
   border-radius: 300px;
-  background: #2283f6;
+  background: rgb(var(--primary));
   width: 15px;
   height: 7px;
   overflow: hidden;
@@ -580,7 +580,7 @@
   top: 0;
   left: 0;
   border-radius: 3px;
-  background: #2283f6;
+  background: rgb(var(--primary));
   width: 7px;
   height: 7px;
 }
@@ -590,7 +590,7 @@
   bottom: 0;
   left: 1px;
   border-radius: 300px;
-  background: #2283f6;
+  background: rgb(var(--primary));
   width: 53px;
   height: 7px;
 }
@@ -751,7 +751,7 @@
   flex-shrink: 0;
   line-height: 21px;
   letter-spacing: 0;
-  color: #2283f6;
+  color: rgb(var(--primary));
   font-family: Montserrat, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
   font-size: 14px;
   font-weight: 600;
@@ -849,9 +849,9 @@
   flex-shrink: 0;
   align-items: center;
   column-gap: 12px;
-  border: 1px solid #2283f6;
+  border: 1px solid rgb(var(--primary));
   border-radius: 12px;
-  background: #2283f6;
+  background: rgb(var(--primary));
   padding: 9px 15px;
 }
 .main2 .main .sectionLobby .nav .container9 .link6 .background11 {
@@ -887,7 +887,7 @@
   flex-shrink: 0;
   line-height: 18px;
   letter-spacing: -0.28px;
-  color: #2283f6;
+  color: rgb(var(--primary));
   font-family: Montserrat, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
   font-size: 14px;
   font-weight: 700;
@@ -1436,7 +1436,7 @@
   height: 14px;
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #2283f6;
+  color: rgb(var(--primary));
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1470,7 +1470,7 @@
   height: 14px;
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #2283f6;
+  color: rgb(var(--primary));
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1504,7 +1504,7 @@
   height: 14px;
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #2283f6;
+  color: rgb(var(--primary));
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -1538,7 +1538,7 @@
   height: 14px;
   line-height: 24px;
   letter-spacing: -0.22px;
-  color: #2283f6;
+  color: rgb(var(--primary));
   font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Helvetica, sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -2086,7 +2086,7 @@
 }
 
 .main2 .carouselDots .item {
-  background: #2283f6;
+  background: rgb(var(--primary));
 }
 
 .main2 .carouselDots .carouselDot {
@@ -2097,7 +2097,7 @@
 }
 
 .main2 .carouselDots .carouselDotActive {
-  background: #2283f6;
+  background: rgb(var(--primary));
 }
 
 .accountContainer {
@@ -3290,7 +3290,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 12px;
-  background: #2283f6;
+  background: rgb(var(--primary));
   padding: 12px 32px;
   color: #ffffff;
   font-size: 14px;
