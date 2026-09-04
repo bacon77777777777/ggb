@@ -517,29 +517,30 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
 
               <div ref={settingsWrapRef} className={styles.settingsWrap}>
                 {/* 老闆 2026-09-04：設定、鈴鐺、聊聊三顆放同一個膠囊，分隔線隔開 */}
-                <div className={styles.overlayPill} style={{ width: "auto", minWidth: 0, gap: 10, padding: "0 10px", cursor: "default" }}>
+                <div className={`${styles.overlayPill} ${styles.iconGroup}`} style={{ width: "auto", minWidth: 0, gap: 4, padding: "0 6px", cursor: "default" }}>
                   <button
                     type="button"
                     aria-label="設定"
                     aria-expanded={settingsOpen}
                     onClick={() => { setProfileOpen(false); setSettingsOpen((v) => !v); }}
-                    style={{ appearance: "none", border: 0, background: "transparent", padding: 0, width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "inherit", cursor: "pointer", position: "relative" }}
+                    className={styles.iconGroupBtn}
                   >
-                    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+                    {/* 齒輪的圖形把 24 格塞滿，鈴鐺跟對話框沒有，同尺寸看起來齒輪特別大——縮到 20 視覺上才一樣（老闆 2026-09-04） */}
+                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
                       <use href="#icon-settings" />
                     </svg>
                   </button>
                   <span className={styles.verticalDivider} aria-hidden="true" />
-                  <Link href="/announcements" aria-label="通知" style={{ appearance: "none", border: 0, background: "transparent", padding: 0, width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "inherit", cursor: "pointer", position: "relative" }}>
+                  <Link href="/announcements" aria-label="通知" className={styles.iconGroupBtn}>
                     <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
                       <use href="#icon-notifications" />
                     </svg>
                     {bellUnread ? (
-                      <span aria-hidden="true" style={{ position: "absolute", top: 0, right: 0, width: 8, height: 8, borderRadius: "50%", background: "#ed1d49", boxShadow: "0 0 0 2px #111923" }} />
+                      <span aria-hidden="true" style={{ position: "absolute", top: 3, right: 5, width: 8, height: 8, borderRadius: "50%", background: "#ed1d49", boxShadow: "0 0 0 2px #111923" }} />
                     ) : null}
                   </Link>
                   <span className={styles.verticalDivider} aria-hidden="true" />
-                  <Link href="/messages" aria-label="訊息" style={{ appearance: "none", border: 0, background: "transparent", padding: 0, width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "inherit", cursor: "pointer", position: "relative" }}>
+                  <Link href="/messages" aria-label="訊息" className={styles.iconGroupBtn}>
                     <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
                       <use href="#icon-chat-3" />
                     </svg>

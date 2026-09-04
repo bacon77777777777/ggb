@@ -2019,3 +2019,29 @@
   align-items: center;
   height: 36px;
 }
+
+/* 老闆 2026-09-04：設定／鈴鐺／聊聊那顆膠囊 hover 不要整顆亮，個別圖標亮 */
+.iconGroup:hover {
+  background: #ffffff1f;
+  color: #ffffffd6;
+}
+.iconGroupBtn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  width: 32px;
+  height: 30px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.1s ease-in-out, color 0.1s ease-in-out;
+}
+.iconGroupBtn:hover {
+  background: #ffffff33;
+  color: #fff;
+}
