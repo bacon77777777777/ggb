@@ -500,8 +500,8 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
               </div>
 
               <div ref={settingsWrapRef} className={styles.settingsWrap}>
-                {/* 老闆 2026-09-04：設定、鈴鐺、聊聊三顆放同一個膠囊，分隔線隔開 */}
-                <div className={`${styles.overlayPill} ${styles.iconGroup}`} style={{ width: "auto", minWidth: 0, gap: 4, padding: "0 6px", cursor: "default" }}>
+                {/* 老闆 2026-09-05：設定、鈴鐺、聊聊改成單純白圖標，跟手機一樣（09-04 的膠囊＋分隔線拿掉） */}
+                <div className={styles.iconGroup}>
                   <button
                     type="button"
                     aria-label="設定"
@@ -509,21 +509,20 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                     onClick={() => { setProfileOpen(false); setSettingsOpen((v) => !v); }}
                     className={styles.iconGroupBtn}
                   >
-                    {/* 齒輪的圖形把 24 格塞滿，鈴鐺跟對話框沒有，同尺寸看起來齒輪特別大——縮到 20 視覺上才一樣（老闆 2026-09-04） */}
+                    {/* 齒輪的圖形把 24 格塞滿，鈴鐺跟對話框沒有，同尺寸看起來齒輪特別大——縮一號視覺上才一樣（老闆 2026-09-04） */}
                     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
                       <use href="#icon-settings" />
                     </svg>
                   </button>
-                  <span className={styles.verticalDivider} aria-hidden="true" />
                   <Link href="/announcements" aria-label="通知" className={styles.iconGroupBtn}>
                     <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
                       <use href="#icon-notifications" />
                     </svg>
+                    {/* 未讀點照手機：貼圓底右上角、亮黃、白 20% 描邊（紅底上紅點會糊） */}
                     {bellUnread ? (
-                      <span aria-hidden="true" style={{ position: "absolute", top: 3, right: 5, width: 8, height: 8, borderRadius: "50%", background: "rgb(var(--primary))", boxShadow: "0 0 0 2px #ffffff" }} />
+                      <span aria-hidden="true" style={{ position: "absolute", top: 0, right: 0, width: 10, height: 10, borderRadius: "50%", background: "#FACC15", boxShadow: "0 0 0 2px rgba(255,255,255,0.2)" }} />
                     ) : null}
                   </Link>
-                  <span className={styles.verticalDivider} aria-hidden="true" />
                   <Link href="/messages" aria-label="訊息" className={styles.iconGroupBtn}>
                     <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
                       <use href="#icon-chat-3" />
@@ -674,9 +673,10 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
             </div>
           ) : (
             <div style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 8 }}>
-            <Link href="/login" className={styles.loginPill} style={{ marginLeft: 0 }}>登入</Link>
-            <Link href="/register" className={`button-3d button-3d_red button-3d_sm ${styles.registerBtn}`} data-v-c8c96dbe="" aria-label="註冊" style={{ marginLeft: 0 }}>
-              <span className="button-3d__outer" data-v-c8c96dbe=""><span className="button-3d__inner" data-v-c8c96dbe=""><span className="button-3d__text" data-v-c8c96dbe="">註冊</span></span></span>
+            {/* 老闆 2026-09-05：只留一顆「登入」（原本登入白鍵＋註冊紅鍵），
+                綠黃漸層立體鈕，配色照手機底部固定登入條（GuestLoginBar） */}
+            <Link href="/login" className={`button-3d button-3d_lime button-3d_sm ${styles.loginBtn3d}`} data-v-c8c96dbe="" aria-label="登入">
+              <span className="button-3d__outer" data-v-c8c96dbe=""><span className="button-3d__inner" data-v-c8c96dbe=""><span className="button-3d__text" data-v-c8c96dbe="">登入</span></span></span>
             </Link>
             {/* 老闆 2026-09-04：未登入不顯示設定膠囊（裡面全是登入後才用得到的偏好） */}
             </div>

@@ -206,7 +206,11 @@
 .button-3d__text[data-v-c8c96dbe] {
   color: var(--color_white);
   font-variant-numeric: lining-nums tabular-nums;
-  font-weight: 600;
+  /* 所有立體鈕的字都跟頂欄登入鈕一樣大、一樣粗（老闆 2026-09-05）：
+     中文系統字型 PingFang 最粗只到 600，font-weight 900 撐不出來，補 0.6px 同色描邊把筆畫撐粗 */
+  font-size: 14px;
+  font-weight: 900;
+  -webkit-text-stroke: 0.6px currentColor;
 }
 
 .button-3d_center .button-3d__inner[data-v-c8c96dbe] {
@@ -339,12 +343,35 @@
 }
 
 .button-3d_sm .button-3d__text[data-v-c8c96dbe] {
-  font-size: 12px;
-  font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 20px;
   margin-bottom: 0;
   margin-top: 0;
+}
+
+/* 綠黃漸層變體（老闆 2026-09-05：桌機頂欄的登入鈕），配色照手機端底部固定登入條
+   GuestLoginBar：#d8f552 → #5ee266 左到右、深字、綠色光暈（字級／粗細／描邊在 .button-3d__text 基底，全站立體鈕共用） */
+.button-3d_lime.button-3d[data-v-c8c96dbe]:after {
+  background-color: #2f8f3e;
+}
+
+.button-3d_lime.button-3d .button-3d__outer[data-v-c8c96dbe] {
+  background: linear-gradient(90deg, #d8f552 0%, #5ee266 100%);
+  box-shadow: 0 2px 8px rgba(94, 226, 102, 0.45), inset 0 3px 3px rgba(255, 255, 255, 0.45);
+}
+
+.button-3d_lime.button-3d:hover .button-3d__outer[data-v-c8c96dbe] {
+  background: linear-gradient(90deg, #e3fa6a 0%, #74ea7a 100%);
+  box-shadow: 0 3px 12px rgba(94, 226, 102, 0.6), inset 0 4px 4px rgba(255, 255, 255, 0.5);
+}
+
+.button-3d_lime.button-3d:active .button-3d__outer[data-v-c8c96dbe] {
+  background: linear-gradient(90deg, #d8f552 0%, #5ee266 100%);
+  box-shadow: 0 2px 8px rgba(94, 226, 102, 0.4), inset 0 3px 3px rgba(255, 255, 255, 0.45);
+}
+
+.button-3d_lime .button-3d__text[data-v-c8c96dbe] {
+  color: #171717;
 }
 
 @font-face {

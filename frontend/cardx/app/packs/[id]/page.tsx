@@ -316,12 +316,13 @@ export default function PackDetailPage() {
   /* ⚠️ 這裡要 flex 不能 inline-flex：外層 .button-3d__text 的 line-height 是 20px，
      inline 級的盒子會照基線對齊、底下多留一截 descender 的空間，整組字看起來就偏上。
      金幣圖也要 block，理由相同 */
+  /* 金額與「／抽」不另設字級粗細，跟其他立體鈕一樣吃 .button-3d__text 的 14／900（老闆 2026-09-05） */
   const priceLabel = (
     <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, lineHeight: 1 }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={asset("/images/gcoin.webp")} alt="G" style={{ width: 22, height: 22, display: "block", flex: "0 0 auto" }} />
-      <span style={{ fontSize: 20, fontWeight: 900, lineHeight: 1 }}>{product.price.toLocaleString()}</span>
-      <span style={{ fontSize: 13, fontWeight: 700, opacity: 0.7, lineHeight: 1 }}>/ {unit}</span>
+      <img src={asset("/images/gcoin.webp")} alt="G" style={{ width: 18, height: 18, display: "block", flex: "0 0 auto" }} />
+      <span style={{ lineHeight: 1 }}>{product.price.toLocaleString()}</span>
+      <span style={{ lineHeight: 1 }}>/ {unit}</span>
     </span>
   );
   const actionButtons = (
@@ -357,8 +358,9 @@ export default function PackDetailPage() {
         <span className={styles.ownerName}>{detail?.supplierName || "—"}</span>
       </div>
 
-      {/* 轉蛋不顯示配率表（老闆 2026-09-04：轉蛋用不到——只有一般版、也不公開張數） */}
-      {product.type !== "gacha" ? (
+      {/* 轉蛋不顯示配率表（老闆 2026-09-04：轉蛋用不到——只有一般版、也不公開張數）；
+          盒玩跟轉蛋一致（老闆 2026-09-05） */}
+      {!["gacha", "blindbox"].includes(product.type) ? (
       <div className={styles.priceCard} aria-label="配率表">
         <div style={{ display: "grid", gap: 10 }}>
           <div className={styles.sectionHeader} style={{ marginBottom: 0 }}>配率表</div>

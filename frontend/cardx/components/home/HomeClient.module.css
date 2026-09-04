@@ -1955,6 +1955,8 @@
 }
 .homeRoot {
   width: 100%;
+  /* 輪播圖不要貼著頂欄（老闆 2026-09-05）；沒有輪播時類別籤也吃這個間距 */
+  padding-top: 16px;
 }
 
 .homeRoot .banner,
@@ -2316,8 +2318,10 @@
   display: none;
 }
 
+/* 二級籤到商品格：模板留的 40px 拿掉（老闆 2026-09-05：太高）。
+   剩下籤列的 padding-bottom 8 ＋ sectionLobby 的 row-gap 10 ＝ 18px */
 .main2 .main .sectionLobby .nav + .section {
-  margin-top: 40px;
+  margin-top: 0;
 }
 
 @media (hover: hover) and (pointer: fine) {
