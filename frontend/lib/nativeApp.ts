@@ -36,6 +36,7 @@ const BLOCKED_PREFIXES = [
   '/sell-messages',  // 買賣雙方私訊
   '/exchange',       // 玩家換卡
   '/exchange-orders',
+  '/trades',         // 桌機版的換卡（cardx），跟 /exchange 是同一件事、同一批資料
   '/market',         // 交易所
   '/official',       // 官方商城商品頁（訂單與 /sell/orders 共用，見上）
 ] as const

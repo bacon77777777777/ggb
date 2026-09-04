@@ -54,12 +54,13 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
-function pushRecentVisit(entry: { kind: "packs"; id: string; ts: number; title: string; imageUrl: string; price: number; remaining: string }) {
+/** 近期瀏覽只記「看過哪一件、什麼時候」；標題價格一律當下回 DB 查，存起來會過期。 */
+function pushRecentVisit(entry: { kind: "product"; id: number; ts: number }) {
   try {
     const raw = window.localStorage.getItem(RECENTS_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
     const list = Array.isArray(parsed) ? parsed : [];
-    const next = [entry, ...list.filter((x) => x && typeof x === "object" && !(x.kind === entry.kind && x.id === entry.id))].slice(0, 200);
+    const next = [entry, ...list.filter((x) => !(x && typeof x === "object" && Number(x.id) === entry.id))].slice(0, 200);
     window.localStorage.setItem(RECENTS_KEY, JSON.stringify(next));
   } catch {}
 }
@@ -231,16 +232,8 @@ export default function PackDetailPage() {
 
   useEffect(() => {
     if (!product) return;
-    pushRecentVisit({
-      kind: "packs",
-      id: String(product.id),
-      ts: Date.now(),
-      title: product.name,
-      imageUrl: product.image_url || "",
-      price: product.price,
-      remaining: `${totalRemaining}/${totalItems}`,
-    });
-  }, [product, totalRemaining, totalItems]);
+    pushRecentVisit({ kind: "product", id: Number(product.id), ts: Date.now() });
+  }, [product]);
 
   const viewingPrize: PrizeInfo | null = useMemo(() => {
     if (viewingIndex == null) return null;

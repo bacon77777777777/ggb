@@ -1,720 +1,414 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+/**
+ * 成交行情（桌機版）。
+ *
+ * 原本這頁叫「卡牌走勢」，十筆商品名與價格全是寫死的，走勢點是用 seed 算出來的假曲線。
+ * 平台唯一真實的價格時間序列是交易所的成交紀錄，所以這頁改成列「交易所有成交過的品項」：
+ *   ・public_marketplace_price_stats —— 近 90 天成交彙總（筆數／最近／平均／最低最高）
+ *   ・public_marketplace_recent_deals —— 逐筆成交（只有價格與時間，買賣雙方不曝露）
+ * 沒有成交就顯示空狀態，不補假資料。
+ */
+
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/cardx/components/layout/AppShell";
 import { defaultSidebarItems } from "@/cardx/lib/navigation";
 import homeStyles from "@/cardx/components/home/HomeClient.module.css";
-import { PageHeader } from "@/cardx/components/ui/Kit";
+import { PageHeader, Pill, SecondaryButton, SurfaceCard, TextField } from "@/cardx/components/ui/Kit";
+import { createClient } from "@/lib/supabase/client";
+import { TYPE_LABEL, fetchRecentDeals, type DealPoint } from "@/app/market/data";
 
-export default function TrendsPage() {
+type RangeKey = "7d" | "30d" | "90d";
+type SortKey = "hot" | "gainers" | "losers" | "recent";
+
+const RANGES: Array<{ key: RangeKey; label: string; days: number }> = [
+  { key: "7d", label: "近 7 天", days: 7 },
+  { key: "30d", label: "近 30 天", days: 30 },
+  { key: "90d", label: "近 90 天", days: 90 },
+];
+
+const SORTS: Array<{ key: SortKey; label: string }> = [
+  { key: "hot", label: "成交最多" },
+  { key: "recent", label: "最近成交" },
+  { key: "gainers", label: "漲最多" },
+  { key: "losers", label: "跌最多" },
+];
+
+type Item = {
+  prizeId: number;
+  name: string;
+  level: string;
+  image: string | null;
+  productName: string;
+  productType: string;
+  dealCount: number;
+  minPrice: number;
+  maxPrice: number;
+  avgPrice: number;
+  lastPrice: number;
+  lastDealAt: string;
+  deals: DealPoint[];
+};
+
+function gnum(n: number) {
+  return Math.round(n).toLocaleString();
+}
+
+function md(iso: string) {
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+/** 只有價格點的迷你折線；一筆成交畫不了線，直接回一條淡底 */
+function Spark({ deals, color }: { deals: DealPoint[]; color: string }) {
+  const W = 120;
+  const H = 34;
+  if (deals.length < 2) {
+    return <div style={{ width: W, height: H, borderRadius: 8, background: "#f3f4f6" }} />;
+  }
+  const lo = Math.min(...deals.map((d) => d.price));
+  const hi = Math.max(...deals.map((d) => d.price));
+  const range = Math.max(1, hi - lo);
+  const pts = deals
+    .map((d, i) => {
+      const x = (i / (deals.length - 1)) * (W - 4) + 2;
+      const y = H - 3 - ((d.price - lo) / range) * (H - 6);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
   return (
-    <Suspense fallback={null}>
-      <TrendsPageInner />
-    </Suspense>
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: W, height: H, display: "block" }} aria-hidden="true">
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
   );
 }
 
-function TrendsPageInner() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  type GameKey = "all" | "pokemon" | "onepiece" | "yugioh" | "sports" | "other";
-  type RangeKey = "24h" | "7d" | "30d";
-  type SortKey = "hot" | "gainers" | "losers";
-  const FOLLOW_KEY = "cardx.trends.follow.byId";
+function deltaColor(pct: number) {
+  if (pct > 0.05) return "#16a34a";
+  if (pct < -0.05) return "#dc2626";
+  return "#6b7280";
+}
 
-  const games = useMemo<Array<{ key: GameKey; label: string }>>(
-    () => [
-      { key: "all", label: "全部" },
-      { key: "pokemon", label: "寶可夢" },
-      { key: "onepiece", label: "海賊王" },
-      { key: "yugioh", label: "遊戲王" },
-      { key: "sports", label: "運動卡" },
-      { key: "other", label: "其他" },
-    ],
-    []
-  );
-
-  const ranges = useMemo<Array<{ key: RangeKey; label: string }>>(
-    () => [
-      { key: "24h", label: "24H" },
-      { key: "7d", label: "7D" },
-      { key: "30d", label: "30D" },
-    ],
-    []
-  );
-
-  const sorts = useMemo<Array<{ key: SortKey; label: string }>>(
-    () => [
-      { key: "hot", label: "熱門" },
-      { key: "gainers", label: "上漲" },
-      { key: "losers", label: "下跌" },
-    ],
-    []
-  );
-
-  type TrendItem = {
-    id: string;
-    game: Exclude<GameKey, "all">;
-    name: string;
-    price: number;
-    deltaPct: number;
-    points: number[];
-    traders: number;
-  };
-
-  const items = useMemo<TrendItem[]>(() => {
-    const base: Array<Omit<TrendItem, "price" | "deltaPct" | "points" | "traders"> & { basePrice: number }> = [
-      { id: "tr-001", game: "pokemon", name: "噴火龍 ex", basePrice: 27900 },
-      { id: "tr-002", game: "pokemon", name: "皮卡丘", basePrice: 15200 },
-      { id: "tr-003", game: "pokemon", name: "基拉祈 / 熱門異圖", basePrice: 32900 },
-      { id: "tr-004", game: "onepiece", name: "魯夫 · 霸王色", basePrice: 19800 },
-      { id: "tr-005", game: "onepiece", name: "索隆 · 異畫", basePrice: 11300 },
-      { id: "tr-006", game: "yugioh", name: "青眼白龍", basePrice: 22700 },
-      { id: "tr-007", game: "yugioh", name: "黑魔導", basePrice: 16400 },
-      { id: "tr-008", game: "sports", name: "NBA 新人卡 / 限量", basePrice: 9200 },
-      { id: "tr-009", game: "sports", name: "MLB 簽名卡 / 稀有", basePrice: 15800 },
-      { id: "tr-010", game: "other", name: "漫畫卡 / 首刷", basePrice: 6800 },
-    ];
-
-    return base.map((b, idx) => {
-      const seed = idx * 97 + b.basePrice;
-      const wave = ((seed % 13) - 6) / 10;
-      const drift = ((seed % 9) - 4) / 10;
-      const deltaPct = Math.max(-18, Math.min(18, Math.round((wave * 2.4 + drift) * 10) / 10));
-      const price = Math.max(80, Math.round(b.basePrice * (1 + deltaPct / 100)));
-
-      const points = Array.from({ length: 18 }, (_, pIdx) => {
-        const t = pIdx / 17;
-        const noise = (((seed + pIdx * 41) % 17) - 8) / 60;
-        const slope = (deltaPct / 100) * 0.9;
-        const v = 0.5 + (t - 0.5) * slope + noise;
-        return Math.max(0.05, Math.min(0.95, v));
-      });
-
-      const traders = Math.max(12, Math.round(1200 - idx * 93 + ((seed % 37) - 18)));
-      return { id: b.id, game: b.game, name: b.name, price, deltaPct, points, traders };
-    });
-  }, []);
-
-  const [activeGame, setActiveGame] = useState<GameKey>("all");
-  const [activeRange, setActiveRange] = useState<RangeKey>("7d");
-  const [activeSort, setActiveSort] = useState<SortKey>("hot");
+export default function TrendsPage() {
+  const [items, setItems] = useState<Item[] | null>(null);
+  const [range, setRange] = useState<RangeKey>("30d");
+  const [sort, setSort] = useState<SortKey>("hot");
+  const [type, setType] = useState<string>("");
   const [query, setQuery] = useState("");
-  const [followOnly, setFollowOnly] = useState(false);
-  const [followById, setFollowById] = useState<Record<string, boolean>>({});
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Item | null>(null);
+  const [selectedDeals, setSelectedDeals] = useState<DealPoint[] | null>(null);
 
   useEffect(() => {
-    const g = (searchParams?.get("game") ?? "").trim().toLowerCase();
-    const r = (searchParams?.get("range") ?? "").trim().toLowerCase();
-    const s = (searchParams?.get("sort") ?? "").trim().toLowerCase();
-    const q = searchParams?.get("q") ?? "";
-    const fo = (searchParams?.get("follow") ?? "").trim() === "1";
-    const id = (searchParams?.get("id") ?? "").trim();
+    let alive = true;
+    (async () => {
+      const sb = createClient();
+      const { data: stats } = await sb
+        .from("public_marketplace_price_stats")
+        .select("product_prize_id, deal_count, min_price, max_price, avg_price, last_price, last_deal_at")
+        .order("deal_count", { ascending: false })
+        .limit(60);
 
-    const nextGame: GameKey = g === "pokemon" || g === "onepiece" || g === "yugioh" || g === "sports" || g === "other" ? (g as GameKey) : "all";
-    const nextRange: RangeKey = r === "24h" || r === "7d" || r === "30d" ? (r as RangeKey) : "7d";
-    const nextSort: SortKey = s === "hot" || s === "gainers" || s === "losers" ? (s as SortKey) : "hot";
-
-    setActiveGame((prev) => (prev === nextGame ? prev : nextGame));
-    setActiveRange((prev) => (prev === nextRange ? prev : nextRange));
-    setActiveSort((prev) => (prev === nextSort ? prev : nextSort));
-    setQuery((prev) => (prev === q ? prev : q));
-    setFollowOnly((prev) => (prev === fo ? prev : fo));
-    setSelectedId((prev) => (prev === (id || null) ? prev : id || null));
-  }, [searchParams]);
-
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (activeGame !== "all") params.set("game", activeGame);
-    if (activeRange !== "7d") params.set("range", activeRange);
-    if (activeSort !== "hot") params.set("sort", activeSort);
-    if (query.trim()) params.set("q", query.trim());
-    if (followOnly) params.set("follow", "1");
-    if (selectedId) params.set("id", selectedId);
-    const qs = params.toString();
-    router.replace(qs ? `/trends?${qs}` : "/trends");
-  }, [activeGame, activeRange, activeSort, followOnly, query, router, selectedId]);
-
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(FOLLOW_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== "object") return;
-      window.setTimeout(() => setFollowById(parsed as Record<string, boolean>), 0);
-    } catch {}
-  }, []);
-
-  function toggleFollow(id: string) {
-    setFollowById((prev) => {
-      const next = { ...prev, [id]: !prev[id] };
-      if (!next[id]) delete next[id];
-      try {
-        window.localStorage.setItem(FOLLOW_KEY, JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-  }
-
-  function resample(values: number[], n: number) {
-    if (!values.length || n <= 0) return [];
-    if (n === 1) return [values[0] ?? 0.5];
-    if (values.length === n) return values;
-    const lastIdx = values.length - 1;
-    return Array.from({ length: n }, (_, i) => {
-      const t = i / (n - 1);
-      const x = t * lastIdx;
-      const a = Math.floor(x);
-      const b = Math.min(lastIdx, a + 1);
-      const r = x - a;
-      const va = values[a] ?? 0.5;
-      const vb = values[b] ?? 0.5;
-      return va + (vb - va) * r;
-    });
-  }
-
-  function deltaForRange(deltaPct: number, range: RangeKey) {
-    if (range === "24h") return Math.round(deltaPct * 0.6 * 10) / 10;
-    if (range === "30d") return Math.round(deltaPct * 1.4 * 10) / 10;
-    return deltaPct;
-  }
-
-  function pointsForRange(points: number[], range: RangeKey) {
-    const len = range === "24h" ? 12 : range === "30d" ? 30 : 18;
-    return resample(points, len);
-  }
-
-  type TrendComputed = TrendItem & { rangeDeltaPct: number; rangePrice: number; rangePoints: number[] };
-  const computedItems = useMemo<TrendComputed[]>(() => {
-    return items.map((c) => {
-      const rangeDeltaPct = deltaForRange(c.deltaPct, activeRange);
-      const basePrice = c.deltaPct === -100 ? c.price : c.price / (1 + c.deltaPct / 100);
-      const rangePrice = Math.max(80, Math.round(basePrice * (1 + rangeDeltaPct / 100)));
-      const rangePoints = pointsForRange(c.points, activeRange);
-      return { ...c, rangeDeltaPct, rangePrice, rangePoints };
-    });
-  }, [activeRange, items]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const list0 = activeGame === "all" ? computedItems : computedItems.filter((x) => x.game === activeGame);
-    const list1 = followOnly ? list0.filter((x) => !!followById[x.id]) : list0;
-    const list2 = q ? list1.filter((x) => x.name.toLowerCase().includes(q)) : list1;
-    const list = list2;
-    const sorted = [...list];
-    sorted.sort((a, b) => {
-      if (activeSort === "gainers") return b.rangeDeltaPct - a.rangeDeltaPct;
-      if (activeSort === "losers") return a.rangeDeltaPct - b.rangeDeltaPct;
-      return b.traders - a.traders;
-    });
-    return sorted;
-  }, [activeGame, activeSort, computedItems, followById, followOnly, query]);
-
-  const listRef = useRef<HTMLDivElement | null>(null);
-  const [columns, setColumns] = useState(2);
-
-  useEffect(() => {
-    const gap = 16;
-    const minCardWidth = 340;
-    const maxCardWidth = 420;
-
-    function computeColumns() {
-      const el = listRef.current;
-      if (!el) return;
-      const w = el.clientWidth;
-
-      if (w <= 520) {
-        setColumns((prev) => (prev === 1 ? prev : 1));
-        return;
-      }
-      if (w <= 1023) {
-        setColumns((prev) => (prev === 2 ? prev : 2));
+      const statRows = (stats ?? []) as Array<{
+        product_prize_id: number;
+        deal_count: number;
+        min_price: number;
+        max_price: number;
+        avg_price: number;
+        last_price: number;
+        last_deal_at: string;
+      }>;
+      if (!statRows.length) {
+        if (alive) setItems([]);
         return;
       }
 
-      const minColsForMax = Math.max(1, Math.ceil((w + gap) / (maxCardWidth + gap)));
-      const maxColsForMin = Math.max(1, Math.floor((w + gap) / (minCardWidth + gap)));
-      const next = Math.min(4, Math.max(2, Math.min(Math.max(minColsForMax, 2), maxColsForMin)));
-      setColumns((prev) => (prev === next ? prev : next));
-    }
+      const ids = statRows.map((s) => Number(s.product_prize_id));
+      const [{ data: prizes }, { data: deals }] = await Promise.all([
+        sb.from("product_prizes").select("id, product_id, level, name, image_url").in("id", ids),
+        sb
+          .from("public_marketplace_recent_deals")
+          .select("product_prize_id, price, created_at")
+          .in("product_prize_id", ids)
+          .order("created_at", { ascending: true })
+          .limit(2000),
+      ]);
 
-    computeColumns();
-    const ro = new ResizeObserver(() => computeColumns());
-    if (listRef.current) ro.observe(listRef.current);
-    window.addEventListener("resize", computeColumns);
+      const prizeRows = (prizes ?? []) as Array<{
+        id: number;
+        product_id: number;
+        level: string | null;
+        name: string | null;
+        image_url: string | null;
+      }>;
+      const productIds = [...new Set(prizeRows.map((p) => p.product_id).filter(Boolean))];
+      const { data: products } = productIds.length
+        ? await sb.from("products").select("id, name, type").in("id", productIds)
+        : { data: [] as Array<{ id: number; name: string; type: string }> };
+      const productById = new Map(
+        ((products ?? []) as Array<{ id: number; name: string; type: string }>).map((p) => [Number(p.id), p]),
+      );
+      const prizeById = new Map(prizeRows.map((p) => [Number(p.id), p]));
+
+      const dealsByPrize = new Map<number, DealPoint[]>();
+      for (const d of (deals ?? []) as Array<{ product_prize_id: number; price: number; created_at: string }>) {
+        const key = Number(d.product_prize_id);
+        const list = dealsByPrize.get(key) ?? [];
+        list.push({ price: Number(d.price) || 0, createdAt: String(d.created_at) });
+        dealsByPrize.set(key, list);
+      }
+
+      const next: Item[] = statRows.map((s) => {
+        const id = Number(s.product_prize_id);
+        const prize = prizeById.get(id);
+        const product = prize ? productById.get(Number(prize.product_id)) : undefined;
+        return {
+          prizeId: id,
+          name: prize?.name || "未知品項",
+          level: prize?.level || "",
+          image: prize?.image_url || null,
+          productName: product?.name || "",
+          productType: product?.type || "",
+          dealCount: Number(s.deal_count) || 0,
+          minPrice: Number(s.min_price) || 0,
+          maxPrice: Number(s.max_price) || 0,
+          avgPrice: Number(s.avg_price) || 0,
+          lastPrice: Number(s.last_price) || 0,
+          lastDealAt: String(s.last_deal_at),
+          deals: dealsByPrize.get(id) ?? [],
+        };
+      });
+      if (alive) setItems(next);
+    })().catch(() => {
+      if (alive) setItems([]);
+    });
     return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", computeColumns);
+      alive = false;
     };
   }, []);
 
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key !== "Escape") return;
-      setSelectedId(null);
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  const days = RANGES.find((r) => r.key === range)?.days ?? 30;
 
-  function avatarSrc(_seedKey: string) {
-    return "/cardx/placeholder.svg";
-  }
+  /** 依時間窗切出這一段的成交，順便算漲跌（第一筆 → 最後一筆） */
+  const view = useMemo(() => {
+    const since = Date.now() - days * 86400000;
+    return (items ?? []).map((it) => {
+      const windowed = it.deals.filter((d) => new Date(d.createdAt).getTime() >= since);
+      const first = windowed[0]?.price ?? 0;
+      const last = windowed[windowed.length - 1]?.price ?? 0;
+      const deltaPct = windowed.length >= 2 && first > 0 ? ((last - first) / first) * 100 : 0;
+      return { ...it, windowed, deltaPct, windowCount: windowed.length };
+    });
+  }, [items, days]);
 
-  function formatTwd(v: number) {
-    return `NT$ ${Math.round(v).toLocaleString("zh-TW")}`;
-  }
+  const types = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const it of view) if (it.productType) counts.set(it.productType, (counts.get(it.productType) ?? 0) + 1);
+    return [...counts.entries()].map(([key, count]) => ({ key, label: TYPE_LABEL[key] || key, count }));
+  }, [view]);
 
-  function sparkPath(values: number[], w = 120, h = 32, pad = 2) {
-    if (!values.length) return "";
-    const xs = values.map((_, idx) => pad + (idx * (w - pad * 2)) / Math.max(1, values.length - 1));
-    const ys = values.map((v) => pad + (1 - v) * (h - pad * 2));
-    return xs.map((x, i) => `${x},${ys[i]}`).join(" ");
-  }
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const rows = view
+      .filter((it) => it.windowCount > 0)
+      .filter((it) => (type ? it.productType === type : true))
+      .filter((it) => (q ? `${it.name} ${it.productName} ${it.level}`.toLowerCase().includes(q) : true));
+    const sorted = [...rows];
+    if (sort === "hot") sorted.sort((a, b) => b.windowCount - a.windowCount || b.dealCount - a.dealCount);
+    else if (sort === "recent") sorted.sort((a, b) => new Date(b.lastDealAt).getTime() - new Date(a.lastDealAt).getTime());
+    else if (sort === "gainers") sorted.sort((a, b) => b.deltaPct - a.deltaPct);
+    else sorted.sort((a, b) => a.deltaPct - b.deltaPct);
+    return sorted;
+  }, [view, type, query, sort]);
 
-  const selected = useMemo(() => (selectedId ? computedItems.find((x) => x.id === selectedId) ?? null : null), [computedItems, selectedId]);
-
-  function mapToMarketVendorKey(game: Exclude<GameKey, "all">) {
-    if (game === "pokemon") return "pokemon";
-    if (game === "onepiece") return "onepiece";
-    if (game === "yugioh") return "yugioh";
-    if (game === "sports") return "basketball";
-    return "other";
-  }
-
-  function goToMarket(item: TrendItem) {
+  async function openDetail(it: Item) {
+    setSelected(it);
+    setSelectedDeals(null);
     try {
-      window.sessionStorage.setItem("cardx.market.prefill.vendorKey", mapToMarketVendorKey(item.game));
-    } catch {}
-    router.push("/market");
-    setSelectedId(null);
+      setSelectedDeals(await fetchRecentDeals(it.prizeId));
+    } catch {
+      setSelectedDeals(it.deals);
+    }
   }
+
+  const chipStyle = (active: boolean): React.CSSProperties => ({
+    height: 34,
+    padding: "0 12px",
+    borderRadius: 999,
+    border: active ? "1px solid transparent" : "1px solid #e5e7eb",
+    background: active ? "rgb(var(--primary))" : "#ffffff",
+    color: active ? "#ffffff" : "#374151",
+    fontSize: 12,
+    fontWeight: 900,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  });
 
   return (
     <AppShell sidebarItems={defaultSidebarItems}>
       <div className={homeStyles.main2}>
         <div className={homeStyles.main}>
           <div className={homeStyles.sectionLobby}>
-            <PageHeader title="卡牌走勢" />
+            <PageHeader title="成交行情" subtitle="交易所實際成交過的品項與近期價格" />
 
-            <div style={{ marginTop: 14, alignSelf: "stretch", width: "100%" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", width: "100%" }}>
-                <div
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                    overflowX: "auto",
-                    overflowY: "hidden",
-                    paddingBottom: 2,
-                    WebkitOverflowScrolling: "touch",
-                    maxWidth: "100%",
-                  }}
-                >
-                  {games.map((t) => {
-                    const active = activeGame === t.key;
-                    return (
-                      <button
-                        key={t.key}
-                        type="button"
-                        onClick={() => setActiveGame(t.key)}
-                        style={{
-                          height: 34,
-                          padding: "0 12px",
-                          borderRadius: 999,
-                          border: 0,
-                          cursor: "pointer",
-                          background: active ? "#111827" : "#f3f4f6",
-                          color: active ? "#ffffff" : "#374151",
-                          fontSize: 13,
-                          fontWeight: 800,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {t.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, flex: "0 0 auto" }}>
-                  <button
-                    type="button"
-                    onClick={() => setFollowOnly((v) => !v)}
-                    style={{
-                      height: 34,
-                      padding: "0 12px",
-                      borderRadius: 999,
-                      border: 0,
-                      cursor: "pointer",
-                      background: followOnly ? "#111827" : "#f3f4f6",
-                      color: followOnly ? "#ffffff" : "#374151",
-                      fontSize: 13,
-                      fontWeight: 800,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    追蹤
+            <SurfaceCard style={{ marginTop: 14, width: "100%", display: "grid", gap: 12 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {RANGES.map((r) => (
+                  <button key={r.key} type="button" onClick={() => setRange(r.key)} style={chipStyle(range === r.key)}>
+                    {r.label}
                   </button>
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="搜尋卡牌"
-                    style={{
-                      height: 34,
-                      width: "clamp(160px, 22vw, 260px)",
-                      borderRadius: 999,
-                      border: "1px solid #e5e7eb",
-                      background: "#ffffff",
-                      padding: "0 12px",
-                      color: "#111827",
-                      fontSize: 13,
-                      fontWeight: 800,
-                      outline: "none",
-                    }}
-                  />
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#6b7280", whiteSpace: "nowrap" }}>
-                    {filtered.length.toLocaleString()} 張
+                ))}
+                <div style={{ width: 1, background: "#e5e7eb", margin: "2px 4px" }} />
+                {SORTS.map((s) => (
+                  <button key={s.key} type="button" onClick={() => setSort(s.key)} style={chipStyle(sort === s.key)}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+              {types.length > 1 ? (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button type="button" onClick={() => setType("")} style={chipStyle(type === "")}>
+                    全部
+                  </button>
+                  {types.map((t) => (
+                    <button key={t.key} type="button" onClick={() => setType(t.key)} style={chipStyle(type === t.key)}>
+                      {t.label}（{t.count}）
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <div style={{ maxWidth: 320 }}>
+                <TextField label="找品項" value={query} onChange={setQuery} placeholder="品項名稱或來源商品" />
+              </div>
+            </SurfaceCard>
+
+            <div style={{ marginTop: 14, display: "grid", gap: 12, width: "100%" }}>
+              {items === null ? (
+                <div style={{ display: "grid", gap: 10 }}>
+                  {[0, 1, 2, 3].map((i) => (
+                    <SurfaceCard key={i} style={{ height: 92 }}>
+                      <div style={{ height: 16, width: "40%", borderRadius: 6, background: "#f3f4f6" }} />
+                      <div style={{ marginTop: 12, height: 12, width: "70%", borderRadius: 6, background: "#f3f4f6" }} />
+                    </SurfaceCard>
+                  ))}
+                </div>
+              ) : shown.length === 0 ? (
+                <SurfaceCard style={{ padding: 28, textAlign: "center" }}>
+                  <div style={{ fontSize: 15, fontWeight: 900, color: "#111827" }}>
+                    {items.length === 0 ? "還沒有成交紀錄" : "這個條件下沒有成交紀錄"}
                   </div>
-                </div>
-              </div>
-
-              <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {ranges.map((r) => {
-                    const active = activeRange === r.key;
-                    return (
-                      <button
-                        key={r.key}
-                        type="button"
-                        onClick={() => setActiveRange(r.key)}
-                        style={{
-                          height: 34,
-                          padding: "0 12px",
-                          borderRadius: 999,
-                          border: 0,
-                          cursor: "pointer",
-                          background: active ? "#111827" : "#f3f4f6",
-                          color: active ? "#ffffff" : "#374151",
-                          fontSize: 13,
-                          fontWeight: 800,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {r.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {sorts.map((s) => {
-                    const active = activeSort === s.key;
-                    return (
-                      <button
-                        key={s.key}
-                        type="button"
-                        onClick={() => setActiveSort(s.key)}
-                        style={{
-                          height: 34,
-                          padding: "0 12px",
-                          borderRadius: 999,
-                          border: 0,
-                          cursor: "pointer",
-                          background: active ? "#111827" : "#f3f4f6",
-                          color: active ? "#ffffff" : "#374151",
-                          fontSize: 13,
-                          fontWeight: 800,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {s.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>區間：{activeRange.toUpperCase()}</div>
-              </div>
-
-              <section className={homeStyles.section} aria-label="走勢列表">
-                <div
-                  ref={listRef}
-                  className={homeStyles.frame12}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-                    gap: 16,
-                    justifyItems: "stretch",
-                    alignItems: "stretch",
-                    width: "100%",
-                    overflow: "visible",
-                    overflowX: "visible",
-                    marginTop: 14,
-                    paddingTop: 0,
-                    paddingBottom: 0,
-                  }}
-                >
-                  {filtered.map((c) => {
-                    const up = c.rangeDeltaPct >= 0;
-                    const pctAbs = Math.min(99, Math.max(1, Math.round(Math.abs(c.rangeDeltaPct) * 3.2)));
-                    const ringColor = up ? "rgba(102,187,106,0.92)" : "rgba(239,83,80,0.92)";
-                    const followed = !!followById[c.id];
-                    return (
+                  <div style={{ marginTop: 6, fontSize: 13, fontWeight: 750, color: "#6b7280" }}>
+                    {items.length === 0
+                      ? "交易所有人成交之後，價格與走勢就會顯示在這裡。"
+                      : "換個時間範圍或分類看看。"}
+                  </div>
+                  <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+                    <SecondaryButton href="/market">去交易所逛逛</SecondaryButton>
+                  </div>
+                </SurfaceCard>
+              ) : (
+                shown.map((it) => {
+                  const color = deltaColor(it.deltaPct);
+                  return (
+                    <SurfaceCard key={it.prizeId} style={{ padding: 12 }}>
                       <div
-                        key={c.id}
-                        className={`${homeStyles.newsCard} ${homeStyles.topicCard}`}
                         role="button"
                         tabIndex={0}
-                        onClick={() => setSelectedId(c.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            setSelectedId(c.id);
-                          }
+                        onClick={() => openDetail(it)}
+                        onKeyDown={(ev) => {
+                          if (ev.key !== "Enter" && ev.key !== " ") return;
+                          ev.preventDefault();
+                          openDetail(it);
                         }}
-                        style={{
-                          borderRadius: 16,
-                          background: "#ffffff",
-                          overflow: "hidden",
-                          boxShadow: "0 0 0 1px #e5e7eb, 0 10px 40px -10px rgba(0,0,0,0.08)",
-                          padding: 12,
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 12,
-                          cursor: "pointer",
-                        }}
+                        style={{ display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}
                       >
-                        <div className={homeStyles.topicHeader}>
-                          <div className={homeStyles.topicAvatar}>
-                            <img alt="" src={avatarSrc(c.id)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                        <div
+                          style={{
+                            width: 56,
+                            height: 56,
+                            borderRadius: 12,
+                            background: "#f3f4f6",
+                            flex: "0 0 auto",
+                            overflow: "hidden",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          {it.image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={it.image} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                          ) : null}
+                        </div>
+
+                        <div style={{ minWidth: 0, flex: "1 1 auto" }}>
+                          <div style={{ fontSize: 14, fontWeight: 900, color: "#111827", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {it.level ? `${it.level}｜` : ""}
+                            {it.name}
                           </div>
-                          <div className={homeStyles.topicTitle} style={{ WebkitLineClamp: 2 }}>
-                            {c.name}
-                          </div>
-                          <div
-                            className={homeStyles.topicRing}
-                            style={
-                              {
-                                ["--p" as never]: pctAbs,
-                                ["--ring-color" as never]: ringColor,
-                              } as React.CSSProperties
-                            }
-                          >
-                            <div className={homeStyles.topicRingInner}>
-                              <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", lineHeight: 1 }}>
-                                {up ? "+" : "-"}
-                                {Math.abs(c.rangeDeltaPct).toFixed(1)}%
-                              </div>
-                              <div style={{ fontSize: 10, fontWeight: 850, color: "#6b7280", lineHeight: 1, marginTop: 2 }}>
-                                {activeRange.toUpperCase()}
-                              </div>
-                            </div>
+                          <div style={{ marginTop: 4, fontSize: 12, fontWeight: 750, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {it.productName || "來源商品不明"}・{it.windowCount} 筆成交・最後成交 {md(it.lastDealAt)}
                           </div>
                         </div>
 
-                        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
-                          <div style={{ display: "grid", gap: 4 }}>
-                            <div style={{ fontSize: 12, fontWeight: 850, color: "#6b7280" }}>參考價</div>
-                            <div style={{ fontSize: 16, fontWeight: 950, color: "#111827" }}>{formatTwd(c.rangePrice)}</div>
-                          </div>
-                          <svg width="120" height="32" viewBox="0 0 120 32" aria-hidden="true">
-                            <polyline
-                              points={sparkPath(c.rangePoints, 120, 32, 2)}
-                              fill="none"
-                              stroke={up ? "rgba(102,187,106,0.92)" : "rgba(239,83,80,0.92)"}
-                              strokeWidth="2.25"
-                              strokeLinejoin="round"
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                        </div>
+                        <Spark deals={it.windowed} color={color} />
 
-                        <div className={homeStyles.topicSpacer} />
-                        <div className={homeStyles.topicFooter}>
-                          <div className={homeStyles.topicMetaRow}>
-                            <div className={homeStyles.topicVoters}>{c.traders.toLocaleString()} 人關注</div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <div style={{ fontSize: 12, fontWeight: 900, color: up ? "rgba(102,187,106,0.92)" : "rgba(239,83,80,0.92)" }}>
-                                {up ? "+" : "-"}
-                                {Math.abs(c.rangeDeltaPct).toFixed(1)}%
-                              </div>
-                              <button
-                                type="button"
-                                aria-pressed={followed}
-                                onClick={() => toggleFollow(c.id)}
-                                onMouseDown={(e) => e.stopPropagation()}
-                                onClickCapture={(e) => e.stopPropagation()}
-                                style={{
-                                  height: 28,
-                                  padding: "0 10px",
-                                  borderRadius: 999,
-                                  border: "1px solid #e5e7eb",
-                                  background: followed ? "#e5e7eb" : "#f3f4f6",
-                                  color: followed ? "#111827" : "#374151",
-                                  fontSize: 12,
-                                  fontWeight: 900,
-                                  cursor: "pointer",
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
-                                {followed ? "已追蹤" : "追蹤"}
-                              </button>
-                            </div>
+                        <div style={{ flex: "0 0 auto", textAlign: "right", minWidth: 104 }}>
+                          <div style={{ fontSize: 15, fontWeight: 950, color: "#111827" }}>{gnum(it.lastPrice)} G</div>
+                          <div style={{ marginTop: 2, fontSize: 12, fontWeight: 900, color }}>
+                            {it.windowCount >= 2 ? `${it.deltaPct >= 0 ? "+" : ""}${it.deltaPct.toFixed(1)}%` : "—"}
                           </div>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              </section>
+
+                      {selected?.prizeId === it.prizeId ? (
+                        <div style={{ marginTop: 12, borderTop: "1px solid #e5e7eb", paddingTop: 12, display: "grid", gap: 10 }}>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <Pill tone="muted">近 90 天 {it.dealCount} 筆</Pill>
+                            <Pill tone="muted">平均 {gnum(it.avgPrice)} G</Pill>
+                            <Pill tone="muted">最低 {gnum(it.minPrice)} G</Pill>
+                            <Pill tone="muted">最高 {gnum(it.maxPrice)} G</Pill>
+                          </div>
+                          <div style={{ display: "grid", gap: 6 }}>
+                            {selectedDeals === null ? (
+                              <div style={{ height: 40, borderRadius: 10, background: "#f3f4f6" }} />
+                            ) : selectedDeals.length === 0 ? (
+                              <div style={{ fontSize: 12, fontWeight: 750, color: "#9ca3af" }}>近 90 天沒有成交紀錄。</div>
+                            ) : (
+                              [...selectedDeals]
+                                .reverse()
+                                .slice(0, 8)
+                                .map((d, i) => (
+                                  <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
+                                    <span>{md(d.createdAt)} 成交</span>
+                                    <b style={{ color: "#111827" }}>{gnum(d.price)} G</b>
+                                  </div>
+                                ))
+                            )}
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                            <SecondaryButton onClick={() => setSelected(null)} style={{ height: 34, borderRadius: 10 }}>
+                              收起
+                            </SecondaryButton>
+                            <SecondaryButton href="/market" style={{ height: 34, borderRadius: 10 }}>
+                              去交易所
+                            </SecondaryButton>
+                          </div>
+                        </div>
+                      ) : null}
+                    </SurfaceCard>
+                  );
+                })
+              )}
             </div>
+
+            {items && items.length > 0 ? (
+              <div style={{ marginTop: 12, fontSize: 12, fontWeight: 750, color: "#9ca3af" }}>
+                價格取自交易所玩家之間的實際成交，僅供參考。
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
-
-      {selected ? (
-        <div
-          role="presentation"
-          onClick={() => setSelectedId(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 70,
-            background: "rgba(0,0,0,0.62)",
-            backdropFilter: "blur(6px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 18,
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="走勢詳情"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "min(640px, 96vw)",
-              borderRadius: 18,
-              border: "1px solid #e5e7eb",
-              background: "#ffffff",
-              boxShadow: "0 18px 60px rgba(0, 0, 0, 0.18)",
-              padding: 16,
-              position: "relative",
-            }}
-          >
-            <button
-              type="button"
-              aria-label="關閉"
-              onClick={() => setSelectedId(null)}
-              style={{
-                appearance: "none",
-                border: "1px solid #e5e7eb",
-                background: "#f3f4f6",
-                color: "#374151",
-                width: 38,
-                height: 38,
-                borderRadius: 12,
-                cursor: "pointer",
-                fontWeight: 950,
-                lineHeight: 1,
-                position: "absolute",
-                top: 12,
-                right: 12,
-              }}
-            >
-              ×
-            </button>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 12, paddingRight: 44 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, overflow: "hidden", background: "#f3f4f6", flex: "0 0 auto" }}>
-                <img alt="" src={avatarSrc(selected.id)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-              </div>
-              <div style={{ minWidth: 0, flex: "1 1 auto" }}>
-                <div style={{ fontSize: 16, fontWeight: 950, color: "#111827", lineHeight: 1.2 }}>{selected.name}</div>
-                <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
-                  {selected.traders.toLocaleString()} 人關注 · 區間 {activeRange.toUpperCase()}
-                </div>
-              </div>
-              <div
-                className={homeStyles.topicRing}
-                style={
-                  {
-                    ["--p" as never]: Math.min(99, Math.max(1, Math.round(Math.abs(selected.rangeDeltaPct) * 3.2))),
-                    ["--ring-color" as never]: selected.rangeDeltaPct >= 0 ? "rgba(102,187,106,0.92)" : "rgba(239,83,80,0.92)",
-                  } as React.CSSProperties
-                }
-              >
-                <div className={homeStyles.topicRingInner}>
-                  <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", lineHeight: 1 }}>
-                    {selected.rangeDeltaPct >= 0 ? "+" : "-"}
-                    {Math.abs(selected.rangeDeltaPct).toFixed(1)}%
-                  </div>
-                  <div style={{ fontSize: 10, fontWeight: 850, color: "#6b7280", lineHeight: 1, marginTop: 2 }}>
-                    {activeRange.toUpperCase()}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ marginTop: 14, borderRadius: 16, border: "1px solid #e5e7eb", background: "#f9fafb", padding: 12 }}>
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 850, color: "#6b7280" }}>參考價</div>
-                <div style={{ fontSize: 18, fontWeight: 950, color: "#111827" }}>{formatTwd(selected.rangePrice)}</div>
-              </div>
-              <div style={{ marginTop: 10 }}>
-                <svg width="100%" height="150" viewBox="0 0 600 150" preserveAspectRatio="none" aria-hidden="true">
-                  <polyline
-                    points={sparkPath(selected.rangePoints, 600, 150, 6)}
-                    fill="none"
-                    stroke={selected.rangeDeltaPct >= 0 ? "rgba(102,187,106,0.92)" : "rgba(239,83,80,0.92)"}
-                    strokeWidth="3.25"
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </div>
-              <div style={{ marginTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  aria-pressed={!!followById[selected.id]}
-                  onClick={() => toggleFollow(selected.id)}
-                  style={{
-                    height: 38,
-                    padding: "0 14px",
-                    borderRadius: 12,
-                    border: "1px solid #e5e7eb",
-                    background: followById[selected.id] ? "#e5e7eb" : "#f3f4f6",
-                    color: followById[selected.id] ? "#111827" : "#374151",
-                    fontSize: 13,
-                    fontWeight: 950,
-                    cursor: "pointer",
-                  }}
-                >
-                  {followById[selected.id] ? "已追蹤" : "追蹤"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => goToMarket(selected)}
-                  style={{
-                    height: 38,
-                    padding: "0 14px",
-                    borderRadius: 12,
-                    border: 0,
-                    background: "rgba(11, 121, 247, 0.92)",
-                    color: "#fff",
-                    fontSize: 13,
-                    fontWeight: 950,
-                    cursor: "pointer",
-                  }}
-                >
-                  前往市集
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </AppShell>
   );
 }

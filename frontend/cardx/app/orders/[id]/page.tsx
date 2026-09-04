@@ -1,385 +1,200 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+/*
+ * 配送訂單詳情（桌機版）
+ *
+ * 讀真的 `orders` 與底下的 `draw_records`。進度條與狀態文案走 `lib/orderStatus`
+ * ＋ `components/warehouse/DeliverySteps`，跟手機版同一份，同一張單不會兩個說法。
+ *
+ * ⚠️ 前台不可以直接 update 訂單狀態 —— 訂單狀態由後台與物流回呼寫。
+ * 原本這頁有「模擬賣家出貨 / 模擬送達 / 確認收貨 / 申請退款 / 發起爭議」五顆按鈕，
+ * 全部是 `orders.update({ status: ... })`，而且寫的是我們沒有的狀態值。
+ * 只留下真的有 RPC 撐著的那一個動作：取消配送申請（cancel_my_delivery_order）。
+ * 退款與爭議沒有對應的後端流程，按鈕直接拿掉，不做「按了沒事」的假動作。
+ */
+
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { AppShell } from "@/cardx/components/layout/AppShell";
 import { defaultSidebarItems } from "@/cardx/lib/navigation";
 import homeStyles from "@/cardx/components/home/HomeClient.module.css";
-import { supabaseBrowser } from "@/cardx/lib/supabase/browser";
-import { mockMarketListings } from "@/cardx/lib/mock/home";
 import { Button3D, KeyValueRow, Pill, SecondaryButton, SurfaceCard } from "@/cardx/components/ui/Kit";
+import { useAuth } from "@/contexts/AuthContext";
+import { createClient } from "@/lib/supabase/client";
+import { BouncingCapsule } from "@/components/ui/BouncingCapsule";
+import { GradeBadge } from "@/components/ui/GradeBadge";
+import { DeliverySteps } from "@/components/warehouse/DeliverySteps";
+import { normalizeOrderStatus, orderStatusConfig } from "@/lib/orderStatus";
 
-type OrderStatus =
-  | "created"
-  | "payment_pending"
-  | "paid"
-  | "packing"
-  | "shipped"
-  | "delivered"
-  | "completed"
-  | "canceled"
-  | "refund_pending"
-  | "refunded"
-  | "dispute_open"
-  | "dispute_resolved";
+type OrderItem = { id: string; name: string; grade: string; productName: string; image: string | null };
 
 type Order = {
   id: string;
-  kind: "market";
-  refId: string;
-  title: string;
-  imageUrl: string;
-  amountSubtotal: number;
-  shippingFee: number;
-  platformFee: number;
-  totalAmount: number;
-  currency: "TWD";
-  status: OrderStatus;
+  orderNumber: string;
+  status: string;
   createdAt: number;
-  addressSnapshot: { name: string; phone: string; addressLine: string };
-  shipment?: { carrier: string; trackingNo: string; status: "created" | "shipped" | "delivered" };
+  shippedAt: number | null;
+  tracking: string | null;
+  shippingFee: number;
+  logisticsType: string;
+  methodLabel: string;
+  storeName: string | null;
+  note: string | null;
+  supplierName: string;
+  recipientName: string;
+  recipientPhone: string;
+  address: string;
+  items: OrderItem[];
 };
 
-const ORDERS_KEY = "cardx.orders.v1";
-
-function readJson<T>(key: string, fallback: T): T {
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeJson(key: string, value: unknown) {
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
-}
-
-function normalizeMarketId(id: string) {
-  if (!id.startsWith("listing_")) return id;
-  const parts = id.split("_");
-  if (parts.length >= 2) return `${parts[0]}_${parts[1]}`;
-  return id;
-}
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-}
-
-function twd(n: number) {
-  return new Intl.NumberFormat("zh-TW", { style: "currency", currency: "TWD", maximumFractionDigits: 0 }).format(Math.round(n));
-}
-
-function statusLabel(status: OrderStatus) {
-  if (status === "paid") return "已付款";
-  if (status === "packing") return "備貨中";
-  if (status === "shipped") return "已出貨";
-  if (status === "delivered") return "已送達";
-  if (status === "completed") return "已完成";
-  if (status === "canceled") return "已取消";
-  if (status === "refund_pending") return "退款處理中";
-  if (status === "refunded") return "已退款";
-  if (status === "dispute_open") return "爭議處理中";
-  if (status === "dispute_resolved") return "爭議已結案";
-  return "處理中";
-}
-
-function statusTone(status: OrderStatus): "muted" | "success" | "danger" | "info" {
-  if (status === "completed") return "success";
-  if (status === "refunded" || status === "refund_pending" || status === "dispute_open") return "danger";
-  if (status === "canceled") return "muted";
-  return "info";
-}
-
-function UiIcon({ href, size = 18, opacity = 0.92 }: { href: string; size?: number; opacity?: number }) {
+function SectionLoading() {
   return (
-    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" style={{ opacity }}>
+    <div style={{ display: "grid", placeItems: "center", gap: 14, padding: "56px 0" }}>
+      <BouncingCapsule size={40} />
+      <span style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.2em", color: "#9ca3af" }}>載入中</span>
+    </div>
+  );
+}
+
+function UiIcon({ href, size = 18, opacity = 0.92, flip = false }: { href: string; size?: number; opacity?: number; flip?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" style={{ opacity, transform: flip ? "rotate(180deg)" : undefined }}>
       <use href={href} />
     </svg>
   );
+}
+
+function toneOf(status: string): "muted" | "success" | "danger" | "info" {
+  const s = normalizeOrderStatus(status);
+  if (s === "delivered") return "success";
+  if (s === "cancelled") return "danger";
+  return "info";
 }
 
 export default function OrderDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id ?? "";
   const router = useRouter();
-  const [tabMenuOpen, setTabMenuOpen] = useState(false);
-  const tabMenuRef = useRef<HTMLDivElement | null>(null);
+  const { user, isLoading: authLoading } = useAuth();
+  const supabase = useMemo(() => createClient(), []);
 
   const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
-  const tabs = useMemo(
-    () => [
-      { key: "overview", label: "總覽", icon: "#icon-bag-dollar" as const, href: "/account" },
-      { key: "orders", label: "我的訂單", icon: "#icon-box" as const, href: "/account?tab=orders" },
-      { key: "openings", label: "卡包紀錄", icon: "#icon-gift" as const, href: "/account?tab=openings" },
-      { key: "trades", label: "交換紀錄", icon: "#icon-swap" as const, href: "/account?tab=trades" },
-      { key: "seller", label: "賣家管理", icon: "#icon-docs" as const, href: "/account?tab=seller" },
-    ],
-    []
-  );
-  const activeTab = useMemo(() => tabs.find((t) => t.key === "orders") ?? tabs[0]!, [tabs]);
-
-  useEffect(() => {
-    if (!tabMenuOpen) return;
-    function onPointerDown(e: PointerEvent) {
-      const wrap = tabMenuRef.current;
-      if (!wrap) return;
-      if (wrap.contains(e.target as Node)) return;
-      setTabMenuOpen(false);
+  const load = useCallback(async () => {
+    if (!user || !id) {
+      setOrder(null);
+      setLoading(false);
+      return;
     }
-    window.addEventListener("pointerdown", onPointerDown);
-    return () => window.removeEventListener("pointerdown", onPointerDown);
-  }, [tabMenuOpen]);
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("orders")
+      .select(`
+        id, order_number, status, created_at, shipped_at, tracking_number, shipping_fee,
+        logistics_type, store_name, note, recipient_name, recipient_phone, address,
+        suppliers ( name ),
+        draw_records (
+          id, prize_name, prize_level,
+          product_prizes ( level, name, image_url ),
+          products ( name, suppliers ( name ) )
+        )
+      `)
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-  useEffect(() => {
-    const supabase = supabaseBrowser();
-    const sb = supabase ?? null;
-    let alive = true;
-
-    function syncLocal() {
-      const list = readJson<Order[]>(ORDERS_KEY, []);
-      const hit = list.find((x) => x.id === id) ?? null;
-      setOrder(hit);
+    if (error || !data) {
+      setOrder(null);
+      setLoading(false);
+      return;
     }
 
-    async function sync() {
-      if (!alive) return;
-      if (!id) {
-        setOrder(null);
-        return;
-      }
-      if (!sb || !isUuid(id)) {
-        syncLocal();
-        return;
-      }
-      try {
-        const { data: sessionData } = await sb.auth.getSession();
-        const uid = sessionData.session?.user?.id ?? null;
-        if (!alive) return;
-        if (!uid) {
-          syncLocal();
-          return;
-        }
-        const { data: row, error } = await sb
-          .from("orders")
-          .select("id, ref_id, amount_subtotal, shipping_fee, platform_fee, amount_total, status, created_at, shipping, address_id")
-          .eq("id", id)
-          .maybeSingle();
-        if (error) throw error;
-        if (!row) {
-          setOrder(null);
-          return;
-        }
-        const refId = normalizeMarketId(String(row.ref_id ?? ""));
-        const listing = mockMarketListings.find((x) => x.id === refId) ?? null;
-        const shipping = row.shipping && typeof row.shipping === "object" ? (row.shipping as Record<string, unknown>) : {};
-        const createdAt = row.created_at ? new Date(String(row.created_at)).getTime() : Date.now();
+    const row = data as unknown as Record<string, unknown>;
+    const records = Array.isArray(row.draw_records) ? (row.draw_records as Array<Record<string, unknown>>) : [];
+    const createdAt = row.created_at ? new Date(String(row.created_at)).getTime() : Date.now();
+    const shippedAt = row.shipped_at ? new Date(String(row.shipped_at)).getTime() : null;
+    const logisticsType = String(row.logistics_type ?? "HOME");
+    const supplier = row.suppliers as { name?: string } | null | undefined;
 
-        let addressSnapshot: Order["addressSnapshot"] = { name: "", phone: "", addressLine: "" };
-        if (row.address_id) {
-          const { data: addr } = await sb
-            .from("addresses")
-            .select("recipient_name, phone, line1")
-            .eq("id", String(row.address_id))
-            .maybeSingle();
-          if (addr) {
-            addressSnapshot = {
-              name: String((addr as { recipient_name?: unknown }).recipient_name ?? ""),
-              phone: String((addr as { phone?: unknown }).phone ?? ""),
-              addressLine: String((addr as { line1?: unknown }).line1 ?? ""),
-            };
-          }
-        }
-
-        const mapped: Order = {
-          id: String(row.id),
-          kind: "market",
-          refId,
-          title: listing?.title ?? `訂單 ${refId || String(row.id)}`,
-          imageUrl: "/cardx/placeholder.svg",
-          amountSubtotal: Number(row.amount_subtotal ?? 0),
-          shippingFee: Number(row.shipping_fee ?? 0),
-          platformFee: Number(row.platform_fee ?? 0),
-          totalAmount: Number(row.amount_total ?? 0),
-          currency: "TWD",
-          status: String(row.status ?? "paid") as OrderStatus,
-          createdAt: Number.isFinite(createdAt) ? createdAt : Date.now(),
-          addressSnapshot,
-          shipment:
-            typeof shipping.trackingNo === "string" || typeof shipping.tracking_no === "string"
-              ? {
-                  carrier: String((shipping.carrier as string) ?? "newebpay-logistics"),
-                  trackingNo: String((shipping.trackingNo as string) ?? (shipping.tracking_no as string) ?? ""),
-                  status: String((shipping.status as string) ?? "created") as "created" | "shipped" | "delivered",
-                }
-              : undefined,
-        };
-        setOrder(mapped);
-      } catch {
-        syncLocal();
-      }
-    }
-
-    window.setTimeout(() => void sync(), 0);
-    const authSub = sb?.auth.onAuthStateChange(() => {
-      void sync();
+    const items: OrderItem[] = records.map((r) => {
+      const prize = r.product_prizes as { level?: string; name?: string; image_url?: string } | null | undefined;
+      const product = r.products as { name?: string } | null | undefined;
+      return {
+        id: String(r.id),
+        name: String(prize?.name ?? r.prize_name ?? "獎品"),
+        grade: String(prize?.level ?? r.prize_level ?? ""),
+        productName: String(product?.name ?? ""),
+        image: prize?.image_url ? String(prize.image_url) : null,
+      };
     });
-    return () => {
-      alive = false;
-      authSub?.data.subscription.unsubscribe();
-    };
-  }, [id]);
 
-  const timeline = useMemo(() => {
-    if (!order) return [];
-    const base = order.createdAt;
-    const steps: Array<{ key: string; label: string; at?: number; active: boolean }> = [
-      { key: "paid", label: "已付款", at: order.status === "paid" || order.status === "packing" || order.status === "shipped" || order.status === "delivered" || order.status === "completed" ? base + 3 * 60 * 1000 : undefined, active: order.status !== "created" && order.status !== "payment_pending" },
-      { key: "packing", label: "備貨中", at: order.status === "packing" || order.status === "shipped" || order.status === "delivered" || order.status === "completed" ? base + 60 * 60 * 1000 : undefined, active: order.status === "packing" || order.status === "shipped" || order.status === "delivered" || order.status === "completed" },
-      { key: "shipped", label: "已出貨", at: order.status === "shipped" || order.status === "delivered" || order.status === "completed" ? base + 4 * 60 * 60 * 1000 : undefined, active: order.status === "shipped" || order.status === "delivered" || order.status === "completed" },
-      { key: "delivered", label: "已送達", at: order.status === "delivered" || order.status === "completed" ? base + 30 * 60 * 60 * 1000 : undefined, active: order.status === "delivered" || order.status === "completed" },
-      { key: "completed", label: "已完成", at: order.status === "completed" ? base + 31 * 60 * 60 * 1000 : undefined, active: order.status === "completed" },
-    ];
-    return steps;
-  }, [order]);
+    const fallbackSupplier = Array.from(
+      new Set(
+        records
+          .map((r) => (r.products as { suppliers?: { name?: string } } | null | undefined)?.suppliers?.name)
+          .filter((n): n is string => !!n)
+      )
+    );
 
-  function markShipped() {
+    setOrder({
+      id: String(row.id),
+      orderNumber: String(row.order_number ?? row.id),
+      status: String(row.status ?? "submitted"),
+      createdAt: Number.isFinite(createdAt) ? createdAt : Date.now(),
+      shippedAt: shippedAt && Number.isFinite(shippedAt) ? shippedAt : null,
+      tracking: row.tracking_number ? String(row.tracking_number) : null,
+      shippingFee: Number(row.shipping_fee ?? 0),
+      logisticsType,
+      methodLabel: logisticsType === "CVS" ? "超商取貨" : "宅配到府",
+      storeName: row.store_name ? String(row.store_name) : null,
+      note: row.note ? String(row.note) : null,
+      supplierName: supplier?.name ?? (fallbackSupplier.length ? fallbackSupplier.join("、") : "—"),
+      recipientName: String(row.recipient_name ?? ""),
+      recipientPhone: String(row.recipient_phone ?? ""),
+      address: String(row.address ?? ""),
+      items,
+    });
+    setLoading(false);
+  }, [id, supabase, user]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    void load();
+  }, [authLoading, load]);
+
+  /** 只有「已申請、還沒開物流單」的訂單能取消；能不能真的取消由 DB 說了算 */
+  const canCancel = useMemo(
+    () => !!order && normalizeOrderStatus(order.status) === "submitted" && !order.tracking,
+    [order]
+  );
+
+  async function cancelOrder() {
     if (!order) return;
-    if (order.status !== "paid" && order.status !== "packing") return;
-    const supabase = supabaseBrowser();
-    if (supabase && isUuid(order.id)) {
-      void (async () => {
-        const nextShipment = order.shipment ? { ...order.shipment, status: "shipped" as const } : order.shipment;
-        const patch = nextShipment ? { carrier: nextShipment.carrier, trackingNo: nextShipment.trackingNo, status: nextShipment.status } : {};
-        const { error } = await supabase.from("orders").update({ status: "shipped", shipping: patch }).eq("id", order.id);
-        if (error) return;
-        setOrder((prev) => (prev ? { ...prev, status: "shipped", shipment: nextShipment } : prev));
-      })();
-      return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const { data, error } = await supabase.rpc("cancel_my_delivery_order", { p_order_id: Number(order.id) });
+      if (error) throw error;
+      const refunded = Number((data as { refunded?: number } | null)?.refunded ?? 0);
+      setMsg({ tone: "ok", text: refunded > 0 ? `已取消，退回 ${refunded} G` : "已取消，獎品已放回你的倉庫" });
+      setConfirmCancel(false);
+      await load();
+    } catch (e) {
+      const text = String((e as { message?: string })?.message ?? "");
+      if (text.includes("ALREADY_PROCESSING")) setMsg({ tone: "err", text: "這筆訂單已經在出貨流程中，請聯繫客服協助" });
+      else if (text.includes("ORDER_NOT_FOUND")) setMsg({ tone: "err", text: "找不到這筆訂單" });
+      else setMsg({ tone: "err", text: "取消失敗，請稍後再試" });
+    } finally {
+      setBusy(false);
     }
-    const list = readJson<Order[]>(ORDERS_KEY, []);
-    const idx = list.findIndex((x) => x.id === order.id);
-    if (idx < 0) return;
-    const next: Order = { ...order, status: "shipped", shipment: order.shipment ? { ...order.shipment, status: "shipped" } : undefined };
-    const nextList = [...list];
-    nextList[idx] = next;
-    writeJson(ORDERS_KEY, nextList);
-    setOrder(next);
   }
 
-  function markDelivered() {
-    if (!order) return;
-    const supabase = supabaseBrowser();
-    if (supabase && isUuid(order.id)) {
-      void (async () => {
-        const nextShipment = order.shipment ? { ...order.shipment, status: "delivered" as const } : order.shipment;
-        const patch = nextShipment ? { carrier: nextShipment.carrier, trackingNo: nextShipment.trackingNo, status: nextShipment.status } : {};
-        const { error } = await supabase.from("orders").update({ status: "delivered", shipping: patch }).eq("id", order.id);
-        if (error) return;
-        setOrder((prev) => (prev ? { ...prev, status: "delivered", shipment: nextShipment } : prev));
-      })();
-      return;
-    }
-    const list = readJson<Order[]>(ORDERS_KEY, []);
-    const idx = list.findIndex((x) => x.id === order.id);
-    if (idx < 0) return;
-    const next: Order = { ...order, status: "delivered", shipment: order.shipment ? { ...order.shipment, status: "delivered" } : undefined };
-    const nextList = [...list];
-    nextList[idx] = next;
-    writeJson(ORDERS_KEY, nextList);
-    setOrder(next);
-  }
-
-  function markCompleted() {
-    if (!order) return;
-    const supabase = supabaseBrowser();
-    if (supabase && isUuid(order.id)) {
-      void (async () => {
-        const { error } = await supabase.from("orders").update({ status: "completed" }).eq("id", order.id);
-        if (error) return;
-        setOrder((prev) => (prev ? { ...prev, status: "completed" } : prev));
-      })();
-      return;
-    }
-    const list = readJson<Order[]>(ORDERS_KEY, []);
-    const idx = list.findIndex((x) => x.id === order.id);
-    if (idx < 0) return;
-    const next: Order = { ...order, status: "completed" };
-    const nextList = [...list];
-    nextList[idx] = next;
-    writeJson(ORDERS_KEY, nextList);
-    setOrder(next);
-  }
-
-  function cancelOrder() {
-    if (!order) return;
-    if (order.status !== "created" && order.status !== "payment_pending") return;
-    const supabase = supabaseBrowser();
-    if (supabase && isUuid(order.id)) {
-      void (async () => {
-        const { error } = await supabase.from("orders").update({ status: "canceled" }).eq("id", order.id);
-        if (error) return;
-        setOrder((prev) => (prev ? { ...prev, status: "canceled" } : prev));
-      })();
-      return;
-    }
-    const list = readJson<Order[]>(ORDERS_KEY, []);
-    const idx = list.findIndex((x) => x.id === order.id);
-    if (idx < 0) return;
-    const next: Order = { ...order, status: "canceled" };
-    const nextList = [...list];
-    nextList[idx] = next;
-    writeJson(ORDERS_KEY, nextList);
-    setOrder(next);
-  }
-
-  function requestRefund() {
-    if (!order) return;
-    if (order.status !== "paid" && order.status !== "packing" && order.status !== "shipped") return;
-    const supabase = supabaseBrowser();
-    if (supabase && isUuid(order.id)) {
-      void (async () => {
-        const { error } = await supabase.from("orders").update({ status: "refund_pending" }).eq("id", order.id);
-        if (error) return;
-        setOrder((prev) => (prev ? { ...prev, status: "refund_pending" } : prev));
-      })();
-      return;
-    }
-    const list = readJson<Order[]>(ORDERS_KEY, []);
-    const idx = list.findIndex((x) => x.id === order.id);
-    if (idx < 0) return;
-    const next: Order = { ...order, status: "refund_pending" };
-    const nextList = [...list];
-    nextList[idx] = next;
-    writeJson(ORDERS_KEY, nextList);
-    setOrder(next);
-  }
-
-  function openDispute() {
-    if (!order) return;
-    if (order.status === "completed" || order.status === "canceled" || order.status === "refunded") return;
-    const supabase = supabaseBrowser();
-    if (supabase && isUuid(order.id)) {
-      void (async () => {
-        const { error } = await supabase.from("orders").update({ status: "dispute_open" }).eq("id", order.id);
-        if (error) return;
-        setOrder((prev) => (prev ? { ...prev, status: "dispute_open" } : prev));
-      })();
-      return;
-    }
-    const list = readJson<Order[]>(ORDERS_KEY, []);
-    const idx = list.findIndex((x) => x.id === order.id);
-    if (idx < 0) return;
-    const next: Order = { ...order, status: "dispute_open" };
-    const nextList = [...list];
-    nextList[idx] = next;
-    writeJson(ORDERS_KEY, nextList);
-    setOrder(next);
-  }
+  const cfg = order ? orderStatusConfig(order.status) : null;
+  const cancelled = order ? normalizeOrderStatus(order.status) === "cancelled" : false;
 
   return (
     <AppShell sidebarItems={defaultSidebarItems}>
@@ -387,93 +202,12 @@ export default function OrderDetailPage() {
         <div className={homeStyles.main}>
           <div className={homeStyles.sectionLobby}>
             <div className={homeStyles.accountContainer}>
-              <div ref={tabMenuRef} className={homeStyles.accountTabsDropdownWrap}>
-                <button
-                  type="button"
-                  className={homeStyles.accountTabsDropdownBtn}
-                  aria-label="切換帳戶頁籤"
-                  aria-expanded={tabMenuOpen}
-                  onClick={() => setTabMenuOpen((v) => !v)}
-                >
-                  <span className={homeStyles.accountTabsDropdownLeft}>
-                    <span className={homeStyles.accountTabsDropdownIcon} aria-hidden="true">
-                      <UiIcon href={activeTab.icon} size={18} />
-                    </span>
-                    <span className={homeStyles.accountTabsDropdownText}>{activeTab.label}</span>
-                  </span>
-                  <span
-                    className={`${homeStyles.accountTabsDropdownChevron} ${tabMenuOpen ? homeStyles.accountTabsDropdownChevronOpen : ""}`}
-                    aria-hidden="true"
-                  />
-                </button>
-                {tabMenuOpen ? (
-                  <div className={homeStyles.accountTabsDropdownMenu} role="menu" aria-label="帳戶頁籤">
-                    {tabs.map((t) => (
-                      <button
-                        key={t.key}
-                        type="button"
-                        className={`${homeStyles.accountTabsDropdownItem} ${t.key === activeTab.key ? homeStyles.accountTabsDropdownItemActive : ""}`}
-                        role="menuitem"
-                        onClick={() => {
-                          setTabMenuOpen(false);
-                          router.push(t.href);
-                        }}
-                      >
-                        <span className={homeStyles.accountTabsDropdownIcon} aria-hidden="true">
-                          <UiIcon href={t.icon} size={18} />
-                        </span>
-                        <span className={homeStyles.accountTabsDropdownText}>{t.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-
-              <div className={homeStyles.accountTabsRow}>
-                {tabs.map((t) => {
-                  const active = t.key === activeTab.key;
-                  return (
-                    <button
-                      key={t.key}
-                      type="button"
-                      onClick={() => router.push(t.href)}
-                      className={`${homeStyles.accountTabBtn} ${active ? homeStyles.accountTabBtnActive : ""}`}
-                      style={{
-                        borderRadius: 16,
-                        border: 0,
-                        cursor: "pointer",
-                        display: "grid",
-                        justifyItems: "center",
-                        alignContent: "center",
-                        gap: 10,
-                      }}
-                    >
-                      <span
-                        aria-hidden="true"
-                        style={{
-                          width: 38,
-                          height: 38,
-                          borderRadius: 16,
-                          display: "grid",
-                          placeItems: "center",
-                          background: active ? "rgba(43,124,255,0.26)" : "#f3f4f6",
-                          color: "#374151",
-                        }}
-                      >
-                        <UiIcon href={t.icon} size={20} />
-                      </span>
-                      <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: "-0.2px" }}>{t.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
               <div style={{ marginTop: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                   <button
                     type="button"
-                    onClick={() => router.push("/account?tab=orders")}
-                    aria-label="返回"
+                    onClick={() => router.push("/orders")}
+                    aria-label="返回配送訂單"
                     style={{
                       width: 38,
                       height: 38,
@@ -487,151 +221,159 @@ export default function OrderDetailPage() {
                       flex: "0 0 auto",
                     }}
                   >
-                    <UiIcon href="#icon-chevron-left" size={18} opacity={0.85} />
+                    <UiIcon href="#icon-chevron-right" size={18} opacity={0.85} flip />
                   </button>
-                  <div
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 950,
-                      color: "#111827",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {id}
+                  <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {order ? `訂單編號 ${order.orderNumber}` : "配送訂單"}
                   </div>
                 </div>
-                {order ? <Pill tone={statusTone(order.status)}>{statusLabel(order.status)}</Pill> : null}
+                {cfg ? <Pill tone={toneOf(order!.status)}>{cfg.label}</Pill> : null}
               </div>
 
-              {!order ? (
+              {authLoading || loading ? (
+                <SectionLoading />
+              ) : !user ? (
+                <div style={{ marginTop: 12 }}>
+                  <SurfaceCard style={{ display: "grid", gap: 10, justifyItems: "start" }}>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>登入後才看得到這筆訂單</div>
+                    <Button3D color="blue" href="/login" style={{ height: 40, borderRadius: 12 }}>
+                      前往登入
+                    </Button3D>
+                  </SurfaceCard>
+                </div>
+              ) : !order ? (
                 <div style={{ marginTop: 12 }}>
                   <SurfaceCard>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>找不到訂單</div>
-                    <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>訂單可能已被清除</div>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>找不到這筆訂單</div>
+                    <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
+                      可能不是你的訂單，或是連結貼錯了。
+                    </div>
+                    <div style={{ marginTop: 12 }}>
+                      <SecondaryButton href="/orders" style={{ height: 36, borderRadius: 12 }}>
+                        回配送訂單
+                      </SecondaryButton>
+                    </div>
                   </SurfaceCard>
                 </div>
               ) : (
                 <div className={homeStyles.accountMidGrid}>
                   <div style={{ display: "grid", gap: 12, minWidth: 0 }}>
-                    <SurfaceCard style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-                        <img
-                          alt=""
-                          src="/cardx/placeholder.svg"
-                          style={{ width: 54, height: 54, borderRadius: 16, objectFit: "cover", background: "#f3f4f6", flex: "0 0 auto" }}
-                        />
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {order.title}
-                          </div>
-                          <div style={{ marginTop: 6, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
-                            {new Date(order.createdAt).toLocaleString("zh-TW")}
-                          </div>
+                    {msg ? (
+                      <SurfaceCard
+                        style={{
+                          borderRadius: 14,
+                          padding: "10px 12px",
+                          background: msg.tone === "ok" ? "rgba(16,185,129,0.10)" : "rgba(220,38,38,0.08)",
+                        }}
+                      >
+                        <div style={{ fontSize: 12, fontWeight: 900, color: msg.tone === "ok" ? "#047857" : "#dc2626" }}>{msg.text}</div>
+                      </SurfaceCard>
+                    ) : null}
+
+                    <SurfaceCard style={{ display: "grid", gap: 10 }}>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>配送進度</div>
+                      {cancelled ? (
+                        <div style={{ fontSize: 12, fontWeight: 850, color: "#6b7280" }}>
+                          這筆申請已經取消，獎品已經放回你的倉庫，隨時可以重新申請寄送。
                         </div>
+                      ) : (
+                        <DeliverySteps status={order.status} />
+                      )}
+                      <div style={{ display: "grid", gap: 6, marginTop: 4 }}>
+                        <KeyValueRow label="申請時間" value={new Date(order.createdAt).toLocaleString("zh-TW", { timeZone: "Asia/Taipei" })} />
+                        {order.shippedAt ? (
+                          <KeyValueRow label="出貨時間" value={new Date(order.shippedAt).toLocaleString("zh-TW", { timeZone: "Asia/Taipei" })} />
+                        ) : null}
+                        <KeyValueRow label="物流單號" value={order.tracking ?? "尚未開單"} />
                       </div>
-                      <SecondaryButton href={`/market/${order.refId}`} style={{ height: 36, borderRadius: 12 }}>
-                        查看商品
-                      </SecondaryButton>
                     </SurfaceCard>
 
                     <SurfaceCard style={{ display: "grid", gap: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>這批獎品</div>
+                        <Pill tone="muted">{order.items.length} 件</Pill>
+                      </div>
                       <div style={{ display: "grid", gap: 8 }}>
-                        {timeline.map((t) => (
-                          <div key={t.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                            <div style={{ fontSize: 12, fontWeight: 900, color: t.active ? "#111827" : "#6b7280" }}>
-                              {t.label}
-                            </div>
-                            <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", whiteSpace: "nowrap" }}>
-                              {t.at ? new Date(t.at).toLocaleString("zh-TW") : "-"}
+                        {order.items.map((it) => (
+                          <div
+                            key={it.id}
+                            style={{ borderRadius: 14, background: "#f3f4f6", padding: 10, display: "flex", alignItems: "center", gap: 10 }}
+                          >
+                            <img
+                              alt=""
+                              src={it.image ?? "/cardx/placeholder.svg"}
+                              style={{ width: 46, height: 46, borderRadius: 12, objectFit: "contain", background: "#ffffff", flex: "0 0 auto" }}
+                            />
+                            <div style={{ minWidth: 0, flex: "1 1 auto" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                                <GradeBadge grade={it.grade} size="sm" />
+                                <div style={{ fontSize: 13, fontWeight: 950, color: "#111827", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {it.name}
+                                </div>
+                              </div>
+                              {it.productName ? (
+                                <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {it.productName}
+                                </div>
+                              ) : null}
                             </div>
                           </div>
                         ))}
                       </div>
                     </SurfaceCard>
 
-                    <SurfaceCard style={{ display: "grid", gap: 10 }}>
-                      {order.shipment ? (
-                        <div style={{ display: "grid", gap: 6 }}>
-                          <div style={{ fontSize: 12, fontWeight: 900, color: "#111827" }}>
-                            {order.shipment.carrier} · {order.shipment.trackingNo}
-                          </div>
-                          <div style={{ fontSize: 12, fontWeight: 850, color: "#6b7280" }}>狀態：{order.shipment.status}</div>
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>尚未建立物流資訊</div>
-                      )}
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                        <SecondaryButton
-                          onClick={markShipped}
-                          disabled={order.status !== "paid" && order.status !== "packing"}
-                          style={{ height: 36, borderRadius: 12, background: "#f3f4f6", color: "#111827" }}
-                        >
-                          模擬賣家出貨
-                        </SecondaryButton>
-                        <SecondaryButton
-                          onClick={markDelivered}
-                          disabled={order.status !== "shipped"}
-                          style={{ height: 36, borderRadius: 12, background: "#f3f4f6", color: "#111827" }}
-                        >
-                          模擬送達
-                        </SecondaryButton>
-                        <Button3D
-                          color="blue"
-                          onClick={markCompleted}
-                          disabled={order.status !== "delivered"}
-                          style={{ height: 36, borderRadius: 12, opacity: order.status === "delivered" ? 1 : 0.6 }}
-                        >
-                          確認收貨
-                        </Button3D>
-                      </div>
-                    </SurfaceCard>
-
-                    <SurfaceCard style={{ display: "grid", gap: 10 }}>
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                        <SecondaryButton
-                          onClick={cancelOrder}
-                          disabled={order.status !== "created" && order.status !== "payment_pending"}
-                          style={{ height: 36, borderRadius: 12 }}
-                        >
-                          取消訂單
-                        </SecondaryButton>
-                        <SecondaryButton
-                          onClick={requestRefund}
-                          disabled={order.status !== "paid" && order.status !== "packing" && order.status !== "shipped"}
-                          style={{ height: 36, borderRadius: 12 }}
-                        >
-                          申請退款
-                        </SecondaryButton>
-                        <SecondaryButton
-                          onClick={openDispute}
-                          disabled={order.status === "completed" || order.status === "canceled" || order.status === "refunded"}
-                          style={{ height: 36, borderRadius: 12 }}
-                        >
-                          發起爭議
-                        </SecondaryButton>
-                      </div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", lineHeight: "18px" }}>
-                        退款或爭議送出後，平台會暫停放款並進入處理流程。
-                      </div>
-                    </SurfaceCard>
+                    {canCancel ? (
+                      <SurfaceCard style={{ display: "grid", gap: 10 }}>
+                        {confirmCancel ? (
+                          <>
+                            <div style={{ fontSize: 12, fontWeight: 850, color: "#374151", lineHeight: "20px" }}>
+                              取消之後，這 {order.items.length} 件獎品會放回你的倉庫，
+                              {order.shippingFee > 0 ? `申請時扣掉的 ${order.shippingFee} G 會退回。` : "申請時扣掉的代幣會退回。"}
+                              之後隨時可以重新申請寄送。
+                            </div>
+                            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                              <SecondaryButton
+                                onClick={() => void cancelOrder()}
+                                disabled={busy}
+                                style={{ height: 36, borderRadius: 12, background: "rgba(220,38,38,0.12)", color: "#dc2626" }}
+                              >
+                                {busy ? "取消中…" : "確定取消"}
+                              </SecondaryButton>
+                              <SecondaryButton onClick={() => setConfirmCancel(false)} disabled={busy} style={{ height: 36, borderRadius: 12 }}>
+                                先不要
+                              </SecondaryButton>
+                            </div>
+                          </>
+                        ) : (
+                          <SecondaryButton
+                            onClick={() => setConfirmCancel(true)}
+                            style={{ height: 36, borderRadius: 12, background: "rgba(220,38,38,0.12)", color: "#dc2626" }}
+                          >
+                            取消配送申請
+                          </SecondaryButton>
+                        )}
+                      </SurfaceCard>
+                    ) : null}
                   </div>
 
                   <div style={{ display: "grid", gap: 12, minWidth: 0 }}>
                     <SurfaceCard style={{ display: "grid", gap: 10 }}>
-                      <KeyValueRow label="商品小計" value={twd(order.amountSubtotal)} />
-                      <KeyValueRow label="運費" value={twd(order.shippingFee)} />
-                      <KeyValueRow label="平台服務費" value={twd(order.platformFee)} />
-                      <div style={{ height: 1, background: "#e5e7eb", marginTop: 2, marginBottom: 2 }} />
-                      <KeyValueRow label={<span style={{ fontWeight: 950, color: "#374151" }}>總額</span>} value={<span style={{ fontSize: 16 }}>{twd(order.totalAmount)}</span>} />
+                      <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>寄送方式</div>
+                      <KeyValueRow label="配送方式" value={order.methodLabel} />
+                      {order.storeName ? <KeyValueRow label="取貨門市" value={order.storeName} /> : null}
+                      <KeyValueRow label="運費" value={order.shippingFee > 0 ? `${order.shippingFee} G` : "免運"} />
+                      <KeyValueRow label="出貨廠商" value={order.supplierName} />
                     </SurfaceCard>
 
                     <SurfaceCard style={{ display: "grid", gap: 8 }}>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>收件資訊</div>
                       <div style={{ fontSize: 12, fontWeight: 900, color: "#111827" }}>
-                        {order.addressSnapshot.name} · {order.addressSnapshot.phone}
+                        {order.recipientName} · {order.recipientPhone}
                       </div>
-                      <div style={{ fontSize: 12, fontWeight: 850, color: "#374151" }}>{order.addressSnapshot.addressLine}</div>
+                      <div style={{ fontSize: 12, fontWeight: 850, color: "#374151" }}>{order.address}</div>
+                      {order.note ? (
+                        <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", lineHeight: "18px" }}>備註：{order.note}</div>
+                      ) : null}
                     </SurfaceCard>
                   </div>
                 </div>

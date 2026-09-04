@@ -1,34 +1,71 @@
 "use client";
 
-import Image from "next/image";
+/**
+ * 交換詳情（桌機版，768 以上）—— 真資料
+ *
+ * 一則交換就是「我拿出這幾張、想換這幾張」。想換的人跟刊登者拿 4 位啟動碼，
+ * 輸入後 `create_exchange_order_with_code` 開單，之後的寄送與確認在交換單頁走。
+ * 資料表：`exchange_offers` + `exchange_offer_cards`（跟手機版 /exchange/<id> 同一批）。
+ *
+ * ⚠️ 這頁原本整頁都是 cardx 的 mock：seed 亂數生出來的卡片與 6 筆假提案
+ * （@pikacoddy／@mori…）、寫死的「補差：可談」、只存 localStorage 的
+ * 接受／拒絕／物流單號／爭議流程。我們的 DB 沒有「提案」這張表 ——
+ * 交換是「拿到啟動碼就開單」，不是競標，所以那整塊拿掉；
+ * 物流與爭議屬於交換單（exchange_orders），有自己的頁面，不在這裡重做一份。
+ *
+ * ⚠️ 兩側標題用刊登者的說法（對方拿出／對方想要），不用「你將獲得／你將失去」——
+ * 後者要看是誰在看，容易講反。
+ */
+
 import Link from "next/link";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { AppShell } from "@/cardx/components/layout/AppShell";
 import { defaultSidebarItems } from "@/cardx/lib/navigation";
-
-type GameKey = "pokemon" | "onepiece" | "yugioh" | "sports" | "comic" | "other";
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useFeatureGate } from "@/lib/useFeatureGate";
+import { useRequireLogin } from "@/hooks/useRequireLogin";
+import { ProductLoadingScreen } from "@/components/ui/ProductLoadingScreen";
+import { asset } from "@/lib/asset";
+import { ago } from "@/components/market/ui";
 
 const RECENTS_KEY = "cardx.recent.detailVisits";
+const AVATAR_FALLBACK = asset("/images/avatar.webp");
 
-type CardPick = {
+type ExchangeCard = {
   id: string;
-  title: string;
-  subtitle: string;
-  meta: string;
-  imageUrl: string;
+  name: string;
+  series: string;
+  image: string;
+  value: number;
 };
 
-type ProposalStatus = "pending" | "needsInfo" | "chatting" | "accepted" | "rejected";
+type ExchangeOffer = {
+  id: string;
+  ownerId: string;
+  ownerName: string;
+  ownerAvatar: string;
+  /** side='give'：刊登者拿出來的 */
+  give: ExchangeCard[];
+  /** side='want'：刊登者想換到的 */
+  want: ExchangeCard[];
+  note: string;
+  status: string;
+  createdAt: string;
+};
 
-function stableSeedFromString(input: string) {
-  let h = 2166136261;
-  for (let i = 0; i < input.length; i += 1) {
-    h ^= input.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const toCard = (r: any): ExchangeCard => ({
+  id: String(r.external_id || ""),
+  name: String(r.name || ""),
+  series: String(r.series || ""),
+  image: String(r.image_url || ""),
+  value: typeof r.value === "number" ? r.value : Number(r.value || 0),
+});
+
+const sumValue = (cards: ExchangeCard[]) => cards.reduce((s, c) => s + (c.value || 0), 0);
+const formatTwd = (n: number) => `NT$${Math.round(n).toLocaleString("en-US")}`;
 
 function pushRecentVisit(entry: {
   kind: "trades";
@@ -49,342 +86,215 @@ function pushRecentVisit(entry: {
   } catch {}
 }
 
-function gameLabel(game: GameKey) {
-  switch (game) {
-    case "pokemon":
-      return "寶可夢";
-    case "onepiece":
-      return "海賊王";
-    case "yugioh":
-      return "遊戲王";
-    case "sports":
-      return "運動卡";
-    case "comic":
-      return "漫畫";
-    case "other":
-    default:
-      return "其他";
-  }
-}
+/** 4 位啟動碼輸入框 */
+function CodeInput({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+  const refs = useRef<Array<HTMLInputElement | null>>([]);
+  const digits = Array.from({ length: 4 }).map((_, i) => value[i] || "");
 
-function makeCardPick(seed: number, idx: number, game: GameKey): CardPick {
-  const cardIdx = ((seed + idx * 7) % 11) + 1;
-  const img = "/cardx/placeholder.svg";
-  const year = 2018 + ((seed + idx * 3) % 7);
-  const label = gameLabel(game);
-  const titles = ["超稀有卡", "特選卡", "高評級卡", "限定卡", "收藏卡", "TOP HIT"];
-  const subtitle = titles[idx % titles.length] ?? "收藏卡";
-  const meta = ["日文", "英文", "中文"][((seed + idx) % 3)] ?? "日文";
-  return {
-    id: `card_${game}_${cardIdx}_${idx}`,
-    title: `${year} ${label}`,
-    subtitle,
-    meta: `${meta} · ${["SAR", "SR", "UR", "R"][((seed + idx) % 4)] ?? "SR"} · ${["CGC 9.5", "PSA 10", "BGS 9.0", "未鑑定"][((seed + idx) % 4)] ?? "PSA 10"}`,
-    imageUrl: img,
-  };
-}
-
-function makeTradeDetail(id: string) {
-  const seed = stableSeedFromString(id);
-  const games: GameKey[] = ["pokemon", "onepiece", "yugioh", "sports", "comic", "other"];
-  const game = games[seed % games.length] ?? "pokemon";
-  const user = "@coddy20123";
-  const offer = makeCardPick(seed, 0, game);
-  const want = makeCardPick(seed, 3, game);
-
-  const seriesByGame: Record<GameKey, Array<{ key: string; label: string }>> = {
-    pokemon: [
-      { key: "sv", label: "SV 系列" },
-      { key: "swsh", label: "劍/盾" },
-      { key: "sm", label: "日/月" },
-    ],
-    onepiece: [
-      { key: "op", label: "OP 系列" },
-      { key: "promo", label: "Promo" },
-    ],
-    yugioh: [
-      { key: "ocg", label: "OCG" },
-      { key: "tcg", label: "TCG" },
-    ],
-    sports: [
-      { key: "nba", label: "NBA" },
-      { key: "mlb", label: "MLB" },
-    ],
-    comic: [
-      { key: "jp", label: "日漫" },
-      { key: "us", label: "美漫" },
-    ],
-    other: [
-      { key: "misc", label: "其他" },
-      { key: "custom", label: "自製" },
-    ],
+  const setDigit = (index: number, nextDigit: string) => {
+    const safe = nextDigit.replace(/\D/g, "").slice(0, 1);
+    const next = digits.map((d, i) => (i === index ? safe : d)).join("");
+    onChange(next);
+    if (safe && index < 3) refs.current[index + 1]?.focus();
   };
 
-  const picksByGameSeries: Record<string, CardPick[]> = {};
-  for (const g of games) {
-    for (const s of seriesByGame[g]) {
-      const seriesSeed = stableSeedFromString(`${id}:${g}:${s.key}`);
-      const picks = Array.from({ length: 12 }, (_, i) => makeCardPick(seriesSeed, i + 1, g));
-      picksByGameSeries[`${g}:${s.key}`] = picks;
-    }
-  }
-
-  const proposalUsers = ["@pikacoddy", "@mori", "@hiro", "@kevin", "@sakura", "@yuki"];
-  const proposals = Array.from({ length: 6 }, (_, i) => {
-    const fromUser = proposalUsers[i % proposalUsers.length] ?? "@user";
-    const pSeed = stableSeedFromString(`${id}:proposal:${fromUser}:${i}`);
-    const offered = makeCardPick(pSeed, 1, game);
-    const imageCount = (pSeed % 4) + 1;
-    const images = Array.from({ length: imageCount }, (_, k) => makeCardPick(pSeed, 4 + k, game).imageUrl);
-    const condition = ["全新", "輕微白邊", "明顯刮痕", "需看細圖"][pSeed % 4] ?? "需看細圖";
-    const topUp = ["不可", "可談", "可"][Math.floor((pSeed % 30) / 10)] ?? "可談";
-    const status: ProposalStatus = (["pending", "needsInfo", "chatting", "accepted", "rejected"] as const)[pSeed % 5] ?? "pending";
-    return {
-      id: `proposal_${String(i + 1).padStart(3, "0")}`,
-      fromUser,
-      offered,
-      images,
-      condition,
-      topUp,
-      status,
-    };
-  });
-
-  return {
-    id,
-    user,
-    game,
-    offer,
-    want,
-    seriesByGame,
-    picksByGameSeries,
-    proposals,
-  };
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+      {digits.map((d, idx) => (
+        <input
+          key={idx}
+          ref={(el) => {
+            refs.current[idx] = el;
+          }}
+          value={d}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          onPaste={(e) => {
+            const only = (e.clipboardData.getData("text") || "").replace(/\D/g, "").slice(0, 4);
+            if (!only) return;
+            e.preventDefault();
+            onChange(only);
+            refs.current[Math.min(only.length, 3)]?.focus();
+          }}
+          onChange={(e) => setDigit(idx, e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Backspace" && !digits[idx] && idx > 0) refs.current[idx - 1]?.focus();
+          }}
+          style={{
+            width: 52,
+            height: 56,
+            borderRadius: 12,
+            border: "1px solid #e5e7eb",
+            background: "#ffffff",
+            color: "#111827",
+            textAlign: "center",
+            fontSize: 22,
+            fontWeight: 950,
+            outline: "none",
+          }}
+        />
+      ))}
+    </div>
+  );
 }
 
-type ProposalFilter = "all" | "pending" | "active";
-
-type FlowStatus = "waiting" | "accepted" | "shipping" | "completed" | "rejected" | "disputed";
-
-type FlowState = {
-  status: FlowStatus;
-  acceptedProposalId?: string | null;
-  trackingNumber?: string;
-  disputeNote?: string;
-  updatedAtIso: string;
-};
-
-function flowStateKey(id: string) {
-  return `cardx.trade.state.${id}`;
-}
-
-function flowStatusLabel(status: FlowStatus) {
-  switch (status) {
-    case "waiting":
-      return "等待提案";
-    case "accepted":
-      return "已接受";
-    case "shipping":
-      return "寄送中";
-    case "completed":
-      return "已完成";
-    case "rejected":
-      return "已拒絕";
-    case "disputed":
-    default:
-      return "爭議中";
-  }
-}
-
-function parseFlowState(raw: string | null): FlowState | null {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== "object") return null;
-    const rec = parsed as Record<string, unknown>;
-    const status: FlowStatus =
-      rec.status === "accepted" ||
-      rec.status === "shipping" ||
-      rec.status === "completed" ||
-      rec.status === "rejected" ||
-      rec.status === "disputed"
-        ? rec.status
-        : "waiting";
-    return {
-      status,
-      acceptedProposalId: typeof rec.acceptedProposalId === "string" ? rec.acceptedProposalId : null,
-      trackingNumber: typeof rec.trackingNumber === "string" ? rec.trackingNumber : undefined,
-      disputeNote: typeof rec.disputeNote === "string" ? rec.disputeNote : undefined,
-      updatedAtIso: typeof rec.updatedAtIso === "string" ? rec.updatedAtIso : new Date().toISOString(),
-    };
-  } catch {
-    return null;
-  }
-}
-
-function ActionButton({
-  tone,
-  label,
-  onClick,
-  disabled,
-}: {
-  tone: "blue" | "red" | "green";
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-}) {
+function CardRow({ card, onOpen }: { card: ExchangeCard; onOpen: () => void }) {
   return (
     <button
-      className={`button-3d button-3d_${tone} button-3d_sm`}
-      data-v-c8c96dbe=""
       type="button"
-      onClick={onClick}
-      disabled={disabled}
-      style={{ borderRadius: 8, whiteSpace: "nowrap", opacity: disabled ? 0.55 : 1, cursor: disabled ? "not-allowed" : "pointer" }}
+      onClick={onOpen}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "54px minmax(0, 1fr)",
+        gap: 12,
+        alignItems: "center",
+        width: "100%",
+        textAlign: "left",
+        padding: 10,
+        borderRadius: 12,
+        border: "1px solid #e5e7eb",
+        background: "#ffffff",
+        cursor: "pointer",
+      }}
     >
-      <span className="button-3d__outer" data-v-c8c96dbe="">
-        <span className="button-3d__inner" data-v-c8c96dbe="">
-          <span className="button-3d__text" data-v-c8c96dbe="">
-            {label}
-          </span>
-        </span>
-      </span>
+      <div style={{ width: 54, aspectRatio: "5 / 7", borderRadius: 8, background: "#f3f4f6", overflow: "hidden" }}>
+        {card.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={card.image} alt={card.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+        ) : null}
+      </div>
+      <div style={{ minWidth: 0, display: "grid", gap: 3 }}>
+        <div style={{ fontSize: 13, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {card.name || "—"}
+        </div>
+        {card.series ? (
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {card.series}
+          </div>
+        ) : null}
+        <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>約價值 {formatTwd(card.value)}</div>
+      </div>
     </button>
   );
 }
 
-const flowSteps: Array<{ key: FlowStatus; label: string }> = [
-  { key: "waiting", label: "提案" },
-  { key: "accepted", label: "接受" },
-  { key: "shipping", label: "寄送" },
-  { key: "completed", label: "完成" },
-];
-
 export default function TradeDetailPage() {
-  return (
-    <Suspense fallback={null}>
-      <TradeDetailPageInner />
-    </Suspense>
-  );
-}
-
-function TradeDetailPageInner() {
+  useFeatureGate("exchange");
   const params = useParams<{ id: string }>();
-  const searchParams = useSearchParams();
-  const id = params?.id ?? "trade_001";
-  const detail = useMemo(() => makeTradeDetail(id), [id]);
+  const router = useRouter();
+  const { user } = useAuth();
+  const requireLogin = useRequireLogin();
 
+  const id = String(params?.id || "");
+
+  const [offer, setOffer] = useState<ExchangeOffer | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [gone, setGone] = useState(false);
+  const [notice, setNotice] = useState("");
   const [isMobile, setIsMobile] = useState(false);
+
+  const [activationCode, setActivationCode] = useState<string | null>(null);
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
   const [ritualFlash, setRitualFlash] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [proposalFilter, setProposalFilter] = useState<ProposalFilter>("active");
-  const [acceptedProposalId, setAcceptedProposalId] = useState<string | null>(null);
-  const [proposals, setProposals] = useState<
-    Array<{
-      id: string;
-      fromUser: string;
-      offered: CardPick;
-      images: string[];
-      condition: string;
-      topUp: string;
-      status: ProposalStatus;
-    }>
-  >(() => detail.proposals);
-  const [photoOpen, setPhotoOpen] = useState(false);
-  const [photoImages, setPhotoImages] = useState<string[]>([]);
-  const [photoIndex, setPhotoIndex] = useState(0);
-  const closeRef = useRef<HTMLButtonElement | null>(null);
-  const [flow, setFlow] = useState<FlowState>({ status: "waiting", acceptedProposalId: null, updatedAtIso: "" });
-  const [trackingDraft, setTrackingDraft] = useState("");
-  const [disputeOpen, setDisputeOpen] = useState(false);
-  const [disputeDraft, setDisputeDraft] = useState("");
+  const [viewingCard, setViewingCard] = useState<ExchangeCard | null>(null);
 
-  const selectedOffer = detail.want;
-  const viewer = searchParams?.get("as")?.trim() || "@coddy20123";
-  const isOwner = viewer === detail.user;
-  const tradeStatus = acceptedProposalId ? "MATCHED" : "OPEN";
-  const canActivate = !submitted && tradeStatus === "OPEN" && !isOwner;
+  const isOwner = !!user && !!offer && user.id === offer.ownerId;
+  const isActive = offer?.status === "active";
+  const canActivate = !!offer && isActive && !isOwner;
 
-  useEffect(() => {
-    pushRecentVisit({
-      kind: "trades",
-      id: detail.id,
-      ts: Date.now(),
-      user: detail.user,
-      offerTitle: detail.offer.subtitle || detail.offer.title,
-      wantTitle: detail.want.subtitle || detail.want.title,
-      offerImageUrl: detail.offer.imageUrl,
-      wantImageUrl: detail.want.imageUrl,
-    });
-  }, [
-    detail.id,
-    detail.offer.imageUrl,
-    detail.offer.subtitle,
-    detail.offer.title,
-    detail.user,
-    detail.want.imageUrl,
-    detail.want.subtitle,
-    detail.want.title,
-  ]);
-
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(`trade:${id}:acceptedProposalId`);
-      if (!stored) return;
-      window.setTimeout(() => {
-        setAcceptedProposalId(stored);
-        setProposals((prev) =>
-          prev.map((p) => {
-            if (p.id === stored) return { ...p, status: "accepted" };
-            if (p.status === "rejected") return p;
-            return { ...p, status: "rejected" };
-          })
-        );
-        setFlow((prev) =>
-          prev.status === "waiting"
-            ? { ...prev, status: "accepted", acceptedProposalId: stored, updatedAtIso: prev.updatedAtIso || new Date().toISOString() }
-            : prev
-        );
-      }, 0);
-    } catch {
+  const load = useCallback(async () => {
+    if (!id) {
+      setGone(true);
+      setLoading(false);
       return;
     }
-  }, [id]);
-
-  useEffect(() => {
+    setLoading(true);
     try {
-      const stored = parseFlowState(window.localStorage.getItem(flowStateKey(id)));
-      if (!stored) return;
-      window.setTimeout(() => {
-        setFlow(stored);
-        setTrackingDraft(stored.trackingNumber ?? "");
-        if (stored.acceptedProposalId) {
-          const acceptedId = stored.acceptedProposalId;
-          setAcceptedProposalId(acceptedId);
-          setProposals((prev) =>
-            prev.map((p) => {
-              if (p.id === acceptedId) return { ...p, status: "accepted" };
-              if (p.status === "rejected") return p;
-              return { ...p, status: "rejected" };
-            })
-          );
-        }
-      }, 0);
-    } catch {
-      return;
-    }
-  }, [id]);
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("exchange_offers")
+        .select(
+          `
+            id,
+            owner_id,
+            status,
+            note,
+            created_at,
+            cards:exchange_offer_cards (
+              side,
+              external_id,
+              name,
+              series,
+              image_url,
+              value,
+              position
+            )
+          `
+        )
+        .eq("id", id)
+        .maybeSingle();
 
-  function updateFlow(patch: Partial<FlowState>) {
-    setFlow((prev) => {
-      const next: FlowState = { ...prev, ...patch, updatedAtIso: new Date().toISOString() };
+      if (error) throw error;
+      const row = data as any;
+      if (!row?.id) {
+        setGone(true);
+        return;
+      }
+
+      const ownerId = String(row.owner_id || "");
+      const status = String(row.status || "active");
+      // 下架／已刪除的只有刊登者自己看得到
+      if (status !== "active" && (!user?.id || user.id !== ownerId)) {
+        setGone(true);
+        return;
+      }
+
+      const cardRows = Array.isArray(row.cards) ? [...row.cards] : [];
+      cardRows.sort((a: any, b: any) => (Number(a.position) || 0) - (Number(b.position) || 0));
+
+      let ownerName = "user";
+      let ownerAvatar = AVATAR_FALLBACK;
       try {
-        window.localStorage.setItem(flowStateKey(id), JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-  }
+        const { data: displays } = await supabase.rpc("get_user_displays", { p_ids: [ownerId] });
+        const d = Array.isArray(displays) ? (displays[0] as any) : null;
+        if (d) {
+          ownerName = String(d.name || "user");
+          ownerAvatar = String(d.avatar_url || AVATAR_FALLBACK);
+        }
+      } catch {
+        /* 顯示名讀不到就用預設，不擋整頁 */
+      }
+
+      setGone(false);
+      setOffer({
+        id: String(row.id),
+        ownerId,
+        ownerName,
+        ownerAvatar,
+        give: cardRows.filter((c: any) => c.side === "give").map(toCard),
+        want: cardRows.filter((c: any) => c.side === "want").map(toCard),
+        note: String(row.note || ""),
+        status,
+        createdAt: String(row.created_at || ""),
+      });
+    } catch {
+      setGone(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [id, user?.id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const t = window.setTimeout(() => setNotice(""), 3200);
+    return () => window.clearTimeout(t);
+  }, [notice]);
 
   useEffect(() => {
     const update = () => setIsMobile(window.innerWidth <= 900);
@@ -393,117 +303,177 @@ function TradeDetailPageInner() {
     return () => window.removeEventListener("resize", update);
   }, []);
 
+  useEffect(() => {
+    if (!offer) return;
+    pushRecentVisit({
+      kind: "trades",
+      id: offer.id,
+      ts: Date.now(),
+      user: `@${offer.ownerName}`,
+      offerTitle: offer.give[0]?.name || "",
+      wantTitle: offer.want[0]?.name || "",
+      offerImageUrl: offer.give[0]?.image || "",
+      wantImageUrl: offer.want[0]?.image || "",
+    });
+  }, [offer]);
+
+  /* 啟動碼只有刊登者本人拿得到（RPC 是 SECURITY DEFINER，會自己檢查） */
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!offer || !user?.id || user.id !== offer.ownerId) {
+        setActivationCode(null);
+        return;
+      }
+      try {
+        const { data, error } = await createClient().rpc("get_exchange_offer_activation_code", { p_offer_id: offer.id });
+        if (error) throw error;
+        if (!cancelled) setActivationCode(data == null ? null : String(data));
+      } catch {
+        if (!cancelled) setActivationCode(null);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [offer, user?.id]);
+
+  const giveValue = useMemo(() => sumValue(offer?.give ?? []), [offer]);
+  const wantValue = useMemo(() => sumValue(offer?.want ?? []), [offer]);
+
+  const removeOffer = async () => {
+    if (!offer || !isOwner) return;
+    setBusy(true);
+    try {
+      const { error } = await createClient()
+        .from("exchange_offers")
+        .update({ status: "deleted", updated_at: new Date().toISOString() })
+        .eq("id", offer.id);
+      if (error) throw error;
+      setNotice("已刪除這則交換");
+      router.push("/trades");
+    } catch {
+      setNotice("刪除失敗，請稍後再試");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startExchange = async () => {
+    if (!offer) return;
+    const digits = code.replace(/\D/g, "").slice(0, 4);
+    if (digits.length !== 4) {
+      setNotice("請輸入 4 位啟動碼");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { data, error } = await createClient().rpc("create_exchange_order_with_code", { p_offer_id: offer.id, p_code: digits });
+      if (error) {
+        const errCode = typeof (error as any)?.code === "string" ? (error as any).code : "";
+        const errMsg = typeof (error as any)?.message === "string" ? (error as any).message : "";
+        if (errCode === "22023" || errMsg.includes("invalid_code")) {
+          setNotice("啟動碼不對，跟對方再確認一次");
+          return;
+        }
+        if (errCode === "23505" || errMsg.includes("offer_already_started")) {
+          setNotice("這則交換已經有人在進行了");
+          return;
+        }
+        throw error;
+      }
+      const orderId = data == null ? "" : String(data);
+      if (!orderId) throw new Error("no order id");
+      setCodeOpen(false);
+      setCode("");
+      router.push(`/exchange-orders/${orderId}`);
+    } catch {
+      setNotice("啟動失敗，請稍後再試");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onActivateClick = () => {
+    if (!canActivate) return;
+    if (!requireLogin("登入後就可以啟動這筆交換")) return;
+    setRitualFlash(true);
+    window.setTimeout(() => setRitualFlash(false), 520);
+    setCodeOpen(true);
+  };
+
+  if (loading) return <ProductLoadingScreen />;
+
+  if (gone || !offer) {
+    return (
+      <AppShell sidebarItems={defaultSidebarItems}>
+        <div style={{ padding: "20px 0 96px" }}>
+          <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 16px" }}>
+            <Link href="/trades" style={{ color: "#374151", textDecoration: "none", fontSize: 13, fontWeight: 800 }}>
+              ← 返回交換
+            </Link>
+            <div style={{ marginTop: 40, padding: "60px 20px", borderRadius: 18, border: "1px solid #e5e7eb", background: "#ffffff", textAlign: "center" }}>
+              <div style={{ fontSize: 16, fontWeight: 950, color: "#111827" }}>找不到這則交換</div>
+              <div style={{ marginTop: 8, fontSize: 13, fontWeight: 800, color: "#6b7280" }}>可能已經被刊登者收掉了</div>
+            </div>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
   const stageMinH = isMobile ? 640 : 520;
   const sidePad = 28;
   const centerButtonSize = 96;
-
   const glowOpacity = ritualFlash ? 1 : 0;
+
   const buttonBg = canActivate
     ? "radial-gradient(circle at 30% 25%, rgba(255,255,255,0.35), rgba(34,131,246,0.95) 40%, rgba(12,86,190,0.95) 70%, rgba(6,32,70,0.9))"
     : "radial-gradient(circle at 30% 25%, #ffffff, #f3f4f6 40%, #e5e7eb 75%)";
-
   const buttonShadow = canActivate
     ? "0 14px 30px rgba(12,86,190,0.28), inset 0 0 0 1px rgba(255,255,255,0.22), inset 0 8px 18px rgba(255,255,255,0.22)"
     : "0 6px 16px rgba(0,0,0,0.10), inset 0 0 0 1px #e5e7eb";
 
-  const acceptedProposal = useMemo(() => proposals.find((p) => p.id === acceptedProposalId) ?? null, [acceptedProposalId, proposals]);
+  const buttonMain = isOwner ? "你貼的交換" : !isActive ? "已結束" : "啟動交換";
+  const buttonSub = isOwner ? "OWNER" : !isActive ? "CLOSED" : "READY";
 
-  const leftStatusText =
-    tradeStatus === "MATCHED"
-      ? `狀態：交換中（已確認 ${acceptedProposal?.fromUser ?? "提案"}）`
-      : submitted
-        ? "狀態：已送出提案（等待對方回覆）"
-        : isOwner
-          ? "狀態：等待提案"
-          : "狀態：可送出提案";
-  const rightStatusText = leftStatusText;
+  const statusText = isOwner
+    ? isActive
+      ? "狀態：刊登中，等別人拿啟動碼跟你換"
+      : "狀態：已結束"
+    : isActive
+      ? "狀態：開放中，跟對方要 4 位啟動碼就能開單"
+      : "狀態：已結束";
 
-  const proposalsFiltered = useMemo(() => {
-    if (proposalFilter === "all") return proposals;
-    if (proposalFilter === "pending") return proposals.filter((p) => p.status === "pending" || p.status === "needsInfo");
-    return proposals.filter((p) => p.status === "pending" || p.status === "needsInfo" || p.status === "chatting");
-  }, [proposalFilter, proposals]);
-
-  function statusLabel(s: ProposalStatus) {
-    if (s === "pending") return "待回覆";
-    if (s === "needsInfo") return "待補資料";
-    if (s === "chatting") return "私聊中";
-    if (s === "accepted") return "已接受";
-    return "已拒絕";
-  }
-
-  function acceptProposal(proposalId: string) {
-    if (!isOwner) return;
-    if (tradeStatus === "MATCHED") return;
-    if (flow.status !== "waiting") return;
-
-    setAcceptedProposalId(proposalId);
-    setProposals((prev) =>
-      prev.map((p) => {
-        if (p.id === proposalId) return { ...p, status: "accepted" };
-        if (p.status === "rejected") return p;
-        return { ...p, status: "rejected" };
-      }),
-    );
-    try {
-      window.localStorage.setItem(`trade:${id}:acceptedProposalId`, proposalId);
-    } catch {}
-    updateFlow({ status: "accepted", acceptedProposalId: proposalId });
-  }
-
-  function acceptFirstPendingProposal() {
-    const target = proposals.find((p) => p.status === "pending" || p.status === "needsInfo") ?? proposals.find((p) => p.status === "chatting");
-    if (!target) return;
-    acceptProposal(target.id);
-  }
-
-  function rejectTrade() {
-    if (!isOwner) return;
-    if (flow.status !== "waiting") return;
-    setProposals((prev) => prev.map((p) => (p.status === "rejected" ? p : { ...p, status: "rejected" })));
-    updateFlow({ status: "rejected" });
-  }
-
-  function saveTrackingNumber() {
-    const trimmed = trackingDraft.trim();
-    if (!trimmed) return;
-    if (flow.status !== "accepted" && flow.status !== "shipping") return;
-    updateFlow({ status: "shipping", trackingNumber: trimmed });
-  }
-
-  function confirmReceived() {
-    if (flow.status !== "accepted" && flow.status !== "shipping") return;
-    updateFlow({ status: "completed" });
-  }
-
-  function submitDispute() {
-    if (flow.status === "completed" || flow.status === "rejected" || flow.status === "disputed") return;
-    updateFlow({ status: "disputed", disputeNote: disputeDraft.trim() || undefined });
-    setDisputeOpen(false);
-  }
-
-  function openPhotoViewer(images: string[], idx: number) {
-    setPhotoImages(images);
-    setPhotoIndex(idx);
-    setPhotoOpen(true);
-  }
-
-  useEffect(() => {
-    if (!photoOpen) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPhotoOpen(false);
-      if (e.key === "ArrowLeft") setPhotoIndex((v) => (photoImages.length ? (v - 1 + photoImages.length) % photoImages.length : v));
-      if (e.key === "ArrowRight") setPhotoIndex((v) => (photoImages.length ? (v + 1) % photoImages.length : v));
-    };
-    window.addEventListener("keydown", onKeyDown);
-    window.requestAnimationFrame(() => closeRef.current?.focus());
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [photoImages.length, photoOpen]);
+  const centerButton = (
+    <button
+      type="button"
+      disabled={!canActivate}
+      onClick={onActivateClick}
+      aria-label="啟動交換"
+      style={{
+        width: centerButtonSize,
+        height: centerButtonSize,
+        transform: ritualFlash ? "scale(1.03)" : undefined,
+        transition: "transform 220ms ease",
+        borderRadius: 999,
+        border: canActivate ? "1px solid rgba(255,255,255,0.22)" : "1px solid #e5e7eb",
+        background: buttonBg,
+        boxShadow: buttonShadow,
+        color: canActivate ? "#ffffff" : "#6b7280",
+        cursor: canActivate ? "pointer" : "not-allowed",
+        display: "grid",
+        placeItems: "center",
+        padding: 0,
+      }}
+    >
+      <div style={{ display: "grid", placeItems: "center", gap: 4 }}>
+        <div style={{ fontSize: 12, fontWeight: 950, letterSpacing: "0.02em" }}>{buttonMain}</div>
+        <div style={{ fontSize: 10, fontWeight: 800, color: canActivate ? "rgba(255,255,255,0.85)" : "#9ca3af" }}>{buttonSub}</div>
+      </div>
+    </button>
+  );
 
   return (
     <AppShell sidebarItems={defaultSidebarItems}>
@@ -514,10 +484,89 @@ function TradeDetailPageInner() {
               ← 返回交換
             </Link>
             <div style={{ color: "#6b7280", fontSize: 13, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {detail.user} · {gameLabel(detail.game)}
-              {tradeStatus === "MATCHED" ? " · 交換中" : ""}
+              @{offer.ownerName}
+              {offer.createdAt ? ` · ${ago(offer.createdAt)}貼出` : ""}
             </div>
           </div>
+
+          {notice ? (
+            <div
+              role="status"
+              style={{
+                marginBottom: 12,
+                borderRadius: 12,
+                border: "1px solid #e5e7eb",
+                background: "#ffffff",
+                padding: "10px 14px",
+                fontSize: 13,
+                fontWeight: 900,
+                color: "#111827",
+              }}
+            >
+              {notice}
+            </div>
+          ) : null}
+
+          {/* 刊登者專屬：啟動碼與刪除 */}
+          {isOwner ? (
+            <div
+              style={{
+                marginBottom: 16,
+                borderRadius: 16,
+                border: "1px solid #e5e7eb",
+                background: "#ffffff",
+                padding: "16px 18px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 14,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 950, color: "#111827" }}>你的啟動碼</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
+                  談好了再把這 4 位數字給對方，他輸入後才會開單。
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div
+                  style={{
+                    fontSize: 24,
+                    fontWeight: 950,
+                    letterSpacing: "0.3em",
+                    color: "#111827",
+                    background: "#f3f4f6",
+                    borderRadius: 12,
+                    padding: "8px 16px",
+                    minWidth: 120,
+                    textAlign: "center",
+                  }}
+                >
+                  {activationCode ?? "————"}
+                </div>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={removeOffer}
+                  style={{
+                    height: 38,
+                    padding: "0 14px",
+                    borderRadius: 12,
+                    border: "1px solid #fecaca",
+                    background: "#fee2e2",
+                    color: "#dc2626",
+                    fontSize: 13,
+                    fontWeight: 900,
+                    cursor: busy ? "not-allowed" : "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  刪除這則交換
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           <div
             style={{
@@ -579,792 +628,174 @@ function TradeDetailPageInner() {
             >
               <div style={{ padding: sidePad, display: "grid", gridTemplateRows: "auto 1fr auto", gap: 14 }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-                  <div style={{ fontSize: 13, fontWeight: 950, color: "#111827", letterSpacing: "0.02em" }}>對方提出</div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{detail.user}</div>
+                  <div style={{ fontSize: 13, fontWeight: 950, color: "#111827", letterSpacing: "0.02em" }}>對方拿出</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>約價值 {formatTwd(giveValue)}</div>
                 </div>
 
-                <div style={{ display: "grid", alignContent: "start", gap: 12 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "132px 1fr", gap: 16, alignItems: "center", minWidth: 0 }}>
-                    <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", filter: "drop-shadow(0 12px 20px rgba(0,0,0,0.18))" }}>
-                      <Image src={detail.offer.imageUrl} alt="" fill sizes="180px" style={{ objectFit: "cover", borderRadius: 12 }} unoptimized />
-                    </div>
-                    <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
-                      <div style={{ fontSize: 24, fontWeight: 950, color: "#111827", lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {detail.offer.subtitle}
-                      </div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {detail.offer.title}
-                      </div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {detail.offer.meta}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ height: 1, background: "#e5e7eb" }} />
-
-                  <div style={{ display: "grid", gap: 8 }}>
-                    <div style={{ fontSize: 12, fontWeight: 900, color: "#374151" }}>對方想換</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "56px 1fr", gap: 12, alignItems: "center", minWidth: 0 }}>
-                      <div style={{ position: "relative", width: 56, height: 56, borderRadius: 12, overflow: "hidden" }}>
-                        <Image src={detail.want.imageUrl} alt="" fill sizes="56px" style={{ objectFit: "cover" }} unoptimized />
-                      </div>
-                      <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {detail.want.subtitle}
-                        </div>
-                        <div style={{ fontSize: 12, fontWeight: 800, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {detail.want.title}
-                        </div>
-                        <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {detail.want.meta}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ height: 1, background: "#e5e7eb" }} />
-
-                  <div style={{ display: "grid", gap: 8 }}>
-                    <div style={{ fontSize: 12, fontWeight: 900, color: "#374151" }}>備註</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", lineHeight: "18px" }}>
-                      希望能換到同系列，語言不限，鑑定可談。
-                    </div>
-                  </div>
+                <div style={{ display: "grid", alignContent: "start", gap: 10 }}>
+                  {offer.give.length === 0 ? (
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "#9ca3af" }}>這則交換沒有填拿出的卡</div>
+                  ) : (
+                    offer.give.map((c, i) => <CardRow key={`${c.id}_${i}`} card={c} onOpen={() => setViewingCard(c)} />)
+                  )}
                 </div>
 
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{leftStatusText}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{statusText}</div>
               </div>
 
-              {isMobile ? (
-                <div style={{ padding: "0 28px 4px", display: "grid", justifyItems: "center" }}>
-                  <button
-                    type="button"
-                    disabled={!canActivate}
-                    onClick={() => {
-                      if (!canActivate) return;
-                      setRitualFlash(true);
-                      window.setTimeout(() => setRitualFlash(false), 520);
-                      setConfirmOpen(true);
-                    }}
-                    aria-label="送出提案"
-                    style={{
-                      width: centerButtonSize,
-                      height: centerButtonSize,
-                      transform: ritualFlash ? "scale(1.03)" : undefined,
-                      transition: "transform 220ms ease",
-                      borderRadius: 999,
-                      border: canActivate ? "1px solid rgba(255,255,255,0.22)" : "1px solid #e5e7eb",
-                      background: buttonBg,
-                      boxShadow: buttonShadow,
-                      color: canActivate ? "#ffffff" : "#6b7280",
-                      cursor: canActivate ? "pointer" : "not-allowed",
-                      display: "grid",
-                      placeItems: "center",
-                      padding: 0,
-                    }}
-                  >
-                    <div style={{ display: "grid", placeItems: "center", gap: 4 }}>
-                      <div style={{ fontSize: 12, fontWeight: 950, letterSpacing: "0.02em" }}>{isOwner ? (tradeStatus === "MATCHED" ? "交換中" : "等待提案") : "送出提案"}</div>
-                      <div style={{ fontSize: 10, fontWeight: 800, color: canActivate ? "rgba(255,255,255,0.85)" : "#9ca3af" }}>
-                        {isOwner ? "STATUS" : canActivate ? "READY" : "LOCKED"}
-                      </div>
-                    </div>
-                  </button>
-                </div>
-              ) : null}
+              {isMobile ? <div style={{ padding: "0 28px 4px", display: "grid", justifyItems: "center" }}>{centerButton}</div> : null}
 
-              <div style={{ padding: sidePad, display: "grid", gridTemplateRows: "auto 1fr auto", gap: 14, opacity: tradeStatus === "MATCHED" && !isOwner ? 0.78 : 1 }}>
+              <div style={{ padding: sidePad, display: "grid", gridTemplateRows: "auto 1fr auto", gap: 14 }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-                  <div style={{ fontSize: 13, fontWeight: 950, color: "#111827", letterSpacing: "0.02em" }}>你提出</div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{gameLabel(detail.game)}</div>
+                  <div style={{ fontSize: 13, fontWeight: 950, color: "#111827", letterSpacing: "0.02em" }}>對方想要</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>約價值 {formatTwd(wantValue)}</div>
                 </div>
 
-                <div style={{ display: "grid", alignContent: "start", gap: 12 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "132px 1fr", gap: 16, alignItems: "center", minWidth: 0 }}>
-                    <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", filter: "drop-shadow(0 12px 20px rgba(0,0,0,0.18))" }}>
-                      <Image src={selectedOffer.imageUrl} alt="" fill sizes="180px" style={{ objectFit: "cover", borderRadius: 12 }} unoptimized />
-                    </div>
-                    <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
-                      <div style={{ fontSize: 24, fontWeight: 950, color: "#111827", lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {selectedOffer.subtitle}
-                      </div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {selectedOffer.title}
-                      </div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {selectedOffer.meta}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ height: 1, background: "#e5e7eb" }} />
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>此交換為指定卡牌，確認後即可送出提案。</div>
+                <div style={{ display: "grid", alignContent: "start", gap: 10 }}>
+                  {offer.want.length === 0 ? (
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "#9ca3af" }}>這則交換沒有填想要的卡</div>
+                  ) : (
+                    offer.want.map((c, i) => <CardRow key={`${c.id}_${i}`} card={c} onOpen={() => setViewingCard(c)} />)
+                  )}
                 </div>
 
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{rightStatusText}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
+                  想換的話先跟 @{offer.ownerName} 談，談好了跟他要啟動碼。
+                </div>
               </div>
             </div>
 
             {!isMobile ? (
-              <button
-                type="button"
-                disabled={!canActivate}
-                onClick={() => {
-                  if (!canActivate) return;
-                  setRitualFlash(true);
-                  window.setTimeout(() => setRitualFlash(false), 520);
-                  setConfirmOpen(true);
-                }}
-                aria-label="送出提案"
-                style={{
-                  position: "absolute",
-                  left: "50%",
-                  top: "50%",
-                  width: centerButtonSize,
-                  height: centerButtonSize,
-                  transform: ritualFlash ? "translate(-50%, -50%) scale(1.03)" : "translate(-50%, -50%)",
-                  transition: "transform 220ms ease",
-                  borderRadius: 999,
-                  border: canActivate ? "1px solid rgba(255,255,255,0.22)" : "1px solid #e5e7eb",
-                  background: buttonBg,
-                  boxShadow: buttonShadow,
-                  color: canActivate ? "#ffffff" : "#6b7280",
-                  cursor: canActivate ? "pointer" : "not-allowed",
-                  display: "grid",
-                  placeItems: "center",
-                  padding: 0,
-                }}
-              >
-                <div style={{ display: "grid", placeItems: "center", gap: 4 }}>
-                  <div style={{ fontSize: 12, fontWeight: 950, letterSpacing: "0.02em" }}>{isOwner ? (tradeStatus === "MATCHED" ? "交換中" : "等待提案") : "送出提案"}</div>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: isOwner ? "#9ca3af" : canActivate ? "rgba(255,255,255,0.85)" : "#9ca3af" }}>
-                    {isOwner ? "STATUS" : canActivate ? "READY" : "LOCKED"}
-                  </div>
-                </div>
-              </button>
+              <div style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}>{centerButton}</div>
             ) : null}
           </div>
 
-          {isOwner ? (
-            <div
-              style={{
-                marginTop: 16,
-                borderRadius: 16,
-                border: "1px solid #e5e7eb",
-                background: "#ffffff",
-                padding: "16px 18px",
-                display: "grid",
-                gap: 14,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                <div style={{ fontSize: 13, fontWeight: 950, color: "#111827", letterSpacing: "0.02em" }}>交換進度</div>
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 900,
-                    padding: "3px 10px",
-                    borderRadius: 999,
-                    whiteSpace: "nowrap",
-                    color:
-                      flow.status === "completed"
-                        ? "#047857"
-                        : flow.status === "rejected"
-                          ? "#dc2626"
-                          : flow.status === "disputed"
-                            ? "#b45309"
-                            : "#1d4ed8",
-                    background:
-                      flow.status === "completed"
-                        ? "rgba(16, 185, 129, 0.14)"
-                        : flow.status === "rejected"
-                          ? "rgba(220, 38, 38, 0.12)"
-                          : flow.status === "disputed"
-                            ? "rgba(245, 158, 11, 0.16)"
-                            : "rgba(34, 131, 246, 0.14)",
-                  }}
-                >
-                  {flowStatusLabel(flow.status)}
-                </span>
+          <div
+            style={{
+              marginTop: 16,
+              borderRadius: 16,
+              border: "1px solid #e5e7eb",
+              background: "#ffffff",
+              padding: "16px 18px",
+              display: "grid",
+              gap: 12,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 999,
+                  flex: "0 0 auto",
+                  background: `#f3f4f6 url(${offer.ownerAvatar || AVATAR_FALLBACK}) center / cover no-repeat`,
+                }}
+              />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 950, color: "#111827" }}>@{offer.ownerName}</div>
+                <div style={{ fontSize: 11, fontWeight: 800, color: "#9ca3af" }}>{offer.createdAt ? `${ago(offer.createdAt)}貼出` : ""}</div>
               </div>
-
-              {(() => {
-                const currentIdx =
-                  flow.status === "completed"
-                    ? 3
-                    : flow.status === "shipping"
-                      ? 2
-                      : flow.status === "accepted"
-                        ? 1
-                        : flow.status === "disputed"
-                          ? (flow.trackingNumber ? 2 : 1)
-                          : 0;
-                const halted = flow.status === "rejected" || flow.status === "disputed";
-                return (
-                  <div style={{ display: "flex", alignItems: "center", gap: 0 }} aria-label="狀態時間軸">
-                    {flowSteps.map((step, idx) => {
-                      const reached = idx <= currentIdx && flow.status !== "rejected";
-                      const isCurrent = idx === currentIdx && !halted;
-                      const dotColor = reached ? (isCurrent ? "rgba(12,86,190,0.95)" : "rgba(34,131,246,0.85)") : "#e5e7eb";
-                      return (
-                        <div key={step.key} style={{ display: "flex", alignItems: "center", flex: idx === flowSteps.length - 1 ? "0 0 auto" : "1 1 auto", minWidth: 0 }}>
-                          <div style={{ display: "grid", justifyItems: "center", gap: 6, flex: "0 0 auto" }}>
-                            <div
-                              style={{
-                                width: 14,
-                                height: 14,
-                                borderRadius: 999,
-                                background: dotColor,
-                                boxShadow: isCurrent ? "0 0 0 4px rgba(34,131,246,0.22)" : "none",
-                              }}
-                            />
-                            <div
-                              style={{
-                                fontSize: 11,
-                                fontWeight: 900,
-                                whiteSpace: "nowrap",
-                                color: reached ? "#111827" : "#6b7280",
-                              }}
-                            >
-                              {step.label}
-                            </div>
-                          </div>
-                          {idx < flowSteps.length - 1 ? (
-                            <div
-                              aria-hidden="true"
-                              style={{
-                                flex: "1 1 auto",
-                                height: 2,
-                                margin: "0 8px 20px",
-                                borderRadius: 1,
-                                background: idx < currentIdx && flow.status !== "rejected" ? "rgba(34,131,246,0.75)" : "#e5e7eb",
-                              }}
-                            />
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-
-              {flow.status === "waiting" ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                  <ActionButton
-                    tone="blue"
-                    label="接受提案"
-                    onClick={acceptFirstPendingProposal}
-                    disabled={!proposals.some((p) => p.status === "pending" || p.status === "needsInfo" || p.status === "chatting")}
-                  />
-                  <ActionButton tone="red" label="拒絕" onClick={rejectTrade} />
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
-                    接受後將鎖定此交換，其餘提案自動拒絕；也可在下方列表逐一確認。
-                  </div>
-                </div>
-              ) : null}
-
-              {flow.status === "accepted" || flow.status === "shipping" ? (
-                <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <label htmlFor="tracking-number" style={{ fontSize: 12, fontWeight: 900, color: "#374151", whiteSpace: "nowrap" }}>
-                      物流單號
-                    </label>
-                    <input
-                      id="tracking-number"
-                      value={trackingDraft}
-                      onChange={(e) => setTrackingDraft(e.target.value)}
-                      placeholder="輸入物流單號"
-                      style={{
-                        width: "min(240px, 100%)",
-                        height: 36,
-                        borderRadius: 10,
-                        border: "1px solid #e5e7eb",
-                        background: "#ffffff",
-                        color: "#111827",
-                        padding: "0 12px",
-                        fontSize: 13,
-                        fontWeight: 800,
-                        outline: "none",
-                      }}
-                    />
-                    <ActionButton
-                      tone="blue"
-                      label={flow.status === "shipping" ? "更新物流單號" : "填寫物流單號"}
-                      onClick={saveTrackingNumber}
-                      disabled={!trackingDraft.trim()}
-                    />
-                    <ActionButton tone="green" label="確認收貨" onClick={confirmReceived} />
-                  </div>
-                  {flow.status === "shipping" && flow.trackingNumber ? (
-                    <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>已寄送 · 單號：{flow.trackingNumber}</div>
-                  ) : null}
-                  <div>
-                    {!disputeOpen ? (
-                      <button
-                        type="button"
-                        onClick={() => setDisputeOpen(true)}
-                        style={{
-                          border: 0,
-                          background: "transparent",
-                          padding: 0,
-                          cursor: "pointer",
-                          color: "#6b7280",
-                          fontSize: 12,
-                          fontWeight: 800,
-                          textDecoration: "underline",
-                          textUnderlineOffset: 4,
-                        }}
-                      >
-                        發起爭議
-                      </button>
-                    ) : (
-                      <div style={{ display: "grid", gap: 8 }}>
-                        <label htmlFor="dispute-note" style={{ fontSize: 12, fontWeight: 900, color: "#b45309" }}>
-                          爭議說明
-                        </label>
-                        <textarea
-                          id="dispute-note"
-                          value={disputeDraft}
-                          onChange={(e) => setDisputeDraft(e.target.value)}
-                          placeholder="描述遇到的問題（例如：卡況與描述不符、久未收到卡牌）"
-                          style={{
-                            width: "min(480px, 100%)",
-                            minHeight: 72,
-                            borderRadius: 10,
-                            border: "1px solid #e5e7eb",
-                            background: "#ffffff",
-                            color: "#111827",
-                            padding: "8px 12px",
-                            fontSize: 13,
-                            fontWeight: 700,
-                            lineHeight: "18px",
-                            outline: "none",
-                            resize: "vertical",
-                            fontFamily: "inherit",
-                          }}
-                        />
-                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                          <ActionButton tone="red" label="送出爭議" onClick={submitDispute} />
-                          <button
-                            type="button"
-                            onClick={() => setDisputeOpen(false)}
-                            style={{
-                              border: 0,
-                              background: "transparent",
-                              padding: 0,
-                              cursor: "pointer",
-                              color: "#6b7280",
-                              fontSize: 12,
-                              fontWeight: 800,
-                            }}
-                          >
-                            取消
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : null}
-
-              {flow.status === "completed" ? (
-                <div style={{ fontSize: 13, fontWeight: 800, color: "#047857" }}>
-                  交換已完成，感謝使用 CardX 交換服務。
-                  {flow.trackingNumber ? `（單號：${flow.trackingNumber}）` : ""}
-                </div>
-              ) : null}
-
-              {flow.status === "rejected" ? (
-                <div style={{ fontSize: 13, fontWeight: 800, color: "#dc2626" }}>已拒絕目前所有提案，此交換暫時關閉。</div>
-              ) : null}
-
-              {flow.status === "disputed" ? (
-                <div style={{ display: "grid", gap: 6 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "#b45309" }}>爭議處理中，客服將於 1-3 個工作天內聯繫雙方。</div>
-                  {flow.disputeNote ? (
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#6b7280" }}>爭議說明：{flow.disputeNote}</div>
-                  ) : null}
-                </div>
-              ) : null}
             </div>
-          ) : null}
+
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 900, color: "#374151" }}>簡易說明</div>
+              <div style={{ marginTop: 4, fontSize: 13, fontWeight: 700, color: "#374151", lineHeight: "20px", wordBreak: "break-word" }}>
+                {offer.note || "刊登者沒有留說明。"}
+              </div>
+            </div>
+
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", lineHeight: "18px" }}>
+              啟動之後雙方各自寄出、各自確認收到，過程都在交換單那一頁走。卡況與寄送方式請先跟對方談清楚。
+            </div>
+          </div>
         </div>
       </div>
 
-      {confirmOpen ? (
+      {codeOpen ? (
         <div
           role="presentation"
-          onClick={() => setConfirmOpen(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 80,
-            background: "rgba(0,0,0,0.62)",
-            display: "grid",
-            placeItems: "center",
-            padding: 16,
-          }}
+          onClick={() => setCodeOpen(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(0,0,0,0.55)", display: "grid", placeItems: "center", padding: 16 }}
         >
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="確認提案"
+            aria-label="輸入啟動碼"
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: "min(560px, calc(100vw - 32px))",
+              width: "min(460px, calc(100vw - 32px))",
               borderRadius: 16,
               border: "1px solid #e5e7eb",
               background: "#ffffff",
               boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
-              padding: 16,
+              padding: 18,
               color: "#111827",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-              <div style={{ fontSize: 14, fontWeight: 900 }}>確認提案</div>
+            <div style={{ fontSize: 15, fontWeight: 950 }}>輸入 4 位啟動碼</div>
+            <div style={{ marginTop: 6, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
+              跟 @{offer.ownerName} 談好之後，他會把這 4 位數字給你。
+            </div>
+            <div style={{ marginTop: 16 }}>
+              <CodeInput value={code} onChange={setCode} />
+            </div>
+            <div style={{ marginTop: 18, display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button
                 type="button"
-                aria-label="關閉"
-                onClick={() => setConfirmOpen(false)}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 10,
-                  border: "1px solid #e5e7eb",
-                  background: "#f3f4f6",
-                  color: "#374151",
-                  display: "grid",
-                  placeItems: "center",
-                  padding: 0,
-                  cursor: "pointer",
-                  flex: "0 0 auto",
-                }}
-              >
-                <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>
-                  ×
-                </span>
-              </button>
-            </div>
-
-            <div style={{ marginTop: 12, height: 1, background: "#e5e7eb" }} />
-
-            <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-              <div style={{ display: "grid", gap: 6 }}>
-                <div style={{ fontSize: 12, fontWeight: 900, color: "#374151" }}>對方提出</div>
-                <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>{detail.offer.subtitle}</div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{detail.offer.meta}</div>
-              </div>
-
-              <div style={{ height: 1, background: "#e5e7eb" }} />
-
-              <div style={{ display: "grid", gap: 6 }}>
-                <div style={{ fontSize: 12, fontWeight: 900, color: "#374151" }}>你提出</div>
-                <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>{selectedOffer?.subtitle ?? "—"}</div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{selectedOffer?.meta ?? "—"}</div>
-              </div>
-            </div>
-
-            <div style={{ marginTop: 14, display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                onClick={() => setConfirmOpen(false)}
-                style={{
-                  height: 40,
-                  padding: "0 14px",
-                  borderRadius: 12,
-                  border: "1px solid #e5e7eb",
-                  background: "#f3f4f6",
-                  color: "#111827",
-                  fontSize: 13,
-                  fontWeight: 900,
-                  cursor: "pointer",
-                }}
+                onClick={() => setCodeOpen(false)}
+                style={{ height: 40, padding: "0 14px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#f3f4f6", color: "#111827", fontSize: 13, fontWeight: 900, cursor: "pointer" }}
               >
                 取消
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setSubmitted(true);
-                  setConfirmOpen(false);
-                }}
+                disabled={busy || code.replace(/\D/g, "").length !== 4}
+                onClick={startExchange}
                 style={{
                   height: 40,
-                  padding: "0 14px",
+                  padding: "0 16px",
                   borderRadius: 12,
                   border: "1px solid #2283f6",
                   background: "#2283f6",
                   color: "#ffffff",
                   fontSize: 13,
                   fontWeight: 900,
-                  cursor: "pointer",
+                  cursor: busy || code.replace(/\D/g, "").length !== 4 ? "not-allowed" : "pointer",
+                  opacity: busy || code.replace(/\D/g, "").length !== 4 ? 0.55 : 1,
                 }}
               >
-                送出提案
+                {busy ? "處理中…" : "確認啟動"}
               </button>
             </div>
           </div>
         </div>
       ) : null}
 
-      {isOwner ? (
-        <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 16px" }}>
-          <div style={{ marginTop: 18 }}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-              <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", letterSpacing: "0.02em" }}>收到的提案</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <button
-                  type="button"
-                  onClick={() => setProposalFilter("active")}
-                  style={{
-                    border: 0,
-                    background: "transparent",
-                    padding: 0,
-                    cursor: "pointer",
-                    color: proposalFilter === "active" ? "#111827" : "#6b7280",
-                    fontSize: 12,
-                    fontWeight: 900,
-                    textDecoration: proposalFilter === "active" ? "underline" : "none",
-                    textUnderlineOffset: 5,
-                  }}
-                >
-                  進行中
-                </button>
-                <div style={{ width: 1, height: 12, background: "#e5e7eb" }} />
-                <button
-                  type="button"
-                  onClick={() => setProposalFilter("pending")}
-                  style={{
-                    border: 0,
-                    background: "transparent",
-                    padding: 0,
-                    cursor: "pointer",
-                    color: proposalFilter === "pending" ? "#111827" : "#6b7280",
-                    fontSize: 12,
-                    fontWeight: 900,
-                    textDecoration: proposalFilter === "pending" ? "underline" : "none",
-                    textUnderlineOffset: 5,
-                  }}
-                >
-                  待處理
-                </button>
-                <div style={{ width: 1, height: 12, background: "#e5e7eb" }} />
-                <button
-                  type="button"
-                  onClick={() => setProposalFilter("all")}
-                  style={{
-                    border: 0,
-                    background: "transparent",
-                    padding: 0,
-                    cursor: "pointer",
-                    color: proposalFilter === "all" ? "#111827" : "#6b7280",
-                    fontSize: 12,
-                    fontWeight: 900,
-                    textDecoration: proposalFilter === "all" ? "underline" : "none",
-                    textUnderlineOffset: 5,
-                  }}
-                >
-                  全部
-                </button>
-              </div>
-            </div>
-
-            <div style={{ marginTop: 10, borderTop: "1px solid #e5e7eb" }}>
-              {proposalsFiltered.map((p) => {
-                const isPending = p.status === "pending" || p.status === "needsInfo";
-                const accepted = p.id === acceptedProposalId || p.status === "accepted";
-                const statusText = accepted ? "交換中" : tradeStatus === "MATCHED" && p.status !== "accepted" ? "已鎖定" : statusLabel(p.status);
-                return (
-                  <div
-                    key={p.id}
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "150px minmax(0, 1fr) 170px 120px",
-                      gap: 12,
-                      alignItems: "center",
-                      padding: "12px 2px",
-                      borderBottom: "1px solid #e5e7eb",
-                    }}
-                  >
-                    <div style={{ fontSize: 12, fontWeight: 900, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {p.fromUser}
-                    </div>
-
-                    <div style={{ minWidth: 0, display: "grid", gap: 2 }}>
-                      <div style={{ fontSize: 13, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {p.offered.subtitle}
-                      </div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        卡況：{p.condition} · 補差：{p.topUp}
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
-                      {p.images.slice(0, 4).map((src, idx) => (
-                        <button
-                          key={`${p.id}_img_${idx}`}
-                          type="button"
-                          onClick={() => openPhotoViewer(p.images, idx)}
-                          aria-label={`查看照片 ${idx + 1}`}
-                          style={{
-                            width: 28,
-                            height: 28,
-                            padding: 0,
-                            borderRadius: 8,
-                            border: "1px solid #e5e7eb",
-                            background: "#f3f4f6",
-                            overflow: "hidden",
-                            cursor: "pointer",
-                            position: "relative",
-                          }}
-                        >
-                          <Image src={src} alt="" fill sizes="28px" style={{ objectFit: "cover" }} unoptimized />
-                        </button>
-                      ))}
-                    </div>
-
-                    <div style={{ display: "grid", justifyItems: "end", gap: 8 }}>
-                      {tradeStatus === "OPEN" && isPending ? (
-                        <button
-                          type="button"
-                          onClick={() => acceptProposal(p.id)}
-                          style={{
-                            height: 32,
-                            padding: "0 10px",
-                            borderRadius: 10,
-                            border: "1px solid #e5e7eb",
-                            background: "#f3f4f6",
-                            color: "#111827",
-                            fontSize: 12,
-                            fontWeight: 950,
-                            cursor: "pointer",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          確認提案
-                        </button>
-                      ) : (
-                        <div style={{ textAlign: "right", fontSize: 12, fontWeight: 900, color: "#374151" }}>{statusText}</div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 16px" }}>
-          <div style={{ marginTop: 18, borderTop: "1px solid #e5e7eb", paddingTop: 12, color: "#6b7280", fontSize: 12, fontWeight: 800 }}>
-            {tradeStatus === "MATCHED"
-              ? `此交換已與 ${acceptedProposal?.fromUser ?? "對方"} 鎖定進行中，暫不接受新提案。`
-              : "此交換開放提案中。"}
-          </div>
-        </div>
-      )}
-
-      {photoOpen ? (
+      {viewingCard ? (
         <div
           role="presentation"
-          onClick={() => setPhotoOpen(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 95,
-            background: "rgba(0,0,0,0.72)",
-            display: "grid",
-            placeItems: "center",
-            padding: 16,
-          }}
+          onClick={() => setViewingCard(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 95, background: "rgba(0,0,0,0.72)", display: "grid", placeItems: "center", padding: 16 }}
         >
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="照片預覽"
+            aria-label={viewingCard.name}
             onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "min(980px, calc(100vw - 32px))",
-              borderRadius: 16,
-              border: "1px solid #e5e7eb",
-              background: "#ffffff",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
-              padding: 12,
-              color: "#111827",
-            }}
+            style={{ display: "grid", justifyItems: "center", gap: 12, maxWidth: "min(420px, calc(100vw - 32px))" }}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 900, color: "#374151" }}>
-                {photoImages.length ? `${photoIndex + 1} / ${photoImages.length}` : ""}
-              </div>
-              <button
-                ref={closeRef}
-                type="button"
-                aria-label="關閉"
-                onClick={() => setPhotoOpen(false)}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 10,
-                  border: "1px solid #e5e7eb",
-                  background: "#f3f4f6",
-                  color: "#374151",
-                  display: "grid",
-                  placeItems: "center",
-                  padding: 0,
-                  cursor: "pointer",
-                  flex: "0 0 auto",
-                }}
-              >
-                <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>
-                  ×
-                </span>
-              </button>
-            </div>
-
-            <div style={{ marginTop: 10, position: "relative", width: "100%", aspectRatio: "16 / 10", borderRadius: 14, overflow: "hidden", background: "#f3f4f6" }}>
-              {photoImages[photoIndex] ? (
-                <Image src={photoImages[photoIndex]} alt="" fill sizes="980px" style={{ objectFit: "contain" }} unoptimized />
-              ) : null}
-            </div>
-
-            {photoImages.length > 1 ? (
-              <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", gap: 10 }}>
-                <button
-                  type="button"
-                  onClick={() => setPhotoIndex((v) => (photoImages.length ? (v - 1 + photoImages.length) % photoImages.length : v))}
-                  style={{
-                    height: 36,
-                    padding: "0 12px",
-                    borderRadius: 12,
-                    border: "1px solid #e5e7eb",
-                    background: "#f3f4f6",
-                    color: "#111827",
-                    fontSize: 12,
-                    fontWeight: 900,
-                    cursor: "pointer",
-                  }}
-                >
-                  上一張
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPhotoIndex((v) => (photoImages.length ? (v + 1) % photoImages.length : v))}
-                  style={{
-                    height: 36,
-                    padding: "0 12px",
-                    borderRadius: 12,
-                    border: "1px solid #e5e7eb",
-                    background: "#f3f4f6",
-                    color: "#111827",
-                    fontSize: 12,
-                    fontWeight: 900,
-                    cursor: "pointer",
-                  }}
-                >
-                  下一張
-                </button>
-              </div>
+            <div style={{ color: "#ffffff", fontSize: 15, fontWeight: 900, textAlign: "center" }}>{viewingCard.name}</div>
+            {viewingCard.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={viewingCard.image}
+                alt={viewingCard.name}
+                style={{ maxWidth: "100%", maxHeight: "72vh", objectFit: "contain", borderRadius: 16, background: "#ffffff" }}
+              />
             ) : null}
+            <div style={{ color: "rgba(255,255,255,0.85)", fontSize: 12, fontWeight: 800 }}>
+              {viewingCard.series ? `${viewingCard.series} · ` : ""}約價值 {formatTwd(viewingCard.value)}
+            </div>
           </div>
         </div>
       ) : null}

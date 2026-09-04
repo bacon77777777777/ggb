@@ -1,394 +1,241 @@
-// @ts-nocheck — cardx 原型照搬（老闆 2026-09-04），型別不補
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+/*
+ * 配送訂單列表（桌機版）
+ *
+ * 吉吉比只有一種訂單：把倉庫裡的獎品申請寄出。原本這頁畫的是 cardx 原型的
+ * 「市集訂單 + 卡包開抽」，狀態值（shipped / refund_pending / dispute_open / canceled）
+ * 我們資料庫一個都沒有，`openings` 那張表也不存在 —— 整頁其實只讀得到 localStorage。
+ *
+ * 現在讀真的 `orders`，狀態文案／顏色／頁籤全部走 `lib/orderStatus`，
+ * 跟手機版會員頁的配送分頁講同一套話。
+ */
+
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/cardx/components/layout/AppShell";
 import { defaultSidebarItems } from "@/cardx/lib/navigation";
 import homeStyles from "@/cardx/components/home/HomeClient.module.css";
-import { supabaseBrowser } from "@/cardx/lib/supabase/browser";
-import { mockMarketListings, mockPacks } from "@/cardx/lib/mock/home";
 import { Button3D, PageHeader, Pill, SecondaryButton, SurfaceCard, SurfaceRowLink } from "@/cardx/components/ui/Kit";
+import { useAuth } from "@/contexts/AuthContext";
+import { createClient } from "@/lib/supabase/client";
+import { BouncingCapsule } from "@/components/ui/BouncingCapsule";
+import {
+  DELIVERY_TABS,
+  type DeliveryTabId,
+  matchesDeliveryTab,
+  normalizeOrderStatus,
+  orderStatusConfig,
+} from "@/lib/orderStatus";
 
-type OrderStatus =
-  | "created"
-  | "payment_pending"
-  | "paid"
-  | "packing"
-  | "shipped"
-  | "delivered"
-  | "completed"
-  | "canceled"
-  | "refund_pending"
-  | "refunded"
-  | "dispute_open"
-  | "dispute_resolved";
+/** 配送訂單的狀態；儲值訂單（pending / paid / failed）不在這裡 */
+const DELIVERY_STATUSES = ["submitted", "processing", "picked_up", "shipping", "delivered", "cancelled", "completed"];
 
-type Order = {
+type OrderRow = {
   id: string;
-  kind: "market";
-  refId: string;
-  title: string;
-  imageUrl: string;
-  totalAmount: number;
-  currency: "TWD";
-  status: OrderStatus;
+  orderNumber: string;
+  status: string;
   createdAt: number;
-  shipment?: { carrier: string; trackingNo: string; status: "created" | "shipped" | "delivered" };
+  itemCount: number;
+  firstItem: string;
+  tracking: string | null;
+  shippingFee: number;
+  method: string;
 };
 
-type Opening = {
-  id: string;
-  kind: "pack";
-  packId: string;
-  title: string;
-  imageUrl: string;
-  totalAmount: number;
-  currency: "TWD";
-  status: "payment_pending" | "paid" | "opened" | "packing" | "shipped" | "delivered" | "completed" | "canceled";
-  createdAt: number;
-  prize?: { name: string; imageUrl: string; rarity: string };
-  shipment?: { carrier: string; trackingNo: string; status: "created" | "shipped" | "delivered" };
-};
-
-const ORDERS_KEY = "cardx.orders.v1";
-const OPENINGS_KEY = "cardx.openings.v1";
-
-function readJson<T>(key: string, fallback: T): T {
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
+function SectionLoading() {
+  return (
+    <div style={{ display: "grid", placeItems: "center", gap: 14, padding: "56px 0" }}>
+      <BouncingCapsule size={40} />
+      <span style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.2em", color: "#9ca3af" }}>載入中</span>
+    </div>
+  );
 }
 
-function twd(n: number) {
-  return new Intl.NumberFormat("zh-TW", { style: "currency", currency: "TWD", maximumFractionDigits: 0 }).format(Math.round(n));
-}
-
-const PACK_FEE_RATE = 0.1;
-const DEFAULT_SHIPPING_FEE = 60;
-
-function normalizeMarketId(id: string) {
-  if (!id.startsWith("listing_")) return id;
-  const parts = id.split("_");
-  if (parts.length >= 2) return `${parts[0]}_${parts[1]}`;
-  return id;
-}
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-}
-
-function statusLabel(status: string) {
-  if (status === "paid") return "已付款";
-  if (status === "packing") return "備貨中";
-  if (status === "shipped") return "已出貨";
-  if (status === "delivered") return "已送達";
-  if (status === "completed") return "已完成";
-  if (status === "canceled") return "已取消";
-  if (status === "refund_pending") return "退款處理中";
-  if (status === "refunded") return "已退款";
-  if (status === "dispute_open") return "爭議處理中";
-  if (status === "dispute_resolved") return "爭議已結案";
-  if (status === "opened") return "已開抽";
-  if (status === "payment_pending") return "待付款";
-  return "處理中";
-}
-
-function statusTone(status: string): "muted" | "success" | "danger" | "info" {
-  if (status === "completed") return "success";
-  if (status === "refunded" || status === "refund_pending" || status === "dispute_open") return "danger";
-  if (status === "canceled") return "muted";
+function toneOf(status: string): "muted" | "success" | "danger" | "info" {
+  const s = normalizeOrderStatus(status);
+  if (s === "delivered") return "success";
+  if (s === "cancelled") return "danger";
   return "info";
 }
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [openings, setOpenings] = useState<Opening[]>([]);
-  const [view, setView] = useState<"all" | "market" | "pack">("all");
+  const { user, isLoading: authLoading } = useAuth();
+  const supabase = useMemo(() => createClient(), []);
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<DeliveryTabId>("all");
+
+  const load = useCallback(async () => {
+    if (!user) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("orders")
+      .select(`
+        id,
+        order_number,
+        status,
+        created_at,
+        tracking_number,
+        shipping_fee,
+        logistics_type,
+        draw_records ( id, prize_name, product_prizes ( name ) )
+      `)
+      .eq("user_id", user.id)
+      .in("status", DELIVERY_STATUSES)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
+
+    const rows: OrderRow[] = ((data ?? []) as unknown as Array<Record<string, unknown>>).map((o) => {
+      const records = Array.isArray(o.draw_records) ? (o.draw_records as Array<Record<string, unknown>>) : [];
+      const first = records[0];
+      const prize = first?.product_prizes as { name?: string } | null | undefined;
+      const createdAt = o.created_at ? new Date(String(o.created_at)).getTime() : Date.now();
+      return {
+        id: String(o.id),
+        orderNumber: String(o.order_number ?? o.id),
+        status: String(o.status ?? "submitted"),
+        createdAt: Number.isFinite(createdAt) ? createdAt : Date.now(),
+        itemCount: records.length,
+        firstItem: String(prize?.name ?? first?.prize_name ?? ""),
+        tracking: o.tracking_number ? String(o.tracking_number) : null,
+        shippingFee: Number(o.shipping_fee ?? 0),
+        method: String(o.logistics_type ?? "HOME") === "CVS" ? "超商取貨" : "宅配到府",
+      };
+    });
+    setOrders(rows);
+    setLoading(false);
+  }, [supabase, user]);
 
   useEffect(() => {
-    const supabase = supabaseBrowser();
-    const sb = supabase ?? null;
-    let alive = true;
+    if (authLoading) return;
+    void load();
+  }, [authLoading, load]);
 
-    function syncLocal() {
-      setOrders(readJson<Order[]>(ORDERS_KEY, []));
-      setOpenings(readJson<Opening[]>(OPENINGS_KEY, []));
-    }
+  const counts = useMemo(() => {
+    const m = new Map<DeliveryTabId, number>();
+    for (const t of DELIVERY_TABS) m.set(t.id, orders.filter((o) => matchesDeliveryTab(t.id, o.status)).length);
+    return m;
+  }, [orders]);
 
-    async function sync() {
-      if (!alive) return;
-      if (!sb) {
-        syncLocal();
-        return;
-      }
-      try {
-        const { data } = await sb.auth.getSession();
-        const uid = data.session?.user?.id ?? null;
-        if (!alive) return;
-        if (!uid) {
-          syncLocal();
-          return;
-        }
-
-        const [ordersRes, openingsRes] = await Promise.all([
-          sb
-            .from("orders")
-            .select("id, ref_id, amount_total, status, created_at, shipping")
-            .order("created_at", { ascending: false }),
-          sb
-            .from("openings")
-            .select("id, pack_id, status, created_at, items, shipping")
-            .order("created_at", { ascending: false }),
-        ]);
-        if (ordersRes.error) throw ordersRes.error;
-        if (openingsRes.error) throw openingsRes.error;
-
-        const remoteOrders: Order[] =
-          ordersRes.data?.map((r) => {
-            const refId = normalizeMarketId(String(r.ref_id ?? ""));
-            const listing = mockMarketListings.find((x) => x.id === refId) ?? null;
-            const shipping = r.shipping && typeof r.shipping === "object" ? (r.shipping as Record<string, unknown>) : {};
-            const createdAt = r.created_at ? new Date(String(r.created_at)).getTime() : Date.now();
-            return {
-              id: String(r.id),
-              kind: "market",
-              refId,
-              title: listing?.title ?? `訂單 ${refId || String(r.id)}`,
-              imageUrl: "/cardx/placeholder.svg",
-              totalAmount: Number(r.amount_total ?? 0),
-              currency: "TWD",
-              status: String(r.status ?? "paid") as OrderStatus,
-              createdAt: Number.isFinite(createdAt) ? createdAt : Date.now(),
-              shipment:
-                typeof shipping.trackingNo === "string" || typeof shipping.tracking_no === "string"
-                  ? {
-                      carrier: String((shipping.carrier as string) ?? "newebpay-logistics"),
-                      trackingNo: String((shipping.trackingNo as string) ?? (shipping.tracking_no as string) ?? ""),
-                      status: String((shipping.status as string) ?? "created") as "created" | "shipped" | "delivered",
-                    }
-                  : undefined,
-            };
-          }) ?? [];
-
-        const remoteOpenings: Opening[] =
-          openingsRes.data?.map((r) => {
-            const packId = String(r.pack_id ?? "");
-            const pack = mockPacks.find((x) => x.id === packId) ?? null;
-            const amountSubtotal = pack?.price.amount ?? 0;
-            const platformFee = Math.ceil(amountSubtotal * PACK_FEE_RATE);
-            const totalAmount = amountSubtotal + platformFee + DEFAULT_SHIPPING_FEE;
-            const items = Array.isArray(r.items) ? (r.items as Array<Record<string, unknown>>) : [];
-            const prize = items.length
-              ? { name: String(items[0]?.name ?? ""), imageUrl: String(items[0]?.imageUrl ?? ""), rarity: String(items[0]?.rarity ?? "") }
-              : undefined;
-            const shipping = r.shipping && typeof r.shipping === "object" ? (r.shipping as Record<string, unknown>) : {};
-            const createdAt = r.created_at ? new Date(String(r.created_at)).getTime() : Date.now();
-            return {
-              id: String(r.id),
-              kind: "pack",
-              packId,
-              title: pack?.title ?? `卡包 ${packId || String(r.id)}`,
-              imageUrl: "/cardx/placeholder.svg",
-              totalAmount,
-              currency: "TWD",
-              status: String(r.status ?? "opened") as Opening["status"],
-              createdAt: Number.isFinite(createdAt) ? createdAt : Date.now(),
-              prize: prize?.name ? prize : undefined,
-              shipment:
-                typeof shipping.trackingNo === "string" || typeof shipping.tracking_no === "string"
-                  ? {
-                      carrier: String((shipping.carrier as string) ?? "newebpay-logistics"),
-                      trackingNo: String((shipping.trackingNo as string) ?? (shipping.tracking_no as string) ?? ""),
-                      status: String((shipping.status as string) ?? "created") as "created" | "shipped" | "delivered",
-                    }
-                  : undefined,
-            };
-          }) ?? [];
-
-        const localOrders = readJson<Order[]>(ORDERS_KEY, []);
-        const localOpenings = readJson<Opening[]>(OPENINGS_KEY, []);
-
-        const mergedOrders = [...remoteOrders, ...localOrders.filter((x) => !isUuid(x.id))].sort((a, b) => b.createdAt - a.createdAt);
-        const mergedOpenings = [...remoteOpenings, ...localOpenings.filter((x) => !isUuid(x.id))].sort((a, b) => b.createdAt - a.createdAt);
-
-        setOrders(mergedOrders);
-        setOpenings(mergedOpenings);
-      } catch {
-        syncLocal();
-      }
-    }
-
-    window.setTimeout(() => void sync(), 0);
-    function onStorage(e: StorageEvent) {
-      if (e.key !== ORDERS_KEY && e.key !== OPENINGS_KEY) return;
-      void sync();
-    }
-    function onFocus() {
-      void sync();
-    }
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("focus", onFocus);
-    const authSub = sb?.auth.onAuthStateChange(() => {
-      void sync();
-    });
-    return () => {
-      alive = false;
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("focus", onFocus);
-      authSub?.data.subscription.unsubscribe();
-    };
-  }, []);
-
-  const hasAny = orders.length > 0 || openings.length > 0;
-
-  const headerRight = useMemo(() => {
-    if (!hasAny) return null;
-    const total = orders.length + openings.length;
-    return (
-      <div style={{ fontSize: 12, fontWeight: 850, color: "#6b7280", whiteSpace: "nowrap" }}>
-        共 {total.toLocaleString()} 筆
-      </div>
-    );
-  }, [hasAny, openings.length, orders.length]);
+  const visible = useMemo(() => orders.filter((o) => matchesDeliveryTab(tab, o.status)), [orders, tab]);
 
   return (
     <AppShell sidebarItems={defaultSidebarItems}>
       <div className={homeStyles.main2}>
         <div className={homeStyles.main}>
           <div className={homeStyles.sectionLobby}>
-            <PageHeader title="訂單" right={headerRight} />
+            <PageHeader
+              title="配送訂單"
+              subtitle="你從倉庫申請寄出的獎品都在這裡"
+              right={
+                orders.length ? (
+                  <div style={{ fontSize: 12, fontWeight: 850, color: "#6b7280", whiteSpace: "nowrap" }}>
+                    共 {orders.length.toLocaleString()} 筆
+                  </div>
+                ) : null
+              }
+            />
 
-            <div style={{ marginTop: 14 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    onClick={() => setView("all")}
-                    style={{
-                      border: 0,
-                      background: "transparent",
-                      padding: 0,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <Pill tone={view === "all" ? "info" : "muted"}>全部</Pill>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setView("market")}
-                    style={{
-                      border: 0,
-                      background: "transparent",
-                      padding: 0,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <Pill tone={view === "market" ? "info" : "muted"}>市集訂單 {orders.length}</Pill>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setView("pack")}
-                    style={{
-                      border: 0,
-                      background: "transparent",
-                      padding: 0,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <Pill tone={view === "pack" ? "info" : "muted"}>卡包開抽 {openings.length}</Pill>
-                  </button>
+            <div className={homeStyles.accountContainer}>
+              {authLoading || loading ? (
+                <SectionLoading />
+              ) : !user ? (
+                <div style={{ marginTop: 14 }}>
+                  <SurfaceCard style={{ display: "grid", gap: 10, justifyItems: "start" }}>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>登入後才看得到你的配送訂單</div>
+                    <Button3D color="blue" href="/login" style={{ height: 40, borderRadius: 12 }}>
+                      前往登入
+                    </Button3D>
+                  </SurfaceCard>
                 </div>
-                <SecondaryButton href="/account" style={{ height: 34, borderRadius: 12 }}>
-                  前往帳戶
-                </SecondaryButton>
-              </div>
-
-                {!hasAny ? (
-                <SurfaceCard>
-                  <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>尚無訂單</div>
-                  <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
-                    先到市集或卡包完成一次交易，就會出現在這裡
-                  </div>
-                  <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <Button3D color="blue" href="/market" style={{ height: 38, borderRadius: 12 }}>
-                      前往市集
-                    </Button3D>
-                    <Button3D color="green" href="/packs" style={{ height: 38, borderRadius: 12 }}>
-                      前往卡包
-                    </Button3D>
-                  </div>
-                </SurfaceCard>
-                ) : (
-                <div style={{ display: "grid", gap: 12 }}>
-                {orders.length && (view === "all" || view === "market") ? (
-                  <SurfaceCard style={{ display: "grid", gap: 10 }}>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>市集訂單</div>
-                    <div style={{ display: "grid", gap: 10 }}>
-                      {orders.map((o) => (
-                        <SurfaceRowLink key={o.id} href={`/orders/${o.id}`}>
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {o.title}
-                            </div>
-                            <div style={{ marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                              <Pill tone={statusTone(o.status)}>{statusLabel(o.status)}</Pill>
-                              <span style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
-                                {new Date(o.createdAt).toLocaleString("zh-TW")}
-                              </span>
-                            </div>
-                          </div>
-                          <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                            <div style={{ fontSize: 14, fontWeight: 950, color: "#111827" }}>{twd(o.totalAmount)}</div>
-                            {o.shipment?.trackingNo ? (
-                              <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{o.shipment.trackingNo}</div>
-                            ) : null}
-                          </div>
-                        </SurfaceRowLink>
+              ) : (
+                <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {DELIVERY_TABS.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setTab(t.id)}
+                          style={{ border: 0, background: "transparent", padding: 0, cursor: "pointer" }}
+                        >
+                          <Pill tone={tab === t.id ? "info" : "muted"}>
+                            {t.label} {counts.get(t.id) ?? 0}
+                          </Pill>
+                        </button>
                       ))}
                     </div>
-                  </SurfaceCard>
-                ) : null}
+                    <SecondaryButton href="/account" style={{ height: 34, borderRadius: 12 }}>
+                      回會員中心
+                    </SecondaryButton>
+                  </div>
 
-                {openings.length && (view === "all" || view === "pack") ? (
-                  <SurfaceCard style={{ display: "grid", gap: 10 }}>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>卡包開抽</div>
-                    <div style={{ display: "grid", gap: 10 }}>
-                      {openings.map((o) => (
-                        <SurfaceRowLink key={o.id} href={`/openings/${o.id}`}>
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {o.title}
-                            </div>
-                            <div style={{ marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                              <Pill tone={statusTone(o.status)}>{statusLabel(o.status)}</Pill>
-                              <span style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
-                                {new Date(o.createdAt).toLocaleString("zh-TW")}
-                              </span>
-                            </div>
-                            {o.prize?.name ? (
-                              <div style={{ marginTop: 6, fontSize: 12, fontWeight: 850, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                得獎：{o.prize.name}
+                  {!orders.length ? (
+                    <SurfaceCard>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>還沒有配送訂單</div>
+                      <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>
+                        抽到的獎品會先進倉庫，想拿實體的時候再從倉庫申請寄送。
+                      </div>
+                      <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <Button3D color="blue" href="/checkout" style={{ height: 38, borderRadius: 12 }}>
+                          申請寄送
+                        </Button3D>
+                        <SecondaryButton href="/" style={{ height: 38, borderRadius: 12 }}>
+                          去逛逛
+                        </SecondaryButton>
+                      </div>
+                    </SurfaceCard>
+                  ) : !visible.length ? (
+                    <SurfaceCard>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: "#111827" }}>這個狀態底下沒有訂單</div>
+                    </SurfaceCard>
+                  ) : (
+                    <SurfaceCard style={{ display: "grid", gap: 10 }}>
+                      <div style={{ display: "grid", gap: 10 }}>
+                        {visible.map((o) => {
+                          const cfg = orderStatusConfig(o.status);
+                          return (
+                            <SurfaceRowLink key={o.id} href={`/orders/${o.id}`}>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {o.firstItem
+                                    ? o.itemCount > 1
+                                      ? `${o.firstItem} 等 ${o.itemCount} 件`
+                                      : o.firstItem
+                                    : `${o.itemCount} 件獎品`}
+                                </div>
+                                <div style={{ marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                                  <Pill tone={toneOf(o.status)}>{cfg.label}</Pill>
+                                  <span style={{ fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{o.method}</span>
+                                  <span style={{ fontSize: 12, fontWeight: 800, color: "#9ca3af" }}>
+                                    {new Date(o.createdAt).toLocaleString("zh-TW", { timeZone: "Asia/Taipei" })}
+                                  </span>
+                                </div>
                               </div>
-                            ) : null}
-                          </div>
-                          <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                            <div style={{ fontSize: 14, fontWeight: 950, color: "#111827" }}>{twd(o.totalAmount)}</div>
-                            {o.shipment?.trackingNo ? (
-                              <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>{o.shipment.trackingNo}</div>
-                            ) : null}
-                          </div>
-                        </SurfaceRowLink>
-                      ))}
-                    </div>
-                  </SurfaceCard>
-                ) : null}
-              </div>
-                )}
-              </div>
+                              <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                                <div style={{ fontSize: 13, fontWeight: 950, color: "#111827" }}>單號 {o.orderNumber}</div>
+                                {o.tracking ? (
+                                  <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, color: "#6b7280" }}>物流 {o.tracking}</div>
+                                ) : null}
+                              </div>
+                            </SurfaceRowLink>
+                          );
+                        })}
+                      </div>
+                    </SurfaceCard>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

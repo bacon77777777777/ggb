@@ -1,567 +1,192 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+/**
+ * 話題（桌機版）—— 站上正在被討論／被搜尋的關鍵字。
+ *
+ * 原本這頁是七題「你覺得會不會漲」的投票，票數寫死、投票結果存 localStorage
+ * （平台沒有任何投票資料表，重整就沒了）。整段刪掉，改接真的熱門訊號：
+ *   ・/api/public/topics —— 情報標題關鍵字 ＋ 站內搜尋熱詞 ＋ 商品標籤熱度（近 7 天）
+ *   ・/api/hot-tags     —— 商品標籤熱度榜
+ * 點任何一個關鍵字就帶去搜尋結果。
+ */
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/cardx/components/layout/AppShell";
 import { defaultSidebarItems } from "@/cardx/lib/navigation";
 import homeStyles from "@/cardx/components/home/HomeClient.module.css";
-import { PageHeader } from "@/cardx/components/ui/Kit";
+import { PageHeader, Pill, SecondaryButton, SurfaceCard } from "@/cardx/components/ui/Kit";
 
-export default function TopicsPage() {
-  return (
-    <Suspense fallback={null}>
-      <TopicsPageInner />
-    </Suspense>
-  );
+type Topic = { keyword: string; weight: number; source: string };
+type HotTag = { id: string; name: string; score: number; is_pinned: boolean };
+
+/** source 是 news／search／tag，多來源會用 + 串起來 */
+function sourceLabel(source: string) {
+  const parts: string[] = [];
+  if (source.includes("search")) parts.push("有人在搜");
+  if (source.includes("news")) parts.push("情報在談");
+  if (source.includes("tag")) parts.push("商品熱度");
+  return parts.join("・") || "熱門";
 }
 
-function TopicsPageInner() {
+function sourceTone(source: string): "info" | "success" | "muted" {
+  if (source.includes("search")) return "info";
+  if (source.includes("news")) return "success";
+  return "muted";
+}
+
+export default function TopicsPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  type TagKey =
-    | "all"
-    | "pokemon"
-    | "onepiece"
-    | "yugioh"
-    | "sports"
-    | "grading"
-    | "market"
-    | "packs"
-    | "trades"
-    | "strategy"
-    | "newbie"
-    | "events";
-
-  const tags = useMemo<Array<{ key: TagKey; label: string }>>(
-    () => [
-      { key: "all", label: "全部" },
-      { key: "pokemon", label: "寶可夢" },
-      { key: "onepiece", label: "海賊王" },
-      { key: "yugioh", label: "遊戲王" },
-      { key: "sports", label: "運動卡" },
-      { key: "grading", label: "鑑定/PSA" },
-      { key: "market", label: "市集" },
-      { key: "packs", label: "卡包" },
-      { key: "trades", label: "交換" },
-      { key: "strategy", label: "攻略" },
-      { key: "newbie", label: "新手" },
-      { key: "events", label: "活動" },
-    ],
-    []
-  );
-
-  type TopicItem = {
-    id: string;
-    tag: Exclude<TagKey, "all">;
-    question: string;
-    yesPct: number;
-    voters: number;
-  };
-
-  const items = useMemo<TopicItem[]>(
-    () => [
-      {
-        id: "tp-001",
-        tag: "market",
-        question: "下一週最熱門的卡牌系列會是寶可夢嗎？",
-        yesPct: 72,
-        voters: 1423,
-      },
-      {
-        id: "tp-002",
-        tag: "pokemon",
-        question: "這週寶可夢新彈單卡均價會上漲嗎？",
-        yesPct: 61,
-        voters: 987,
-      },
-      {
-        id: "tp-003",
-        tag: "grading",
-        question: "PSA 10 溢價本月會擴大嗎？",
-        yesPct: 58,
-        voters: 624,
-      },
-      {
-        id: "tp-004",
-        tag: "packs",
-        question: "新卡包上架後 48 小時內會售罄嗎？",
-        yesPct: 49,
-        voters: 512,
-      },
-      {
-        id: "tp-005",
-        tag: "trades",
-        question: "交換區熱門卡的媒合成功率會提升嗎？",
-        yesPct: 44,
-        voters: 388,
-      },
-      {
-        id: "tp-006",
-        tag: "yugioh",
-        question: "遊戲王熱門卡成交價會回檔嗎？",
-        yesPct: 41,
-        voters: 301,
-      },
-      {
-        id: "tp-007",
-        tag: "events",
-        question: "近期展會後市集成交量會增加嗎？",
-        yesPct: 38,
-        voters: 219,
-      },
-    ],
-    []
-  );
-
-  const VOTES_KEY = "cardx.topics.votes.byId";
-  const [activeTag, setActiveTag] = useState<TagKey>("all");
-  const [pickedById, setPickedById] = useState<Record<string, "yes" | "no">>({});
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const listRef = useRef<HTMLDivElement | null>(null);
-  const [columns, setColumns] = useState(2);
+  const [topics, setTopics] = useState<Topic[] | null>(null);
+  const [tags, setTags] = useState<HotTag[] | null>(null);
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(VOTES_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== "object") return;
-      const next: Record<string, "yes" | "no"> = {};
-      for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
-        if (value === "yes" || value === "no") next[key] = value;
-      }
-      window.setTimeout(() => setPickedById(next), 0);
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function pickTopic(id: string, choice: "yes" | "no") {
-    setPickedById((prev) => {
-      const next = { ...prev, [id]: choice };
+    let alive = true;
+    (async () => {
       try {
-        window.localStorage.setItem(VOTES_KEY, JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-  }
-
-  useEffect(() => {
-    const tagParam = (searchParams?.get("tag") ?? "").trim().toLowerCase();
-    const idParam = (searchParams?.get("id") ?? "").trim();
-    const desiredTag: TagKey =
-      tagParam === "pokemon" ||
-      tagParam === "onepiece" ||
-      tagParam === "yugioh" ||
-      tagParam === "sports" ||
-      tagParam === "grading" ||
-      tagParam === "market" ||
-      tagParam === "packs" ||
-      tagParam === "trades" ||
-      tagParam === "strategy" ||
-      tagParam === "newbie" ||
-      tagParam === "events"
-        ? (tagParam as TagKey)
-        : "all";
-    setActiveTag((prev) => (prev === desiredTag ? prev : desiredTag));
-    setSelectedId((prev) => (prev === (idParam || null) ? prev : idParam || null));
-  }, [searchParams]);
-
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (activeTag !== "all") params.set("tag", activeTag);
-    if (selectedId) params.set("id", selectedId);
-    const qs = params.toString();
-    const url = qs ? `/topics?${qs}` : "/topics";
-    router.replace(url);
-  }, [activeTag, router, selectedId]);
-
-  function avatarSrc(_seedKey: string) {
-    return "/cardx/placeholder.svg";
-  }
-
-  useEffect(() => {
-    const gap = 16;
-    const minCardWidth = 340;
-    const maxCardWidth = 420;
-
-    function computeColumns() {
-      const el = listRef.current;
-      if (!el) return;
-      const w = el.clientWidth;
-
-      if (w <= 520) {
-        setColumns((prev) => (prev === 1 ? prev : 1));
-        return;
+        const res = await fetch("/api/public/topics");
+        const data = res.ok ? await res.json() : [];
+        if (alive) setTopics(Array.isArray(data) ? (data as Topic[]) : []);
+      } catch {
+        if (alive) setTopics([]);
       }
-      if (w <= 1023) {
-        setColumns((prev) => (prev === 2 ? prev : 2));
-        return;
+    })();
+    (async () => {
+      try {
+        const res = await fetch("/api/hot-tags?limit=16&days=30");
+        const json = res.ok ? await res.json() : { tags: [] };
+        if (alive) setTags(Array.isArray(json?.tags) ? (json.tags as HotTag[]) : []);
+      } catch {
+        if (alive) setTags([]);
       }
-
-      const minColsForMax = Math.max(1, Math.ceil((w + gap) / (maxCardWidth + gap)));
-      const maxColsForMin = Math.max(1, Math.floor((w + gap) / (minCardWidth + gap)));
-      const next = Math.min(4, Math.max(2, Math.min(Math.max(minColsForMax, 2), maxColsForMin)));
-      setColumns((prev) => (prev === next ? prev : next));
-    }
-
-    computeColumns();
-    const ro = new ResizeObserver(() => computeColumns());
-    if (listRef.current) ro.observe(listRef.current);
-    window.addEventListener("resize", computeColumns);
+    })();
     return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", computeColumns);
+      alive = false;
     };
   }, []);
 
-  const filtered = useMemo(() => {
-    if (activeTag === "all") return items;
-    return items.filter((x) => x.tag === activeTag);
-  }, [activeTag, items]);
+  const go = (keyword: string) => router.push(`/search?q=${encodeURIComponent(keyword)}`);
 
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key !== "Escape") return;
-      setSelectedId(null);
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
-
-  const selected = useMemo(() => (selectedId ? items.find((x) => x.id === selectedId) ?? null : null), [items, selectedId]);
-
-  function tagLabel(key: Exclude<TagKey, "all">) {
-    const hit = tags.find((t) => t.key === key);
-    return hit?.label ?? "話題";
-  }
+  const loading = topics === null || tags === null;
+  const nothing = !loading && (topics?.length ?? 0) === 0 && (tags?.length ?? 0) === 0;
+  const maxWeight = Math.max(1, ...(topics ?? []).map((t) => t.weight));
 
   return (
     <AppShell sidebarItems={defaultSidebarItems}>
       <div className={homeStyles.main2}>
         <div className={homeStyles.main}>
           <div className={homeStyles.sectionLobby}>
-            <PageHeader title="話題" />
+            <PageHeader title="話題" subtitle="站上這陣子最常被搜尋、被討論的關鍵字" />
 
-            <div style={{ marginTop: 14, alignSelf: "stretch", width: "100%" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", width: "100%" }}>
-                <div
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                    overflowX: "auto",
-                    overflowY: "hidden",
-                    paddingBottom: 2,
-                    WebkitOverflowScrolling: "touch",
-                    maxWidth: "100%",
-                  }}
-                >
-                  {tags.map((t) => {
-                    const active = activeTag === t.key;
-                    return (
-                      <button
-                        key={t.key}
-                        type="button"
-                        onClick={() => setActiveTag(t.key)}
-                        style={{
-                          height: 34,
-                          padding: "0 12px",
-                          borderRadius: 999,
-                          border: 0,
-                          cursor: "pointer",
-                          background: active ? "#111827" : "#f3f4f6",
-                          color: active ? "#ffffff" : "#374151",
-                          fontSize: 13,
-                          fontWeight: 800,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {t.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#6b7280" }}>{filtered.length.toLocaleString()} 個話題</div>
+            {loading ? (
+              <div style={{ marginTop: 14, display: "grid", gap: 12, width: "100%" }}>
+                {[0, 1].map((i) => (
+                  <SurfaceCard key={i} style={{ height: 160 }}>
+                    <div style={{ height: 16, width: "30%", borderRadius: 6, background: "#f3f4f6" }} />
+                    <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {[0, 1, 2, 3, 4, 5].map((j) => (
+                        <div key={j} style={{ height: 34, width: 96, borderRadius: 999, background: "#f3f4f6" }} />
+                      ))}
+                    </div>
+                  </SurfaceCard>
+                ))}
               </div>
-
-              <section className={homeStyles.section} aria-label="話題列表">
-                <div
-                  ref={listRef}
-                  className={homeStyles.frame12}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-                    gap: 16,
-                    justifyItems: "stretch",
-                    alignItems: "stretch",
-                    width: "100%",
-                    overflow: "visible",
-                    overflowX: "visible",
-                    marginTop: 14,
-                    paddingTop: 0,
-                    paddingBottom: 0,
-                  }}
-                >
-                  {filtered.map((x) => {
-                    const yes = Math.max(1, Math.min(99, Math.round(x.yesPct)));
-                    const picked = pickedById[x.id];
-                    return (
-                      <div
-                        key={x.id}
-                        className={`${homeStyles.newsCard} ${homeStyles.topicCard}`}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => setSelectedId(x.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            setSelectedId(x.id);
-                          }
-                        }}
-                        style={{
-                          borderRadius: 16,
-                          background: "#ffffff",
-                          overflow: "hidden",
-                          boxShadow: "0 0 0 1px #e5e7eb, 0 10px 40px -10px rgba(0,0,0,0.08)",
-                          padding: 12,
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 12,
-                          cursor: "pointer",
-                        }}
-                      >
-                        <div className={homeStyles.topicHeader}>
-                          <div className={homeStyles.topicAvatar}>
-                            <img alt="" src={avatarSrc(x.id)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                          </div>
-                          <div className={homeStyles.topicTitle}>{x.question}</div>
-                          <div className={homeStyles.topicRing} style={{ ["--p" as never]: yes }}>
-                            <div className={homeStyles.topicRingInner}>
-                              <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", lineHeight: 1 }}>{yes}%</div>
-                              <div style={{ fontSize: 10, fontWeight: 850, color: "#6b7280", lineHeight: 1, marginTop: 2 }}>是</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className={homeStyles.topicSpacer} />
-                        <div className={homeStyles.topicFooter}>
-                          <div className={homeStyles.topicButtons}>
-                            <button
-                              type="button"
-                              onClick={() => pickTopic(x.id, "yes")}
-                              className={homeStyles.topicPickYes}
-                              aria-pressed={picked === "yes"}
-                              style={{ background: picked === "yes" ? "rgba(102,187,106,0.26)" : "rgba(102,187,106,0.12)" }}
-                              onMouseDown={(e) => e.stopPropagation()}
-                              onClickCapture={(e) => e.stopPropagation()}
-                            >
-                              是
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => pickTopic(x.id, "no")}
-                              className={homeStyles.topicPickNo}
-                              aria-pressed={picked === "no"}
-                              style={{ background: picked === "no" ? "rgba(239,83,80,0.26)" : "rgba(239,83,80,0.12)" }}
-                              onMouseDown={(e) => e.stopPropagation()}
-                              onClickCapture={(e) => e.stopPropagation()}
-                            >
-                              否
-                            </button>
-                          </div>
-
-                          <div className={homeStyles.topicMetaRow}>
-                            <div className={homeStyles.topicVoters}>{x.voters.toLocaleString()} 人參與投票</div>
-                            <div />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+            ) : nothing ? (
+              <SurfaceCard style={{ marginTop: 14, padding: 28, textAlign: "center" }}>
+                <div style={{ fontSize: 15, fontWeight: 900, color: "#111827" }}>目前還沒有熱門話題</div>
+                <div style={{ marginTop: 6, fontSize: 13, fontWeight: 750, color: "#6b7280" }}>
+                  等大家開始搜尋、開抽之後，最熱的關鍵字就會出現在這裡。
                 </div>
-              </section>
-            </div>
+                <div style={{ marginTop: 14, display: "flex", justifyContent: "center", gap: 8 }}>
+                  <SecondaryButton href="/">回首頁</SecondaryButton>
+                  <SecondaryButton href="/news">看看情報</SecondaryButton>
+                </div>
+              </SurfaceCard>
+            ) : (
+              <div style={{ marginTop: 14, display: "grid", gap: 12, width: "100%" }}>
+                {topics && topics.length > 0 ? (
+                  <SurfaceCard style={{ display: "grid", gap: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                      <div style={{ fontSize: 13, fontWeight: 950, color: "#111827" }}>正在熱門</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#9ca3af" }}>近 7 天</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      {topics.map((t, i) => {
+                        const strong = t.weight >= maxWeight * 0.5 || i < 3;
+                        return (
+                          <button
+                            key={`${t.keyword}-${i}`}
+                            type="button"
+                            onClick={() => go(t.keyword)}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 8,
+                              height: strong ? 42 : 36,
+                              padding: strong ? "0 16px" : "0 14px",
+                              borderRadius: 999,
+                              border: strong ? "1px solid transparent" : "1px solid #e5e7eb",
+                              background: strong ? "rgb(var(--primary))" : "#ffffff",
+                              color: strong ? "#ffffff" : "#374151",
+                              fontSize: strong ? 15 : 13,
+                              fontWeight: 900,
+                              cursor: "pointer",
+                            }}
+                          >
+                            <span style={{ opacity: strong ? 0.75 : 0.5, fontSize: 12, fontWeight: 900 }}>{i + 1}</span>
+                            {t.keyword}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {topics.slice(0, 6).map((t, i) => (
+                        <Pill key={`${t.keyword}-src-${i}`} tone={sourceTone(t.source)}>
+                          {t.keyword}・{sourceLabel(t.source)}
+                        </Pill>
+                      ))}
+                    </div>
+                  </SurfaceCard>
+                ) : null}
+
+                {tags && tags.length > 0 ? (
+                  <SurfaceCard style={{ display: "grid", gap: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                      <div style={{ fontSize: 13, fontWeight: 950, color: "#111827" }}>熱門標籤</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#9ca3af" }}>近 30 天商品熱度</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {tags.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => go(t.name)}
+                          style={{
+                            height: 36,
+                            padding: "0 14px",
+                            borderRadius: 999,
+                            border: "1px solid #e5e7eb",
+                            background: "#ffffff",
+                            color: "#374151",
+                            fontSize: 13,
+                            fontWeight: 900,
+                            cursor: "pointer",
+                          }}
+                        >
+                          #{t.name}
+                          {t.is_pinned ? " ★" : ""}
+                        </button>
+                      ))}
+                    </div>
+                  </SurfaceCard>
+                ) : null}
+
+                <div style={{ fontSize: 12, fontWeight: 750, color: "#9ca3af" }}>點任何一個關鍵字，就會帶你去搜尋結果。</div>
+              </div>
+            )}
           </div>
         </div>
       </div>
-
-      {selected ? (
-        <div
-          role="presentation"
-          onClick={() => setSelectedId(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 70,
-            background: "rgba(0,0,0,0.62)",
-            backdropFilter: "blur(6px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 18,
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="話題詳情"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "min(720px, 96vw)",
-              borderRadius: 18,
-              border: "1px solid #e5e7eb",
-              background: "#ffffff",
-              boxShadow: "0 18px 60px rgba(0, 0, 0, 0.18)",
-              padding: 16,
-              position: "relative",
-            }}
-          >
-            <button
-              type="button"
-              aria-label="關閉"
-              onClick={() => setSelectedId(null)}
-              style={{
-                appearance: "none",
-                border: "1px solid #e5e7eb",
-                background: "#f3f4f6",
-                color: "#374151",
-                width: 38,
-                height: 38,
-                borderRadius: 12,
-                cursor: "pointer",
-                fontWeight: 950,
-                lineHeight: 1,
-                position: "absolute",
-                top: 12,
-                right: 12,
-              }}
-            >
-              ×
-            </button>
-
-            {(() => {
-              const yes = Math.max(1, Math.min(99, Math.round(selected.yesPct)));
-              const no = 100 - yes;
-              const picked = pickedById[selected.id];
-              const activity = [
-                { left: "最新", mid: "有玩家預測下週熱門度將走高", right: "2 分鐘前" },
-                { left: "討論", mid: "收集到更多成交樣本後再觀察", right: "17 分鐘前" },
-                { left: "提醒", mid: "注意卡況與評級差異會影響價格", right: "1 小時前" },
-              ];
-
-              return (
-                <>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12, paddingRight: 44 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 12, overflow: "hidden", background: "#f3f4f6", flex: "0 0 auto" }}>
-                      <img alt="" src={avatarSrc(selected.id)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                    </div>
-                    <div style={{ minWidth: 0, flex: "1 1 auto" }}>
-                      <div style={{ fontSize: 16, fontWeight: 950, color: "#111827", lineHeight: 1.25 }}>
-                        {selected.question}
-                      </div>
-                      <div style={{ marginTop: 6, fontSize: 12, fontWeight: 850, color: "#6b7280" }}>
-                        {tagLabel(selected.tag)} · {selected.voters.toLocaleString()} 人參與投票
-                      </div>
-                    </div>
-                    <div className={homeStyles.topicRing} style={{ ["--p" as never]: yes }}>
-                      <div className={homeStyles.topicRingInner}>
-                        <div style={{ fontSize: 14, fontWeight: 950, color: "#111827", lineHeight: 1 }}>{yes}%</div>
-                        <div style={{ fontSize: 10, fontWeight: 850, color: "#6b7280", lineHeight: 1, marginTop: 2 }}>是</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
-                    <div
-                      style={{
-                        borderRadius: 16,
-                        border: "1px solid #e5e7eb",
-                        background: "#f9fafb",
-                        padding: 12,
-                      }}
-                    >
-                      <div style={{ display: "flex", gap: 10 }}>
-                        <button
-                          type="button"
-                          onClick={() => pickTopic(selected.id, "yes")}
-                          aria-pressed={picked === "yes"}
-                          className={homeStyles.topicPickYes}
-                          style={{
-                            flex: 1,
-                            height: 46,
-                            fontSize: 16,
-                            fontWeight: 950,
-                            background: picked === "yes" ? "rgba(102,187,106,0.26)" : "rgba(102,187,106,0.12)",
-                          }}
-                        >
-                          是
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => pickTopic(selected.id, "no")}
-                          aria-pressed={picked === "no"}
-                          className={homeStyles.topicPickNo}
-                          style={{
-                            flex: 1,
-                            height: 46,
-                            fontSize: 16,
-                            fontWeight: 950,
-                            background: picked === "no" ? "rgba(239,83,80,0.26)" : "rgba(239,83,80,0.12)",
-                          }}
-                        >
-                          否
-                        </button>
-                      </div>
-
-                      <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                          <div style={{ fontSize: 12, fontWeight: 900, color: "#374151" }}>是</div>
-                          <div style={{ fontSize: 12, fontWeight: 950, color: "#111827" }}>{yes}%</div>
-                        </div>
-                        <div style={{ height: 10, borderRadius: 999, background: "#f3f4f6", overflow: "hidden" }}>
-                          <div style={{ width: `${yes}%`, height: "100%", background: "rgba(102,187,106,0.52)" }} />
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                          <div style={{ fontSize: 12, fontWeight: 900, color: "#374151" }}>否</div>
-                          <div style={{ fontSize: 12, fontWeight: 950, color: "#111827" }}>{no}%</div>
-                        </div>
-                        <div style={{ height: 10, borderRadius: 999, background: "#f3f4f6", overflow: "hidden" }}>
-                          <div style={{ width: `${no}%`, height: "100%", background: "rgba(239,83,80,0.52)" }} />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        borderRadius: 16,
-                        border: "1px solid #e5e7eb",
-                        background: "#f9fafb",
-                        padding: 12,
-                      }}
-                    >
-                      <div style={{ fontSize: 13, fontWeight: 950, color: "#111827" }}>最新動態</div>
-                      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-                        {activity.map((a, idx) => (
-                          <div key={`a_${idx}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                              <div style={{ fontSize: 12, fontWeight: 900, color: "#374151", whiteSpace: "nowrap" }}>{a.left}</div>
-                              <div style={{ width: 1, height: 14, background: "#e5e7eb" }} />
-                              <div style={{ fontSize: 12, fontWeight: 750, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {a.mid}
-                              </div>
-                            </div>
-                            <div style={{ fontSize: 12, fontWeight: 750, color: "#6b7280", whiteSpace: "nowrap" }}>{a.right}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </div>
-      ) : null}
     </AppShell>
   );
 }

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { SidebarItem } from "@/cardx/lib/types";
-import { supabaseBrowser } from "@/cardx/lib/supabase/browser";
 import styles from "./AppShell.module.css";
 /* 接吉吉比的真資料（老闆 2026-09-04：頂部導航這些按鈕都用得到，先接真實資料）：
    登入狀態／G 幣／頭像走 AuthContext，鈴鐺未讀跟手機版 Navbar 同一套算法，聲音開關接站上的靜音偏好 */
@@ -151,6 +150,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
       "一番賞": "#icon-gift", "盒玩": "#icon-box", "轉蛋": "#icon-casino", "抽卡": "#icon-docs", "自製賞": "#icon-missions",
       "挑戰機台": "#icon-sport", "交易所": "#icon-bag-dollar", "商城": "#icon-bag-dollar", "卡牌交換": "#icon-swap",
       "情報": "#icon-docs", "通知": "#icon-notifications",
+      "成交行情": "#icon-sport", "任務": "#icon-missions", "獎勵": "#icon-gift",
     };
     if (extra[label]) return extra[label];
     return label === "收藏"
