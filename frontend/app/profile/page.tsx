@@ -133,7 +133,7 @@ interface DeliveryOrder {
   id: string;
   order_number?: string;
   itemsCount: number;
-  items: { grade: string; name: string; productName: string }[];
+  items: { grade: string; name: string; productName: string; image?: string }[];
   status: 'submitted' | 'processing' | 'picked_up' | 'shipping' | 'delivered' | 'cancelled' | string;
   date: string;
   tracking: string;
@@ -2236,7 +2236,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
             *,
             suppliers ( name ),
             draw_records (
-              product_prizes ( level, name ),
+              product_prizes ( level, name, image_url ),
               products ( name, type, suppliers ( name ) )
             )
           `)
@@ -2284,11 +2284,13 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                    grade: dh.product_prizes?.level || '?', // 等級 DB 已統一（migration 514），一般版/特別設定照實顯示
                    name: dh.product_prizes?.name || '未知',
                    productName: (dh as any).products?.name || '未知商品',
+                   image: (dh.product_prizes as any)?.image_url || undefined,
                  }))
-               : (((order as any).cancelled_items as { prize_level?: string; prize_name?: string; product_name?: string }[] | null) || []).map((ci) => ({
+               : (((order as any).cancelled_items as { prize_level?: string; prize_name?: string; product_name?: string; image_url?: string }[] | null) || []).map((ci) => ({
                    grade: ci.prize_level || '?',
                    name: ci.prize_name || '未知',
                    productName: ci.product_name || '未知商品',
+                   image: ci.image_url || undefined,
                  }))),
              status: order.status,
              date: new Date(order.created_at).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Taipei' }).replace(/\//g, '/'),
@@ -5257,14 +5259,22 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                                   <div className="text-[14px] font-black text-neutral-900">配送商品 ({order.items?.length || 0})</div>
                                   {order.items?.length ? (
                                     <div className="mt-3 overflow-hidden rounded-[14px] ring-1 ring-[#e5e7eb]">
-                                      <div className="grid grid-cols-[88px_minmax(0,1fr)_minmax(0,1fr)] gap-4 bg-[#f3f4f6] px-5 py-2.5 text-[12px] font-bold text-neutral-400">
-                                        <span>賞等</span><span>品項名稱</span><span>商品名稱</span>
+                                      <div className="grid grid-cols-[56px_minmax(0,1fr)_minmax(0,1fr)] gap-4 bg-[#f3f4f6] px-5 py-2.5 text-[12px] font-bold text-neutral-400">
+                                        <span>圖片</span><span>品項名稱</span><span>商品名稱</span>
                                       </div>
                                       <div className="divide-y divide-neutral-100">
                                         {order.items.map((it, idx) => (
-                                          <div key={idx} className="grid grid-cols-[88px_minmax(0,1fr)_minmax(0,1fr)] items-center gap-4 px-5 py-3.5">
-                                            <span><GradeBadge grade={it.grade} size="sm" /></span>
-                                            <span className="min-w-0 truncate text-[15px] font-black text-neutral-900">{it.name}</span>
+                                          <div key={idx} className="grid grid-cols-[56px_minmax(0,1fr)_minmax(0,1fr)] items-center gap-4 px-5 py-3">
+                                            {/* 品項圖（老闆 2026-09-05：賞等左邊多一欄） */}
+                                            <span className="relative block h-12 w-12 overflow-hidden rounded-lg bg-white ring-1 ring-[#e5e7eb]">
+                                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                                              <img src={it.image || asset('/images/item_defaulet.webp')} alt="" className="absolute inset-0 h-full w-full object-contain" />
+                                            </span>
+                                            {/* 賞等標籤放品項名稱開頭，不另開一欄（老闆 2026-09-05） */}
+                                            <span className="flex min-w-0 items-center gap-2">
+                                              <GradeBadge grade={it.grade} size="sm" />
+                                              <span className="min-w-0 truncate text-[15px] font-black text-neutral-900">{it.name}</span>
+                                            </span>
                                             <span className="min-w-0 truncate text-[14px] font-bold text-neutral-600">{it.productName}</span>
                                           </div>
                                         ))}
