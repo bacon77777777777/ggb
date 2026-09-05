@@ -5676,7 +5676,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                     {/* 跟手機一樣固定近 30 天，沒有日期 tab（老闆 2026-09-05：今天／近7天移除） */}
                     <div className="flex h-10 items-center gap-2">
                       <h2 className="text-[20px] font-black tracking-tight text-neutral-900">儲值紀錄</h2>
-                      <span className="text-[13px] font-bold text-neutral-500">近 30 天 · {list.length} 筆</span>
+                      <span className="text-[13px] font-bold text-neutral-500">{list.length} 筆</span>
                     </div>
 
                     <div className="mt-4 space-y-3">
@@ -6912,7 +6912,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                   {sideNavIcon(UserPlus, false, 'text-violet-500 group-hover:text-primary transition-colors')}
                   <span className="truncate">邀請好友</span>
                   <span className={cn('ml-auto inline-flex items-center rounded-full bg-accent-red px-2 font-bold leading-none text-white', cardxShell ? 'h-[21px] text-[12px]' : 'h-[19px] text-[11px]')}>
-                    <span className="cjk-optical-center">無限拿積分</span>
+                    無限拿積分
                   </span>
                   <ChevronRight className={cn('w-4 h-4 hidden sm:block', cardxShell ? 'text-[#d1d5db]' : 'text-neutral-200 group-hover:text-neutral-400')} />
                 </button>
@@ -7217,7 +7217,8 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                            改成壓暗，底圖被蓋住、白字也更讀得出來。 */
                         className="h-7 px-2 rounded-full bg-black/30 border border-white/25 flex items-center gap-1 active:scale-95 transition-transform"
                       >
-                        <span className="cjk-optical-center text-xs text-white font-bold">儲值紀錄</span>
+                        {/* 不套 .cjk-optical-center：跟簽到頁「無限拿積分」同一個理由，套了字會掉到膠囊下緣（老闆 2026-09-05） */}
+                        <span className="text-xs text-white font-bold">儲值紀錄</span>
                         <ChevronRight className="w-3 h-3 text-white/70" />
                       </button>
                     </div>
@@ -7348,7 +7349,8 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                   <div className="flex items-center gap-1.5">
                     {item.badge && (
                       <span className="inline-flex h-[19px] items-center rounded-full bg-accent-red px-2 text-[11px] font-bold leading-none text-white">
-                        <span className="cjk-optical-center">{item.badge}</span>
+                        {/* 不套 .cjk-optical-center（老闆 2026-09-05：簽到頁那顆才是正常置中） */}
+                        {item.badge}
                       </span>
                     )}
                     <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-neutral-500 group-hover:translate-x-1 transition-all" />
