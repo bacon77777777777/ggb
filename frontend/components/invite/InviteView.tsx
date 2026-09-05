@@ -340,42 +340,49 @@ export default function InviteView({ embedded = false }: { embedded?: boolean } 
         )}
     </>
   );
-  const progressBar = (
-    <div className="relative mt-2.5 h-[15px]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={asset("/images/invite/bar_track.png")} alt="" className="absolute inset-0 h-full w-full" />
-            {filled > 0 && (
-              <div className="absolute inset-0 overflow-hidden" style={{ width: `${(filled / step) * 100}%` }}>
-                <div
-                  className="h-full"
-                  style={{
-                    backgroundImage: `url(${asset('/images/invite/bar_fill.png')})`,
-                    backgroundSize: `${(step / filled) * 100}% 100%`,
-                    backgroundPosition: 'left center',
-                    backgroundRepeat: 'no-repeat',
-                  }}
-                />
-              </div>
-            )}
-    </div>
-  );
-  /* 桌機用的進度條：0 的時候左邊露一小段綠（老闆 2026-09-05），手機那條（progressBar）不動。
-     不能拿填充圖裁：那張圖上下自帶兩三格深色邊（立體感用），不管露多寬看起來都「高度沒滿」（老闆改了三次）。
-     改成純 CSS 畫一段：貼齊軌道上下、左圓右直，漸層色照填充圖逐列取樣（上 #dbf300 → 下 #449f0f） */
-  const progressBarDesktop = filled > 0 ? progressBar : (
-    <div className="relative mt-2.5 h-[15px]">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={asset("/images/invite/bar_track.png")} alt="" className="absolute inset-0 h-full w-full" />
+  /* 進度條改純 CSS、不用圖（老闆 2026-09-05：手機端也一起改）。手機 15 高、桌機 20 高，同一個函式。
+     軌道深灰圓筒＋灰色分段線；填充照原本填充圖逐列取樣的黃綠漸層（上 #dbf300 → 下 #449f0f）。
+     0 的時候露 3.25% 讓人看得出這是條進度（手機、桌機都露） */
+  const ZERO_HINT = 0.0325; // 老闆 2026-09-05：6.5% 太寬，縮一半
+  const renderProgressBar = (height: number) => {
+    const ratio = filled > 0 ? Math.min(1, filled / step) : ZERO_HINT;
+    const segments = Math.max(1, step);
+    return (
       <div
-        aria-hidden="true"
-        className="absolute inset-y-0 left-0 rounded-l-full"
+        className="relative mt-2.5 w-full overflow-hidden"
         style={{
-          width: '6.5%',
-          background: 'linear-gradient(180deg, #dbf300 0%, #bde700 25%, #a7de03 45%, #7fd100 65%, #5dc400 85%, #449f0f 100%)',
+          height,
+          borderRadius: 9999,
+          /* 軌道深灰不要黑、分段線灰色粗一點（老闆 2026-09-05） */
+          background: 'linear-gradient(180deg, #4b5058 0%, #3a3e45 50%, #454a52 100%)',
+          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.45), inset 0 -1px 0 rgba(255,255,255,0.08)',
         }}
-      />
-    </div>
-  );
+      >
+        {/* 分段線 */}
+        {Array.from({ length: segments - 1 }).map((_, i) => (
+          <span
+            key={i}
+            aria-hidden="true"
+            className="absolute inset-y-0"
+            style={{ left: `calc(${((i + 1) / segments) * 100}% - 1px)`, width: 2, background: 'rgba(255, 255, 255, 0.28)' }}
+          />
+        ))}
+        {/* 填充：左圓右直，滿了才兩邊都圓 */}
+        <div
+          className="absolute inset-y-0 left-0"
+          style={{
+            width: `${ratio * 100}%`,
+            borderRadius: ratio >= 1 ? 9999 : '9999px 0 0 9999px',
+            background: 'linear-gradient(180deg, #dbf300 0%, #bde700 25%, #a7de03 45%, #7fd100 65%, #5dc400 85%, #449f0f 100%)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.15)',
+            transition: 'width 300ms ease',
+          }}
+        />
+      </div>
+    );
+  };
+  const progressBar = renderProgressBar(15);
+  const progressBarDesktop = renderProgressBar(20);
   const missionList = (
     <div>
       {missions.length === 0 && (
@@ -468,10 +475,8 @@ export default function InviteView({ embedded = false }: { embedded?: boolean } 
                         <span className="h-5 w-10 shrink-0 animate-pulse rounded bg-neutral-100" />
                       )}
                     </div>
-                    {/* 這一段上下間距拉開（老闆 2026-09-05：太緊湊）。
-                        ⚠️ cardx 的 `.main2 img { height: auto }` 會蓋掉軌道圖的 h-full，圖照原比例畫成 40px 高、溢出 15px 的容器，
-                        綠色填充卻只有 15px——桌機上「高度沒滿」「按鈕貼著進度條」都是這個。這裡把圖高強制回 100%，桌機容器加高到 20px */}
-                    <div className="mt-2 [&>div]:!h-[20px] [&_img]:!h-full">{progressBarDesktop}</div>
+                    {/* 這一段上下間距拉開（老闆 2026-09-05：太緊湊） */}
+                    <div className="mt-2">{progressBarDesktop}</div>
                     {/* 立即領取跟進度放一起（老闆 2026-09-05）；下載邀請圖與分享是手機底欄／右上角那兩顆 */}
                     {/* 兩顆主鈕各佔一半撐滿、分享圖標靠最右（老闆 2026-09-05） */}
                     <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
