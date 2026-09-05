@@ -361,9 +361,11 @@ export default function InviteView({ embedded = false }: { embedded?: boolean } 
     </div>
   );
   /* 桌機用的進度條：0 的時候左邊露一小段綠（老闆 2026-09-05），手機那條（progressBar）不動。
-     做法跟有進度時一模一樣（同一張填充圖從左端畫出來），只是把 0 當成 4% ——
-     之前用 clip 裁填充圖左邊 8px，露出來的是圓頭的一角、看起來像個楔子（老闆：「這什麼情況」） */
-  const ZERO_HINT = 0.04;
+     做法跟有進度時一模一樣（同一張填充圖從左端畫出來），只是把 0 當成 6.5%。
+     ⚠️ 不能更短：填充圖左端是半徑約 16 圖素的圓頭（645 寬），4% 只露到圓頭那一段、上下本來就縮，
+     看起來像高度沒滿（老闆 2026-09-05）；6.5% 才露得到圓頭後面的直筒段，高度跟真的進度一樣。
+     再之前用 clip 裁左邊 8px，露出來的是圓頭的一角、像個楔子 */
+  const ZERO_HINT = 0.065;
   const progressBarDesktop = filled > 0 ? progressBar : (
     <div className="relative mt-2.5 h-[15px]">
       {/* eslint-disable-next-line @next/next/no-img-element */}
