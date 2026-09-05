@@ -21,7 +21,7 @@ export const defaultSidebarItems: SidebarItem[] = [
   { kind: "link", label: "活動", href: "/events" },
   { kind: "link", label: "情報", href: "/news" },
   { kind: "link", label: "話題", href: "/topics" },
-  { kind: "link", label: "任務", href: "/missions" },
+  { kind: "link", label: "簽到任務", href: "/missions" }, // 老闆 2026-09-05：「任務」改「簽到任務」
   { kind: "link", label: "獎勵", href: "/rewards" },
   { kind: "link", label: "通知", href: "/announcements" },
 ];

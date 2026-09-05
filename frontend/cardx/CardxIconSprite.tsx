@@ -76,18 +76,7 @@ export default function CardxIconSprite() {
                 />
               </symbol>
               <symbol id="icon-recent">
-                <path
-                  fill="currentColor"
-                  fillRule="evenodd"
-                  d="M12 4.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15M2.5 12a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0"
-                  clipRule="evenodd"
-                />
-                <path
-                  fill="currentColor"
-                  fillRule="evenodd"
-                  d="M12 7.2a1 1 0 0 1 1 1v4.1l2.4 1.4a1 1 0 1 1-1 1.74l-2.9-1.7a1 1 0 0 1-.5-.87V8.2a1 1 0 0 1 1-1"
-                  clipRule="evenodd"
-                />
+                <path fill="currentColor" fillRule="evenodd" clipRule="evenodd" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20ZM10.8 6.6h2.4v4.9l3.6 2.1-1.2 2.1-4.8-2.8Z" />
               </symbol>
               <symbol id="icon-casino">
                 <path
@@ -114,53 +103,16 @@ export default function CardxIconSprite() {
                 />
               </symbol>
               <symbol id="icon-swap">
-                <path
-                  fill="currentColor"
-                  fillRule="evenodd"
-                  d="M7.8 7.2a1 1 0 0 1 1 1v1.3h10.7a1 1 0 1 1 0 2H7.8a1 1 0 0 1-1-1V8.2a1 1 0 0 1 1-1"
-                  clipRule="evenodd"
-                />
-                <path
-                  fill="currentColor"
-                  fillRule="evenodd"
-                  d="M4.8 9.5 2.6 7.3a1 1 0 0 1 1.4-1.4l3.9 3.9a1 1 0 0 1 0 1.4l-3.9 3.9a1 1 0 0 1-1.4-1.4l2.2-2.2Z"
-                  clipRule="evenodd"
-                />
-                <path
-                  fill="currentColor"
-                  fillRule="evenodd"
-                  d="M16.2 16.8a1 1 0 0 1-1-1v-1.3H4.5a1 1 0 1 1 0-2h11.7a1 1 0 0 1 1 1v2.3a1 1 0 0 1-1 1"
-                  clipRule="evenodd"
-                />
-                <path
-                  fill="currentColor"
-                  fillRule="evenodd"
-                  d="m19.2 14.5 2.2 2.2a1 1 0 0 1-1.4 1.4l-3.9-3.9a1 1 0 0 1 0-1.4l3.9-3.9a1 1 0 0 1 1.4 1.4l-2.2 2.2Z"
-                  clipRule="evenodd"
-                />
+                <path fill="currentColor" d="M4 7.5h10.5V4.9c0-.8.9-1.2 1.5-.7l5.4 4.1a1 1 0 0 1 0 1.5L16 13.9c-.6.5-1.5.1-1.5-.7v-2.7H4a1.5 1.5 0 0 1 0-3ZM20 14H9.5v-2.6c0-.8-.9-1.2-1.5-.7l-5.4 4.1a1 1 0 0 0 0 1.5l5.4 4.1c.6.5 1.5.1 1.5-.7V17H20a1.5 1.5 0 0 0 0-3Z" />
               </symbol>
               <symbol id="icon-box">
-                <path
-                  fill="currentColor"
-                  fillRule="evenodd"
-                  d="M6.7 7.4 12 4.7l5.3 2.7L12 10.1 6.7 7.4Zm-1.6 2.1V16c0 .5.3.9.7 1.1l5.4 2.7v-9.1L5.1 9.5Zm7.1 12.3 5.4-2.7c.4-.2.7-.6.7-1.1V9.5l-6.1 3.2v9.1ZM12 2.5c.2 0 .4 0 .6.1l7.2 3.6c.7.3 1.2 1.1 1.2 1.9V16c0 1-.6 1.9-1.5 2.3l-6.9 3.4c-.4.2-.8.2-1.2 0l-6.9-3.4C3.6 17.9 3 17 3 16V8.1c0-.8.5-1.6 1.2-1.9l7.2-3.6c.2-.1.4-.1.6-.1Z"
-                  clipRule="evenodd"
-                />
+                <path fill="currentColor" d="M3.5 3h17A1.5 1.5 0 0 1 22 4.5V7H2V4.5A1.5 1.5 0 0 1 3.5 3Z" />
+                <path fill="currentColor" fillRule="evenodd" clipRule="evenodd" d="M3 8.5h18V19a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V8.5ZM9.5 11.5h5a1 1 0 0 1 1 1v0a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-0a1 1 0 0 1 1 -1Z" />
               </symbol>
               <symbol id="icon-missions">
-                <path
-                  fill="currentColor"
-                  fillRule="evenodd"
-                  d="M6 4.5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-13a2 2 0 0 0-2-2H6Zm0 2h12v13H6v-13Z"
-                  clipRule="evenodd"
-                />
-                <path
-                  fill="currentColor"
-                  fillRule="evenodd"
-                  d="M8 9.2a1 1 0 0 1 1.4.1l1 1.1 3.5-3.6a1 1 0 1 1 1.4 1.4l-4.2 4.3a1 1 0 0 1-1.5 0L8 10.6a1 1 0 0 1 0-1.4Z"
-                  clipRule="evenodd"
-                />
-                <path fill="currentColor" d="M8 15.5h8v2H8z" />
+                <path fill="currentColor" fillRule="evenodd" clipRule="evenodd" d="M3 9h18v10a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V9ZM8.2 14.1l1.5-1.5 1.8 1.8 4-4 1.5 1.5-5.5 5.5Z" />
+                <path fill="currentColor" d="M6 4h12a3 3 0 0 1 3 3v1H3V7a3 3 0 0 1 3-3Z" />
+                <path fill="currentColor" d="M8 2h0a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-0a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1ZM16 2h0a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-0a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1Z" />
               </symbol>
               <symbol id="icon-promotions">
                 <path
@@ -183,13 +135,14 @@ export default function CardxIconSprite() {
                 />
               </symbol>
               <symbol id="icon-docs">
-                <path
-                  fill="currentColor"
-                  fillRule="evenodd"
-                  d="M7 3.5h7l3 3v14c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2v-15c0-1.1.9-2 2-2Zm0 2v15h8v-12h-3v-3H7Zm6 0v2h2l-2-2Z"
-                  clipRule="evenodd"
-                />
-                <path fill="currentColor" d="M8.5 11h6v1.8h-6V11Zm0 3.5h6v1.8h-6v-1.8Z" />
+                <path fill="currentColor" fillRule="evenodd" clipRule="evenodd" d="M6 2h7.2c.5 0 1 .2 1.4.6l4.8 4.8c.4.4.6.9.6 1.4V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2ZM9 11.5h6a1 1 0 0 1 1 1v0a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1v-0a1 1 0 0 1 1 -1ZM9 15.5h3a1 1 0 0 1 1 1v0a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-0a1 1 0 0 1 1 -1Z" />
+              </symbol>
+              <symbol id="icon-chart">
+                <path fill="currentColor" d="M4.5 12h2a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1 -1.5 1.5h-2a1.5 1.5 0 0 1 -1.5 -1.5v-7a1.5 1.5 0 0 1 1.5 -1.5ZM11 7h2a1.5 1.5 0 0 1 1.5 1.5v12a1.5 1.5 0 0 1 -1.5 1.5h-2a1.5 1.5 0 0 1 -1.5 -1.5v-12a1.5 1.5 0 0 1 1.5 -1.5ZM17.5 2.5h2a1.5 1.5 0 0 1 1.5 1.5v16.5a1.5 1.5 0 0 1 -1.5 1.5h-2a1.5 1.5 0 0 1 -1.5 -1.5v-16.5a1.5 1.5 0 0 1 1.5 -1.5Z" />
+              </symbol>
+              <symbol id="icon-store">
+                <path fill="currentColor" d="M5 8h14a2 2 0 0 1 2 2v9a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-9a2 2 0 0 1 2-2Z" />
+                <path fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" d="M8.5 9V7a3.5 3.5 0 0 1 7 0v2" />
               </symbol>
             </svg>
   );

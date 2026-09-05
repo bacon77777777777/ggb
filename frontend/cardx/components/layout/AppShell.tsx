@@ -146,12 +146,14 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
   }, [sidebarItems]);
 
   const iconForLabel = useCallback((label: string) => {
-    // 老闆 2026-09-04 的側欄清單多出來的項目：先用 sprite 裡現有的 19 顆圖示對，重複難免，之後再換
+    // 側欄圖示全部走實心胖圓款（老闆 2026-09-05：跟頂欄鈴鐺／私訊同一種風格）。
+    // 細線款的時鐘／文件／任務／交換／盒子已在 sprite 重畫；成交行情改柱狀圖（原本錯拿足球）、
+    // 商城改購物袋（原本跟交易所共用錢袋，兩個一模一樣）
     const extra: Record<string, string> = {
       "一番賞": "#icon-gift", "盒玩": "#icon-box", "轉蛋": "#icon-casino", "抽卡": "#icon-docs", "自製賞": "#icon-missions",
-      "挑戰機台": "#icon-sport", "交易所": "#icon-bag-dollar", "商城": "#icon-bag-dollar", "卡牌交換": "#icon-swap",
+      "挑戰機台": "#icon-sport", "交易所": "#icon-bag-dollar", "商城": "#icon-store", "卡牌交換": "#icon-swap",
       "情報": "#icon-docs", "通知": "#icon-notifications",
-      "成交行情": "#icon-sport", "任務": "#icon-missions", "獎勵": "#icon-gift",
+      "成交行情": "#icon-chart", "任務": "#icon-missions", "簽到任務": "#icon-missions", "獎勵": "#icon-gift",
     };
     if (extra[label]) return extra[label];
     return label === "收藏"
@@ -164,7 +166,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
             ? "#icon-box"
             : label === "交換"
               ? "#icon-swap"
-              : label === "任務"
+              : label === "任務" || label === "簽到任務"
                 ? "#icon-missions"
                 : label === "活動"
                   ? "#icon-promotions"
@@ -344,22 +346,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
             <img src={asset("/images/logo.png")} alt="吉吉比" style={{ height: 32, width: "auto", display: "block" }} />
           </Link>
 
-          <Link
-            href="/missions"
-            className={`bonus-cabinet ${styles.bonusCabinet}`}
-            data-v-4ec444f2=""
-            aria-label="簽到"
-            /* 老闆 2026-09-04：圖標跟文字離近一點（原本固定 86 寬＋space-between 把兩個推到兩端） */
-            style={{ width: "auto", minWidth: 0, gap: 6, justifyContent: "center", padding: "5px 14px 5px 7px" }}
-          >
-            <span className="background" data-v-4ec444f2="" aria-hidden="true" />
-            <span className={styles.bonusIconWrap} aria-hidden="true">
-              <img className={styles.bonusIcon} src={asset("/images/topbar/4b.png")} alt="" aria-hidden="true" />
-            </span>
-            <span className={styles.bonusText} aria-hidden="true">
-              簽到
-            </span>
-          </Link>
+          {/* 頂欄的簽到鈕拿掉（老闆 2026-09-05）；簽到入口在側欄「簽到任務」 */}
 
           <Link href="/search" className={styles.squarePill} aria-label="搜尋">
             <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
