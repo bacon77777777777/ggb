@@ -468,8 +468,10 @@ export default function InviteView({ embedded = false }: { embedded?: boolean } 
                         <span className="h-5 w-10 shrink-0 animate-pulse rounded bg-neutral-100" />
                       )}
                     </div>
-                    {/* 這一段上下間距拉開（老闆 2026-09-05：太緊湊） */}
-                    <div className="mt-2">{progressBarDesktop}</div>
+                    {/* 這一段上下間距拉開（老闆 2026-09-05：太緊湊）。
+                        ⚠️ cardx 的 `.main2 img { height: auto }` 會蓋掉軌道圖的 h-full，圖照原比例畫成 40px 高、溢出 15px 的容器，
+                        綠色填充卻只有 15px——桌機上「高度沒滿」「按鈕貼著進度條」都是這個。這裡把圖高強制回 100%，桌機容器加高到 20px */}
+                    <div className="mt-2 [&>div]:!h-[20px] [&_img]:!h-full">{progressBarDesktop}</div>
                     {/* 立即領取跟進度放一起（老闆 2026-09-05）；下載邀請圖與分享是手機底欄／右上角那兩顆 */}
                     {/* 兩顆主鈕各佔一半撐滿、分享圖標靠最右（老闆 2026-09-05） */}
                     <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
