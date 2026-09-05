@@ -52,7 +52,6 @@ import ProfileToolbar from '@/components/profile/desktop/ProfileToolbar';
 import ProfileDataTable from '@/components/profile/desktop/ProfileDataTable';
 import ProfileStatusBadge from '@/components/profile/desktop/ProfileStatusBadge';
 import ProfilePagination from '@/components/profile/desktop/ProfilePagination';
-import ProfileSearchField from '@/components/profile/desktop/ProfileSearchField';
 /* 1024 以上整頁掛進 cardx 的外殼（老闆 2026-09-05：會員中心要對齊 cardx 版型——頂部導航、左右分欄的樣式／密度／字級） */
 import { AppShell } from '@/cardx/components/layout/AppShell';
 import { defaultSidebarItems } from '@/cardx/lib/navigation';
@@ -161,7 +160,7 @@ interface DrawHistoryItem {
   tickets: string[];
   cost: number;
   pointsUsed: number;
-  items: { grade: string; name: string; ticket_number: string; txid_hash?: string }[];
+  items: { grade: string; name: string; ticket_number: string; txid_hash?: string; image?: string }[];
   rawDate?: string;
 }
 
@@ -351,7 +350,7 @@ interface GroupedDrawHistoryItem {
   tickets: string[];
   cost: number;
   pointsUsed: number;
-  items: { grade: string; name: string; ticket_number: string; txid_hash?: string }[];
+  items: { grade: string; name: string; ticket_number: string; txid_hash?: string; image?: string }[];
 }
 
   interface DbDrawRecord {
@@ -2333,7 +2332,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
               txid_hash,
               points_used,
               tokens_spent,
-              product_prizes ( level, name ),
+              product_prizes ( level, name, image_url ),
               products ( name, price, status, remaining, type )
             `)
             .eq('user_id', user.id)
@@ -2353,6 +2352,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
           const rawGrade = item.product_prizes?.level || item.prize_level || '一般版';
           const grade = rawGrade; // 等級 DB 已統一（migration 514）
           const name = item.product_prizes?.name || item.prize_name || '未知';
+          const image = (item.product_prizes as any)?.image_url || undefined;
 
           const itemPointsUsed = item.points_used || 0;
           // 實收金額（優惠券折抵後）；舊資料沒有 tokens_spent 才 fallback 單價。
@@ -2362,7 +2362,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
             lastGroup.tickets.push(item.ticket_number?.toString());
             lastGroup.cost += itemCost;
             lastGroup.pointsUsed += itemPointsUsed;
-            lastGroup.items.push({ grade, name, ticket_number: item.ticket_number?.toString(), txid_hash: item.txid_hash || undefined });
+            lastGroup.items.push({ grade, name, ticket_number: item.ticket_number?.toString(), txid_hash: item.txid_hash || undefined, image });
           } else {
             groupedHistory.push({
               _rawDate: currentTimestamp,
@@ -2377,7 +2377,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
               tickets: [item.ticket_number?.toString()],
               cost: itemCost,
               pointsUsed: itemPointsUsed,
-              items: [{ grade, name, ticket_number: item.ticket_number?.toString(), txid_hash: item.txid_hash || undefined }]
+              items: [{ grade, name, ticket_number: item.ticket_number?.toString(), txid_hash: item.txid_hash || undefined, image }]
             });
           }
         });
@@ -5160,13 +5160,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                       <span className="text-[13px] font-bold text-neutral-500">{list.length} 筆</span>
                     </div>
 
-                    {/* 搜尋框跟倉庫同一顆共用元件、獨立一行（老闆 2026-09-05：搜尋樣式統一），狀態膠囊在下一行 */}
-                    <ProfileSearchField
-                      className="mt-3"
-                      value={desktopDeliverySearch}
-                      onChange={setDesktopDeliverySearch}
-                      placeholder="搜尋訂單編號、追蹤號碼、商品"
-                    />
+                    {/* 搜尋框拿掉（老闆 2026-09-05：這三頁不用搜尋），只留狀態膠囊 */}
                     <div className="mt-3 flex flex-wrap items-center gap-1.5">
                       {statusTabs.map(([id, label]) => (
                         <button key={id} type="button" className={pill(activeDeliveryTab === id)} onClick={() => setActiveDeliveryTab(id as DeliveryTabId)}>
@@ -5487,7 +5481,6 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                       <h2 className="text-[20px] font-black tracking-tight text-neutral-900">抽獎紀錄</h2>
                       <span className="text-[13px] font-bold text-neutral-500">{list.length} 筆</span>
                     </div>
-                    <ProfileSearchField className="mt-3" value={desktopDrawSearch} onChange={setDesktopDrawSearch} placeholder="搜尋商品、籤號、獎項" />
 
                     <div className="mt-4 space-y-3">
                       {list.length === 0 ? (
@@ -5532,18 +5525,23 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                             {expanded && (
                               <div className="border-t border-neutral-100 px-6 py-6">
                                 <div className="text-[14px] font-black text-neutral-900">獲得獎項 ({item.items.length})</div>
+                                {/* 跟配送管理的品項表同一套：圖片／賞等＋品項名稱／籤號／驗證（老闆 2026-09-05） */}
                                 <div className="mt-3 overflow-hidden rounded-[14px] ring-1 ring-[#e5e7eb]">
-                                  <div className={cn('grid gap-4 bg-[#f3f4f6] px-5 py-2.5 text-[12px] font-bold text-neutral-400', showTicket ? 'grid-cols-[minmax(0,1fr)_120px_96px]' : 'grid-cols-[minmax(0,1fr)_96px]')}>
-                                    <span>品項名稱</span>{showTicket ? <span>籤號</span> : null}<span />
+                                  <div className="grid grid-cols-[56px_minmax(0,1fr)_120px_96px] gap-4 bg-[#f3f4f6] px-5 py-2.5 text-[12px] font-bold text-neutral-400">
+                                    <span>圖片</span><span>品項名稱</span><span>籤號</span><span />
                                   </div>
                                   <div className="divide-y divide-neutral-100">
                                     {item.items.map((result, idx) => (
-                                      <div key={idx} className={cn('grid items-center gap-4 px-5 py-3', showTicket ? 'grid-cols-[minmax(0,1fr)_120px_96px]' : 'grid-cols-[minmax(0,1fr)_96px]')}>
+                                      <div key={idx} className="grid grid-cols-[56px_minmax(0,1fr)_120px_96px] items-center gap-4 px-5 py-3">
+                                        <span className="relative block h-12 w-12 overflow-hidden rounded-lg bg-white ring-1 ring-[#e5e7eb]">
+                                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                                          <img src={result.image || asset('/images/item_defaulet.webp')} alt="" className="absolute inset-0 h-full w-full object-contain" />
+                                        </span>
                                         <span className="flex min-w-0 items-center gap-2">
                                           <GradeBadge grade={result.grade} size="sm" />
                                           <span className="min-w-0 truncate text-[15px] font-black text-neutral-900">{result.name}</span>
                                         </span>
-                                        {showTicket ? <span className="font-mono text-[14px] font-bold text-neutral-600">{result.ticket_number}</span> : null}
+                                        <span className="font-mono text-[14px] font-bold text-neutral-600">{showTicket && result.ticket_number ? result.ticket_number : '—'}</span>
                                         <span className="text-right">
                                           {result.txid_hash && item.productType === 'ichiban' ? (
                                             <button type="button" onClick={() => verify(item, result)} className="h-8 rounded-lg bg-primary/5 px-3 text-[13px] font-black text-primary hover:bg-primary/10">
@@ -5663,11 +5661,6 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                 });
                 const shown = list.slice(0, desktopWarehouseDisplayCount);
                 const hasMore = shown.length < list.length;
-                const pill = (active: boolean) => cn(
-                  'h-9 px-3.5 rounded-full text-[13px] font-black whitespace-nowrap transition-colors',
-                  active ? 'bg-primary text-white' : 'bg-white text-neutral-700 ring-1 ring-[#e5e7eb] hover:bg-neutral-50',
-                );
-                const periods = [['today', '今天'], ['7days', '近7天'], ['30days', '近30天']] as const;
                 const statusSolid = (status: string) => {
                   const k = status.toLowerCase();
                   if (k === 'paid' || k === 'success') return 'bg-emerald-600 text-white';
@@ -5676,24 +5669,17 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                 };
                 return (
                   <>
+                    {/* 跟手機一樣固定近 30 天，沒有日期 tab（老闆 2026-09-05：今天／近7天移除） */}
                     <div className="flex h-10 items-center gap-2">
                       <h2 className="text-[20px] font-black tracking-tight text-neutral-900">儲值紀錄</h2>
-                      <span className="text-[13px] font-bold text-neutral-500">{list.length} 筆</span>
-                    </div>
-                    <ProfileSearchField className="mt-3" value={desktopTopupSearch} onChange={setDesktopTopupSearch} placeholder="搜尋訂單、付款方式、狀態" />
-                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                      {periods.map(([id, label]) => (
-                        <button key={id} type="button" className={pill(activeTopupTimeTab === id)} onClick={() => setActiveTopupTimeTab(id)}>
-                          {label}
-                        </button>
-                      ))}
+                      <span className="text-[13px] font-bold text-neutral-500">近 30 天 · {list.length} 筆</span>
                     </div>
 
                     <div className="mt-4 space-y-3">
                       {list.length === 0 ? (
                         <div className="py-20 text-center text-neutral-400">
                           <History className="mx-auto mb-4 h-12 w-12 opacity-20" />
-                          <p className="text-sm font-black">尚無儲值紀錄</p>
+                          <p className="text-sm font-black">近30天無儲值紀錄</p>
                         </div>
                       ) : shown.map((item) => {
                         const cfg = getTopupStatusConfig(item.status);
@@ -6906,7 +6892,8 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                     <ChevronRight className={cn('ml-auto w-4 h-4 transition-transform hidden sm:block', cardxShell ? (activeTab === item.id ? 'text-primary/50' : 'text-[#d1d5db]') : activeTab === item.id ? 'text-white/50' : 'text-neutral-200 group-hover:text-neutral-400')} />
                   </button>
                 ))}
-                {/* 邀請好友：獨立頁面不是 tab，樣式跟上面同一家（老闆指定放優惠券下方） */}
+                {/* 邀請好友：獨立頁面不是 tab（老闆 2026-09-05 晚上：桌機左側欄不放它，舊殼維持） */}
+                {!cardxShell && (
                 <button
                   type="button"
                   onClick={() => {
@@ -6925,6 +6912,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                   </span>
                   <ChevronRight className={cn('w-4 h-4 hidden sm:block', cardxShell ? 'text-[#d1d5db]' : 'text-neutral-200 group-hover:text-neutral-400')} />
                 </button>
+                )}
                 {/* 設定：cardx 殼裡是左側欄的一個分頁（老闆 2026-09-05），取代個人卡右上角的齒輪 */}
                 {cardxShell && (
                   <button
@@ -6947,7 +6935,6 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
   /* 平板（768～1023）：頂部一條橫條＋一排橫捲的分頁膠囊，取代左欄那張直的卡 */
   const tabletTabs: { id: TabType | 'invite'; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     ...navItems.filter(item => item.id !== 'settings' && item.id !== 'market').map(item => ({ id: item.id as TabType, label: item.label, icon: item.icon })),
-    { id: 'invite', label: '邀請好友', icon: UserPlus }, // 獨立頁，不是 tab（老闆 2026-09-05）
     { id: 'settings', label: '設定', icon: Settings },
   ];
   const tabletProfileBar = tabletShell ? (
@@ -6983,12 +6970,12 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
       </div>
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide">
         {tabletTabs.map(t => {
-          const active = t.id !== 'invite' && activeTab === t.id;
+          const active = activeTab === t.id;
           return (
             <button
               key={t.id}
               type="button"
-              onClick={() => { if (isGuest) { router.push(loginHref); return; } if (t.id === 'invite') { router.push('/invite'); return; } handleTabChange(t.id); }}
+              onClick={() => { if (isGuest) { router.push(loginHref); return; } handleTabChange(t.id as TabType); }}
               className={cn('flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-black whitespace-nowrap transition-colors', active ? 'bg-primary text-white' : 'bg-white text-neutral-700 ring-1 ring-[#e5e7eb] hover:bg-neutral-50')}
             >
               <t.icon className="h-4 w-4 stroke-[2.25]" />
