@@ -459,7 +459,7 @@ export default function InviteView({ embedded = false }: { embedded?: boolean } 
 
                   {/* 右欄的字全部沿用手機端（老闆 2026-09-05：不要自創）：進度那句、n/5、成就；
                       邀請碼手機端就疊在主視覺緞帶上，左邊那張圖已經有、點了就能複製，這裡不再另放一格 */}
-                  <div style={{ padding: '24px 28px', minWidth: 0, display: 'grid', alignContent: 'start' }}>
+                  <div style={{ padding: '28px 28px 24px', minWidth: 0, display: 'grid', alignContent: 'start' }}>
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-[14px] font-bold text-neutral-900">被邀請的好友綁定 LINE 帳號即可 +1</p>
                       {status ? (
@@ -471,10 +471,11 @@ export default function InviteView({ embedded = false }: { embedded?: boolean } 
                         <span className="h-5 w-10 shrink-0 animate-pulse rounded bg-neutral-100" />
                       )}
                     </div>
-                    {progressBarDesktop}
+                    {/* 這一段上下間距拉開（老闆 2026-09-05：太緊湊） */}
+                    <div className="mt-2">{progressBarDesktop}</div>
                     {/* 立即領取跟進度放一起（老闆 2026-09-05）；下載邀請圖與分享是手機底欄／右上角那兩顆 */}
                     {/* 兩顆主鈕各佔一半撐滿、分享圖標靠最右（老闆 2026-09-05） */}
-                    <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
                       <Button3D color="red" onClick={claimNow} style={{ height: 40, borderRadius: 12, flex: '1 1 0', minWidth: 0 }}>
                         {claiming ? <Loader2 className="h-5 w-5 animate-spin" /> : '立即領取'}
                       </Button3D>
@@ -489,7 +490,7 @@ export default function InviteView({ embedded = false }: { embedded?: boolean } 
                       </button>
                     </div>
 
-                    <div aria-hidden="true" style={{ height: 1, background: '#e5e7eb', margin: '20px 0 8px' }} />
+                    <div aria-hidden="true" style={{ height: 1, background: '#e5e7eb', margin: '28px 0 14px' }} />
 
                     <div style={{ fontSize: 15, fontWeight: 900, color: '#111827' }}>成就</div>
                     {missionList}
