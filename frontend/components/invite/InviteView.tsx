@@ -361,26 +361,20 @@ export default function InviteView({ embedded = false }: { embedded?: boolean } 
     </div>
   );
   /* 桌機用的進度條：0 的時候左邊露一小段綠（老闆 2026-09-05），手機那條（progressBar）不動。
-     做法跟有進度時一模一樣（同一張填充圖從左端畫出來），只是把 0 當成 6.5%。
-     ⚠️ 不能更短：填充圖左端是半徑約 16 圖素的圓頭（645 寬），4% 只露到圓頭那一段、上下本來就縮，
-     看起來像高度沒滿（老闆 2026-09-05）；6.5% 才露得到圓頭後面的直筒段，高度跟真的進度一樣。
-     再之前用 clip 裁左邊 8px，露出來的是圓頭的一角、像個楔子 */
-  const ZERO_HINT = 0.065;
+     不能拿填充圖裁：那張圖上下自帶兩三格深色邊（立體感用），不管露多寬看起來都「高度沒滿」（老闆改了三次）。
+     改成純 CSS 畫一段：貼齊軌道上下、左圓右直，漸層色照填充圖逐列取樣（上 #dbf300 → 下 #449f0f） */
   const progressBarDesktop = filled > 0 ? progressBar : (
     <div className="relative mt-2.5 h-[15px]">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={asset("/images/invite/bar_track.png")} alt="" className="absolute inset-0 h-full w-full" />
-      <div className="absolute inset-0 overflow-hidden" style={{ width: `${ZERO_HINT * 100}%` }}>
-        <div
-          className="h-full"
-          style={{
-            backgroundImage: `url(${asset('/images/invite/bar_fill.png')})`,
-            backgroundSize: `${(1 / ZERO_HINT) * 100}% 100%`,
-            backgroundPosition: 'left center',
-            backgroundRepeat: 'no-repeat',
-          }}
-        />
-      </div>
+      <div
+        aria-hidden="true"
+        className="absolute inset-y-0 left-0 rounded-l-full"
+        style={{
+          width: '6.5%',
+          background: 'linear-gradient(180deg, #dbf300 0%, #bde700 25%, #a7de03 45%, #7fd100 65%, #5dc400 85%, #449f0f 100%)',
+        }}
+      />
     </div>
   );
   const missionList = (
