@@ -368,7 +368,7 @@ export default function PackDetailPage() {
             {regularPrizes.map((r, idx) => {
               const total = Math.max(1, r.total || 0);
               const pct = showCounts ? ((r.remaining || 0) / total) * 100 : Number(r.probability) || 0;
-              const last = idx === regularPrizes.length - 1 && !lastOne;
+              const last = idx === regularPrizes.length - 1;
               return (
                 <div key={r.id} style={rateRowStyle(last)}>
                   <div style={{ fontSize: 12, fontWeight: 950, color: "#374151", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.level}</div>
@@ -383,15 +383,6 @@ export default function PackDetailPage() {
                 </div>
               );
             })}
-            {lastOne ? (
-              <div style={rateRowStyle(true)}>
-                <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,215,120,0.95)", whiteSpace: "nowrap" }}>最後賞</div>
-                <div />
-                <div style={{ fontSize: 13, fontWeight: 900, color: "#111827", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lastOne.name}</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>抽到最後一張籤就是你的</div>
-                <div style={{ textAlign: "right", fontSize: 12, fontWeight: 950, color: "#111827" }}>{(lastOne.remaining ?? 0) > 0 ? "未送出" : "已送出"}</div>
-              </div>
-            ) : null}
           </div>
 
           <div style={{ ...rateRowStyle(true), borderTop: "1px solid #e5e7eb" }}>
@@ -405,6 +396,43 @@ export default function PackDetailPage() {
 
       </div>
       ) : null}
+
+      {/* 最後賞獨立一張卡（老闆 2026-09-05：放在配率表裡淡黃字看不清，而且它沒有總計）——
+          照手機商品頁那張：黃色漸層、圖、黃標、品名、一句說明；右邊補送出狀態。點了開品項明細 */}
+      {lastOne && !["gacha", "blindbox"].includes(product.type) ? (() => {
+        const sent = (lastOne.remaining ?? 0) <= 0;
+        return (
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label={`最後賞：${lastOne.name}`}
+            onClick={() => setViewingIndex(prizes.indexOf(lastOne))}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setViewingIndex(prizes.indexOf(lastOne)); } }}
+            style={{
+              position: "relative", overflow: "hidden", cursor: "pointer",
+              borderRadius: 16, padding: 16,
+              background: "linear-gradient(135deg, #fefce8 0%, #fef9c3 100%)",
+              border: "1px solid rgba(254, 240, 138, 0.8)",
+              boxShadow: "0 10px 30px -12px rgba(250, 204, 21, 0.45)",
+              display: "flex", alignItems: "center", gap: 16, minWidth: 0,
+            }}
+          >
+            <div aria-hidden="true" style={{ position: "absolute", top: 0, right: 0, width: 220, height: 220, borderRadius: "50%", background: "rgba(250, 204, 21, 0.22)", filter: "blur(48px)", transform: "translate(50%, -50%)", pointerEvents: "none" }} />
+            <div style={{ position: "relative", width: 72, height: 72, flex: "0 0 auto", borderRadius: 12, overflow: "hidden", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(254, 240, 138, 0.8)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={lastOne.image_url || asset("/images/item_defaulet.webp")} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+            </div>
+            <div style={{ position: "relative", flex: "1 1 auto", minWidth: 0 }}>
+              <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 4, background: "#facc15", color: "#111827", fontSize: 10, fontWeight: 900, letterSpacing: "0.08em", boxShadow: "0 4px 12px rgba(250, 204, 21, 0.3)", marginBottom: 6 }}>最後賞</span>
+              <div style={{ fontSize: 16, fontWeight: 900, color: "#111827", lineHeight: "20px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lastOne.name}</div>
+              <div style={{ marginTop: 4, fontSize: 12, fontWeight: 700, color: "rgba(133, 77, 14, 0.8)" }}>購買最後一張籤即可獲得此獎項</div>
+            </div>
+            <div style={{ position: "relative", flex: "0 0 auto", padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 900, whiteSpace: "nowrap", background: sent ? "rgba(17, 24, 39, 0.08)" : "#ffffff", color: sent ? "#6b7280" : "#b45309", border: sent ? "1px solid transparent" : "1px solid rgba(240, 180, 41, 0.6)" }}>
+              {sent ? "已送出" : "未送出"}
+            </div>
+          </div>
+        );
+      })() : null}
     </div>
   );
 
@@ -419,11 +447,13 @@ export default function PackDetailPage() {
      圖下面才是內距 16 的文字區：賞等標籤＋品名，再一行剩餘／收集狀態。
      賞等用全站同一顆 GradeBadge；轉蛋與盒玩只有「一般版」這種沒意義的賞等，不顯示 */
   const showGrade = !["gacha", "blindbox"].includes(product.type);
+  /* 最後賞的金邊要包住整張卡含圖（老闆 2026-09-05）：原本用內縮陰影畫，
+     圖是 absolute 貼在上面、內縮陰影畫在內容底下，上半段的邊就被圖蓋掉。改成真邊框 */
   const prizeTileStyle = (gold: boolean): React.CSSProperties => ({
     borderRadius: 8,
     background: "#ffffff",
-    boxShadow: gold ? "inset 0 0 0 1.5px #f0b429" : "0 1px 2px rgba(0,0,0,0.04)",
-    border: gold ? undefined : "1px solid #e5e7eb",
+    boxShadow: gold ? "0 0 0 1px rgba(240, 180, 41, 0.25)" : "0 1px 2px rgba(0,0,0,0.04)",
+    border: gold ? "1.5px solid #f0b429" : "1px solid #e5e7eb",
     overflow: "hidden",
     display: "grid",
     gridTemplateRows: "auto 1fr",
