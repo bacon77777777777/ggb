@@ -612,9 +612,10 @@ export function HomeClient() {
                     style={{
                       flex: "1 0 auto", height: 42, border: 0, borderRadius: 10, padding: "0 14px", cursor: "pointer",
                       fontSize: 14, fontWeight: 600, transition: "all 200ms ease", whiteSpace: "nowrap",
-                      background: active ? "#ffffff" : "transparent",
-                      color: active ? "#111827" : "#6b7280",
-                      boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.08)" : "none",
+                      /* 選中：主題紅底白字（老闆 2026-09-05：原本白底黑字太不明顯） */
+                      background: active ? "rgb(var(--primary))" : "transparent",
+                      color: active ? "#ffffff" : "#6b7280",
+                      boxShadow: "none",
                     }}
                   >
                     {t.label}
