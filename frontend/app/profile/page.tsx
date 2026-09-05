@@ -473,7 +473,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [supabase] = useState(() => createClient());
-  const isDesktop = useMediaQuery('(min-width: 768px)');
+  const isDesktop = useMediaQuery('(min-width: 1024px)'); // 桌機版型從 1024 起（老闆 2026-09-05：768～1023 跟手機一樣）
   const { flags, states: featureStates } = useFeatureFlags();
   /*
    * App 裡不可出現 C2C 入口（商城管理／交易所管理／交換管理）：

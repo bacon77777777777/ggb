@@ -51,7 +51,7 @@ export interface HideOnScrollOptions {
 export function useHideOnScroll(options: HideOnScrollOptions = {}): boolean {
   const {
     enabled = true,
-    mediaQuery = '(max-width: 767px)',
+    mediaQuery = '(max-width: 1023px)', // 768～1023 跟手機一樣會捲動收起（老闆 2026-09-05）
     topThreshold = 80,
     hideAfter = 8,
     showAfter = 2,

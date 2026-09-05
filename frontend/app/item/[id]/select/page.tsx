@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { asset } from '@/lib/asset';
 
 function ItemSelectTicketInner() {
-  const isDesktop = useMediaQuery('(min-width: 768px)');
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
   const router = useRouter();
   // ?trial=1 → 試試看：跳過選籤直接進撕紙，不扣款
   const isTrial = useSearchParams().get('trial') === '1';

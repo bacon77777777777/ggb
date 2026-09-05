@@ -50,7 +50,7 @@ function MissionPageMobile() {
   const userId = user?.id;
 
   useLayoutEffect(() => {
-    if (window.innerWidth >= 768) router.replace('/');
+    if (window.innerWidth >= 1024) router.replace('/');
   }, []);
 
   // Initialize Audio

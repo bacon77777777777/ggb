@@ -82,7 +82,7 @@ export default function ExchangeListPage() {
   const { user } = useAuth();
 
   useLayoutEffect(() => {
-    if (window.innerWidth >= 768) router.replace('/');
+    if (window.innerWidth >= 1024) router.replace('/');
   }, []);
 
   const cacheKey = 'exchange:listCache:v1';

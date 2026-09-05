@@ -272,7 +272,8 @@ a, video, canvas {
   .custom-scrollbar::-webkit-scrollbar-thumb {
     @apply bg-neutral-200 rounded-full hover:bg-neutral-300 transition-colors;
   }
-  @media (max-width: 768px) {
+  /* 768～1023 跟手機一樣（老闆 2026-09-05），所以蓋到 1023 */
+  @media (max-width: 1023px) {
     .font-black {
       font-weight: 400;
     }

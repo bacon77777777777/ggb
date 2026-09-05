@@ -83,14 +83,15 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
    * 平板（768–1023，老闆 2026-09-04）：機台區改成滿版正方形舞台，底下照手機的單欄往下排，
    * 品項一排四個。768 以下一字不動。
    */
-  const [isTablet, setIsTablet] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 768 && window.innerWidth < 1024);
+  /* 平板模式已停用（老闆 2026-09-05：768～1023 直接用手機版型），isTablet 永遠 false，留著是因為下面很多分支在讀 */
+  const [isTablet, setIsTablet] = useState(false);
 
   useEffect(() => {
     const BASE = 375;
     const updateScale = () => {
       if (typeof window === 'undefined') return;
       const w = window.innerWidth;
-      const isMob = w <= 767;
+      const isMob = w <= 1023;
       const isDesk = w >= 1024;
       setIsMobile(isMob);
       setIsDesktop(isDesk);

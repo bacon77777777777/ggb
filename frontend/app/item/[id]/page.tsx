@@ -721,7 +721,7 @@ function ProductDetailPageMobile() {
   useEffect(() => {
     const updateIsMobile = () => {
       if (typeof window === 'undefined') return;
-      setIsMobile(window.innerWidth < 768);
+      setIsMobile(window.innerWidth < 1024);
     };
     updateIsMobile();
     window.addEventListener('resize', updateIsMobile);

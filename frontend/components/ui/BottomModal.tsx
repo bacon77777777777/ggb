@@ -22,7 +22,7 @@ export function BottomModal({ open, onClose, title, children }: {
   title: string;
   children: React.ReactNode;
 }) {
-  const isDesktop = useMediaQuery('(min-width: 768px)');
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 

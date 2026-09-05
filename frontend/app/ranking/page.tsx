@@ -53,7 +53,7 @@ function RankingPageMobile() {
   useStatusBarText('white', '#1b2148');
 
   useLayoutEffect(() => {
-    if (window.innerWidth >= 768) router.replace('/');
+    if (window.innerWidth >= 1024) router.replace('/');
   }, []);
   const queryClient = useQueryClient();
   const [scale, setScale] = useState(1);
