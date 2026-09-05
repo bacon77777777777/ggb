@@ -466,7 +466,7 @@ export default function PackDetailPage() {
     /* 底部那行：封存制（一番賞／抽卡／自製賞）看剩餘張數；
        轉蛋／盒玩不公開張數也不公開單品機率，跟手機頁一樣只標已收集／未收集 */
     /* 未登入時沒有「收集狀態」可講，整行不畫 —— 印一個破折號看起來像資料壞掉 */
-    const figure = gold ? "最後一籤" : showCounts ? `${x.remaining ?? 0} / ${x.total ?? 0}` : user ? (collected ? "已收集" : "未收集") : null;
+    const figure = gold ? "最後賞" : showCounts ? `${x.remaining ?? 0} / ${x.total ?? 0}` : user ? (collected ? "已收集" : "未收集") : null;
     const figureColor = gold
       ? "#b45309"
       : !showCounts && user && collected ? "#059669"
@@ -519,8 +519,9 @@ export default function PackDetailPage() {
     <>
             <section className={styles.section} aria-label="品項總覽" style={{ marginTop: 0 }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
-                {lastOne ? prizeTile(lastOne, true) : null}
                 {regularPrizes.map((x) => prizeTile(x, false))}
+                {/* 最後賞排最後（老闆 2026-09-05） */}
+                {lastOne ? prizeTile(lastOne, true) : null}
               </div>
             </section>
 
