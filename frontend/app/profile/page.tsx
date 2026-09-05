@@ -57,6 +57,8 @@ import { AppShell } from '@/cardx/components/layout/AppShell';
 import { defaultSidebarItems } from '@/cardx/lib/navigation';
 import homeStyles from '@/cardx/components/home/HomeClient.module.css';
 import { Button3D as CardxButton3D } from '@/cardx/components/ui/Kit';
+import { HomeProductCard } from '@/cardx/components/home/HomeClient';
+import type { HomeProduct } from '@/lib/queries/home';
 import { useMinWidth } from '@/lib/useMinWidth';
 
 import { Tabs, TabsContent, TabsContentWrapper, TabsList, TabsTrigger } from '@/components/ui/Tabs';
@@ -720,6 +722,37 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
   const warehouseSubTabsRef = useRef<HTMLDivElement>(null);
   const [mobileWarehouseDisplayCount, setMobileWarehouseDisplayCount] = useState(WAREHOUSE_PAGE);
   const mobileWarehouseSentinelRef = useRef<HTMLDivElement>(null);
+  /* 桌機「我的關注」：商品格預設三排、捲到底再加三排（老闆 2026-09-05）。欄數照容器寬度算（卡至少 200 寬） */
+  const [desktopFollowsCols, setDesktopFollowsCols] = useState(4);
+  const desktopFollowsColsRef = useRef(4);
+  const [desktopFollowsCount, setDesktopFollowsCount] = useState(12);
+  const desktopFollowsRoRef = useRef<ResizeObserver | null>(null);
+  const desktopFollowsGridRef = React.useCallback((node: HTMLDivElement | null) => {
+    desktopFollowsRoRef.current?.disconnect();
+    desktopFollowsRoRef.current = null;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+    const apply = (w: number) => {
+      const cols = Math.min(6, Math.max(2, Math.floor((w + 16) / (200 + 16))));
+      desktopFollowsColsRef.current = cols;
+      setDesktopFollowsCols(cols);
+      setDesktopFollowsCount((prev) => Math.max(prev, cols * 3));
+    };
+    apply(node.clientWidth);
+    const ro = new ResizeObserver((entries) => { for (const e of entries) apply(e.contentRect.width); });
+    ro.observe(node);
+    desktopFollowsRoRef.current = ro;
+  }, []);
+  const desktopFollowsIoRef = useRef<IntersectionObserver | null>(null);
+  const desktopFollowsSentinel = React.useCallback((node: HTMLDivElement | null) => {
+    desktopFollowsIoRef.current?.disconnect();
+    desktopFollowsIoRef.current = null;
+    if (!node) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) setDesktopFollowsCount((prev) => prev + desktopFollowsColsRef.current * 3);
+    }, { rootMargin: '400px 0px' });
+    io.observe(node);
+    desktopFollowsIoRef.current = io;
+  }, []);
   /* 桌機倉庫：捲到底自動載入（老闆 2026-09-05：不要分頁）。用 callback ref 掛 IntersectionObserver，
      哨兵是條件渲染的，用一般 ref＋effect 會抓不到它出現的時機 */
   const [desktopWarehouseDisplayCount, setDesktopWarehouseDisplayCount] = useState(DESKTOP_WAREHOUSE_PAGE);
@@ -2752,8 +2785,11 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
   }, [
     activeTab, activeWarehouseCategory, activeWarehouseSubCategory, activeWarehouseTab,
     warehouseSort, warehouseSearch, desktopWarehouseSearch, desktopDismantledSearch, warehouseSupplier, warehouseFilter,
-    activeDeliveryTab, desktopDeliverySearch, desktopDrawSearch, desktopTopupSearch, activeTopupTimeTab,
+    activeDeliveryTab, desktopDeliverySearch, desktopDrawSearch, desktopTopupSearch, activeTopupTimeTab, desktopCouponsStatus,
   ]);
+  useEffect(() => {
+    setDesktopFollowsCount(desktopFollowsColsRef.current * 3);
+  }, [activeTab]);
 
   // Mobile delivery lazy load reset
   useEffect(() => {
@@ -5815,184 +5851,53 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
               </div>
             </div>
 
-            <div className="hidden md:block px-6 py-5">
+            {/* 桌機（cardx 殼）：商品小卡就是首頁那顆 HomeProductCard，顯示全部不分類、預設三排、捲到底再加三排（老闆 2026-09-05） */}
+            <div className="hidden md:block">
               {(() => {
-                const getStatusConfig = (product: FollowedProduct) => {
-                  const remaining = typeof product.remaining === 'number' ? product.remaining : 0
-                  const isSoldOut =
-                    product.status === 'soldout' ||
-                    product.status === 'ended' ||
-                    remaining <= 0
-                  if (isSoldOut) {
-                    return {
-                      label: '已完抽',
-                      color: 'text-neutral-600 dark:text-neutral-300',
-                      bg: 'bg-neutral-100 dark:bg-neutral-900',
-                      border: 'border-neutral-200 dark:border-neutral-800',
-                    }
-                  }
-                  if (product.status === 'selling') {
-                    return {
-                      label: '販售中',
-                      color: 'text-accent-emerald dark:text-accent-emerald',
-                      bg: 'bg-accent-emerald/10 dark:bg-accent-emerald/10',
-                      border: 'border-accent-emerald/20 dark:border-accent-emerald/20',
-                    }
-                  }
-                  return {
-                    label: product.status || '未知',
-                    color: 'text-neutral-600 dark:text-neutral-300',
-                    bg: 'bg-neutral-100 dark:bg-neutral-900',
-                    border: 'border-neutral-200 dark:border-neutral-800',
-                  }
-                }
-
-                const getHref = (product: FollowedProduct) => {
-                  const type = String(product.type || '').toLowerCase()
-                  if (type === 'blindbox') return `/blindbox/${product.id}`
-                  if (type === 'gacha') return `/gacha/${product.id}`
-                  if (type === 'card') return `/card/${product.id}`
-                  return `/item/${product.id}`
-                }
-
-                const q = desktopFollowsSearch.trim().toLowerCase()
-                const list = filteredFollowedProducts.filter((p) => {
-                  if (!q) return true
-                  const text = `${p.name} ${p.type} ${p.status}`.toLowerCase()
-                  return text.includes(q)
-                })
-
-                const total = list.length
-                const totalPages = Math.max(1, Math.ceil(total / desktopFollowsPageSize))
-                const page = Math.min(desktopFollowsPage, totalPages)
-                const start = (page - 1) * desktopFollowsPageSize
-                const pageRows = list.slice(start, start + desktopFollowsPageSize)
-
+                const toHomeProduct = (p: FollowedProduct): HomeProduct => ({
+                  id: Number(p.id), name: p.name, image_url: p.image, price: p.price, status: p.status,
+                  remaining: p.remaining ?? null, total_count: p.total ?? null, is_hot: !!p.is_hot, type: p.type ?? null,
+                } as unknown as HomeProduct);
+                const unfollowDesktop = async (productId: string | number) => {
+                  if (!user) return;
+                  const { error } = await createClient().from('product_follows').delete().eq('user_id', user.id).eq('product_id', Number(productId));
+                  if (error) { toast.error('取消關注失敗，請再試一次'); return; }
+                  setFollowedProducts((prev) => prev.filter((p) => String(p.id) !== String(productId)));
+                  toast.success('已取消關注');
+                };
+                const shown = followedProducts.slice(0, desktopFollowsCount);
+                const hasMore = shown.length < followedProducts.length;
                 return (
-                  <div className="space-y-4">
-                    <ProfileSectionHeader
-                      title="我的關注"
-
-                    />
-
-                    <ProfileToolbar
-                      left={
-                        <>
-                          <input
-                            value={desktopFollowsSearch}
-                            onChange={(e) => setDesktopFollowsSearch(e.target.value)}
-                            placeholder="搜尋商品"
-                            className="h-9 w-[320px] max-w-full px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-bold text-neutral-800 dark:text-neutral-100 placeholder:text-neutral-400"
-                          />
-                          <select
-                            value={activeFollowsTab}
-                            onChange={(e) => setActiveFollowsTab(e.target.value as 'all' | 'selling' | 'soldout')}
-                            className="h-9 px-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-bold text-neutral-700 dark:text-neutral-200"
-                          >
-                            <option value="all">全部</option>
-                            <option value="selling">販售中</option>
-                            <option value="soldout">已完抽</option>
-                          </select>
-                        </>
-                      }
-                      right={
-                        <div className="text-[12px] text-neutral-500 dark:text-neutral-400 font-bold">
-                          共 {total} 筆
+                  <>
+                    <div className="flex h-10 items-center gap-2">
+                      <h2 className="text-[20px] font-black tracking-tight text-neutral-900">我的關注</h2>
+                      <span className="text-[13px] font-bold text-neutral-500">{followedProducts.length} 件</span>
+                    </div>
+                    {isLoadingData ? (
+                      <div className="mt-4 grid gap-4" style={{ gridTemplateColumns: `repeat(${desktopFollowsCols}, minmax(0, 1fr))` }}>
+                        {Array.from({ length: desktopFollowsCols * 2 }).map((_, i) => (
+                          <div key={i} className="aspect-[3/4] animate-pulse rounded-2xl bg-white ring-1 ring-[#e5e7eb]" />
+                        ))}
+                      </div>
+                    ) : followedProducts.length === 0 ? (
+                      <div className="py-20 text-center text-neutral-400">
+                        <Heart className="mx-auto mb-4 h-12 w-12 opacity-20" />
+                        <p className="text-sm font-black">尚無關注商品</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div ref={desktopFollowsGridRef} className="mt-4 grid gap-4" style={{ gridTemplateColumns: `repeat(${desktopFollowsCols}, minmax(0, 1fr))` }}>
+                          {shown.map((p) => (
+                            <HomeProductCard key={p.id} product={toHomeProduct(p)} followed onToggleFollow={() => void unfollowDesktop(p.id)} />
+                          ))}
                         </div>
-                      }
-                    />
-
-                    <ProfileDataTable
-                      columns={[
-                        {
-                          key: 'product',
-                          header: '商品',
-                          render: (p: FollowedProduct) => (
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shrink-0">
-                                <Image
-                                  src={p.image || asset('/images/item_defaulet.webp')}
-                                  alt={p.name}
-                                  fill
-                                  className="object-cover"
-                                  unoptimized
-                                />
-                              </div>
-                              <div className="min-w-0">
-                                <div className="font-black text-neutral-900 dark:text-white truncate">{p.name}</div>
-                                <div className="text-[12px] text-neutral-500 dark:text-neutral-400 font-bold truncate">
-                                  {p.type || '-'}
-                                </div>
-                              </div>
-                            </div>
-                          ),
-                        },
-                        {
-                          key: 'status',
-                          header: '狀態',
-                          className: 'w-[120px]',
-                          render: (p: FollowedProduct) => <ProfileStatusBadge config={getStatusConfig(p)} />,
-                        },
-                        {
-                          key: 'remaining',
-                          header: '剩餘',
-                          className: 'w-[120px]',
-                          render: (p: FollowedProduct) => (
-                            <div className="text-[13px] font-black text-neutral-900 dark:text-white font-amount whitespace-nowrap">
-                              {(p.remaining || 0).toLocaleString()} / {(p.total || 0).toLocaleString()}
-                            </div>
-                          ),
-                        },
-                        {
-                          key: 'price',
-                          header: '單價(G)',
-                          className: 'w-[140px]',
-                          render: (p: FollowedProduct) => (
-                            <div className="flex items-center gap-1.5">
-                              <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="object-contain" />
-                              <span className="text-[14px] font-black text-neutral-900 dark:text-white font-amount tracking-tighter">
-                                {(p.price || 0).toLocaleString()}
-                              </span>
-                            </div>
-                          ),
-                        },
-                        {
-                          key: 'action',
-                          header: '',
-                          className: 'w-[90px]',
-                          cellClassName: 'text-right',
-                          render: (p: FollowedProduct) => (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                router.push(getHref(p))
-                              }}
-                              className="h-8 px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 text-[12px] font-black text-neutral-700 dark:text-neutral-200 bg-white dark:bg-neutral-950 hover:bg-neutral-50 dark:hover:bg-neutral-900"
-                            >
-                              查看
-                            </button>
-                          ),
-                        },
-                      ]}
-                      rows={pageRows}
-                      rowKey={(r: FollowedProduct) => String(r.id)}
-                      onRowClick={(p: FollowedProduct) => router.push(getHref(p))}
-                      empty={activeFollowsTab === 'all' ? '尚無關注商品' : '沒有相關商品'}
-                    />
-
-                    <ProfilePagination
-                      page={page}
-                      pageSize={desktopFollowsPageSize}
-                      total={total}
-                      onPageChange={setDesktopFollowsPage}
-                      onPageSizeChange={(s) => {
-                        setDesktopFollowsPageSize(s)
-                        setDesktopFollowsPage(1)
-                      }}
-                    />
-                  </div>
-                )
+                        <div ref={desktopFollowsSentinel} className="py-5 text-center text-[13px] font-bold text-neutral-400">
+                          {hasMore ? '載入中…' : `已顯示全部 ${followedProducts.length} 件`}
+                        </div>
+                      </>
+                    )}
+                  </>
+                );
               })()}
             </div>
           </>
@@ -6118,150 +6023,75 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
               </AnimatePresence>
             </div>
 
-            <div className="hidden md:block px-6 py-5">
+            {/* 桌機（cardx 殼）：沿用配送管理那套——狀態膠囊、一張一列（左邊折抵、右邊實色狀態）、捲到底自動載入；輸入優惠代碼在標題列右邊 */}
+            <div className="hidden md:block">
               {(() => {
-                const getStatusConfig = (coupon: Coupon) => {
-                  if (coupon.status === 'unused') {
-                    return {
-                      label: '可使用',
-                      color: 'text-accent-emerald dark:text-accent-emerald',
-                      bg: 'bg-accent-emerald/10 dark:bg-accent-emerald/10',
-                      border: 'border-accent-emerald/20 dark:border-accent-emerald/20',
-                    }
-                  }
-                  if (coupon.status === 'used') {
-                    return {
-                      label: '已使用',
-                      color: 'text-neutral-600 dark:text-neutral-300',
-                      bg: 'bg-neutral-100 dark:bg-neutral-900',
-                      border: 'border-neutral-200 dark:border-neutral-800',
-                    }
-                  }
-                  return {
-                    label: '已過期',
-                    color: 'text-neutral-600 dark:text-neutral-300',
-                    bg: 'bg-neutral-100 dark:bg-neutral-900',
-                    border: 'border-neutral-200 dark:border-neutral-800',
-                  }
-                }
-
-                const q = desktopCouponsSearch.trim().toLowerCase()
-                const list = coupons
-                  .filter((c) => (desktopCouponsStatus === 'all' ? true : c.status === desktopCouponsStatus))
-                  .filter((c) => {
-                    if (!q) return true
-                    const text = `${c.title} ${c.description} ${c.discountType} ${c.discountValue}`.toLowerCase()
-                    return text.includes(q)
-                  })
-
-                const total = list.length
-                const totalPages = Math.max(1, Math.ceil(total / desktopCouponsPageSize))
-                const page = Math.min(desktopCouponsPage, totalPages)
-                const start = (page - 1) * desktopCouponsPageSize
-                const pageRows = list.slice(start, start + desktopCouponsPageSize)
-
+                const list = coupons.filter((c) => (desktopCouponsStatus === 'all' ? true : c.status === desktopCouponsStatus));
+                const shown = list.slice(0, desktopWarehouseDisplayCount);
+                const hasMore = shown.length < list.length;
+                const pill = (active: boolean) => cn(
+                  'h-9 px-3.5 rounded-full text-[13px] font-black whitespace-nowrap transition-colors',
+                  active ? 'bg-primary text-white' : 'bg-white text-neutral-700 ring-1 ring-[#e5e7eb] hover:bg-neutral-50',
+                );
+                const tabs = [['all', '全部'], ['unused', '可使用'], ['used', '已使用'], ['expired', '已過期']] as const;
+                const statusView = (st: Coupon['status']) =>
+                  st === 'unused' ? { label: '可使用', solid: 'bg-emerald-600 text-white' }
+                  : st === 'used' ? { label: '已使用', solid: 'bg-neutral-500 text-white' }
+                  : { label: '已過期', solid: 'bg-neutral-400 text-white' };
                 return (
-                  <div className="space-y-4">
-                    <ProfileSectionHeader
-                      title="我的優惠券"
-
-                      actions={
-                        <button
-                          type="button"
-                          onClick={() => setIsCouponModalOpen(true)}
-                          className="h-9 px-3 rounded-lg bg-primary text-white text-[13px] font-black"
-                        >
-                          輸入優惠代碼
+                  <>
+                    <div className="flex h-10 items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-[20px] font-black tracking-tight text-neutral-900">我的優惠券</h2>
+                        <span className="text-[13px] font-bold text-neutral-500">{list.length} 張</span>
+                      </div>
+                      <button type="button" onClick={() => setIsCouponModalOpen(true)} className="h-9 rounded-xl bg-primary px-4 text-[13px] font-black text-white">
+                        輸入優惠代碼
+                      </button>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                      {tabs.map(([id, label]) => (
+                        <button key={id} type="button" className={pill(desktopCouponsStatus === id)} onClick={() => setDesktopCouponsStatus(id)}>
+                          {label}
                         </button>
-                      }
-                    />
+                      ))}
+                    </div>
 
-                    <ProfileToolbar
-                      left={
-                        <>
-                          <input
-                            value={desktopCouponsSearch}
-                            onChange={(e) => setDesktopCouponsSearch(e.target.value)}
-                            placeholder="搜尋優惠券"
-                            className="h-9 w-[320px] max-w-full px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-bold text-neutral-800 dark:text-neutral-100 placeholder:text-neutral-400"
-                          />
-                          <select
-                            value={desktopCouponsStatus}
-                            onChange={(e) => setDesktopCouponsStatus(e.target.value as 'all' | 'unused' | 'used' | 'expired')}
-                            className="h-9 px-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-bold text-neutral-700 dark:text-neutral-200"
-                          >
-                            <option value="all">全部</option>
-                            <option value="unused">可使用</option>
-                            <option value="used">已使用</option>
-                            <option value="expired">已過期</option>
-                          </select>
-                        </>
-                      }
-                      right={
-                        <div className="text-[12px] text-neutral-500 dark:text-neutral-400 font-bold">
-                          共 {total} 筆
+                    <div className="mt-4 space-y-3">
+                      {list.length === 0 ? (
+                        <div className="py-20 text-center text-neutral-400">
+                          <Ticket className="mx-auto mb-4 h-12 w-12 opacity-20" />
+                          <p className="text-sm font-black">目前沒有可用的優惠券</p>
                         </div>
-                      }
-                    />
-
-                    <ProfileDataTable
-                      columns={[
-                        {
-                          key: 'coupon',
-                          header: '優惠券',
-                          render: (c: Coupon) => (
-                            <div className="min-w-0">
-                              <div className="font-black text-neutral-900 dark:text-white truncate">{c.title}</div>
-                              <div className="text-[12px] text-neutral-500 dark:text-neutral-400 font-bold truncate">
-                                {c.description || '-'}
+                      ) : shown.map((coupon) => {
+                        const sv = statusView(coupon.status);
+                        return (
+                          <div key={coupon.id} className="flex items-center gap-5 rounded-[16px] bg-white px-6 py-5 ring-1 ring-[#e5e7eb]">
+                            <div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl border border-pink-100 bg-pink-50">
+                              <span className="text-[18px] font-black leading-none text-pink-500">
+                                {coupon.discountType === 'fixed' ? `$${coupon.discountValue}` : `${coupon.discountValue}%`}
+                              </span>
+                              <span className="mt-1 text-[10px] font-bold uppercase leading-none text-pink-400">OFF</span>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-[16px] font-black text-neutral-900">{coupon.title}</div>
+                              {coupon.description ? <div className="mt-1 truncate text-[13px] font-bold text-neutral-500">{coupon.description}</div> : null}
+                              <div className="mt-1.5 text-[13px] font-bold text-neutral-400">
+                                {coupon.expiryDate ? `期限：${new Date(coupon.expiryDate).toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })}` : '無使用期限'}
                               </div>
                             </div>
-                          ),
-                        },
-                        {
-                          key: 'discount',
-                          header: '折扣',
-                          className: 'w-[140px]',
-                          render: (c: Coupon) => (
-                            <div className="text-[14px] font-black text-pink-600 dark:text-pink-400 font-amount whitespace-nowrap">
-                              {c.discountType === 'fixed' ? `$${c.discountValue}` : `${c.discountValue}%`}
-                            </div>
-                          ),
-                        },
-                        {
-                          key: 'expiry',
-                          header: '期限',
-                          className: 'w-[160px]',
-                          render: (c: Coupon) => (
-                            <div className="text-[13px] font-bold text-neutral-700 dark:text-neutral-200 whitespace-nowrap">
-                              {c.expiryDate ? new Date(c.expiryDate).toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' }) : '無期限'}
-                            </div>
-                          ),
-                        },
-                        {
-                          key: 'status',
-                          header: '狀態',
-                          className: 'w-[120px]',
-                          render: (c: Coupon) => <ProfileStatusBadge config={getStatusConfig(c)} />,
-                        },
-                      ]}
-                      rows={pageRows}
-                      rowKey={(r: Coupon) => String(r.id)}
-                      empty="目前沒有可用的優惠券"
-                    />
-
-                    <ProfilePagination
-                      page={page}
-                      pageSize={desktopCouponsPageSize}
-                      total={total}
-                      onPageChange={setDesktopCouponsPage}
-                      onPageSizeChange={(s) => {
-                        setDesktopCouponsPageSize(s)
-                        setDesktopCouponsPage(1)
-                      }}
-                    />
-                  </div>
-                )
+                            <span className={cn('inline-flex h-9 shrink-0 items-center rounded-full px-4 text-[15px] font-black whitespace-nowrap', sv.solid)}>{sv.label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {list.length > 0 && (
+                      <div ref={desktopWarehouseSentinel} className="py-5 text-center text-[13px] font-bold text-neutral-400">
+                        {hasMore ? '載入中…' : `已顯示全部 ${list.length} 張`}
+                      </div>
+                    )}
+                  </>
+                );
               })()}
             </div>
 
@@ -6850,7 +6680,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
     ? { boxShadow: '0 0 0 1px #e5e7eb, 0 10px 40px -10px rgba(0,0,0,0.08)' }
     : undefined;
   /* 已重構成「零套疊」的分頁：右欄不再包外層白卡，內容直接鋪在頁面底色上（老闆 2026-09-05） */
-  const flatTab = cardxShell && ['warehouse', 'settings', 'delivery', 'draw-history', 'topup-history'].includes(activeTab);
+  const flatTab = cardxShell && ['warehouse', 'settings', 'delivery', 'draw-history', 'topup-history', 'follows', 'coupons'].includes(activeTab);
   const sideCardCls = cardxShell
     ? 'bg-white rounded-[18px] p-[14px]'
     : 'bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3';
