@@ -2748,7 +2748,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
   }, [
     activeTab, activeWarehouseCategory, activeWarehouseSubCategory, activeWarehouseTab,
     warehouseSort, warehouseSearch, desktopWarehouseSearch, desktopDismantledSearch, warehouseSupplier, warehouseFilter,
-    activeDeliveryTab, desktopDeliverySearch,
+    activeDeliveryTab, desktopDeliverySearch, desktopDrawSearch, desktopTopupSearch, activeTopupTimeTab,
   ]);
 
   // Mobile delivery lazy load reset
@@ -5461,212 +5461,115 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
               </div>
             </div>
 
-            <div className="hidden md:block px-6 py-5">
+            {/* 桌機（cardx 殼）：沿用配送管理那套——不包白卡、共用搜尋框、一筆一列（右邊一顆重點：消耗）、點列展開獲得獎項、捲到底自動載入。
+                欄位文字跟手機一致：共 N 項／積分／獲得獎項 (N)／驗證（老闆 2026-09-05） */}
+            <div className="hidden md:block">
               {(() => {
                 const q = desktopDrawSearch.trim().toLowerCase();
-                const toTime = (s?: string) => {
-                  if (!s) return 0;
-                  const d = new Date(s.replace(/-/g, '/'));
-                  const t = d.getTime();
-                  return Number.isFinite(t) ? t : 0;
+                const list = drawHistory.filter((item) => {
+                  if (!q) return true;
+                  const base = `${item.product} ${item.date}`.toLowerCase();
+                  const tickets = (item.tickets || []).join(' ').toLowerCase();
+                  const prizes = (item.items || []).map((r) => `${r.grade} ${r.name}`).join(' ').toLowerCase();
+                  return base.includes(q) || tickets.includes(q) || prizes.includes(q);
+                });
+                const shown = list.slice(0, desktopWarehouseDisplayCount);
+                const hasMore = shown.length < list.length;
+                const verify = (item: DrawHistoryItem, result: DrawHistoryItem['items'][number]) => {
+                  const isEndedOrSoldOut = item.productStatus === 'ended' || item.productStatus === 'soldout' || (item.productRemaining !== undefined && item.productRemaining <= 0);
+                  if (!isEndedOrSoldOut) { toast.error('該商品完抽後可驗證'); return; }
+                  drawView.remember({ tab: '', y: window.scrollY, count: mobileDrawDisplayCount, from: `/fairness/${item.productId}` });
+                  router.push(`/fairness/${item.productId}?nonce=${encodeURIComponent(result.ticket_number)}&txid_hash=${encodeURIComponent(result.txid_hash!)}`);
                 };
-
-                const list = [...drawHistory]
-                  .sort((a, b) => toTime(b.rawDate || b.date) - toTime(a.rawDate || a.date))
-                  .filter((item) => {
-                    if (!q) return true;
-                    const base = `${item.product} ${item.date} ${formatDrawId(item.id, item.rawDate)}`
-                      .toLowerCase();
-                    const tickets = (item.tickets || []).join(' ').toLowerCase();
-                    const prizes = (item.items || []).map((r) => `${r.grade} ${r.name} ${r.ticket_number}`).join(' ').toLowerCase();
-                    return base.includes(q) || tickets.includes(q) || prizes.includes(q);
-                  });
-
-                const total = list.length;
-                const totalPages = Math.max(1, Math.ceil(total / desktopDrawPageSize));
-                const page = Math.min(desktopDrawPage, totalPages);
-                const start = (page - 1) * desktopDrawPageSize;
-                const pageRows = list.slice(start, start + desktopDrawPageSize);
-
                 return (
-                  <div className="space-y-4">
-                    <ProfileSectionHeader
-                      title="抽獎紀錄"
+                  <>
+                    <div className="flex h-10 items-center gap-2">
+                      <h2 className="text-[20px] font-black tracking-tight text-neutral-900">抽獎紀錄</h2>
+                      <span className="text-[13px] font-bold text-neutral-500">{list.length} 筆</span>
+                    </div>
+                    <ProfileSearchField className="mt-3" value={desktopDrawSearch} onChange={setDesktopDrawSearch} placeholder="搜尋商品、籤號、獎項" />
 
-                    />
-
-                    <ProfileToolbar
-                      left={
-                        <input
-                          value={desktopDrawSearch}
-                          onChange={(e) => setDesktopDrawSearch(e.target.value)}
-                          placeholder="搜尋商品 / 籤號 / 獎項"
-                          className="h-9 w-[360px] max-w-full px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-bold text-neutral-800 dark:text-neutral-100 placeholder:text-neutral-400"
-                        />
-                      }
-                      right={
-                        <div className="text-[12px] text-neutral-500 dark:text-neutral-400 font-bold">
-                          共 {total} 筆
+                    <div className="mt-4 space-y-3">
+                      {list.length === 0 ? (
+                        <div className="py-20 text-center text-neutral-400">
+                          <Trophy className="mx-auto mb-4 h-12 w-12 opacity-20" />
+                          <p className="text-sm font-black">尚無抽獎紀錄</p>
                         </div>
-                      }
-                    />
-
-                    <ProfileDataTable
-                      columns={[
-                        {
-                          key: 'id',
-                          header: '編號',
-                          className: 'w-[140px]',
-                          render: (item) => (
-                            <span className="inline-flex px-2 py-0.5 rounded-xl bg-neutral-100 dark:bg-neutral-900 text-[12px] font-black text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 font-mono">
-                              {formatDrawId(item.id, item.rawDate)}
-                            </span>
-                          ),
-                        },
-                        {
-                          key: 'product',
-                          header: '商品 / 時間',
-                          render: (item) => (
-                            <div className="min-w-0">
-                              <div className="font-black text-neutral-900 dark:text-white truncate">{item.product}</div>
-                              <div className="text-[12px] text-neutral-500 dark:text-neutral-400 font-bold truncate">{item.date}</div>
-                            </div>
-                          ),
-                        },
-                        {
-                          key: 'count',
-                          header: '抽數',
-                          className: 'w-[90px]',
-                          render: (item) => (
-                            <div className="text-[13px] font-black text-neutral-900 dark:text-white">
-                              {item.tickets.length}
-                            </div>
-                          ),
-                        },
-                        {
-                          key: 'major',
-                          header: '大賞',
-                          className: 'w-[90px]',
-                          render: (item) => {
-                            const major = (item.items || []).filter((r) => isMajorGrade(r.grade)).length;
-                            return (
-                              <div className={cn('text-[13px] font-black', major > 0 ? 'text-accent-red' : 'text-neutral-700 dark:text-neutral-200')}>
-                                {major}
+                      ) : shown.map((item) => {
+                        const key = item.id.toString();
+                        const expanded = expandedDrawId === key;
+                        const major = (item.items || []).filter((r) => isMajorGrade(r.grade)).length;
+                        const showTicket = !['gacha', 'blindbox'].includes(item.productType || '');
+                        return (
+                          <div key={key} className={cn('rounded-[16px] bg-white ring-1 ring-[#e5e7eb] transition-shadow', expanded && 'shadow-[0_10px_40px_-10px_rgba(0,0,0,0.12)]')}>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedDrawId(expanded ? null : key)}
+                              aria-expanded={expanded}
+                              className="flex w-full items-center gap-6 px-6 py-5 text-left"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-3">
+                                  <span className="truncate text-[16px] font-black text-neutral-900">{item.product}</span>
+                                  <span className="shrink-0 text-[13px] font-bold text-neutral-400">{item.date.replace(/-/g, '/')}</span>
+                                </div>
+                                <div className="mt-2 text-[14px] font-black text-neutral-800">共 {item.tickets.length} 項</div>
+                                {major > 0 ? <div className="mt-1.5 text-[13px] font-bold text-neutral-400">大賞 {major} 件</div> : null}
                               </div>
-                            );
-                          },
-                        },
-                        {
-                          key: 'cost',
-                          header: '消耗(G)',
-                          className: 'w-[140px]',
-                          render: (item) => (
-                            <div className="flex items-center gap-1.5">
-                              <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="object-contain" />
-                              <span className="text-[14px] font-black text-accent-red font-amount tracking-tighter">
-                                {item.cost.toLocaleString()}
-                              </span>
-                            </div>
-                          ),
-                        },
-                        {
-                          key: 'action',
-                          header: '',
-                          className: 'w-[90px]',
-                          cellClassName: 'text-right',
-                          render: (item) => {
-                            const expanded = expandedDrawId === item.id.toString();
-                            return (
-                              <button
-                                type="button"
-                                onClick={() => setExpandedDrawId(expanded ? null : item.id.toString())}
-                                className="h-8 px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 text-[12px] font-black text-neutral-700 dark:text-neutral-200 bg-white dark:bg-neutral-950 hover:bg-neutral-50 dark:hover:bg-neutral-900"
-                              >
-                                {expanded ? '收合' : '查看'}
-                              </button>
-                            );
-                          },
-                        },
-                      ]}
-                      rows={pageRows}
-                      rowKey={(r) => String(r.id)}
-                      isRowExpanded={(r) => expandedDrawId === r.id.toString()}
-                      renderExpanded={(item) => (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="text-[12px] font-black text-neutral-600 dark:text-neutral-300">
-                              獲得獎項（{item.items.length}）
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-1 gap-2">
-                            {item.items.map((result, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center justify-between gap-3 bg-white dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800 px-2 py-2"
-                              >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  {!['gacha', 'blindbox'].includes(item.productType || '') && (
-                                    <span className="px-2 py-0.5 rounded-xl text-[11px] font-black bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 whitespace-nowrap">
-                                      {result.ticket_number}
-                                    </span>
-                                  )}
-                                  <span className="px-2 py-0.5 rounded-xl text-[11px] font-black bg-primary/10 text-primary border border-primary/10 whitespace-nowrap">
-                                    {result.grade}
+                              <div className="flex shrink-0 items-center gap-5">
+                                {item.pointsUsed > 0 ? (
+                                  <span className="text-[18px] font-black tabular-nums text-indigo-500">{(item.pointsUsed * 4).toLocaleString()} 積分</span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 text-[18px] font-black tabular-nums text-neutral-900">
+                                    <Image src={asset("/images/gcoin.webp")} alt="G" width={20} height={20} className="object-contain" />
+                                    {item.cost.toLocaleString()}
                                   </span>
-                                  <div className="text-[13px] font-bold text-neutral-800 dark:text-neutral-100 truncate">
-                                    {result.name}
+                                )}
+                                <ChevronDown className={cn('h-5 w-5 text-neutral-400 transition-transform', expanded && 'rotate-180')} />
+                              </div>
+                            </button>
+
+                            {expanded && (
+                              <div className="border-t border-neutral-100 px-6 py-6">
+                                <div className="text-[14px] font-black text-neutral-900">獲得獎項 ({item.items.length})</div>
+                                <div className="mt-3 overflow-hidden rounded-[14px] ring-1 ring-[#e5e7eb]">
+                                  <div className={cn('grid gap-4 bg-[#f3f4f6] px-5 py-2.5 text-[12px] font-bold text-neutral-400', showTicket ? 'grid-cols-[minmax(0,1fr)_120px_96px]' : 'grid-cols-[minmax(0,1fr)_96px]')}>
+                                    <span>品項名稱</span>{showTicket ? <span>籤號</span> : null}<span />
+                                  </div>
+                                  <div className="divide-y divide-neutral-100">
+                                    {item.items.map((result, idx) => (
+                                      <div key={idx} className={cn('grid items-center gap-4 px-5 py-3', showTicket ? 'grid-cols-[minmax(0,1fr)_120px_96px]' : 'grid-cols-[minmax(0,1fr)_96px]')}>
+                                        <span className="flex min-w-0 items-center gap-2">
+                                          <GradeBadge grade={result.grade} size="sm" />
+                                          <span className="min-w-0 truncate text-[15px] font-black text-neutral-900">{result.name}</span>
+                                        </span>
+                                        {showTicket ? <span className="font-mono text-[14px] font-bold text-neutral-600">{result.ticket_number}</span> : null}
+                                        <span className="text-right">
+                                          {result.txid_hash && item.productType === 'ichiban' ? (
+                                            <button type="button" onClick={() => verify(item, result)} className="h-8 rounded-lg bg-primary/5 px-3 text-[13px] font-black text-primary hover:bg-primary/10">
+                                              驗證
+                                            </button>
+                                          ) : null}
+                                        </span>
+                                      </div>
+                                    ))}
                                   </div>
                                 </div>
-                                {result.txid_hash && item.productType === 'ichiban' ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const isEndedOrSoldOut =
-                                        item.productStatus === 'ended' ||
-                                        item.productStatus === 'soldout' ||
-                                        (item.productRemaining !== undefined && item.productRemaining <= 0);
-                                      if (!isEndedOrSoldOut) {
-                                        toast.error('該商品完抽後可驗證');
-                                        return;
-                                      }
-                                      drawView.remember({
-                                        tab: '',
-                                        y: window.scrollY,
-                                        count: mobileDrawDisplayCount,
-                                        from: `/fairness/${item.productId}`,
-                                      });
-                                      router.push(
-                                        `/fairness/${item.productId}?nonce=${encodeURIComponent(result.ticket_number)}&txid_hash=${encodeURIComponent(result.txid_hash!)}`
-                                      );
-                                    }}
-                                    className="shrink-0 h-8 px-3 rounded-lg bg-primary/5 text-[12px] font-black text-primary hover:bg-primary/10 transition-colors"
-                                  >
-                                    驗證
-                                  </button>
-                                ) : null}
                               </div>
-                            ))}
+                            )}
                           </div>
-                        </div>
-                      )}
-                      empty="尚無抽獎紀錄"
-                    />
-
-                    <ProfilePagination
-                      page={page}
-                      pageSize={desktopDrawPageSize}
-                      total={total}
-                      onPageChange={setDesktopDrawPage}
-                      onPageSizeChange={(s) => {
-                        setDesktopDrawPageSize(s);
-                        setDesktopDrawPage(1);
-                      }}
-                    />
-                  </div>
+                        );
+                      })}
+                    </div>
+                    {list.length > 0 && (
+                      <div ref={desktopWarehouseSentinel} className="py-5 text-center text-[13px] font-bold text-neutral-400">
+                        {hasMore ? '載入中…' : `已顯示全部 ${list.length} 筆`}
+                      </div>
+                    )}
+                  </>
                 );
               })()}
             </div>
-            
           </div>
         );
       case 'topup-history':
@@ -5748,134 +5651,83 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
               </div>
             </div>
 
-            <div className="hidden md:block px-6 py-5">
+            {/* 桌機（cardx 殼）：沿用配送管理那套——共用搜尋框、期間膠囊、一筆一列（右邊一顆實色狀態）。
+                欄位文字跟手機一致：儲值 N／NT$／交易成功／待付款／交易失敗（老闆 2026-09-05） */}
+            <div className="hidden md:block">
               {(() => {
-                const q = desktopTopupSearch.trim().toLowerCase()
+                const q = desktopTopupSearch.trim().toLowerCase();
                 const list = filteredTopupHistory.filter((item) => {
-                  if (!q) return true
-                  const text = `${item.order_number} ${item.payment_method} ${item.status} ${item.tokens} ${item.amount} ${item.created_at}`.toLowerCase()
-                  return text.includes(q)
-                })
-
-                const total = list.length
-                const totalPages = Math.max(1, Math.ceil(total / desktopTopupPageSize))
-                const page = Math.min(desktopTopupPage, totalPages)
-                const start = (page - 1) * desktopTopupPageSize
-                const pageRows = list.slice(start, start + desktopTopupPageSize)
-
-                const emptyText =
-                  activeTopupTimeTab === 'today'
-                    ? '今天無儲值紀錄'
-                    : activeTopupTimeTab === '7days'
-                      ? '近7天無儲值紀錄'
-                      : '近30天無儲值紀錄'
-
+                  if (!q) return true;
+                  const text = `${item.order_number} ${item.payment_method} ${item.status} ${item.tokens} ${item.amount} ${item.created_at}`.toLowerCase();
+                  return text.includes(q);
+                });
+                const shown = list.slice(0, desktopWarehouseDisplayCount);
+                const hasMore = shown.length < list.length;
+                const pill = (active: boolean) => cn(
+                  'h-9 px-3.5 rounded-full text-[13px] font-black whitespace-nowrap transition-colors',
+                  active ? 'bg-primary text-white' : 'bg-white text-neutral-700 ring-1 ring-[#e5e7eb] hover:bg-neutral-50',
+                );
+                const periods = [['today', '今天'], ['7days', '近7天'], ['30days', '近30天']] as const;
+                const statusSolid = (status: string) => {
+                  const k = status.toLowerCase();
+                  if (k === 'paid' || k === 'success') return 'bg-emerald-600 text-white';
+                  if (k === 'failed') return 'bg-red-500 text-white';
+                  return 'bg-neutral-500 text-white';
+                };
                 return (
-                  <div className="space-y-4">
-                    <ProfileSectionHeader title="儲值紀錄" />
+                  <>
+                    <div className="flex h-10 items-center gap-2">
+                      <h2 className="text-[20px] font-black tracking-tight text-neutral-900">儲值紀錄</h2>
+                      <span className="text-[13px] font-bold text-neutral-500">{list.length} 筆</span>
+                    </div>
+                    <ProfileSearchField className="mt-3" value={desktopTopupSearch} onChange={setDesktopTopupSearch} placeholder="搜尋訂單、付款方式、狀態" />
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                      {periods.map(([id, label]) => (
+                        <button key={id} type="button" className={pill(activeTopupTimeTab === id)} onClick={() => setActiveTopupTimeTab(id)}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
 
-                    <ProfileToolbar
-                      left={
-                        <>
-                          <input
-                            value={desktopTopupSearch}
-                            onChange={(e) => setDesktopTopupSearch(e.target.value)}
-                            placeholder="搜尋訂單 / 付款方式 / 狀態"
-                            className="h-9 w-[360px] max-w-full px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-bold text-neutral-800 dark:text-neutral-100 placeholder:text-neutral-400"
-                          />
-                          <select
-                            value={activeTopupTimeTab}
-                            onChange={(e) => setActiveTopupTimeTab(e.target.value as 'today' | '7days' | '30days')}
-                            className="h-9 px-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-bold text-neutral-700 dark:text-neutral-200"
-                          >
-                            <option value="today">今天</option>
-                            <option value="7days">近7天</option>
-                            <option value="30days">近30天</option>
-                          </select>
-                        </>
-                      }
-                      right={
-                        <div className="text-[12px] text-neutral-500 dark:text-neutral-400 font-bold">
-                          共 {total} 筆
+                    <div className="mt-4 space-y-3">
+                      {list.length === 0 ? (
+                        <div className="py-20 text-center text-neutral-400">
+                          <History className="mx-auto mb-4 h-12 w-12 opacity-20" />
+                          <p className="text-sm font-black">尚無儲值紀錄</p>
                         </div>
-                      }
-                    />
-
-                    <ProfileDataTable
-                      columns={[
-                        {
-                          key: 'date',
-                          header: '交易日期 / 訂單',
-                          className: 'w-[240px]',
-                          render: (item) => (
-                            <div className="min-w-0">
-                              <div className="font-black text-neutral-900 dark:text-white whitespace-nowrap">
-                                {new Date(item.created_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}
+                      ) : shown.map((item) => {
+                        const cfg = getTopupStatusConfig(item.status);
+                        return (
+                          <div key={item.id} className="flex items-center gap-6 rounded-[16px] bg-white px-6 py-5 ring-1 ring-[#e5e7eb]">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-3">
+                                <span className="font-mono text-[16px] font-black text-neutral-900">{item.order_number}</span>
+                                <span className="text-[13px] font-bold text-neutral-400">
+                                  {new Date(item.created_at).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Taipei' })}
+                                </span>
                               </div>
-                              <div className="text-[12px] text-neutral-500 dark:text-neutral-400 font-mono truncate">
-                                {item.order_number}
+                              <div className="mt-2 flex items-center gap-1.5 text-[14px] font-black text-neutral-800">
+                                儲值
+                                <Image src={asset("/images/gcoin.webp")} alt="G" width={16} height={16} className="object-contain" />
+                                <span className="tabular-nums">{item.tokens.toLocaleString()}</span>
+                              </div>
+                              <div className="mt-1.5 flex items-center gap-x-4 text-[13px] font-bold text-neutral-400">
+                                <span>{item.payment_method === 'credit_card' ? '信用卡支付' : item.payment_method}</span>
+                                <span className="text-neutral-700">NT$ {item.amount.toLocaleString()}</span>
                               </div>
                             </div>
-                          ),
-                        },
-                        {
-                          key: 'plan',
-                          header: '儲值方案',
-                          className: 'w-[180px]',
-                          render: (item) => (
-                            <div className="flex items-center gap-1.5">
-                              <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="object-contain" />
-                              <span className="text-[14px] font-black text-neutral-900 dark:text-white font-amount tracking-tighter">
-                                {item.tokens.toLocaleString()}
-                              </span>
-                            </div>
-                          ),
-                        },
-                        {
-                          key: 'payment',
-                          header: '付款方式',
-                          className: 'w-[160px]',
-                          render: (item) => (
-                            <div className="flex items-center gap-2 text-[13px] font-bold text-neutral-700 dark:text-neutral-200">
-                              {item.payment_method === 'credit_card' ? <Wallet className="w-4 h-4" /> : <CreditCard className="w-4 h-4" />}
-                              {item.payment_method === 'credit_card' ? '信用卡支付' : item.payment_method}
-                            </div>
-                          ),
-                        },
-                        {
-                          key: 'amount',
-                          header: '交易金額',
-                          className: 'w-[160px]',
-                          render: (item) => (
-                            <div className="text-[14px] font-black text-neutral-900 dark:text-white font-amount whitespace-nowrap">
-                              NT$ {item.amount.toLocaleString()}
-                            </div>
-                          ),
-                        },
-                        {
-                          key: 'status',
-                          header: '狀態',
-                          className: 'w-[120px]',
-                          render: (item) => <ProfileStatusBadge config={getTopupStatusConfig(item.status)} />,
-                        },
-                      ]}
-                      rows={pageRows}
-                      rowKey={(r) => String(r.id)}
-                      empty={emptyText}
-                    />
-
-                    <ProfilePagination
-                      page={page}
-                      pageSize={desktopTopupPageSize}
-                      total={total}
-                      onPageChange={setDesktopTopupPage}
-                      onPageSizeChange={(s) => {
-                        setDesktopTopupPageSize(s)
-                        setDesktopTopupPage(1)
-                      }}
-                    />
-                  </div>
-                )
+                            <span className={cn('inline-flex h-9 shrink-0 items-center rounded-full px-4 text-[15px] font-black whitespace-nowrap', statusSolid(item.status))}>{cfg.label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {list.length > 0 && (
+                      <div ref={desktopWarehouseSentinel} className="py-5 text-center text-[13px] font-bold text-neutral-400">
+                        {hasMore ? '載入中…' : `已顯示全部 ${list.length} 筆`}
+                      </div>
+                    )}
+                  </>
+                );
               })()}
             </div>
           </div>
@@ -7009,7 +6861,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
     ? { boxShadow: '0 0 0 1px #e5e7eb, 0 10px 40px -10px rgba(0,0,0,0.08)' }
     : undefined;
   /* 已重構成「零套疊」的分頁：右欄不再包外層白卡，內容直接鋪在頁面底色上（老闆 2026-09-05） */
-  const flatTab = cardxShell && (activeTab === 'warehouse' || activeTab === 'settings' || activeTab === 'delivery');
+  const flatTab = cardxShell && ['warehouse', 'settings', 'delivery', 'draw-history', 'topup-history'].includes(activeTab);
   const sideCardCls = cardxShell
     ? 'bg-white rounded-[18px] p-[14px]'
     : 'bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3';
