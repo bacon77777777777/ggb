@@ -402,12 +402,15 @@ const getArrivalText = (arrivalDate?: string) => {
     const arrival = new Date(arrivalDate.replace(/-/g, '/'));
     arrival.setHours(0, 0, 0, 0);
 
+    const dayAfter = new Date(today);
+    dayAfter.setDate(dayAfter.getDate() + 2);
+
     if (arrival.getTime() === today.getTime()) return '今日送達';
-    if (arrival.getTime() === tomorrow.getTime()) return '明日送達';
+    if (arrival.getTime() === tomorrow.getTime()) return '明天送達';
+    if (arrival.getTime() === dayAfter.getTime()) return '後天送達';
     if (arrival.getTime() > today.getTime()) {
-      const month = arrival.getMonth() + 1;
-      const date = arrival.getDate();
-      return `${String(month).padStart(2, '0')}月${String(date).padStart(2, '0')}日送達`;
+      // 「9月8日」不補零（老闆 2026-09-05）
+      return `${arrival.getMonth() + 1}月${arrival.getDate()}日送達`;
     }
     // 預計日期已過但尚未送達 → 保持友善提示
     return '今日送達';
@@ -420,6 +423,24 @@ const getArrivalText = (arrivalDate?: string) => {
 // 徽章與步驟條共用 lib/orderStatus —— 原本這裡把 submitted 與 processing 併成
 // 「已提交」，展開的步驟條卻已經走到「揀貨中」，同一張訂單兩個說法
 const getStatusConfig = (status: string) => orderStatusConfig(status);
+
+/**
+ * 訂單列上唯一的一顆狀態（老闆 2026-09-05：左邊徽章跟右邊到貨那句合併，只講玩家想知道的）：
+ * 處理中／預計 9月8日送達／預計後天送達／預計明天送達／今日送達／已送達／已取消。實色、不要淡。
+ */
+const deliveryStatusView = (status: string, arrivalDate?: string): { text: string; solid: string } => {
+  const k = String(status);
+  if (k === 'delivered' || k === 'completed') return { text: '已送達', solid: 'bg-emerald-600 text-white' };
+  if (k === 'cancelled') return { text: '已取消', solid: 'bg-neutral-500 text-white' };
+  if (k === 'picked_up' || k === 'shipping') {
+    const a = arrivalDate && arrivalDate !== '-' ? getArrivalText(arrivalDate) : null;
+    if (!a) return { text: '配送中', solid: 'bg-violet-600 text-white' };
+    return a === '今日送達'
+      ? { text: '今日送達', solid: 'bg-emerald-600 text-white' }
+      : { text: `預計 ${a}`, solid: 'bg-violet-600 text-white' };
+  }
+  return { text: '處理中', solid: 'bg-amber-500 text-white' };
+};
 
 const getTopupStatusConfig = (status: string) => {
   const s = status.toLowerCase();
@@ -4954,46 +4975,20 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                               </div>
                             </div>
                             
-                            {/* Layer 2: Content Summary & Arrival Date */}
-                            <div className="flex items-center justify-between">
+                            {/* Layer 2: 共 N 項 ＋ 右邊一顆實色狀態（老闆 2026-09-05：左邊淡色徽章跟右邊到貨那句合併、移到右邊、顏色不要淡） */}
+                            <div className="flex items-center justify-between gap-3">
                               <h4 className="text-[13px] font-black text-neutral-900 dark:text-white leading-tight tracking-tight line-clamp-2">
                                  共 {order.items.length} 項
                               </h4>
-                              
-                              {(() => {
-                                 const s = order.status;
-                                 if (s === 'delivered' || s === 'completed') {
-                                   return <div className="text-[13px] font-black text-accent-emerald">已送達</div>;
-                                 }
-                                 if (s === 'submitted' || s === 'processing') {
-                                   return <div className="text-[13px] font-black text-neutral-400">待出貨</div>;
-                                 }
-                                 if (['picked_up', 'shipping'].includes(s) && order.arrivalDate && order.arrivalDate !== '-') {
-                                   const text = getArrivalText(order.arrivalDate) || `${order.arrivalDate}送達`;
-                                   return (
-                                     <div className="text-[13px] font-black text-accent-emerald">預計{text}</div>
-                                   );
-                                 }
-                                 return null;
-                               })()}
-                            </div>
-
-                            {/* Layer 3: Status & Action */}
-                            <div className="flex items-center justify-between">
-                              {/* Left: Status Badge */}
-                              <div>
+                              <div className="flex shrink-0 items-center gap-2">
                                 {(() => {
-                                  const config = getStatusConfig(order.status);
+                                  const sv = deliveryStatusView(order.status, order.arrivalDate);
                                   return (
-                                    <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border", config.color, config.bg, config.border)}>
-                                      {config.label}
+                                    <span className={cn('inline-flex h-7 items-center rounded-full px-2.5 text-[12px] font-black whitespace-nowrap', sv.solid)}>
+                                      {sv.text}
                                     </span>
                                   );
                                 })()}
-                              </div>
-
-                              {/* Right: Chevron */}
-                              <div className="flex items-center gap-3">
                                 <ChevronDown className={cn("w-4 h-4 text-neutral-400 transition-transform duration-200", isExpanded && "rotate-180")} />
                               </div>
                             </div>
@@ -5012,7 +5007,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                                   {/* 配送進度（照商城訂單彈層那套步驟條，老闆 2026-08-24） */}
                                   <div className="bg-white dark:bg-neutral-900 px-3 pb-2 pt-1 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
                                     {order.status === 'cancelled'
-                                      ? <div className="py-2 text-center text-[12px] font-bold text-neutral-400">這張訂單已取消</div>
+                                      ? <div className="py-2 text-center text-[12px] font-bold text-neutral-400">訂單已取消{order.shippingFee > 0 ? '，運費已退回' : ''}</div>
                                       : <DeliverySteps status={order.status} />}
                                   </div>
                                   {/* Shipping Info */}
@@ -5185,28 +5180,9 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                         </div>
                       ) : shown.map((order) => {
                         const expanded = expandedOrderId === order.id;
-                        const st = getStatusConfig(order.status);
                         const tracking = order.tracking && order.tracking !== '-' ? order.tracking : '';
-                        const itemText = (order.items || []).map((i) => `${i.grade} ${i.name}`).join('、');
-                        /* 狀態是重點：最右邊、大字、實色（老闆 2026-09-05：色系不要太淡） */
-                        const statusSolid = (() => {
-                          const key = String(order.status);
-                          if (key === 'delivered' || key === 'completed') return 'bg-emerald-600 text-white';
-                          if (key === 'picked_up' || key === 'shipping') return 'bg-violet-600 text-white';
-                          if (key === 'processing') return 'bg-amber-500 text-white';
-                          if (key === 'cancelled') return 'bg-neutral-500 text-white';
-                          return 'bg-primary text-white';
-                        })();
-                        /* 到貨那句照手機（已送達／待出貨／預計○○送達） */
-                        const arrival = (() => {
-                          const k = String(order.status);
-                          if (k === 'delivered' || k === 'completed') return { text: '已送達', cls: 'text-accent-emerald' };
-                          if (k === 'submitted' || k === 'processing') return { text: '待出貨', cls: 'text-neutral-400' };
-                          if (['picked_up', 'shipping'].includes(k) && order.arrivalDate && order.arrivalDate !== '-') {
-                            return { text: `預計${getArrivalText(order.arrivalDate) || `${order.arrivalDate}送達`}`, cls: 'text-accent-emerald' };
-                          }
-                          return null;
-                        })();
+                        /* 狀態是重點：最右邊、大字、實色，跟到貨那句合併成一顆（老闆 2026-09-05） */
+                        const sv = deliveryStatusView(order.status, order.arrivalDate);
                         /* 欄位文字跟手機端一致（老闆 2026-09-05） */
                         const cells: { label: string; value: React.ReactNode; span: string }[] = [
                           { label: '配送廠商', value: order.supplierName || '—', span: 'col-span-3' },
@@ -5218,9 +5194,10 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                             </button>
                           ) : '—' },
                           { label: '運費', value: order.shippingFee > 0 ? `${order.shippingFee.toLocaleString()} G` : '免運', span: 'col-span-3' },
-                          { label: '收件人', value: order.recipientName || '—', span: 'col-span-4' },
-                          { label: '收件人電話', value: order.recipientPhone || '—', span: 'col-span-4' },
-                          { label: order.logisticsType === 'CVS' ? '收件門市' : '收件地址', value: (order.logisticsType === 'CVS' ? order.storeName : order.address) || '—', span: 'col-span-4' },
+                          /* 第二排跟第一排同一套四欄格線，欄位才會上下對齊（老闆 2026-09-05） */
+                          { label: '收件人', value: order.recipientName || '—', span: 'col-span-3' },
+                          { label: '收件人電話', value: order.recipientPhone || '—', span: 'col-span-3' },
+                          { label: order.logisticsType === 'CVS' ? '收件門市' : '收件地址', value: (order.logisticsType === 'CVS' ? order.storeName : order.address) || '—', span: 'col-span-6' },
                         ];
                         return (
                           <div key={order.id} className={cn('rounded-[16px] bg-white ring-1 ring-[#e5e7eb] transition-shadow', expanded && 'shadow-[0_10px_40px_-10px_rgba(0,0,0,0.12)]')}>
@@ -5235,9 +5212,8 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                                   <span className="font-mono text-[16px] font-black text-neutral-900">{order.order_number || `#${String(order.id).slice(0, 8)}`}</span>
                                   <span className="text-[13px] font-bold text-neutral-400">{order.date}</span>
                                 </div>
-                                <div className="mt-2 truncate text-[14px] font-black text-neutral-800">
-                                  共 {order.items?.length || 0} 項{itemText ? `：${itemText}` : ''}
-                                </div>
+                                {/* 列上只講共幾項，品項展開才看（老闆 2026-09-05） */}
+                                <div className="mt-2 text-[14px] font-black text-neutral-800">共 {order.items?.length || 0} 項</div>
                                 <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] font-bold text-neutral-400">
                                   {order.supplierName ? <span>{order.supplierName}</span> : null}
                                   <span>{order.method}{order.logisticsType === 'CVS' && order.storeName ? ` ${order.storeName}` : ''}</span>
@@ -5245,10 +5221,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                                 </div>
                               </div>
                               <div className="flex shrink-0 items-center gap-5">
-                                <div className="flex flex-col items-end gap-1.5">
-                                  <span className={cn('inline-flex h-9 items-center rounded-full px-4 text-[15px] font-black', statusSolid)}>{st.label}</span>
-                                  {arrival ? <span className={cn('text-[13px] font-black', arrival.cls)}>{arrival.text}</span> : null}
-                                </div>
+                                <span className={cn('inline-flex h-9 items-center rounded-full px-4 text-[15px] font-black whitespace-nowrap', sv.solid)}>{sv.text}</span>
                                 <ChevronDown className={cn('h-5 w-5 text-neutral-400 transition-transform', expanded && 'rotate-180')} />
                               </div>
                             </button>
@@ -5261,7 +5234,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                                   <div className="mt-3 rounded-[14px] bg-[#f3f4f6] px-6 pb-3 pt-2">
                                     {order.status === 'cancelled' ? (
                                       <div className="py-3 text-center text-[14px] font-bold text-neutral-500">
-                                        這張訂單已取消{order.shippingFee > 0 ? `，運費 ${order.shippingFee.toLocaleString()} G 已退回` : ''}
+                                        訂單已取消{order.shippingFee > 0 ? '，運費已退回' : ''}
                                       </div>
                                     ) : (
                                       <DeliverySteps status={order.status} size="lg" />
