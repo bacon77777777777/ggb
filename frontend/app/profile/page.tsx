@@ -5213,10 +5213,10 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                                 </div>
                                 {/* 列上只講共幾項，品項展開才看（老闆 2026-09-05） */}
                                 <div className="mt-2 text-[14px] font-black text-neutral-800">共 {order.items?.length || 0} 項</div>
+                                {/* 列上只留廠商與物流方式，門市與追蹤號碼展開才看（老闆 2026-09-05） */}
                                 <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] font-bold text-neutral-400">
                                   {order.supplierName ? <span>{order.supplierName}</span> : null}
-                                  <span>{order.method}{order.logisticsType === 'CVS' && order.storeName ? ` ${order.storeName}` : ''}</span>
-                                  {tracking ? <span className="font-mono">{tracking}</span> : null}
+                                  <span>{order.method}</span>
                                 </div>
                               </div>
                               <div className="flex shrink-0 items-center gap-5">
