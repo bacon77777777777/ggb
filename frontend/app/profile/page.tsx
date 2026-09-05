@@ -51,6 +51,12 @@ import ProfileToolbar from '@/components/profile/desktop/ProfileToolbar';
 import ProfileDataTable from '@/components/profile/desktop/ProfileDataTable';
 import ProfileStatusBadge from '@/components/profile/desktop/ProfileStatusBadge';
 import ProfilePagination from '@/components/profile/desktop/ProfilePagination';
+/* 1024 以上整頁掛進 cardx 的外殼（老闆 2026-09-05：會員中心要對齊 cardx 版型——頂部導航、左右分欄的樣式／密度／字級） */
+import { AppShell } from '@/cardx/components/layout/AppShell';
+import { defaultSidebarItems } from '@/cardx/lib/navigation';
+import homeStyles from '@/cardx/components/home/HomeClient.module.css';
+import { PageHeader as CardxPageHeader, Button3D as CardxButton3D } from '@/cardx/components/ui/Kit';
+import { useMinWidth } from '@/lib/useMinWidth';
 
 import { Tabs, TabsContent, TabsContentWrapper, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { normalizePhone, PHONE_PLACEHOLDER, PHONE_ERROR, isValidPhone } from '@/lib/phone';
@@ -453,7 +459,7 @@ async function fetchAllRows<T>(
   }
 }
 
-function ProfileContent() {
+function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
   const { user, logout, refreshProfile, isLoading: isAuthLoading } = useAuth();
   const { showAlert } = useAlert();
   const { showToast } = useToast();
@@ -7208,17 +7214,44 @@ function ProfileContent() {
     }
   };
 
+  /* cardx 外殼裡的卡片：18 圓角、1px 描邊＋淡投影（同 cardx Kit 的 SurfaceCard），密度照 cardx 會員中心 */
+  const cardxCardStyle: React.CSSProperties | undefined = cardxShell
+    ? { boxShadow: '0 0 0 1px #e5e7eb, 0 10px 40px -10px rgba(0,0,0,0.08)' }
+    : undefined;
+  const sideCardCls = cardxShell
+    ? 'bg-white rounded-[18px] p-[14px]'
+    : 'bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3';
+  /* 左欄選單列：cardx 版 44 高、14px／900、選中藍色淡底（同 cardx 會員中心的頁籤） */
+  const sideNavCls = (active: boolean) => cardxShell
+    ? cn('w-full flex items-center gap-3 px-3 h-11 rounded-xl text-[14px] font-black transition-colors group text-left',
+        active ? 'text-[#1d4ed8]' : 'text-[#374151] hover:bg-[#f3f4f6]')
+    : cn('w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black transition-all group text-left',
+        active ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white');
+  const sideNavStyle = (active: boolean): React.CSSProperties | undefined =>
+    cardxShell && active ? { background: 'linear-gradient(180deg, rgba(43,124,255,0.28), rgba(43,124,255,0.12))' } : undefined;
+  const sideNavIcon = (Icon: React.ComponentType<{ className?: string }>, active: boolean, idleCls: string) => cardxShell ? (
+    <span
+      className="w-[30px] h-[30px] rounded-[10px] grid place-items-center flex-shrink-0"
+      style={{ background: active ? 'rgba(43,124,255,0.26)' : '#f3f4f6', color: active ? '#1d4ed8' : '#374151' }}
+      aria-hidden="true"
+    >
+      <Icon className="w-[18px] h-[18px] stroke-[2.25]" />
+    </span>
+  ) : (
+    <Icon className={cn('w-5 h-5 stroke-[2.5]', active ? 'text-white' : idleCls)} />
+  );
+
   return (
     <div className={cn(
-      'min-h-screen bg-neutral-50 dark:bg-neutral-950 transition-colors',
+      cardxShell ? 'w-full' : 'min-h-screen bg-neutral-50 dark:bg-neutral-950 transition-colors',
       /* 手機分頁打開時整頁就是分頁本體（min-h-100dvh），底 padding 會多出一段可捲的空白底 */
-      isMobileDetailOpen ? 'pb-0 md:pb-20' : 'pb-20',
+      cardxShell ? 'pb-0' : isMobileDetailOpen ? 'pb-0 md:pb-20' : 'pb-20',
     )}>
       <div className={cn(
-        "max-w-7xl mx-auto w-full",
-        activeTab === 'settings' ? "p-0" : "px-0 sm:px-6 lg:px-8 pt-0 sm:pt-6"
+        cardxShell ? 'w-full p-0' : 'max-w-7xl mx-auto w-full',
+        !cardxShell && (activeTab === 'settings' ? "p-0" : "px-0 sm:px-6 lg:px-8 pt-0 sm:pt-6")
       )}>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-8 items-start relative">
+        <div className={cn('grid grid-cols-1 lg:grid-cols-12 gap-3 items-start relative', cardxShell ? 'lg:gap-4' : 'lg:gap-8')}>
           
           {/* 1. Mobile Menu View (Only shown on mobile when no tab is active) */}
           <div className={cn("md:hidden col-span-1", isMobileDetailOpen && "hidden")}>
@@ -7633,8 +7666,8 @@ function ProfileContent() {
 
           {/* 3. Desktop View (Hidden on mobile) */}
           <div className="hidden md:grid md:col-span-12 grid-cols-12 gap-4 lg:gap-6 w-full items-start">
-            <div className="md:col-span-3 lg:col-span-3 space-y-3 sticky top-24">
-            <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3">
+            <div className={cn('md:col-span-3 lg:col-span-3 space-y-3 sticky', !cardxShell && 'top-24')} style={cardxShell ? { top: 'calc(var(--header-height) + 24px)' } : undefined}>
+            <div className={sideCardCls} style={cardxCardStyle}>
               <div className="flex flex-col gap-2.5">
                   <div className="flex items-center gap-2.5">
                     <div className="relative flex-shrink-0">
@@ -7668,7 +7701,7 @@ function ProfileContent() {
                           </Link>
                         ) : (
                           <>
-                            <h2 className="text-sm lg:text-base font-black text-neutral-900 dark:text-white truncate tracking-tight">
+                            <h2 className={cn('font-black text-neutral-900 dark:text-white truncate tracking-tight', cardxShell ? 'text-[14px]' : 'text-sm lg:text-base')}>
                               {user.name}
                             </h2>
                             {user.is_phone_verified && (
@@ -7690,8 +7723,8 @@ function ProfileContent() {
                               }
                             }}
                           >
-                            <span className="text-[13px] font-black text-neutral-400 uppercase tracking-wider">邀請碼</span>
-                            <span className="text-[13px] font-mono font-black text-primary group-hover/invite:text-primary/80 transition-colors">
+                            <span className={cn('font-black text-neutral-400 uppercase tracking-wider', cardxShell ? 'text-[12px]' : 'text-[13px]')}>邀請碼</span>
+                            <span className={cn('font-mono font-black transition-colors', cardxShell ? 'text-[12px] text-[#111827]' : 'text-[13px] text-primary group-hover/invite:text-primary/80')}>
                               {formatMemberNo(user.invite_code) || '-'}
                             </span>
                             <Copy className="w-3.5 h-3.5 text-neutral-300 group-hover/invite:text-primary transition-colors" />
@@ -7708,9 +7741,9 @@ function ProfileContent() {
                     </button>
                   </div>
                   
-                  <div className="flex items-center justify-between bg-neutral-50 dark:bg-neutral-800/50 p-2 rounded-lg border border-neutral-100 dark:border-neutral-800">
+                  <div className={cn('flex items-center justify-between', cardxShell ? 'bg-[#f3f4f6] p-3 rounded-[14px]' : 'bg-neutral-50 dark:bg-neutral-800/50 p-2 rounded-lg border border-neutral-100 dark:border-neutral-800')}>
                     <div className="flex items-center gap-1.5">
-                      <Image src={asset("/images/gcoin.webp")} alt="G" width={24} height={24} className="object-contain" />
+                      <Image src={asset("/images/gcoin.webp")} alt="G" width={cardxShell ? 22 : 24} height={cardxShell ? 22 : 24} className="object-contain" />
                       {isGuest ? (
                         <Link
                           href={loginHref}
@@ -7720,25 +7753,32 @@ function ProfileContent() {
                         </Link>
                       ) : (
                         <div className="flex flex-col">
-                          <span className="text-lg font-black text-accent-red font-amount leading-none tracking-tighter">
+                          <span className={cn('font-black leading-none', cardxShell ? 'text-[20px] text-[#111827] tabular-nums tracking-tight' : 'text-lg text-accent-red font-amount tracking-tighter')}>
                             {user.tokens?.toLocaleString() || 0}
                           </span>
                         </div>
                       )}
                     </div>
+                    {cardxShell ? (
+                      /* cardx 外殼：藍色立體鈕（同 cardx 會員中心總覽的「儲值」）；`.cardx-root a { color: inherit }` 會把下面那顆的主題色吃掉 */
+                      <CardxButton3D color="blue" href={isGuest ? loginHref : '/topup'} style={{ height: 34, borderRadius: 10, width: 64 }}>
+                        儲值
+                      </CardxButton3D>
+                    ) : (
                     <Link
                       href={isGuest ? loginHref : '/topup'}
                       className="text-[13px] font-black text-primary hover:text-primary/80 transition-colors uppercase tracking-widest bg-white dark:bg-neutral-800 px-2 py-1 rounded border border-primary/10 shadow-sm self-start"
                     >
                       儲值
                     </Link>
+                    )}
                   </div>
                 </div>
               </div>
               
               {/* 商城管理入口已移除（老闆 2026-08-20）：首頁懸浮選單已有商城入口 */}
 
-              <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 overflow-hidden">
+              <div className={cn(sideCardCls, 'overflow-hidden')} style={cardxCardStyle}>
               <div className="space-y-1">
                 {navItems.filter(item => item.id !== 'settings' && item.id !== 'market').map((item) => (
                   <button 
@@ -7750,14 +7790,12 @@ function ProfileContent() {
                       }
                       handleTabChange(item.id as TabType);
                     }} 
-                    className={cn(
-                      "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black transition-all group text-left", 
-                      activeTab === item.id ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white"
-                    )}
+                    className={sideNavCls(activeTab === item.id)}
+                    style={sideNavStyle(activeTab === item.id)}
                   >
-                    <item.icon className={cn("w-5 h-5 stroke-[2.5]", activeTab === item.id ? "text-white" : "text-neutral-300 group-hover:text-primary transition-colors")} />
+                    {sideNavIcon(item.icon, activeTab === item.id, 'text-neutral-300 group-hover:text-primary transition-colors')}
                     <span className="truncate">{item.label}</span>
-                    <ChevronRight className={cn("ml-auto w-4 h-4 transition-transform hidden sm:block", activeTab === item.id ? "text-white/50" : "text-neutral-200 group-hover:text-neutral-400")} />
+                    <ChevronRight className={cn('ml-auto w-4 h-4 transition-transform hidden sm:block', cardxShell ? (activeTab === item.id ? 'text-[#1d4ed8]/50' : 'text-[#d1d5db]') : activeTab === item.id ? 'text-white/50' : 'text-neutral-200 group-hover:text-neutral-400')} />
                   </button>
                 ))}
                 {/* 邀請好友：獨立頁面不是 tab，樣式跟上面同一家（老闆指定放優惠券下方） */}
@@ -7770,19 +7808,21 @@ function ProfileContent() {
                     }
                     router.push('/invite');
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black transition-all group text-left text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white"
+                  className={sideNavCls(false)}
                 >
-                  <UserPlus className="w-5 h-5 stroke-[2.5] text-violet-500 group-hover:text-primary transition-colors" />
+                  {sideNavIcon(UserPlus, false, 'text-violet-500 group-hover:text-primary transition-colors')}
                   <span className="truncate">邀請好友</span>
                   <span className="ml-auto inline-flex h-[19px] items-center rounded-full bg-accent-red px-2 text-[11px] font-bold leading-none text-white">
                     <span className="cjk-optical-center">無限拿積分</span>
                   </span>
-                  <ChevronRight className="w-4 h-4 hidden sm:block text-neutral-200 group-hover:text-neutral-400" />
+                  <ChevronRight className={cn('w-4 h-4 hidden sm:block', cardxShell ? 'text-[#d1d5db]' : 'text-neutral-200 group-hover:text-neutral-400')} />
                 </button>
               </div>
             </div>
 
-              <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 overflow-hidden">
+              {/* 交換管理那張卡：cardx 外殼裡沒開交換就整張不畫，不然會留一張空卡 */}
+              {(!cardxShell || (flags.exchange && !inApp)) && (
+              <div className={cn(sideCardCls, 'overflow-hidden')} style={cardxCardStyle}>
                 <div className="space-y-1">
                   {/* 交易所管理入口已移除（老闆 2026-09-02） */}
 
@@ -7796,18 +7836,22 @@ function ProfileContent() {
                         }
                         router.push('/exchange/manage');
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black transition-all group text-left text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white"
+                      className={sideNavCls(false)}
                     >
-                      <RefreshCw className="w-5 h-5 stroke-[2.5] text-neutral-300 group-hover:text-primary transition-colors" />
+                      {sideNavIcon(RefreshCw, false, 'text-neutral-300 group-hover:text-primary transition-colors')}
                       <span className="truncate">交換管理</span>
-                      <ChevronRight className="ml-auto w-4 h-4 transition-transform hidden sm:block text-neutral-200 group-hover:text-neutral-400" />
+                      <ChevronRight className={cn('ml-auto w-4 h-4 transition-transform hidden sm:block', cardxShell ? 'text-[#d1d5db]' : 'text-neutral-200 group-hover:text-neutral-400')} />
                     </button>
                   )}
                 </div>
               </div>
+              )}
           </div>
           <div className="md:col-span-9 lg:col-span-9 w-full">
-              <div className="bg-white dark:bg-neutral-900 rounded-2xl lg:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 min-h-[600px] lg:min-h-[700px] overflow-hidden">
+              <div
+                className={cn('overflow-hidden', cardxShell ? 'bg-white rounded-[18px] min-h-[640px]' : 'bg-white dark:bg-neutral-900 rounded-2xl lg:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 min-h-[600px] lg:min-h-[700px]')}
+                style={cardxCardStyle}
+              >
                 {renderTabContent()}
               </div>
             </div>
@@ -8530,9 +8574,28 @@ const followsView = makeListViewMemory('ggb:profile:follows');
 const drawView = makeListViewMemory('ggb:profile:draws');
 
 export default function ProfilePage() {
+  /* 1024 以上整頁掛進 cardx 的 AppShell（頂欄＋側欄＋頁尾），跟其他桌機頁同一個殼；
+     null＝還不知道視窗寬度，先不畫，兩套殼才不會疊在一起（老闆 2026-09-05） */
+  const cardxShell = useMinWidth(1024);
+  if (cardxShell === null) return null;
   return (
     <Suspense fallback={null}>
-      <ProfileContent />
+      {cardxShell ? (
+        <div className="cardx-root" data-cardx-page="profile">
+          <AppShell sidebarItems={defaultSidebarItems}>
+            <div className={homeStyles.main2}>
+              <div className={homeStyles.main}>
+                <div className={homeStyles.sectionLobby}>
+                  <CardxPageHeader title="會員中心" />
+                  <ProfileContent cardxShell />
+                </div>
+              </div>
+            </div>
+          </AppShell>
+        </div>
+      ) : (
+        <ProfileContent />
+      )}
     </Suspense>
   );
 }
