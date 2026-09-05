@@ -7633,7 +7633,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                           </Link>
                         ) : (
                           <>
-                            <h2 className={cn('font-black text-neutral-900 dark:text-white truncate tracking-tight', cardxShell ? 'text-[18px]' : 'text-sm lg:text-base')}>
+                            <h2 className={cn('font-black text-neutral-900 dark:text-white truncate tracking-tight', cardxShell ? 'text-[24px]' : 'text-sm lg:text-base')}>
                               {user.name}
                             </h2>
                             {user.is_phone_verified && (
