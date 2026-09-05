@@ -7098,6 +7098,22 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                   </span>
                   <ChevronRight className={cn('w-4 h-4 hidden sm:block', cardxShell ? 'text-[#d1d5db]' : 'text-neutral-200 group-hover:text-neutral-400')} />
                 </button>
+                {/* 設定：cardx 殼裡是左側欄的一個分頁（老闆 2026-09-05），取代個人卡右上角的齒輪 */}
+                {cardxShell && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isGuest) { router.push(loginHref); return; }
+                      handleTabChange('settings');
+                    }}
+                    className={sideNavCls(activeTab === 'settings')}
+                    style={sideNavStyle(activeTab === 'settings')}
+                  >
+                    {sideNavIcon(Settings, activeTab === 'settings', 'text-neutral-300 group-hover:text-primary transition-colors')}
+                    <span className="truncate">設定</span>
+                    <ChevronRight className={cn('ml-auto w-4 h-4 transition-transform hidden sm:block', activeTab === 'settings' ? 'text-primary/50' : 'text-[#d1d5db]')} />
+                  </button>
+                )}
     </div>
   );
 
@@ -7534,14 +7550,15 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
             {/* cardx 殼：左欄那張卡滿高（視窗 − 頂欄 − 上下各 24 留白），跟側欄一樣貼到底（老闆 2026-09-05） */}
             <div className={sideCardCls} style={cardxShell ? { ...cardxCardStyle, minHeight: 'calc(100dvh - var(--header-height) - 48px)' } : cardxCardStyle}>
               <div className="flex flex-col gap-2.5">
-                  <div className="flex items-center gap-2.5">
+                  {/* cardx 殼：頭像（72）／暱稱／邀請碼上下置中排，齒輪釘在卡片右上角（老闆 2026-09-05） */}
+                  <div className={cardxShell ? 'relative flex flex-col items-center gap-3 pt-5 pb-3 text-center' : 'flex items-center gap-2.5'}>
                     <div className="relative flex-shrink-0">
                       {isGuest ? (
-                        <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl border-2 border-neutral-50 dark:border-neutral-800 shadow-soft bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center">
-                          <User className="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
+                        <div className={cn('rounded-xl border-2 border-neutral-50 dark:border-neutral-800 shadow-soft bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center', cardxShell ? 'w-[72px] h-[72px]' : 'w-9 h-9 lg:w-10 lg:h-10')}>
+                          <User className={cn('text-neutral-500 dark:text-neutral-400', cardxShell ? 'w-8 h-8' : 'w-5 h-5')} />
                         </div>
                       ) : (
-                        <div className="relative w-9 h-9 lg:w-10 lg:h-10 rounded-full overflow-hidden border-2 border-neutral-50 dark:border-neutral-800 shadow-soft p-0.5 bg-white dark:bg-neutral-800">
+                        <div className={cn('relative rounded-full overflow-hidden border-2 border-neutral-50 dark:border-neutral-800 shadow-soft p-0.5 bg-white dark:bg-neutral-800', cardxShell ? 'w-[72px] h-[72px]' : 'w-9 h-9 lg:w-10 lg:h-10')}>
                           <Image 
                             src={user.avatar_url || 'https://github.com/shadcn.png'} 
                             alt={user.name || 'User'} 
@@ -7552,11 +7569,11 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                         </div>
                       )}
                       {!isGuest && (
-                        <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-accent-emerald border-2 border-white dark:border-neutral-900 rounded-full shadow-sm" />
+                        <div className={cn('absolute bg-accent-emerald border-2 border-white dark:border-neutral-900 rounded-full shadow-sm', cardxShell ? 'bottom-1 right-1 w-3.5 h-3.5' : '-bottom-1 -right-1 w-2.5 h-2.5')} />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 min-w-0">
+                    <div className={cardxShell ? 'w-full min-w-0 flex flex-col items-center' : 'flex-1 min-w-0'}>
+                      <div className={cn('flex items-center gap-1.5 min-w-0', cardxShell && 'justify-center')}>
                         {isGuest ? (
                           <Link
                             href={loginHref}
@@ -7566,7 +7583,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                           </Link>
                         ) : (
                           <>
-                            <h2 className={cn('font-black text-neutral-900 dark:text-white truncate tracking-tight', cardxShell ? 'text-[15px]' : 'text-sm lg:text-base')}>
+                            <h2 className={cn('font-black text-neutral-900 dark:text-white truncate tracking-tight', cardxShell ? 'text-[16px]' : 'text-sm lg:text-base')}>
                               {user.name}
                             </h2>
                             {user.is_phone_verified && (
@@ -7576,7 +7593,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                         )}
                       </div>
                       {!isGuest && (
-                        <div className="flex items-center gap-2 mt-0.5">
+                        <div className={cn('flex items-center gap-2 mt-0.5', cardxShell && 'justify-center')}>
                           <div
                             className="flex items-center gap-1.5 cursor-pointer group/invite"
                             onClick={() => {
@@ -7597,13 +7614,15 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                         </div>
                       )}
                     </div>
-                    {/* Settings Icon */}
+                    {/* Settings Icon（cardx 殼裡不放：設定改成左側欄的分頁，老闆 2026-09-05） */}
+                    {!cardxShell && (
                     <button
                       onClick={() => handleTabChange('settings')}
                       className="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-50 rounded-full transition-all"
                     >
                       <Settings className="w-5 h-5" />
                     </button>
+                    )}
                   </div>
                   
                   <div className={cn('flex items-center justify-between', cardxShell ? 'bg-[#f3f4f6] p-3 rounded-[14px]' : 'bg-neutral-50 dark:bg-neutral-800/50 p-2 rounded-lg border border-neutral-100 dark:border-neutral-800')}>

@@ -360,6 +360,25 @@ export default function InviteView({ embedded = false }: { embedded?: boolean } 
             )}
     </div>
   );
+  /* 桌機用的進度條：0 的時候左邊露 8px 綠色（老闆：4px 再寬一點），讓人看得出這是條進度（老闆 2026-09-05）。
+     手機那條（progressBar）不動。填充圖只裁左邊 4px，露出的是它的圓頭 */
+  const progressBarDesktop = filled > 0 ? progressBar : (
+    <div className="relative mt-2.5 h-[15px]">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={asset("/images/invite/bar_track.png")} alt="" className="absolute inset-0 h-full w-full" />
+      <div className="absolute inset-0" style={{ clipPath: 'inset(0 calc(100% - 8px) 0 0)' }}>
+        <div
+          className="h-full"
+          style={{
+            backgroundImage: `url(${asset('/images/invite/bar_fill.png')})`,
+            backgroundSize: '100% 100%',
+            backgroundPosition: 'left center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        />
+      </div>
+    </div>
+  );
   const missionList = (
     <div>
       {missions.length === 0 && (
@@ -438,33 +457,11 @@ export default function InviteView({ embedded = false }: { embedded?: boolean } 
                     <div className="relative w-full">{heroInner}</div>
                   </div>
 
+                  {/* 右欄的字全部沿用手機端（老闆 2026-09-05：不要自創）：進度那句、n/5、成就；
+                      邀請碼手機端就疊在主視覺緞帶上，左邊那張圖已經有、點了就能複製，這裡不再另放一格 */}
                   <div style={{ padding: '24px 28px', minWidth: 0, display: 'grid', alignContent: 'start' }}>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: '#111827', letterSpacing: '-0.2px' }}>邀請好友，無限拿積分</div>
-                    <div style={{ marginTop: 6, fontSize: 13, fontWeight: 800, color: '#6b7280', lineHeight: '20px' }}>
-                      好友用你的邀請碼註冊並綁定 LINE 就算一位有效邀請；每邀滿 {step} 位可領 {(status?.pointsPerStep ?? 0).toLocaleString()} 積分，沒有上限。
-                    </div>
-                    <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderRadius: 14, background: '#f3f4f6' }}>
-                        <span style={{ fontSize: 13, fontWeight: 800, color: '#6b7280' }}>你的邀請碼</span>
-                        <span style={{ fontSize: 22, fontWeight: 900, color: '#111827', letterSpacing: '0.04em', fontVariantNumeric: 'tabular-nums' }}>{code ? formatMemberNo(code) : '—'}</span>
-                        <button type="button" onClick={() => void copyCode()} aria-label="複製邀請碼" style={{ border: 0, background: 'transparent', padding: 4, cursor: 'pointer', color: '#6b7280', display: 'grid', placeItems: 'center' }}>
-                          <Copy className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <Button3D color="red" onClick={claimNow} style={{ height: 40, borderRadius: 12, minWidth: 116 }}>
-                        {claiming ? '領取中…' : '立即領取'}
-                      </Button3D>
-                      <SecondaryButton onClick={() => void copyMessage()} style={{ height: 40 }}>複製邀請訊息</SecondaryButton>
-                      <SecondaryButton onClick={() => void downloadHero()} style={{ height: 40 }}>下載邀請圖</SecondaryButton>
-                    </div>
-
-                    <div aria-hidden="true" style={{ height: 1, background: '#e5e7eb', margin: '20px 0 16px' }} />
-
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <div style={{ fontSize: 15, fontWeight: 900, color: '#111827' }}>循環獎進度</div>
-                        <div style={{ marginTop: 2, fontSize: 13, fontWeight: 800, color: '#6b7280' }}>被邀請的好友綁定 LINE 帳號即可 +1</div>
-                      </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[14px] font-bold text-neutral-900">被邀請的好友綁定 LINE 帳號即可 +1</p>
                       {status ? (
                         <p className="shrink-0 font-black leading-none">
                           <span style={{ fontSize: 24, color: '#ff2b2b' }}>{filled}</span>
@@ -474,7 +471,23 @@ export default function InviteView({ embedded = false }: { embedded?: boolean } 
                         <span className="h-5 w-10 shrink-0 animate-pulse rounded bg-neutral-100" />
                       )}
                     </div>
-                    {progressBar}
+                    {progressBarDesktop}
+                    {/* 立即領取跟進度放一起（老闆 2026-09-05）；下載邀請圖與分享是手機底欄／右上角那兩顆 */}
+                    {/* 兩顆主鈕各佔一半撐滿、分享圖標靠最右（老闆 2026-09-05） */}
+                    <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <Button3D color="red" onClick={claimNow} style={{ height: 40, borderRadius: 12, flex: '1 1 0', minWidth: 0 }}>
+                        {claiming ? <Loader2 className="h-5 w-5 animate-spin" /> : '立即領取'}
+                      </Button3D>
+                      <SecondaryButton onClick={() => void downloadHero()} style={{ height: 40, flex: '1 1 0', minWidth: 0 }}>下載邀請圖</SecondaryButton>
+                      <button
+                        type="button"
+                        aria-label="分享"
+                        onClick={() => void copyMessage()}
+                        className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f3f4f6] text-neutral-700 hover:bg-[#e5e7eb]"
+                      >
+                        <Share2 className="h-4 w-4" />
+                      </button>
+                    </div>
 
                     <div aria-hidden="true" style={{ height: 1, background: '#e5e7eb', margin: '20px 0 8px' }} />
 
