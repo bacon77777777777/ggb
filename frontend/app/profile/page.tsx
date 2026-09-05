@@ -2719,8 +2719,9 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
   useEffect(() => {
     setDesktopWarehouseDisplayCount(DESKTOP_WAREHOUSE_PAGE);
   }, [
-    activeWarehouseCategory, activeWarehouseSubCategory, activeWarehouseTab,
+    activeTab, activeWarehouseCategory, activeWarehouseSubCategory, activeWarehouseTab,
     warehouseSort, warehouseSearch, desktopWarehouseSearch, desktopDismantledSearch, warehouseSupplier, warehouseFilter,
+    activeDeliveryTab, desktopDeliverySearch,
   ]);
 
   // Mobile delivery lazy load reset
@@ -5130,7 +5131,9 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
               </div>
             </div>
 
-            <div className="hidden md:block px-6 py-5">
+            {/* 桌機（cardx 殼）：零套疊——標題列、狀態膠囊＋搜尋、一筆一列（點列展開明細）、捲到底自動載入（老闆 2026-09-05 重構定案）。
+                舊的七欄表格每格都在截斷，訂單內容看不清 */}
+            <div className="hidden md:block">
               {(() => {
                 const q = desktopDeliverySearch.trim().toLowerCase();
                 const list = filteredDeliveryHistory.filter((order) => {
@@ -5141,189 +5144,161 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                   const itemText = (order.items || []).map((i) => `${i.grade} ${i.name}`.toLowerCase()).join(' ');
                   return orderNo.includes(q) || tracking.includes(q) || method.includes(q) || itemText.includes(q);
                 });
-
-                const total = list.length;
-                const totalPages = Math.max(1, Math.ceil(total / desktopDeliveryPageSize));
-                const page = Math.min(desktopDeliveryPage, totalPages);
-                const start = (page - 1) * desktopDeliveryPageSize;
-                const pageRows = list.slice(start, start + desktopDeliveryPageSize);
-
+                const shown = list.slice(0, desktopWarehouseDisplayCount);
+                const hasMore = shown.length < list.length;
+                const pill = (active: boolean) => cn(
+                  'h-9 px-3.5 rounded-full text-[13px] font-black whitespace-nowrap transition-colors',
+                  active ? 'bg-primary text-white' : 'bg-white text-neutral-700 ring-1 ring-[#e5e7eb] hover:bg-neutral-50',
+                );
+                const statusTabs = [
+                  ['all', '全部'], ['submitted', '已提交'], ['shipping', '配送中'], ['completed', '已完成'], ['cancelled', '已取消'],
+                ] as const;
+                const copyText = (text: string) => { navigator.clipboard.writeText(text); toast.success('已複製'); };
                 return (
-                  <div className="space-y-4">
-                    <ProfileSectionHeader
-                      title="配送訂單"
+                  <>
+                    <div className="flex h-10 items-center gap-2">
+                      <h2 className="text-[20px] font-black tracking-tight text-neutral-900">配送管理</h2>
+                      <span className="text-[13px] font-bold text-neutral-500">{list.length} 筆</span>
+                    </div>
 
-                    />
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {statusTabs.map(([id, label]) => (
+                          <button key={id} type="button" className={pill(activeDeliveryTab === id)} onClick={() => setActiveDeliveryTab(id)}>
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <input
+                        value={desktopDeliverySearch}
+                        onChange={(e) => setDesktopDeliverySearch(e.target.value)}
+                        placeholder="搜尋訂單編號 / 追蹤號碼 / 商品"
+                        className="h-9 w-[260px] max-w-[45%] rounded-xl bg-white px-3.5 text-[13px] font-bold text-neutral-800 ring-1 ring-[#e5e7eb] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
 
-                    <ProfileToolbar
-                      left={
-                        <>
-                          <input
-                            value={desktopDeliverySearch}
-                            onChange={(e) => setDesktopDeliverySearch(e.target.value)}
-                            placeholder="搜尋訂單編號 / 追蹤號碼 / 商品"
-                            className="h-9 w-[360px] max-w-full px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-bold text-neutral-800 dark:text-neutral-100 placeholder:text-neutral-400"
-                          />
-                          <select
-                            value={activeDeliveryTab}
-                            onChange={(e) =>
-                              setActiveDeliveryTab(
-                                e.target.value as 'all' | 'submitted' | 'shipping' | 'completed' | 'cancelled'
-                              )
-                            }
-                            className="h-9 px-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-bold text-neutral-700 dark:text-neutral-200"
-                          >
-                            <option value="all">全部</option>
-                            <option value="submitted">已提交</option>
-                            <option value="shipping">配送中</option>
-                            <option value="completed">已完成</option>
-                            <option value="cancelled">已取消</option>
-                          </select>
-                        </>
-                      }
-                      right={
-                        <div className="text-[12px] text-neutral-500 dark:text-neutral-400 font-bold">
-                          共 {total} 筆
+                    <div className="mt-4 space-y-2">
+                      {list.length === 0 ? (
+                        <div className="py-20 text-center text-neutral-400">
+                          <Truck className="mx-auto mb-4 h-12 w-12 opacity-20" />
+                          <p className="text-sm font-black">尚無配送訂單</p>
                         </div>
-                      }
-                    />
-
-                    <ProfileDataTable
-                      columns={[
-                        {
-                          key: 'order',
-                          header: '訂單 / 日期',
-                          render: (order) => (
-                            <div className="min-w-0">
-                              <div className="font-black text-neutral-900 dark:text-white truncate">
-                                {order.order_number || `#${String(order.id).slice(0, 8)}`}
-                              </div>
-                              <div className="text-[12px] text-neutral-500 dark:text-neutral-400 font-bold">
-                                {order.date}
-                              </div>
-                            </div>
-                          ),
-                        },
-                        {
-                          key: 'status',
-                          header: '狀態',
-                          className: 'w-[120px]',
-                          render: (order) => <ProfileStatusBadge config={getStatusConfig(order.status)} />,
-                        },
-                        {
-                          key: 'vendor',
-                          header: '配送廠商',
-                          className: 'w-[110px]',
-                          render: (order) => (
-                            <div className="text-[13px] font-black text-neutral-900 dark:text-white truncate">
-                              {order.supplierName || '—'}
-                            </div>
-                          ),
-                        },
-                        {
-                          key: 'logistics',
-                          header: '物流',
-                          render: (order) => (
-                            <div className="min-w-0">
-                              <div className="font-black text-neutral-900 dark:text-white truncate">
-                                {order.method || '-'}
-                              </div>
-                              <div className="text-[12px] text-neutral-500 dark:text-neutral-400 font-bold truncate">
-                                {order.tracking || '-'}
-                              </div>
-                            </div>
-                          ),
-                        },
-                        {
-                          key: 'items',
-                          header: '內容',
-                          className: 'w-[110px]',
-                          render: (order) => (
-                            <div className="text-[13px] font-black text-neutral-900 dark:text-white">
-                              {order.items?.length || 0} 項
-                            </div>
-                          ),
-                        },
-                        {
-                          key: 'arrival',
-                          header: '到貨',
-                          className: 'w-[130px]',
-                          render: (order) => (
-                            <div className="text-[13px] font-black text-neutral-900 dark:text-white">
-                              {order.arrivalDate || '-'}
-                            </div>
-                          ),
-                        },
-                        {
-                          key: 'action',
-                          header: '',
-                          className: 'w-[90px]',
-                          cellClassName: 'text-right',
-                          render: (order) => {
-                            const expanded = expandedOrderId === order.id;
-                            return (
-                              <button
-                                type="button"
-                                onClick={() => setExpandedOrderId(expanded ? null : order.id)}
-                                className="h-8 px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 text-[12px] font-black text-neutral-700 dark:text-neutral-200 bg-white dark:bg-neutral-950 hover:bg-neutral-50 dark:hover:bg-neutral-900"
-                              >
-                                {expanded ? '收合' : '查看'}
-                              </button>
-                            );
-                          },
-                        },
-                      ]}
-                      rows={pageRows}
-                      rowKey={(o) => String(o.id)}
-                      isRowExpanded={(o) => expandedOrderId === o.id}
-                      renderExpanded={(order) => (
-                        <div className="space-y-2">
-                          <div className="text-[12px] font-black text-neutral-600 dark:text-neutral-300">
-                            配送商品（{order.items?.length || 0}）
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            {(order.items || []).map((it, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center gap-2 bg-white dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800 px-2 py-2"
-                              >
-                                <span className="px-2 py-0.5 rounded-xl text-[11px] font-black bg-primary/10 text-primary border border-primary/10 whitespace-nowrap">
-                                  {it.grade}
-                                </span>
-                                <div className="text-[13px] font-bold text-neutral-800 dark:text-neutral-100 truncate">
-                                  {it.name}
+                      ) : shown.map((order) => {
+                        const expanded = expandedOrderId === order.id;
+                        const st = getStatusConfig(order.status);
+                        const itemText = (order.items || []).map((i) => `${i.grade} ${i.name}`).join('、');
+                        // 沒有單號的訂單存的是「-」，不當單號印
+                        const tracking = order.tracking && order.tracking !== '-' ? order.tracking : '';
+                        const logistics = order.logisticsType === 'CVS'
+                          ? (order.storeName ? `超商取貨 ${order.storeName}` : '超商取貨')
+                          : (order.address ? `宅配 ${order.address}` : (order.method || '宅配'));
+                        return (
+                          <div key={order.id} className={cn('rounded-[14px] bg-white ring-1 ring-[#e5e7eb] transition-shadow', expanded && 'shadow-[0_10px_40px_-10px_rgba(0,0,0,0.12)]')}>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedOrderId(expanded ? null : order.id)}
+                              aria-expanded={expanded}
+                              className="flex w-full items-start gap-4 px-5 py-4 text-left"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-mono text-[15px] font-black text-neutral-900">{order.order_number || `#${String(order.id).slice(0, 8)}`}</span>
+                                  <span className="text-[13px] font-bold text-neutral-500">{order.date}</span>
+                                  <ProfileStatusBadge config={st} />
+                                </div>
+                                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] font-bold text-neutral-500">
+                                  {order.items?.length ? (
+                                    <span className="max-w-[460px] truncate text-neutral-700">{order.items.length} 件：{itemText}</span>
+                                  ) : (
+                                    <span className="text-neutral-400">獎品已退回倉庫</span>
+                                  )}
+                                  {order.supplierName ? <span>{order.supplierName}</span> : null}
+                                  <span className="truncate max-w-[320px]">{logistics}</span>
+                                  {tracking ? <span className="font-mono">{tracking}</span> : null}
+                                  {/* arrivalDate 有時是日期、有時是「待出貨／已送達」這種字，只有日期才冠「到貨」 */}
+                                  {order.arrivalDate && order.arrivalDate !== '-' ? (
+                                    <span>{/\d/.test(order.arrivalDate) ? `到貨 ${order.arrivalDate}` : order.arrivalDate}</span>
+                                  ) : null}
                                 </div>
                               </div>
-                            ))}
+                              <div className="flex shrink-0 items-center gap-3 pt-0.5">
+                                {order.shippingFee > 0 ? (
+                                  <span className="text-[14px] font-black text-neutral-900">運費 {order.shippingFee.toLocaleString()} G</span>
+                                ) : (
+                                  <span className="text-[13px] font-bold text-accent-emerald">免運</span>
+                                )}
+                                <ChevronDown className={cn('h-4 w-4 text-neutral-400 transition-transform', expanded && 'rotate-180')} />
+                              </div>
+                            </button>
+
+                            {expanded && (
+                              <div className="border-t border-neutral-100 px-5 py-4">
+                                {order.status === 'cancelled' ? (
+                                  <div className="text-[14px] font-bold text-neutral-500">此訂單已取消{order.shippingFee > 0 ? `，運費 ${order.shippingFee.toLocaleString()} G 已退回` : ''}</div>
+                                ) : (
+                                  <DeliverySteps status={order.status} />
+                                )}
+                                <div className="mt-4 grid gap-6" style={{ gridTemplateColumns: 'minmax(0, 1fr) 300px' }}>
+                                  <div className="min-w-0">
+                                    <div className="text-[13px] font-black text-neutral-500">配送商品（{order.items?.length || 0}）</div>
+                                    <div className="mt-2 grid grid-cols-2 gap-2">
+                                      {(order.items || []).map((it, idx) => (
+                                        <div key={idx} className="flex items-center gap-2 rounded-xl bg-[#f3f4f6] px-3 py-2">
+                                          <GradeBadge grade={it.grade} size="sm" />
+                                          <div className="min-w-0">
+                                            <div className="truncate text-[14px] font-black text-neutral-900">{it.name}</div>
+                                            {it.productName ? <div className="truncate text-[12px] font-bold text-neutral-500">{it.productName}</div> : null}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  <div className="space-y-2.5 text-[14px]">
+                                    {[
+                                      ['收件人', order.recipientName],
+                                      ['電話', order.recipientPhone],
+                                      [order.logisticsType === 'CVS' ? '收件門市' : '收件地址', order.logisticsType === 'CVS' ? order.storeName : order.address],
+                                      ['配送方式', order.method],
+                                    ].filter(([, v]) => !!v).map(([k, v]) => (
+                                      <div key={String(k)} className="flex items-start justify-between gap-3">
+                                        <span className="shrink-0 font-bold text-neutral-400">{k}</span>
+                                        <span className="text-right font-black text-neutral-900">{v}</span>
+                                      </div>
+                                    ))}
+                                    {tracking ? (
+                                      <div className="flex items-start justify-between gap-3">
+                                        <span className="shrink-0 font-bold text-neutral-400">物流單號</span>
+                                        <button type="button" onClick={() => copyText(tracking)} className="inline-flex items-center gap-1 font-mono font-black text-neutral-900 hover:text-primary">
+                                          {tracking}
+                                          <Copy className="h-3.5 w-3.5 text-neutral-400" />
+                                        </button>
+                                      </div>
+                                    ) : null}
+                                    {canCancelDelivery(order) && (
+                                      <div className="pt-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCancelDelivery(order)}
+                                          className="h-9 rounded-xl bg-[#f3f4f6] px-4 text-[13px] font-black text-accent-red hover:bg-[#e5e7eb]"
+                                        >
+                                          取消配送申請
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
-
-                          {canCancelDelivery(order) && (
-                            <div className="pt-1">
-                              <button
-                                type="button"
-                                onClick={() => handleCancelDelivery(order)}
-                                className="h-8 px-3 rounded-lg border border-red-200 dark:border-red-900/40 text-[12px] font-black text-red-500 bg-white dark:bg-neutral-950 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                              >
-                                取消配送申請
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      empty="尚無配送訂單"
-                    />
-
-                    <ProfilePagination
-                      page={page}
-                      pageSize={desktopDeliveryPageSize}
-                      total={total}
-                      onPageChange={setDesktopDeliveryPage}
-                      onPageSizeChange={(s) => {
-                        setDesktopDeliveryPageSize(s);
-                        setDesktopDeliveryPage(1);
-                      }}
-                    />
-                  </div>
+                        );
+                      })}
+                    </div>
+                    {list.length > 0 && (
+                      <div ref={desktopWarehouseSentinel} className="py-5 text-center text-[13px] font-bold text-neutral-400">
+                        {hasMore ? '載入中…' : `已顯示全部 ${list.length} 筆`}
+                      </div>
+                    )}
+                  </>
                 );
               })()}
             </div>
@@ -7025,7 +7000,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
     ? { boxShadow: '0 0 0 1px #e5e7eb, 0 10px 40px -10px rgba(0,0,0,0.08)' }
     : undefined;
   /* 已重構成「零套疊」的分頁：右欄不再包外層白卡，內容直接鋪在頁面底色上（老闆 2026-09-05） */
-  const flatTab = cardxShell && (activeTab === 'warehouse' || activeTab === 'settings');
+  const flatTab = cardxShell && (activeTab === 'warehouse' || activeTab === 'settings' || activeTab === 'delivery');
   const sideCardCls = cardxShell
     ? 'bg-white rounded-[18px] p-[14px]'
     : 'bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3';
