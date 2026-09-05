@@ -181,14 +181,22 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                             : "#icon-chevron-right";
   }, []);
 
+  /* 視窗不夠寬就自動收起側欄（老闆 2026-09-05）：1280 以下一律收成圖標欄，
+     1280 以上才照玩家自己存的偏好（cardx.sidebarCollapsed）。縮放視窗時跟著切 */
   useEffect(() => {
-    const id = window.setTimeout(() => {
+    const mq = window.matchMedia("(min-width: 1280px)");
+    const apply = () => {
+      if (!mq.matches) { setSidebarCollapsed(true); return; }
       try {
         const raw = window.localStorage.getItem("cardx.sidebarCollapsed");
         setSidebarCollapsed(raw === "1");
-      } catch {}
-    }, 0);
-    return () => window.clearTimeout(id);
+      } catch {
+        setSidebarCollapsed(false);
+      }
+    };
+    const id = window.setTimeout(apply, 0);
+    mq.addEventListener("change", apply);
+    return () => { window.clearTimeout(id); mq.removeEventListener("change", apply); };
   }, []);
 
   useEffect(() => {
