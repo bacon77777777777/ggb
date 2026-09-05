@@ -7583,7 +7583,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                           </Link>
                         ) : (
                           <>
-                            <h2 className={cn('font-black text-neutral-900 dark:text-white truncate tracking-tight', cardxShell ? 'text-[16px]' : 'text-sm lg:text-base')}>
+                            <h2 className={cn('font-black text-neutral-900 dark:text-white truncate tracking-tight', cardxShell ? 'text-[18px]' : 'text-sm lg:text-base')}>
                               {user.name}
                             </h2>
                             {user.is_phone_verified && (
@@ -7593,7 +7593,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                         )}
                       </div>
                       {!isGuest && (
-                        <div className={cn('flex items-center gap-2 mt-0.5', cardxShell && 'justify-center')}>
+                        <div className={cn('flex items-center gap-2', cardxShell ? 'justify-center mt-2' : 'mt-0.5')}>
                           <div
                             className="flex items-center gap-1.5 cursor-pointer group/invite"
                             onClick={() => {
@@ -7605,8 +7605,8 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                               }
                             }}
                           >
-                            <span className={cn('font-black text-neutral-400 uppercase tracking-wider whitespace-nowrap', cardxShell ? 'text-[12px]' : 'text-[13px]')}>邀請碼</span>
-                            <span className={cn('font-mono font-black transition-colors whitespace-nowrap', cardxShell ? 'text-[12px] text-[#111827]' : 'text-[13px] text-primary group-hover/invite:text-primary/80')}>
+                            <span className={cn('font-black text-neutral-400 uppercase tracking-wider whitespace-nowrap', cardxShell ? 'text-[14px]' : 'text-[13px]')}>邀請碼</span>
+                            <span className={cn('font-mono font-black transition-colors whitespace-nowrap', cardxShell ? 'text-[14px] text-[#111827]' : 'text-[13px] text-primary group-hover/invite:text-primary/80')}>
                               {formatMemberNo(user.invite_code) || '-'}
                             </span>
                             <Copy className="w-3.5 h-3.5 text-neutral-300 group-hover/invite:text-primary transition-colors" />
