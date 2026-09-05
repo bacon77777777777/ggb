@@ -52,6 +52,7 @@ import ProfileToolbar from '@/components/profile/desktop/ProfileToolbar';
 import ProfileDataTable from '@/components/profile/desktop/ProfileDataTable';
 import ProfileStatusBadge from '@/components/profile/desktop/ProfileStatusBadge';
 import ProfilePagination from '@/components/profile/desktop/ProfilePagination';
+import ProfileSearchField from '@/components/profile/desktop/ProfileSearchField';
 /* 1024 以上整頁掛進 cardx 的外殼（老闆 2026-09-05：會員中心要對齊 cardx 版型——頂部導航、左右分欄的樣式／密度／字級） */
 import { AppShell } from '@/cardx/components/layout/AppShell';
 import { defaultSidebarItems } from '@/cardx/lib/navigation';
@@ -5161,20 +5162,19 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                       <span className="text-[13px] font-bold text-neutral-500">{list.length} 筆</span>
                     </div>
 
-                    <div className="mt-3 flex items-center justify-between gap-3">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {statusTabs.map(([id, label]) => (
-                          <button key={id} type="button" className={pill(activeDeliveryTab === id)} onClick={() => setActiveDeliveryTab(id)}>
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                      <input
-                        value={desktopDeliverySearch}
-                        onChange={(e) => setDesktopDeliverySearch(e.target.value)}
-                        placeholder="搜尋訂單編號 / 追蹤號碼 / 商品"
-                        className="h-9 w-[260px] max-w-[45%] rounded-xl bg-white px-3.5 text-[13px] font-bold text-neutral-800 ring-1 ring-[#e5e7eb] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                      />
+                    {/* 搜尋框跟倉庫同一顆共用元件、獨立一行（老闆 2026-09-05：搜尋樣式統一），狀態膠囊在下一行 */}
+                    <ProfileSearchField
+                      className="mt-3"
+                      value={desktopDeliverySearch}
+                      onChange={setDesktopDeliverySearch}
+                      placeholder="搜尋訂單編號、追蹤號碼、商品"
+                    />
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                      {statusTabs.map(([id, label]) => (
+                        <button key={id} type="button" className={pill(activeDeliveryTab === id)} onClick={() => setActiveDeliveryTab(id)}>
+                          {label}
+                        </button>
+                      ))}
                     </div>
 
                     <div className="mt-4 space-y-2">
@@ -5233,57 +5233,65 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
 
                             {expanded && (
                               <div className="border-t border-neutral-100 px-5 py-4">
-                                {order.status === 'cancelled' ? (
-                                  <div className="text-[14px] font-bold text-neutral-500">此訂單已取消{order.shippingFee > 0 ? `，運費 ${order.shippingFee.toLocaleString()} G 已退回` : ''}</div>
-                                ) : (
-                                  <DeliverySteps status={order.status} />
-                                )}
-                                <div className="mt-4 grid gap-6" style={{ gridTemplateColumns: 'minmax(0, 1fr) 300px' }}>
+                                {/* 左：進度（限寬）＋品項一列一列不截字；右：收件資訊收成灰底小塊、標籤與值靠左（老闆 2026-09-05：之前左右拉得太開） */}
+                                <div className="grid gap-8" style={{ gridTemplateColumns: 'minmax(0, 1fr) 320px' }}>
                                   <div className="min-w-0">
-                                    <div className="text-[13px] font-black text-neutral-500">配送商品（{order.items?.length || 0}）</div>
-                                    <div className="mt-2 grid grid-cols-2 gap-2">
-                                      {(order.items || []).map((it, idx) => (
-                                        <div key={idx} className="flex items-center gap-2 rounded-xl bg-[#f3f4f6] px-3 py-2">
-                                          <GradeBadge grade={it.grade} size="sm" />
-                                          <div className="min-w-0">
-                                            <div className="truncate text-[14px] font-black text-neutral-900">{it.name}</div>
-                                            {it.productName ? <div className="truncate text-[12px] font-bold text-neutral-500">{it.productName}</div> : null}
-                                          </div>
+                                    {order.status === 'cancelled' ? (
+                                      <div className="text-[14px] font-bold text-neutral-500">此訂單已取消{order.shippingFee > 0 ? `，運費 ${order.shippingFee.toLocaleString()} G 已退回` : ''}，獎品已退回倉庫</div>
+                                    ) : (
+                                      <div className="max-w-[560px]"><DeliverySteps status={order.status} /></div>
+                                    )}
+                                    {order.items?.length ? (
+                                      <div className={order.status === 'cancelled' ? 'mt-3' : 'mt-5'}>
+                                        <div className="text-[13px] font-black text-neutral-500">配送商品 {order.items.length} 件</div>
+                                        <div className="mt-1 divide-y divide-neutral-100">
+                                          {order.items.map((it, idx) => (
+                                            <div key={idx} className="flex items-center gap-3 py-2.5">
+                                              <GradeBadge grade={it.grade} size="sm" />
+                                              <div className="min-w-0 flex-1">
+                                                <div className="text-[14px] font-black text-neutral-900">{it.name}</div>
+                                                {it.productName ? <div className="text-[12px] font-bold text-neutral-500">{it.productName}</div> : null}
+                                              </div>
+                                            </div>
+                                          ))}
                                         </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                  <div className="space-y-2.5 text-[14px]">
-                                    {[
-                                      ['收件人', order.recipientName],
-                                      ['電話', order.recipientPhone],
-                                      [order.logisticsType === 'CVS' ? '收件門市' : '收件地址', order.logisticsType === 'CVS' ? order.storeName : order.address],
-                                      ['配送方式', order.method],
-                                    ].filter(([, v]) => !!v).map(([k, v]) => (
-                                      <div key={String(k)} className="flex items-start justify-between gap-3">
-                                        <span className="shrink-0 font-bold text-neutral-400">{k}</span>
-                                        <span className="text-right font-black text-neutral-900">{v}</span>
-                                      </div>
-                                    ))}
-                                    {tracking ? (
-                                      <div className="flex items-start justify-between gap-3">
-                                        <span className="shrink-0 font-bold text-neutral-400">物流單號</span>
-                                        <button type="button" onClick={() => copyText(tracking)} className="inline-flex items-center gap-1 font-mono font-black text-neutral-900 hover:text-primary">
-                                          {tracking}
-                                          <Copy className="h-3.5 w-3.5 text-neutral-400" />
-                                        </button>
                                       </div>
                                     ) : null}
+                                  </div>
+                                  <div className="self-start rounded-[14px] bg-[#f3f4f6] px-4 py-3">
+                                    <div className="text-[13px] font-black text-neutral-500">收件資訊</div>
+                                    <dl className="mt-2 space-y-2 text-[14px]">
+                                      {[
+                                        ['收件人', order.recipientName],
+                                        ['電話', order.recipientPhone],
+                                        [order.logisticsType === 'CVS' ? '收件門市' : '收件地址', order.logisticsType === 'CVS' ? order.storeName : order.address],
+                                        ['配送方式', order.method],
+                                      ].filter(([, v]) => !!v).map(([k, v]) => (
+                                        <div key={String(k)} className="flex gap-3">
+                                          <dt className="w-[64px] shrink-0 font-bold text-neutral-400">{k}</dt>
+                                          <dd className="min-w-0 flex-1 break-words font-black text-neutral-900">{v}</dd>
+                                        </div>
+                                      ))}
+                                      {tracking ? (
+                                        <div className="flex gap-3">
+                                          <dt className="w-[64px] shrink-0 font-bold text-neutral-400">物流單號</dt>
+                                          <dd className="min-w-0 flex-1">
+                                            <button type="button" onClick={() => copyText(tracking)} className="inline-flex items-center gap-1 font-mono font-black text-neutral-900 hover:text-primary">
+                                              {tracking}
+                                              <Copy className="h-3.5 w-3.5 text-neutral-400" />
+                                            </button>
+                                          </dd>
+                                        </div>
+                                      ) : null}
+                                    </dl>
                                     {canCancelDelivery(order) && (
-                                      <div className="pt-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => handleCancelDelivery(order)}
-                                          className="h-9 rounded-xl bg-[#f3f4f6] px-4 text-[13px] font-black text-accent-red hover:bg-[#e5e7eb]"
-                                        >
-                                          取消配送申請
-                                        </button>
-                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCancelDelivery(order)}
+                                        className="mt-3 h-10 w-full rounded-xl bg-white text-[13px] font-black text-accent-red ring-1 ring-[#e5e7eb] hover:bg-neutral-50"
+                                      >
+                                        取消配送申請
+                                      </button>
                                     )}
                                   </div>
                                 </div>
