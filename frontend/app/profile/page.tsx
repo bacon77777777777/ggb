@@ -58,6 +58,7 @@ import { defaultSidebarItems } from '@/cardx/lib/navigation';
 import homeStyles from '@/cardx/components/home/HomeClient.module.css';
 import { Button3D as CardxButton3D } from '@/cardx/components/ui/Kit';
 import { useMinWidth } from '@/lib/useMinWidth';
+import InviteView from '@/components/invite/InviteView';
 
 import { Tabs, TabsContent, TabsContentWrapper, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { normalizePhone, PHONE_PLACEHOLDER, PHONE_ERROR, isValidPhone } from '@/lib/phone';
@@ -243,7 +244,9 @@ type TabType =
   | 'topup-history'
   | 'follows'
   | 'coupons'
-  | 'settings';
+  | 'settings'
+  /** 邀請好友：只有桌機（cardx 殼）才是會員中心的分頁，手機仍是 /invite 獨立頁 */
+  | 'invite';
 
 interface DbListing {
   id: number;
@@ -1484,6 +1487,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
         'follows',
         'coupons',
         'settings',
+        ...(cardxShell ? (['invite'] as const) : []),
       ].includes(tab as any)
     ) {
       setActiveTab(tab as TabType);
@@ -6718,7 +6722,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                 {/* Info Group 1 */}
                 <div className="space-y-2">
                   <div 
-                    className="flex items-center justify-between px-4 h-14 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
+                    className="flex items-center justify-between px-5 h-16 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={openAvatarPicker}
                   >
                     <label className="text-[14px] font-bold text-neutral-700">頭像</label>
@@ -6749,7 +6753,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                     </div>
                   </div>
                   <div
-                    className="flex items-center justify-between px-4 h-14 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
+                    className="flex items-center justify-between px-5 h-16 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => setShowEditNickname(true)}
                   >
                     <label className="text-[14px] font-bold text-neutral-700">暱稱</label>
@@ -6761,7 +6765,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                     </div>
                   </div>
                   <div
-                    className="flex items-center justify-between px-4 h-14 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
+                    className="flex items-center justify-between px-5 h-16 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => { fetchUserTitles(); setShowTitlePicker(true); }}
                   >
                     <label className="text-[14px] font-bold text-neutral-700">稱號</label>
@@ -6778,7 +6782,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                     </div>
                   </div>
                   <div 
-                    className="flex items-center justify-between px-4 h-14 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
+                    className="flex items-center justify-between px-5 h-16 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => {
                       if (settingsForm.gender) return;
                       setTempGender('');
@@ -6796,7 +6800,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                     </div>
                   </div>
                   <div 
-                    className="flex items-center justify-between px-4 h-14 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
+                    className="flex items-center justify-between px-5 h-16 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => {
                       if (settingsForm.birthday) return;
                       if (!tempBirthday) setTempBirthday(new Date(2000, 0, 1));
@@ -6821,12 +6825,12 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                 <div className="text-[14px] font-black text-neutral-900">帳號</div>
                 {/* 帳號與安全：同手機版的順序與規則 */}
                 <div className="space-y-2">
-                  <div className="flex h-14 items-center overflow-hidden rounded-[14px] bg-white ring-1 ring-[#e5e7eb] [&>*]:w-full [&>*]:!py-0"><EmailBindRow email={user?.email} /></div>
-                  <div className="flex h-14 items-center overflow-hidden rounded-[14px] bg-white ring-1 ring-[#e5e7eb] [&>*]:w-full [&>*]:!py-0"><LineBindRow /></div>
+                  <div className="h-16 overflow-hidden rounded-[14px] bg-white ring-1 ring-[#e5e7eb] transition-colors hover:bg-neutral-50 [&>*]:h-full [&>*]:w-full [&>*]:!py-0 [&>*]:!px-5"><EmailBindRow email={user?.email} /></div>
+                  <div className="h-16 overflow-hidden rounded-[14px] bg-white ring-1 ring-[#e5e7eb] transition-colors hover:bg-neutral-50 [&>*]:h-full [&>*]:w-full [&>*]:!py-0 [&>*]:!px-5"><LineBindRow /></div>
                   {/* 同上：功能關閉時整列不顯示 */}
                   {(phoneVerifyEnabled || user?.is_phone_verified) && (
                   <div 
-                    className="flex items-center justify-between px-4 h-14 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
+                    className="flex items-center justify-between px-5 h-16 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => {
                       if (user?.is_phone_verified) return;
                       openPhoneBindModal();
@@ -6843,7 +6847,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                   )}
                   {user?.email && !isSyntheticEmail(user.email) && (
                     <div 
-                      className="flex items-center justify-between px-4 h-14 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
+                      className="flex items-center justify-between px-5 h-16 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
                       onClick={() => router.push('/update-password')}
                     >
                       <label className="text-[14px] font-bold text-neutral-700">登入密碼</label>
@@ -6862,11 +6866,11 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
 
                 {/* 邀請碼（選填）與收件地址併在帳號這一組，左右各五列才對稱。
                     ⚠️ 要跟上面三列同一個 space-y-2 容器：分成三個區塊會吃到欄的 space-y-4，位置就比左欄低（老闆 2026-09-05） */}
-                  <div className="flex h-14 items-center overflow-hidden rounded-[14px] bg-white ring-1 ring-[#e5e7eb] [&>*]:w-full [&>*]:!py-0"><InviteCodeRow /></div>
+                  <div className="h-16 overflow-hidden rounded-[14px] bg-white ring-1 ring-[#e5e7eb] transition-colors hover:bg-neutral-50 [&>*]:h-full [&>*]:w-full [&>*]:!py-0 [&>*]:!px-5"><InviteCodeRow /></div>
 
                 {/* Address Section */}
                   <div 
-                    className="flex items-center justify-between px-4 h-14 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
+                    className="flex items-center justify-between px-5 h-16 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => setShowAddressBook(true)}
                   >
                     <label className="text-[14px] font-bold text-neutral-700">收件地址</label>
@@ -7011,6 +7015,9 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
             )}
           </div>
         );
+      case 'invite':
+        /* 桌機：邀請好友是會員中心的分頁，右欄放邀請頁那張卡（老闆 2026-09-05） */
+        return cardxShell ? <InviteView embedded /> : null;
       default:
         return (
           <div className="p-8 text-center text-neutral-400 font-black uppercase tracking-widest">
@@ -7025,7 +7032,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
     ? { boxShadow: '0 0 0 1px #e5e7eb, 0 10px 40px -10px rgba(0,0,0,0.08)' }
     : undefined;
   /* 已重構成「零套疊」的分頁：右欄不再包外層白卡，內容直接鋪在頁面底色上（老闆 2026-09-05） */
-  const flatTab = cardxShell && (activeTab === 'warehouse' || activeTab === 'settings');
+  const flatTab = cardxShell && (activeTab === 'warehouse' || activeTab === 'settings' || activeTab === 'invite');
   const sideCardCls = cardxShell
     ? 'bg-white rounded-[18px] p-[14px]'
     : 'bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3';
@@ -7078,11 +7085,13 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                       router.push(loginHref);
                       return;
                     }
-                    router.push('/invite');
+                    if (cardxShell) handleTabChange('invite');
+                    else router.push('/invite');
                   }}
-                  className={sideNavCls(false)}
+                  className={sideNavCls(cardxShell && activeTab === 'invite')}
+                  style={sideNavStyle(cardxShell && activeTab === 'invite')}
                 >
-                  {sideNavIcon(UserPlus, false, 'text-violet-500 group-hover:text-primary transition-colors')}
+                  {sideNavIcon(UserPlus, cardxShell && activeTab === 'invite', 'text-violet-500 group-hover:text-primary transition-colors')}
                   <span className="truncate">邀請好友</span>
                   <span className={cn('ml-auto inline-flex items-center rounded-full bg-accent-red px-2 font-bold leading-none text-white', cardxShell ? 'h-[21px] text-[12px]' : 'h-[19px] text-[11px]')}>
                     <span className="cjk-optical-center">無限拿積分</span>
@@ -7522,7 +7531,8 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
             style={cardxShell ? { gridTemplateColumns: '288px minmax(0, 1fr)' } : undefined}
           >
             <div className={cardxShell ? 'space-y-3 sticky' : 'md:col-span-3 lg:col-span-3 space-y-3 sticky top-24'} style={cardxShell ? { top: 'calc(var(--header-height) + 24px)' } : undefined}>
-            <div className={sideCardCls} style={cardxCardStyle}>
+            {/* cardx 殼：左欄那張卡滿高（視窗 − 頂欄 − 上下各 24 留白），跟側欄一樣貼到底（老闆 2026-09-05） */}
+            <div className={sideCardCls} style={cardxShell ? { ...cardxCardStyle, minHeight: 'calc(100dvh - var(--header-height) - 48px)' } : cardxCardStyle}>
               <div className="flex flex-col gap-2.5">
                   <div className="flex items-center gap-2.5">
                     <div className="relative flex-shrink-0">

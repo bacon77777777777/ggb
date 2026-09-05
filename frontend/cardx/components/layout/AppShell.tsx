@@ -482,7 +482,8 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                         </span>
                         <span className={styles.profileMenuText}>訊息</span>
                       </Link>
-                      <Link className={styles.profileMenuItem} role="menuitem" href="/invite" onClick={() => setProfileOpen(false)}>
+                      {/* 邀請好友在桌機是會員中心的分頁（老闆 2026-09-05） */}
+                      <Link className={styles.profileMenuItem} role="menuitem" href="/profile?tab=invite" onClick={() => setProfileOpen(false)}>
                         <span className={styles.profileMenuIcon} aria-hidden="true">
                           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                             <use href="#icon-gift" />
