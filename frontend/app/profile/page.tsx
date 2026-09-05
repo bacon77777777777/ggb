@@ -2336,8 +2336,9 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
               products ( name, price, status, remaining, type )
             `)
             .eq('user_id', user.id)
-            // 挑戰機台退幣那種 spin 也寫進 draw_records（status=coin_return、沒有商品），不是抽獎，抽獎紀錄不列（老闆 2026-09-05：「coin_return 什麼鬼」）
-            .neq('status', 'coin_return')
+            // 挑戰機台的 spin 也寫進 draw_records：退幣（status=coin_return）與未中獎（status=lost）都沒有獎品，
+            // 不是抽獎，抽獎紀錄不列（老闆 2026-09-05：「coin_return 什麼鬼」＋依建議一併移出未中獎）
+            .not('status', 'in', '("coin_return","lost")')
             .order('created_at', { ascending: false })
             .order('id', { ascending: false })
             .range(from, to),
@@ -2371,7 +2372,8 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
               rawDate: currentTimestamp,
               id: item.id,
               productId: item.product_id,
-              product: item.products?.name || '未知',
+              // 機台獎品沒有掛商品（product_id 空），品名標「挑戰機台」而不是「未知」（老闆 2026-09-05）
+              product: item.products?.name || (item.product_id ? '未知' : '挑戰機台'),
               productStatus: item.products?.status,
               productRemaining: item.products?.remaining,
               productType: item.products?.type,
@@ -4646,9 +4648,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                             header: '賞別',
                             className: 'w-[110px]',
                             render: (item) => (
-                              <span className="inline-flex px-2 py-0.5 rounded-xl bg-primary/10 text-primary border border-primary/10 text-[12px] font-black whitespace-nowrap">
-                                {item.product.grade}
-                              </span>
+                              <GradeBadge grade={item.product.grade} size="sm" />
                             ),
                           },
                           {
@@ -5094,9 +5094,8 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                                               <div className="space-y-1.5 pl-1">
                                                 {grouped[productName].map((item, idx) => (
                                                   <div key={idx} className="flex items-center gap-2.5 bg-white dark:bg-neutral-900 p-2.5 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
-                                                    <span className="px-1.5 py-0.5 bg-accent-red/10 text-accent-red text-[11px] font-black rounded border border-accent-red/10 uppercase shrink-0">
-                                                      {item.grade === '一般版' || item.grade.includes('賞') ? item.grade : `${item.grade}賞`}
-                                                    </span>
+                                                    {/* 賞等標籤全站統一走 GradeBadge（老闆 2026-09-05：手機與桌機樣式顏色要一致） */}
+                                                    <GradeBadge grade={item.grade} size="sm" className="shrink-0" />
                                                     <span className="text-[13px] font-black text-neutral-700 dark:text-neutral-300 truncate">
                                                       {item.name}
                                                     </span>
@@ -5415,9 +5414,8 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                                             {result.ticket_number}
                                           </span>
                                         )}
-                                        <span className="px-2 py-0.5 bg-accent-red/10 text-accent-red text-[11px] font-black rounded-xl border border-accent-red/10 uppercase shrink-0">
-                                          {result.grade}
-                                        </span>
+                                        {/* 賞等標籤全站統一走 GradeBadge（老闆 2026-09-05） */}
+                                        <GradeBadge grade={result.grade} size="sm" className="shrink-0" />
                                         <span className="text-[13px] font-black text-neutral-700 dark:text-neutral-300 truncate">
                                           {result.name}
                                         </span>
