@@ -5409,7 +5409,8 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                                   {item.items.map((result, idx) => (
                                     <div key={idx} className="flex items-center justify-between gap-3 bg-white dark:bg-neutral-900 p-2.5 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
                                       <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
-                                        {!['gacha', 'blindbox'].includes(item.productType || '') && (
+                                        {/* 籤號膠囊：沒籤號（機台獎品那種）就不畫，不然會印一塊空的灰（老闆 2026-09-05） */}
+                                        {!['gacha', 'blindbox'].includes(item.productType || '') && result.ticket_number && (
                                           <span className="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 text-[11px] font-black rounded-xl border border-neutral-200 dark:border-neutral-700 font-sans shrink-0">
                                             {result.ticket_number}
                                           </span>
