@@ -30,6 +30,8 @@ export interface WarehouseGridCellProps {
   listed?: boolean;
   /** 廠商鎖：一張訂單只能有一家廠商的貨，非鎖定廠商的整格淡掉 */
   disabled?: boolean;
+  /** 品名底下再一行小字（桌機倉庫放籤號與日期）；沒傳就不畫，手機版不受影響 */
+  meta?: React.ReactNode;
   onToggle: () => void;
 }
 
@@ -41,6 +43,7 @@ export default function WarehouseGridCell({
   pending = false,
   listed = false,
   disabled = false,
+  meta,
   onToggle,
 }: WarehouseGridCellProps) {
   const locked = pending || listed || disabled;
@@ -154,6 +157,9 @@ export default function WarehouseGridCell({
           {name}
         </p>
       </div>
+      {meta ? (
+        <div className="mt-1 truncate px-0.5 text-center text-[11px] font-bold leading-none text-neutral-400">{meta}</div>
+      ) : null}
     </button>
   );
 }

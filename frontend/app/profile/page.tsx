@@ -32,6 +32,7 @@ import { ProfileSkeleton } from '@/components/Skeletons';
 import { WarehouseItemDetailModal } from '@/components/warehouse/WarehouseItemDetailModal';
 import WarehouseGridCell from '@/components/warehouse/WarehouseGridCell';
 import { isMajorGrade } from '@/lib/grade';
+import { GradeBadge } from '@/components/ui/GradeBadge';
 import WarehouseSearchPanel from '@/components/warehouse/WarehouseSearchPanel';
 import ProductCard from '@/components/ProductCard';
 import ProductCardSkeleton from '@/components/ProductCardSkeleton';
@@ -443,6 +444,8 @@ const getTopupStatusConfig = (status: string) => {
  */
 /** 倉庫格狀每次載入的格數：三欄 × 四列，捲一下補一屏 */
 const WAREHOUSE_PAGE = 12;
+/** 桌機倉庫商品格一批 24 張（一排 5 張約五排），捲到底自動再放 24 */
+const DESKTOP_WAREHOUSE_PAGE = 24;
 
 const SUPABASE_PAGE_SIZE = 1000;
 
@@ -696,6 +699,22 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
   const warehouseSubTabsRef = useRef<HTMLDivElement>(null);
   const [mobileWarehouseDisplayCount, setMobileWarehouseDisplayCount] = useState(WAREHOUSE_PAGE);
   const mobileWarehouseSentinelRef = useRef<HTMLDivElement>(null);
+  /* 桌機倉庫：捲到底自動載入（老闆 2026-09-05：不要分頁）。用 callback ref 掛 IntersectionObserver，
+     哨兵是條件渲染的，用一般 ref＋effect 會抓不到它出現的時機 */
+  const [desktopWarehouseDisplayCount, setDesktopWarehouseDisplayCount] = useState(DESKTOP_WAREHOUSE_PAGE);
+  const desktopWarehouseIoRef = useRef<IntersectionObserver | null>(null);
+  const desktopWarehouseSentinel = React.useCallback((node: HTMLDivElement | null) => {
+    desktopWarehouseIoRef.current?.disconnect();
+    desktopWarehouseIoRef.current = null;
+    if (!node) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        setDesktopWarehouseDisplayCount((prev) => prev + DESKTOP_WAREHOUSE_PAGE);
+      }
+    }, { rootMargin: '600px 0px' });
+    io.observe(node);
+    desktopWarehouseIoRef.current = io;
+  }, []);
   const mobileWarehouseScrollRef = useRef<HTMLDivElement>(null);
   // 倉庫下滑收起底部「全選」bar（同首頁）。分頁已改由 window 捲動，直接用預設模式
   const warehouseBarHiddenRaw = useHideOnScroll({
@@ -2696,6 +2715,14 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
     warehouseSort, warehouseSearch, warehouseSupplier, warehouseFilter,
   ]);
 
+  // 桌機倉庫：換篩選／關鍵字／分頁時回到第一批
+  useEffect(() => {
+    setDesktopWarehouseDisplayCount(DESKTOP_WAREHOUSE_PAGE);
+  }, [
+    activeWarehouseCategory, activeWarehouseSubCategory, activeWarehouseTab,
+    warehouseSort, warehouseSearch, desktopWarehouseSearch, desktopDismantledSearch, warehouseSupplier, warehouseFilter,
+  ]);
+
   // Mobile delivery lazy load reset
   useEffect(() => {
     setMobileDeliveryDisplayCount(10);
@@ -3676,523 +3703,206 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
               )}
             </div>
             
-            <div className="hidden md:block px-6 py-5">
-            <div className="mb-4 lg:mb-6">
-              <ProfileSectionHeader
-                title="我的倉庫"
+            {/* 桌機（1024 起、掛在 cardx 外殼裡）：零套疊——標題列、工具列、商品格直接鋪在頁面底色上，
+                不用表格、不分頁，捲到底自動載入（老闆 2026-09-05 重構定案）。商品格沿用手機的 WarehouseGridCell，
+                欄數用 auto-fill 讓平板橫向（1024）約 4 欄、桌機 5 欄 */}
+            <div className="hidden md:block">
+              {(() => {
+                const q = desktopWarehouseSearch.trim().toLowerCase();
+                const list = sortedWarehouseItems.filter((item) => {
+                  if (!q) return true;
+                  return `${item.grade} ${item.name} ${item.series} ${item.ticketNo}`.toLowerCase().includes(q);
+                });
+                const dq = desktopDismantledSearch.trim().toLowerCase();
+                const dlist = filteredDismantledItems.filter((item) => {
+                  if (!dq) return true;
+                  return `${item.grade} ${item.name} ${item.series}`.toLowerCase().includes(dq);
+                });
+                const isAll = activeWarehouseTab === 'all';
+                const shown = list.slice(0, desktopWarehouseDisplayCount);
+                const shownDismantled = dlist.slice(0, desktopWarehouseDisplayCount);
+                const hasMore = isAll ? shown.length < list.length : shownDismantled.length < dlist.length;
+                const pill = (active: boolean) => cn(
+                  'h-8 px-3 rounded-full text-[12px] font-black whitespace-nowrap transition-colors',
+                  active ? 'bg-primary text-white' : 'bg-white text-neutral-700 ring-1 ring-[#e5e7eb] hover:bg-neutral-50',
+                );
+                /* 132 是量過的：右欄在 1024（平板橫向）約 434 寬排 3 欄、1280 排 4 欄、1440 排 5 欄 */
+                const gridStyle: React.CSSProperties = { gridTemplateColumns: 'repeat(auto-fill, minmax(132px, 1fr))' };
+                const preorderLocked = selectedForDelivery.some((id) => {
+                  const itm = warehouseItems.find((i) => i.id === id);
+                  return !!(itm?.isPreorder && itm?.preorderAvailableAt && new Date(itm.preorderAvailableAt).getTime() > Date.now());
+                });
+                const sentinelCls = 'py-5 text-center text-[12px] font-bold text-neutral-400';
+                return (
+                  <>
+                    {/* 標題列 */}
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-baseline gap-2 min-w-0">
+                        <h2 className="text-[20px] font-black text-neutral-900 tracking-tight">我的倉庫</h2>
+                        <span className="text-[13px] font-bold text-neutral-500">{isAll ? `${list.length} 件` : `${dlist.length} 筆`}</span>
+                      </div>
+                      {isAll && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedForDelivery(selectAllTarget.ids)}
+                          disabled={selectAllTarget.ids.length === 0 || selectedForDelivery.length >= selectAllTarget.ids.length}
+                          className="h-9 px-3.5 rounded-xl bg-white ring-1 ring-[#e5e7eb] text-[13px] font-black text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {`全選${selectAllTarget.ids.length > 0 ? ` (${selectAllTarget.ids.length})` : ''}`}
+                        </button>
+                      )}
+                    </div>
 
-                actions={
-                  activeWarehouseTab === 'all' ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedForDelivery(selectAllTarget.ids)}
-                        disabled={selectAllTarget.ids.length === 0 || selectedForDelivery.length >= selectAllTarget.ids.length}
-                        className="h-9 px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-black text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {`全選${selectAllTarget.ids.length > 0 ? ` (${selectAllTarget.ids.length})` : ''}`}
-                      </button>
-                      {selectedForDelivery.length > 0 && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedForDelivery([])}
-                            className="h-9 px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-black text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-900"
-                          >
-                            重選
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleDismantleClick}
-                            className="h-9 px-3 rounded-lg bg-accent-red text-white text-[13px] font-black"
-                          >
-                            回收 ({selectedForDelivery.length})
-                          </button>
-                          {/* 倉庫的上架彈窗與交易所的上架表單強碰，老闆 2026-09-02 拍板留交易所那個：
-                                倉庫這顆上架入口隱藏，上架一律走 /market「我的上架 → 去上架」 */}
-                          {selectedForDelivery.length <= 10 ? (
-                            <button
-                              type="button"
-                              onClick={() => setShowDeliveryModal(true)}
-                              disabled={Boolean(selectedForDelivery.some(id => {
-                                const itm = warehouseItems.find(i => i.id === id);
-                                return itm?.isPreorder && itm?.preorderAvailableAt && new Date(itm?.preorderAvailableAt).getTime() > Date.now();
-                              }))}
-                              className="h-9 px-3 rounded-lg bg-primary text-white text-[13px] font-black disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              配送 ({selectedForDelivery.length})
+                    {/* 工具列固定兩行：第一行「全部獎項／已回收」＋搜尋，第二行「類型」「賞等」兩組膠囊各帶小標。
+                        不讓膠囊隨視窗寬度隨機折行（老闆 2026-09-05：有夠亂） */}
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-1.5">
+                        <button type="button" className={pill(isAll)} onClick={() => setActiveWarehouseTab('all')}>
+                          全部獎項 ({warehouseItems.length})
+                        </button>
+                        <button type="button" className={pill(!isAll)} onClick={() => { setActiveWarehouseTab('dismantled'); setActiveWarehouseCategory('all'); }}>
+                          已回收 ({dismantledItems.length})
+                        </button>
+                      </div>
+                      <input
+                        value={isAll ? desktopWarehouseSearch : desktopDismantledSearch}
+                        onChange={(e) => (isAll ? setDesktopWarehouseSearch(e.target.value) : setDesktopDismantledSearch(e.target.value))}
+                        placeholder={isAll ? '搜尋賞別 / 獎項 / 籤號' : '搜尋賞別 / 獎項'}
+                        className="h-9 w-[220px] max-w-[45%] px-3.5 rounded-xl bg-white ring-1 ring-[#e5e7eb] text-[13px] font-bold text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+                    {isAll && (
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="mr-0.5 text-[12px] font-bold text-neutral-400">類型</span>
+                          {warehouseTabs.map((t) => (
+                            <button key={t.id} type="button" className={pill(activeWarehouseCategory === t.id)} onClick={() => setActiveWarehouseCategory(t.id)}>
+                              {t.label}
                             </button>
-                          ) : null}
-                        </>
-                      )}
-                    </>
-                  ) : null
-                }
-              />
-            </div>
-
-            <Tabs value={activeWarehouseTab} onValueChange={(val) => setActiveWarehouseTab(val as 'all' | 'dismantled')} className="w-full">
-              <TabsList className="mb-4 overflow-x-auto scrollbar-hide border-b border-neutral-100 dark:border-neutral-800 px-0 md:px-2 justify-start">
-                <TabsTrigger value="all">
-                  全部獎項 ({warehouseItems.length})
-                </TabsTrigger>
-                <TabsTrigger value="dismantled">
-                  已回收 ({dismantledItems.length})
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContentWrapper>
-                <TabsContent value="all">
-                  <div className="mb-4">
-                    <ProfileToolbar
-                      left={
-                        <>
-                          <input
-                            value={desktopWarehouseSearch}
-                            onChange={(e) => setDesktopWarehouseSearch(e.target.value)}
-                            placeholder="搜尋賞別 / 獎項 / 籤號"
-                            className="h-9 w-[320px] max-w-full px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-bold text-neutral-800 dark:text-neutral-100 placeholder:text-neutral-400"
-                          />
-                          <select
-                            value={activeWarehouseCategory}
-                            onChange={(e) => setActiveWarehouseCategory(e.target.value as ProductCategoryId)}
-                            className="h-9 px-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-bold text-neutral-700 dark:text-neutral-200"
-                          >
-                            {warehouseTabs.map((t) => (
-                              <option key={t.id} value={t.id}>
-                                {t.label}
-                              </option>
-                            ))}
-                          </select>
-                          <select
-                            value={activeWarehouseSubCategory}
-                            onChange={(e) =>
-                              setActiveWarehouseSubCategory(
-                                e.target.value as 'all' | 'tradable' | 'small_prize' | 'preorder'
-                              )
-                            }
-                            className="h-9 px-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-bold text-neutral-700 dark:text-neutral-200"
-                          >
-                            {warehouseSubTabs.map((t) => (
-                              <option key={t.id} value={t.id}>
-                                {t.label}
-                              </option>
-                            ))}
-                          </select>
-                        </>
-                      }
-                      right={
-                        <div className="text-[12px] text-neutral-500 dark:text-neutral-400 font-bold">
-                          共 {filteredWarehouseItems.length} 筆
+                          ))}
                         </div>
-                      }
-                    />
-                  </div>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="mr-0.5 text-[12px] font-bold text-neutral-400">賞等</span>
+                          {warehouseSubTabs.map((t) => (
+                            <button key={t.id} type="button" className={pill(activeWarehouseSubCategory === t.id)} onClick={() => setActiveWarehouseSubCategory(t.id)}>
+                              {t.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
-                  {isLoadingData ? (
-                    <div className="space-y-3">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <div key={i} className="flex items-center gap-4 p-4 border border-neutral-100 dark:border-neutral-800 rounded-2xl animate-pulse">
-                          <div className="w-12 h-12 bg-neutral-100 dark:bg-neutral-800 rounded-xl flex-shrink-0" />
-                          <div className="space-y-2 flex-1">
-                            <div className="h-4 w-1/3 bg-neutral-100 dark:bg-neutral-800 rounded" />
-                            <div className="h-3 w-1/4 bg-neutral-100 dark:bg-neutral-800 rounded" />
+                    {/* 內容 */}
+                    <div className="mt-4">
+                      {isLoadingData ? (
+                        <div className="grid gap-3" style={gridStyle}>
+                          {Array.from({ length: 10 }).map((_, i) => (
+                            <div key={i} className="aspect-[3/4] animate-pulse rounded-xl bg-white ring-1 ring-[#e5e7eb]" />
+                          ))}
+                        </div>
+                      ) : isAll ? (
+                        list.length === 0 ? (
+                          <div className="py-20 text-center text-neutral-400">
+                            <Box className="mx-auto mb-4 h-12 w-12 opacity-20" />
+                            <p className="text-sm font-black">目前沒有符合條件的獎品</p>
                           </div>
-                          <div className="h-8 w-20 bg-neutral-100 dark:bg-neutral-800 rounded-lg" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <>
-                      {filteredWarehouseItems.length === 0 ? (
-                        <div className="py-20 text-center text-neutral-400">
-                          <Box className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                          <p className="font-black text-sm uppercase tracking-widest">
-                            {warehouseItems.length === 0 ? '倉庫目前是空的' : '沒有相關獎項'}
-                          </p>
-                        </div>
-                      ) : (
-                        <>
-                          {/* Mobile List */}
-                          <div className="md:hidden divide-y divide-neutral-100 dark:divide-neutral-800 border-t border-b border-neutral-100 dark:border-neutral-800">
-                            {sortedWarehouseItems.map((item) => {
-                              const isSelected = selectedForDelivery.includes(item.id);
-                              return (
-                                <div
+                        ) : (
+                          <>
+                            <div className="grid gap-3" style={gridStyle}>
+                              {shown.map((item) => (
+                                <WarehouseGridCell
                                   key={item.id}
-                                  onClick={() => toggleDeliverySelection(item.id)}
-                                  className={cn(
-                                    "flex items-center gap-1 pl-3 pr-4 py-2 active:bg-neutral-50 dark:active:bg-neutral-800/70 transition-all",
-                                    isSelected && "bg-accent-emerald/5"
-                                  )}
-                                >
-                                  <div className="flex flex-col items-center justify-center w-12 flex-shrink-0">
-                                    <span className="px-1.5 py-0.5 bg-accent-red/10 text-accent-red text-[11px] font-black rounded border border-accent-red/10 uppercase tracking-wider whitespace-nowrap overflow-hidden text-ellipsis max-w-full">
-                                      {item.grade}
-                                    </span>
-                                  </div>
-                                  <div className="relative w-14 h-14 rounded-xl bg-white overflow-hidden flex-shrink-0">
-                                    <Image
-                                      src={item.image || asset('/images/item_defaulet.webp')}
-                                      alt={item.name}
-                                      fill
-                                      className="object-cover"
-                                      unoptimized
-                                    />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <h4 className="text-[14px] font-black text-neutral-900 dark:text-white leading-snug line-clamp-2">
-                                      {item.name}
-                                    </h4>
-                                    <p className="text-[12px] text-neutral-400 font-bold mt-0.5 truncate">
-                                      {item.series}
-                                    </p>
-                                  </div>
-                                  <div
-                                    className="ml-2"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleDeliverySelection(item.id);
-                                    }}
-                                  >
-                                    <div
-                                      className={cn(
-                                        "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all bg-white dark:bg-neutral-900",
-                                        isSelected
-                                          ? "border-accent-emerald bg-accent-emerald"
-                                          : "border-neutral-200 dark:border-neutral-700"
-                                      )}
-                                    >
-                                      {isSelected && <CheckCircle2 className="w-3 h-3 text-white" />}
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-
-                          <div className="hidden md:block space-y-3">
-                            {(() => {
-                              const q = desktopWarehouseSearch.trim().toLowerCase();
-                              const list = filteredWarehouseItems.filter((item) => {
-                                if (!q) return true;
-                                const text = `${item.grade} ${item.name} ${item.series} ${item.ticketNo}`.toLowerCase();
-                                return text.includes(q);
-                              });
-
-                              const total = list.length;
-                              const totalPages = Math.max(1, Math.ceil(total / desktopWarehousePageSize));
-                              const page = Math.min(desktopWarehousePage, totalPages);
-                              const start = (page - 1) * desktopWarehousePageSize;
-                              const pageRows = list.slice(start, start + desktopWarehousePageSize);
-
-                              return (
-                                <>
-                                  <ProfileDataTable
-                                    columns={[
-                                      {
-                                        key: 'select',
-                                        header: '',
-                                        className: 'w-[52px]',
-                                        render: (item) => {
-                                          const isSelected = selectedForDelivery.includes(item.id);
-                                          return (
-                                            <button
-                                              type="button"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                toggleDeliverySelection(item.id);
-                                              }}
-                                              className={cn(
-                                                'w-6 h-6 rounded-lg border flex items-center justify-center',
-                                                isSelected
-                                                  ? 'bg-accent-emerald border-accent-emerald'
-                                                  : 'bg-white dark:bg-neutral-950 border-neutral-200 dark:border-neutral-800'
-                                              )}
-                                            >
-                                              {isSelected ? <CheckCircle2 className="w-4 h-4 text-white stroke-[3]" /> : null}
-                                            </button>
-                                          );
-                                        },
-                                      },
-                                      {
-                                        key: 'grade',
-                                        header: '賞別',
-                                        className: 'w-[110px]',
-                                        render: (item) => (
-                                          <span className="inline-flex px-2 py-0.5 rounded-xl bg-primary/10 text-primary border border-primary/10 text-[12px] font-black whitespace-nowrap">
-                                            {item.grade}
-                                          </span>
-                                        ),
-                                      },
-                                      {
-                                        key: 'item',
-                                        header: '獎項內容',
-                                        render: (item) => (
-                                          <div className="flex items-center gap-3 min-w-0">
-                                            <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shrink-0">
-                                              <Image
-                                                src={item.image || asset('/images/item_defaulet.webp')}
-                                                alt={item.name}
-                                                fill
-                                                className="object-cover"
-                                                unoptimized
-                                              />
-                                            </div>
-                                            <div className="min-w-0">
-                                              <div className="font-black text-neutral-900 dark:text-white truncate">{item.name}</div>
-                                              <div className="text-[12px] text-neutral-500 dark:text-neutral-400 font-bold truncate">{item.series}</div>
-                                            </div>
-                                          </div>
-                                        ),
-                                      },
-                                      {
-                                        key: 'date',
-                                        header: '獲得日期',
-                                        className: 'w-[160px]',
-                                        render: (item) => (
-                                          <div className="text-[13px] font-bold text-neutral-700 dark:text-neutral-200 whitespace-nowrap">
-                                            {item.date}
-                                          </div>
-                                        ),
-                                      },
-                                      {
-                                        key: 'ticket',
-                                        header: '籤號',
-                                        className: 'w-[120px]',
-                                        render: (item) => (
-                                          <span className="inline-flex px-2 py-0.5 rounded-xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-[12px] font-black text-neutral-700 dark:text-neutral-200 font-amount whitespace-nowrap">
-                                            {item.ticketNo}
-                                          </span>
-                                        ),
-                                      },
-                                      {
-                                        // 抽籤商品：把「要付多少、什麼時候到期」放在看得到的地方。
-                                        // 一般商品這欄是空的，不另外多一個表格
-                                        key: 'lottery',
-                                        header: '抽籤商品',
-                                        className: 'w-[150px]',
-                                        render: (item) => (item.salePrice ?? 0) > 0 ? (
-                                          <div className="whitespace-nowrap">
-                                            <div className="text-[12px] font-black text-accent-red">
-                                              寄出應付 {item.salePrice} G
-                                            </div>
-                                            {item.expiresAt && (
-                                              <div className="text-[11px] text-neutral-400 mt-0.5">
-                                                {new Date(item.expiresAt).toLocaleDateString('zh-TW')} 前申請
-                                              </div>
-                                            )}
-                                          </div>
-                                        ) : <span className="text-neutral-300">—</span>,
-                                      },
-                                    ]}
-                                    rows={pageRows}
-                                    rowKey={(r) => String(r.id)}
-                                    onRowClick={(item) => toggleDeliverySelection(item.id)}
-                                    empty={warehouseItems.length === 0 ? '倉庫目前是空的' : '沒有相關獎項'}
-                                  />
-
-                                  <ProfilePagination
-                                    page={page}
-                                    pageSize={desktopWarehousePageSize}
-                                    total={total}
-                                    onPageChange={setDesktopWarehousePage}
-                                    onPageSizeChange={(s) => {
-                                      setDesktopWarehousePageSize(s);
-                                      setDesktopWarehousePage(1);
-                                    }}
-                                  />
-                                </>
-                              );
-                            })()}
-                          </div>
-                        </>
-                      )}
-                    </>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="dismantled">
-                  <div className="mb-4">
-                    <ProfileToolbar
-                      left={
-                        <>
-                          <input
-                            value={desktopDismantledSearch}
-                            onChange={(e) => setDesktopDismantledSearch(e.target.value)}
-                            placeholder="搜尋賞別 / 獎項"
-                            className="h-9 w-[320px] max-w-full px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-bold text-neutral-800 dark:text-neutral-100 placeholder:text-neutral-400"
-                          />
-                        </>
-                      }
-                      right={
-                        <div className="text-[12px] text-neutral-500 dark:text-neutral-400 font-bold">
-                          共 {filteredDismantledItems.length} 筆
-                        </div>
-                      }
-                    />
-                  </div>
-
-                  {isLoadingData ? (
-                    <div className="space-y-3">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <div key={i} className="flex items-center gap-4 p-4 border border-neutral-100 dark:border-neutral-800 rounded-2xl animate-pulse">
-                          <div className="w-12 h-12 bg-neutral-100 dark:bg-neutral-800 rounded-xl flex-shrink-0" />
-                          <div className="space-y-2 flex-1">
-                            <div className="h-4 w-1/3 bg-neutral-100 dark:bg-neutral-800 rounded" />
-                            <div className="h-3 w-1/4 bg-neutral-100 dark:bg-neutral-800 rounded" />
-                          </div>
-                          <div className="h-8 w-20 bg-neutral-100 dark:bg-neutral-800 rounded-lg" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <>
-                      {dismantledItems.length === 0 ? (
+                                  name={item.name}
+                                  grade={item.grade}
+                                  image={item.image}
+                                  selected={selectedForDeliverySet.has(item.id)}
+                                  major={isMajorGrade(item.grade)}
+                                  pending={item.status === 'pending_delivery'}
+                                  listed={item.status === 'listing'}
+                                  onToggle={() => toggleDeliverySelection(item.id)}
+                                  meta={
+                                    <>
+                                      {item.ticketNo ? `籤號 ${item.ticketNo}` : item.series}
+                                      <span className="mx-1 text-neutral-300">·</span>
+                                      {String(item.date).split(' ')[0]}
+                                    </>
+                                  }
+                                />
+                              ))}
+                            </div>
+                            <div ref={desktopWarehouseSentinel} className={sentinelCls}>
+                              {hasMore ? '載入中…' : `已顯示全部 ${list.length} 件`}
+                            </div>
+                          </>
+                        )
+                      ) : dlist.length === 0 ? (
                         <div className="py-20 text-center text-neutral-400">
-                          <RefreshCw className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                          <p className="font-black text-sm uppercase tracking-widest">尚無回收紀錄</p>
+                          <Box className="mx-auto mb-4 h-12 w-12 opacity-20" />
+                          <p className="text-sm font-black">還沒有回收紀錄</p>
                         </div>
                       ) : (
                         <>
-                          {/* Mobile List for Dismantled */}
-                          <div className="md:hidden divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
-                            {filteredDismantledItems.map((item) => (
-                              <div key={item.id} className="flex items-center gap-3 px-4 py-2">
-                                <div className="relative w-[56px] h-[56px] rounded-[8px] bg-white overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
-                                  <Image
-                                    src={item.image || asset('/images/item_defaulet.webp')}
-                                    alt={item.name}
-                                    fill
-                                    className="object-cover"
-                                    unoptimized
-                                  />
+                          <div className="space-y-2">
+                            {shownDismantled.map((item) => (
+                              <div key={item.id} className="flex items-center gap-3 rounded-[14px] bg-white px-4 py-3 ring-1 ring-[#e5e7eb]">
+                                <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-[#f3f4f6]">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={item.image || asset('/images/item_defaulet.webp')} alt="" className="absolute inset-0 h-full w-full object-contain" />
                                 </div>
-                                <div className="flex-1 min-w-0 py-0.5 space-y-0.5">
-                                  <p className="text-[11px] text-neutral-400 font-medium truncate">{item.supplierName || ''}</p>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[11px] text-primary font-black bg-primary/8 px-1.5 py-0.5 rounded-xl border border-primary/10 whitespace-nowrap flex-shrink-0">
-                                      {item.grade}
-                                    </span>
-                                    <h4 className="text-[13px] font-bold text-neutral-900 dark:text-white leading-tight truncate">
-                                      {item.name}
-                                    </h4>
-                                  </div>
-                                  <p className="text-[11px] text-neutral-400 font-medium truncate">{item.series}</p>
+                                <GradeBadge grade={item.grade} size="sm" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate text-[14px] font-black text-neutral-900">{item.name}</div>
+                                  <div className="truncate text-[12px] font-bold text-neutral-500">{item.series}</div>
                                 </div>
-                                <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-[13px] font-black text-accent-red">+{item.recycleValue}</span>
-                                    <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="object-contain" />
-                                  </div>
-                                  <span className="text-[10px] text-neutral-400 font-bold">{item.dismantled_at}</span>
-                                </div>
+                                <div className="whitespace-nowrap text-[12px] font-bold text-neutral-500">{item.dismantled_at}</div>
+                                <div className="whitespace-nowrap text-[14px] font-black text-accent-emerald">+{item.recycleValue.toLocaleString()} G</div>
                               </div>
                             ))}
                           </div>
-
-                          <div className="hidden md:block space-y-3">
-                            {(() => {
-                              const q = desktopDismantledSearch.trim().toLowerCase();
-                              const list = filteredDismantledItems.filter((item) => {
-                                if (!q) return true;
-                                const text = `${item.grade} ${item.name} ${item.series} ${item.dismantled_at}`.toLowerCase();
-                                return text.includes(q);
-                              });
-
-                              const total = list.length;
-                              const totalPages = Math.max(1, Math.ceil(total / desktopDismantledPageSize));
-                              const page = Math.min(desktopDismantledPage, totalPages);
-                              const start = (page - 1) * desktopDismantledPageSize;
-                              const pageRows = list.slice(start, start + desktopDismantledPageSize);
-
-                              return (
-                                <>
-                                  <ProfileDataTable
-                                    columns={[
-                                      {
-                                        key: 'grade',
-                                        header: '賞別',
-                                        className: 'w-[110px]',
-                                        render: (item) => (
-                                          <span className="inline-flex px-2 py-0.5 rounded-xl bg-primary/10 text-primary border border-primary/10 text-[12px] font-black whitespace-nowrap">
-                                            {item.grade}
-                                          </span>
-                                        ),
-                                      },
-                                      {
-                                        key: 'item',
-                                        header: '獎項內容',
-                                        render: (item) => (
-                                          <div className="flex items-center gap-3 min-w-0">
-                                            <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shrink-0">
-                                              <Image
-                                                src={item.image || asset('/images/item_defaulet.webp')}
-                                                alt={item.name}
-                                                fill
-                                                className="object-cover"
-                                                unoptimized
-                                              />
-                                            </div>
-                                            <div className="min-w-0">
-                                              <div className="font-black text-neutral-900 dark:text-white truncate">{item.name}</div>
-                                              <div className="text-[12px] text-neutral-500 dark:text-neutral-400 font-bold truncate">{item.series}</div>
-                                            </div>
-                                          </div>
-                                        ),
-                                      },
-                                      {
-                                        key: 'date',
-                                        header: '回收日期',
-                                        className: 'w-[160px]',
-                                        render: (item) => (
-                                          <div className="text-[13px] font-bold text-neutral-700 dark:text-neutral-200 whitespace-nowrap">
-                                            {item.dismantled_at}
-                                          </div>
-                                        ),
-                                      },
-                                      {
-                                        key: 'value',
-                                        header: '獲得代幣',
-                                        className: 'w-[140px]',
-                                        render: (item) => (
-                                          <div className="flex items-center gap-1.5">
-                                            <Image src={asset("/images/gcoin.webp")} alt="G" width={14} height={14} className="object-contain" />
-                                            <span className="text-[14px] font-black text-accent-red font-amount tracking-tighter">
-                                              +{item.recycleValue.toLocaleString()}
-                                            </span>
-                                          </div>
-                                        ),
-                                      },
-                                    ]}
-                                    rows={pageRows}
-                                    rowKey={(r) => String(r.id)}
-                                    empty="尚無回收紀錄"
-                                  />
-
-                                  <ProfilePagination
-                                    page={page}
-                                    pageSize={desktopDismantledPageSize}
-                                    total={total}
-                                    onPageChange={setDesktopDismantledPage}
-                                    onPageSizeChange={(s) => {
-                                      setDesktopDismantledPageSize(s);
-                                      setDesktopDismantledPage(1);
-                                    }}
-                                  />
-                                </>
-                              );
-                            })()}
+                          <div ref={desktopWarehouseSentinel} className={sentinelCls}>
+                            {hasMore ? '載入中…' : `已顯示全部 ${dlist.length} 筆`}
                           </div>
                         </>
                       )}
-                    </>
-                  )}
-                </TabsContent>
-              </TabsContentWrapper>
-            </Tabs>
+                    </div>
 
-
+                    {/* 勾了東西才浮出來的操作列，貼在視窗底部 */}
+                    {isAll && selectedForDelivery.length > 0 && (
+                      <div className="sticky bottom-4 z-30 mt-2">
+                        <div className="flex items-center justify-between gap-3 rounded-[16px] bg-white px-4 py-3 ring-1 ring-[#e5e7eb] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.18)]">
+                          <div className="flex min-w-0 items-baseline gap-2">
+                            <span className="text-[14px] font-black text-neutral-900">已選 {selectedForDelivery.length} 件</span>
+                            {!canDeliverSelection ? (
+                              <span className="text-[12px] font-bold text-neutral-500">跨廠商的獎品不能一起配送，只能回收</span>
+                            ) : selectedForDelivery.length > 10 ? (
+                              <span className="text-[12px] font-bold text-neutral-500">一次最多配送 10 件</span>
+                            ) : null}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button type="button" onClick={() => setSelectedForDelivery([])} className="h-9 rounded-xl bg-[#f3f4f6] px-3.5 text-[13px] font-black text-neutral-700 hover:bg-[#e5e7eb]">
+                              重選
+                            </button>
+                            <button type="button" onClick={handleDismantleClick} className="h-9 rounded-xl bg-[#f3f4f6] px-3.5 text-[13px] font-black text-accent-red hover:bg-[#e5e7eb]">
+                              回收 ({selectedForDelivery.length})
+                            </button>
+                            {/* 上架入口不在這裡：倉庫的上架彈窗與交易所的表單強碰，老闆 2026-09-02 拍板一律走 /market */}
+                            {selectedForDelivery.length <= 10 && canDeliverSelection && (
+                              <button
+                                type="button"
+                                onClick={() => setShowDeliveryModal(true)}
+                                disabled={preorderLocked}
+                                className="h-9 rounded-xl bg-primary px-4 text-[13px] font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                配送 ({selectedForDelivery.length})
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
             {/* Delivery Modal */}
             <AnimatePresence>
@@ -6699,7 +6409,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
         );
       case 'settings':
         return (
-          <div className={cn('md:pb-0', cardxShell ? 'bg-white' : 'bg-neutral-100 dark:bg-neutral-950')}>
+          <div className={cn('md:pb-0', cardxShell ? 'bg-transparent' : 'bg-neutral-100 dark:bg-neutral-950')}>
             {/* Mobile Header。子頁推入時本頁往左滑出 28%（iOS push），不是死板被蓋住 */}
             <div
               className="md:hidden bg-neutral-100 dark:bg-neutral-950 flex flex-col min-h-[100dvh]"
@@ -6914,15 +6624,15 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
             {/* Desktop View */}
             {/* 桌機（1024 起、掛在 cardx 外殼裡）：不再 max-w-2xl 置中——右邊留一大片空白（老闆 2026-09-05），
                 改成「設定」標題＋左右兩欄：個人資料｜帳號安全／其他／登出，卡片照 cardx 的 16 圓角＋1px 描邊 */}
-            <div className="hidden md:block p-6">
+            <div className="hidden md:block">
               <ProfileSectionHeader title="設定" description="個人資料、帳號安全與收件地址" />
               <div className="mt-5 grid grid-cols-2 gap-5 items-start">
               <div className="space-y-4">
                 <div className="text-[14px] font-black text-neutral-900">個人資料</div>
                 {/* Info Group 1 */}
-                <div className="bg-white rounded-[16px] overflow-hidden divide-y divide-neutral-100" style={{ boxShadow: '0 0 0 1px #e5e7eb' }}>
+                <div className="space-y-2">
                   <div 
-                    className="flex items-center justify-between px-4 py-3.5 hover:bg-neutral-50 cursor-pointer transition-colors"
+                    className="flex items-center justify-between px-4 h-14 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={openAvatarPicker}
                   >
                     <label className="text-[14px] font-bold text-neutral-700">頭像</label>
@@ -6953,7 +6663,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                     </div>
                   </div>
                   <div
-                    className="flex items-center justify-between px-4 py-3.5 hover:bg-neutral-50 cursor-pointer transition-colors"
+                    className="flex items-center justify-between px-4 h-14 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => setShowEditNickname(true)}
                   >
                     <label className="text-[14px] font-bold text-neutral-700">暱稱</label>
@@ -6965,7 +6675,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                     </div>
                   </div>
                   <div
-                    className="flex items-center justify-between px-4 py-3.5 hover:bg-neutral-50 cursor-pointer transition-colors"
+                    className="flex items-center justify-between px-4 h-14 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => { fetchUserTitles(); setShowTitlePicker(true); }}
                   >
                     <label className="text-[14px] font-bold text-neutral-700">稱號</label>
@@ -6982,7 +6692,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                     </div>
                   </div>
                   <div 
-                    className="flex items-center justify-between px-4 py-3.5 hover:bg-neutral-50 cursor-pointer transition-colors"
+                    className="flex items-center justify-between px-4 h-14 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => {
                       if (settingsForm.gender) return;
                       setTempGender('');
@@ -7000,7 +6710,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                     </div>
                   </div>
                   <div 
-                    className="flex items-center justify-between px-4 py-3.5 hover:bg-neutral-50 cursor-pointer transition-colors"
+                    className="flex items-center justify-between px-4 h-14 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => {
                       if (settingsForm.birthday) return;
                       if (!tempBirthday) setTempBirthday(new Date(2000, 0, 1));
@@ -7022,15 +6732,15 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
               </div>
 
               <div className="space-y-4">
-                <div className="text-[14px] font-black text-neutral-900">帳號安全</div>
+                <div className="text-[14px] font-black text-neutral-900">帳號</div>
                 {/* 帳號與安全：同手機版的順序與規則 */}
-                <div className="bg-white rounded-[16px] overflow-hidden divide-y divide-neutral-100" style={{ boxShadow: '0 0 0 1px #e5e7eb' }}>
-                  <EmailBindRow email={user?.email} />
-                  <LineBindRow />
+                <div className="space-y-2">
+                  <div className="bg-white rounded-[14px] ring-1 ring-[#e5e7eb] overflow-hidden"><EmailBindRow email={user?.email} /></div>
+                  <div className="bg-white rounded-[14px] ring-1 ring-[#e5e7eb] overflow-hidden"><LineBindRow /></div>
                   {/* 同上：功能關閉時整列不顯示 */}
                   {(phoneVerifyEnabled || user?.is_phone_verified) && (
                   <div 
-                    className="flex items-center justify-between px-4 py-3.5 hover:bg-neutral-50 cursor-pointer transition-colors"
+                    className="flex items-center justify-between px-4 h-14 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => {
                       if (user?.is_phone_verified) return;
                       openPhoneBindModal();
@@ -7047,7 +6757,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                   )}
                   {user?.email && !isSyntheticEmail(user.email) && (
                     <div 
-                      className="flex items-center justify-between px-4 py-3.5 hover:bg-neutral-50 cursor-pointer transition-colors"
+                      className="flex items-center justify-between px-4 h-14 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
                       onClick={() => router.push('/update-password')}
                     >
                       <label className="text-[14px] font-bold text-neutral-700">登入密碼</label>
@@ -7065,16 +6775,15 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                   )}
                 </div>
 
-                <div className="text-[14px] font-black text-neutral-900 pt-1">其他</div>
-                {/* 邀請碼（選填，跟帳號安全分開） */}
-                <div className="bg-white rounded-[16px] overflow-hidden" style={{ boxShadow: '0 0 0 1px #e5e7eb' }}>
-                  <InviteCodeRow />
+                {/* 邀請碼（選填）與收件地址併在帳號這一組，左右各五列才對稱 */}
+                <div className="space-y-2">
+                  <div className="bg-white rounded-[14px] ring-1 ring-[#e5e7eb] overflow-hidden"><InviteCodeRow /></div>
                 </div>
 
                 {/* Address Section */}
-                <div className="bg-white rounded-[16px] overflow-hidden" style={{ boxShadow: '0 0 0 1px #e5e7eb' }}>
+                <div className="space-y-2">
                   <div 
-                    className="flex items-center justify-between px-4 py-3.5 hover:bg-neutral-50 cursor-pointer transition-colors"
+                    className="flex items-center justify-between px-4 h-14 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => setShowAddressBook(true)}
                   >
                     <label className="text-[14px] font-bold text-neutral-700">收件地址</label>
@@ -7085,8 +6794,12 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                   </div>
                 </div>
 
+              </div>
+              </div>
+
+              <div className="mx-auto mt-6 w-full max-w-[420px]">
                 {/* Logout Button */}
-                <div className="pt-2">
+                <div>
                   <button 
                     type="button" 
                     onClick={handleLogout}
@@ -7106,7 +6819,6 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                     刪除帳號
                   </button>
                 </div>
-              </div>
               </div>
             </div>
 
@@ -7229,6 +6941,8 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
   const cardxCardStyle: React.CSSProperties | undefined = cardxShell
     ? { boxShadow: '0 0 0 1px #e5e7eb, 0 10px 40px -10px rgba(0,0,0,0.08)' }
     : undefined;
+  /* 已重構成「零套疊」的分頁：右欄不再包外層白卡，內容直接鋪在頁面底色上（老闆 2026-09-05） */
+  const flatTab = cardxShell && (activeTab === 'warehouse' || activeTab === 'settings');
   const sideCardCls = cardxShell
     ? 'bg-white rounded-[18px] p-[14px]'
     : 'bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3';
@@ -7252,6 +6966,49 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
     <Icon className={cn('w-5 h-5 stroke-[2.5]', active ? 'text-white' : idleCls)} />
   );
 
+  /* 左欄選單（cardx 殼裡併進個人卡；舊殼維持獨立一張卡） */
+  const sideNavList = (
+    <div className="space-y-1">
+                {navItems.filter(item => item.id !== 'settings' && item.id !== 'market').map((item) => (
+                  <button 
+                    key={item.id} 
+                    onClick={() => {
+                      if (isGuest) {
+                        router.push(loginHref);
+                        return;
+                      }
+                      handleTabChange(item.id as TabType);
+                    }} 
+                    className={sideNavCls(activeTab === item.id)}
+                    style={sideNavStyle(activeTab === item.id)}
+                  >
+                    {sideNavIcon(item.icon, activeTab === item.id, 'text-neutral-300 group-hover:text-primary transition-colors')}
+                    <span className="truncate">{item.label}</span>
+                    <ChevronRight className={cn('ml-auto w-4 h-4 transition-transform hidden sm:block', cardxShell ? (activeTab === item.id ? 'text-primary/50' : 'text-[#d1d5db]') : activeTab === item.id ? 'text-white/50' : 'text-neutral-200 group-hover:text-neutral-400')} />
+                  </button>
+                ))}
+                {/* 邀請好友：獨立頁面不是 tab，樣式跟上面同一家（老闆指定放優惠券下方） */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isGuest) {
+                      router.push(loginHref);
+                      return;
+                    }
+                    router.push('/invite');
+                  }}
+                  className={sideNavCls(false)}
+                >
+                  {sideNavIcon(UserPlus, false, 'text-violet-500 group-hover:text-primary transition-colors')}
+                  <span className="truncate">邀請好友</span>
+                  <span className={cn('ml-auto inline-flex items-center rounded-full bg-accent-red px-2 font-bold leading-none text-white', cardxShell ? 'h-[21px] text-[12px]' : 'h-[19px] text-[11px]')}>
+                    <span className="cjk-optical-center">無限拿積分</span>
+                  </span>
+                  <ChevronRight className={cn('w-4 h-4 hidden sm:block', cardxShell ? 'text-[#d1d5db]' : 'text-neutral-200 group-hover:text-neutral-400')} />
+                </button>
+    </div>
+  );
+
   return (
     <div className={cn(
       cardxShell ? 'w-full' : 'min-h-screen bg-neutral-50 dark:bg-neutral-950 transition-colors',
@@ -7262,7 +7019,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
         cardxShell ? 'w-full p-0' : 'max-w-7xl mx-auto w-full',
         !cardxShell && (activeTab === 'settings' ? "p-0" : "px-0 sm:px-6 lg:px-8 pt-0 sm:pt-6")
       )}>
-        <div className={cn('grid grid-cols-1 lg:grid-cols-12 gap-3 items-start relative', cardxShell ? 'lg:gap-4' : 'lg:gap-8')}>
+        <div className={cardxShell ? 'grid grid-cols-1 items-start relative' : 'grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-8 items-start relative'}>
           
           {/* 1. Mobile Menu View (Only shown on mobile when no tab is active) */}
           <div className={cn("md:hidden col-span-1", isMobileDetailOpen && "hidden")}>
@@ -7676,8 +7433,12 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
           </div>
 
           {/* 3. Desktop View (Hidden on mobile) */}
-          <div className="hidden md:grid md:col-span-12 grid-cols-12 gap-4 lg:gap-6 w-full items-start">
-            <div className={cn('md:col-span-3 lg:col-span-3 space-y-3 sticky', !cardxShell && 'top-24')} style={cardxShell ? { top: 'calc(var(--header-height) + 24px)' } : undefined}>
+          {/* cardx 殼：左欄固定 260、右欄彈性（平板橫向 1024 也放得下）；用 inline style 不靠 Tailwind 任意值 */}
+          <div
+            className={cardxShell ? 'hidden md:grid gap-6 w-full items-start' : 'hidden md:grid md:col-span-12 grid-cols-12 gap-4 lg:gap-6 w-full items-start'}
+            style={cardxShell ? { gridTemplateColumns: '288px minmax(0, 1fr)' } : undefined}
+          >
+            <div className={cardxShell ? 'space-y-3 sticky' : 'md:col-span-3 lg:col-span-3 space-y-3 sticky top-24'} style={cardxShell ? { top: 'calc(var(--header-height) + 24px)' } : undefined}>
             <div className={sideCardCls} style={cardxCardStyle}>
               <div className="flex flex-col gap-2.5">
                   <div className="flex items-center gap-2.5">
@@ -7734,8 +7495,8 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                               }
                             }}
                           >
-                            <span className={cn('font-black text-neutral-400 uppercase tracking-wider', cardxShell ? 'text-[13px]' : 'text-[13px]')}>邀請碼</span>
-                            <span className={cn('font-mono font-black transition-colors', cardxShell ? 'text-[13px] text-[#111827]' : 'text-[13px] text-primary group-hover/invite:text-primary/80')}>
+                            <span className={cn('font-black text-neutral-400 uppercase tracking-wider whitespace-nowrap', cardxShell ? 'text-[12px]' : 'text-[13px]')}>邀請碼</span>
+                            <span className={cn('font-mono font-black transition-colors whitespace-nowrap', cardxShell ? 'text-[12px] text-[#111827]' : 'text-[13px] text-primary group-hover/invite:text-primary/80')}>
                               {formatMemberNo(user.invite_code) || '-'}
                             </span>
                             <Copy className="w-3.5 h-3.5 text-neutral-300 group-hover/invite:text-primary transition-colors" />
@@ -7785,51 +7546,21 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                     )}
                   </div>
                 </div>
+              {cardxShell ? (
+                <>
+                  <div className="my-3 h-px bg-[#e5e7eb]" aria-hidden="true" />
+                  {sideNavList}
+                </>
+              ) : null}
               </div>
-              
+
               {/* 商城管理入口已移除（老闆 2026-08-20）：首頁懸浮選單已有商城入口 */}
 
+              {!cardxShell && (
               <div className={cn(sideCardCls, 'overflow-hidden')} style={cardxCardStyle}>
-              <div className="space-y-1">
-                {navItems.filter(item => item.id !== 'settings' && item.id !== 'market').map((item) => (
-                  <button 
-                    key={item.id} 
-                    onClick={() => {
-                      if (isGuest) {
-                        router.push(loginHref);
-                        return;
-                      }
-                      handleTabChange(item.id as TabType);
-                    }} 
-                    className={sideNavCls(activeTab === item.id)}
-                    style={sideNavStyle(activeTab === item.id)}
-                  >
-                    {sideNavIcon(item.icon, activeTab === item.id, 'text-neutral-300 group-hover:text-primary transition-colors')}
-                    <span className="truncate">{item.label}</span>
-                    <ChevronRight className={cn('ml-auto w-4 h-4 transition-transform hidden sm:block', cardxShell ? (activeTab === item.id ? 'text-primary/50' : 'text-[#d1d5db]') : activeTab === item.id ? 'text-white/50' : 'text-neutral-200 group-hover:text-neutral-400')} />
-                  </button>
-                ))}
-                {/* 邀請好友：獨立頁面不是 tab，樣式跟上面同一家（老闆指定放優惠券下方） */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isGuest) {
-                      router.push(loginHref);
-                      return;
-                    }
-                    router.push('/invite');
-                  }}
-                  className={sideNavCls(false)}
-                >
-                  {sideNavIcon(UserPlus, false, 'text-violet-500 group-hover:text-primary transition-colors')}
-                  <span className="truncate">邀請好友</span>
-                  <span className={cn('ml-auto inline-flex items-center rounded-full bg-accent-red px-2 font-bold leading-none text-white', cardxShell ? 'h-[21px] text-[12px]' : 'h-[19px] text-[11px]')}>
-                    <span className="cjk-optical-center">無限拿積分</span>
-                  </span>
-                  <ChevronRight className={cn('w-4 h-4 hidden sm:block', cardxShell ? 'text-[#d1d5db]' : 'text-neutral-200 group-hover:text-neutral-400')} />
-                </button>
-              </div>
+              {sideNavList}
             </div>
+              )}
 
               {/* 交換管理那張卡：cardx 外殼裡沒開交換就整張不畫，不然會留一張空卡 */}
               {(!cardxShell || (flags.exchange && !inApp)) && (
@@ -7858,13 +7589,17 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
               </div>
               )}
           </div>
-          <div className="md:col-span-9 lg:col-span-9 w-full">
+          <div className={cardxShell ? 'min-w-0' : 'md:col-span-9 lg:col-span-9 w-full'}>
+              {flatTab ? (
+                <div className="min-w-0">{renderTabContent()}</div>
+              ) : (
               <div
                 className={cn('overflow-hidden', cardxShell ? 'bg-white rounded-[18px] min-h-[640px]' : 'bg-white dark:bg-neutral-900 rounded-2xl lg:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 min-h-[600px] lg:min-h-[700px]')}
                 style={cardxCardStyle}
               >
                 {renderTabContent()}
               </div>
+              )}
             </div>
           </div>
 
