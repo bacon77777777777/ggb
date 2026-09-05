@@ -316,13 +316,13 @@ export default function PackDetailPage() {
   /* ⚠️ 這裡要 flex 不能 inline-flex：外層 .button-3d__text 的 line-height 是 20px，
      inline 級的盒子會照基線對齊、底下多留一截 descender 的空間，整組字看起來就偏上。
      金幣圖也要 block，理由相同 */
-  /* 金額與「／抽」不另設字級粗細，跟其他立體鈕一樣吃 .button-3d__text 的 14／900（老闆 2026-09-05） */
+  /* 金額放大一級（20）、「／抽」用淡字（老闆 2026-09-05）；粗細與描邊仍吃 .button-3d__text 的 900 */
   const priceLabel = (
     <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, lineHeight: 1 }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={asset("/images/gcoin.webp")} alt="G" style={{ width: 18, height: 18, display: "block", flex: "0 0 auto" }} />
-      <span style={{ lineHeight: 1 }}>{product.price.toLocaleString()}</span>
-      <span style={{ lineHeight: 1 }}>/ {unit}</span>
+      <img src={asset("/images/gcoin.webp")} alt="G" style={{ width: 22, height: 22, display: "block", flex: "0 0 auto" }} />
+      <span style={{ fontSize: 20, lineHeight: 1 }}>{product.price.toLocaleString()}</span>
+      <span style={{ lineHeight: 1, opacity: 0.65 }}>/ {unit}</span>
     </span>
   );
   const actionButtons = (
@@ -660,9 +660,14 @@ export default function PackDetailPage() {
           </div>
         )}
 
-        <div className={styles.mobileActionBar} aria-label="行動操作">
-          <div className={styles.mobileActionGrid}>{actionButtons}</div>
-        </div>
+        {/* 1023 以下的底部固定操作列。桌機殼本來就 1024 起跳，這頁在桌機永遠用不到它，
+            所以不渲染而不是只靠 CSS 藏：老闆 2026-09-05 回報「有時候打開商品頁多一排全寬的重複按鈕」，
+            就是這個 div 在樣式還沒套上時裸露出來（沒 display:none、沒 fixed，變成一排滿版的鈕） */}
+        {isMobile ? (
+          <div className={styles.mobileActionBar} aria-label="行動操作">
+            <div className={styles.mobileActionGrid}>{actionButtons}</div>
+          </div>
+        ) : null}
 
         {fairnessInfoOpen ? (
           <div role="presentation" onClick={() => setFairnessInfoOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.62)", display: "grid", placeItems: "center", padding: 16 }}>
