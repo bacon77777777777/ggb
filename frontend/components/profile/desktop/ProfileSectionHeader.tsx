@@ -17,9 +17,9 @@ export default function ProfileSectionHeader({
   return (
     <div className={cn('flex items-start justify-between gap-4', className)}>
       <div className="min-w-0">
-        <div className="text-[16px] font-black text-neutral-900 dark:text-white truncate">{title}</div>
+        <div className="text-[18px] font-black text-neutral-900 dark:text-white truncate">{title}</div>
         {description ? (
-          <div className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400 truncate">
+          <div className="mt-1 text-[14px] text-neutral-500 dark:text-neutral-400 truncate">
             {description}
           </div>
         ) : null}

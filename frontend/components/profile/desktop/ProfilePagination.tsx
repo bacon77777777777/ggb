@@ -27,7 +27,7 @@ export default function ProfilePagination({
 
   return (
     <div className={cn('flex items-center justify-between gap-3', className)}>
-      <div className="text-[12px] text-neutral-500 dark:text-neutral-400">
+      <div className="text-[13px] text-neutral-500 dark:text-neutral-400">
         {start}-{end} / {total}
       </div>
 
@@ -35,7 +35,7 @@ export default function ProfilePagination({
         <select
           value={pageSize}
           onChange={(e) => onPageSizeChange(Number(e.target.value))}
-          className="h-8 px-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[12px] font-bold text-neutral-700 dark:text-neutral-200"
+          className="h-8 px-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-bold text-neutral-700 dark:text-neutral-200"
         >
           {sizes.map((s) => (
             <option key={s} value={s}>
@@ -54,7 +54,7 @@ export default function ProfilePagination({
           >
             <ChevronLeft className="w-4 h-4 text-neutral-700 dark:text-neutral-200" />
           </button>
-          <div className="min-w-[64px] text-center text-[12px] font-bold text-neutral-700 dark:text-neutral-200">
+          <div className="min-w-[64px] text-center text-[13px] font-bold text-neutral-700 dark:text-neutral-200">
             {clampedPage} / {totalPages}
           </div>
           <button

@@ -39,7 +39,7 @@ export default function ProfileDataTable<T>({
               {columns.map((c) => (
                 <th
                   key={c.key}
-                  className={cn('px-3 py-2 text-[12px] font-black text-neutral-600 dark:text-neutral-300 whitespace-nowrap', c.className)}
+                  className={cn('px-3 py-2.5 text-[13px] font-black text-neutral-600 dark:text-neutral-300 whitespace-nowrap', c.className)}
                 >
                   {c.header}
                 </th>
@@ -49,7 +49,7 @@ export default function ProfileDataTable<T>({
           <tbody className="bg-white dark:bg-neutral-950">
             {rows.length === 0 ? (
               <tr>
-                <td className="px-3 py-10 text-center text-[13px] text-neutral-500 dark:text-neutral-400" colSpan={columns.length}>
+                <td className="px-3 py-10 text-center text-[14px] text-neutral-500 dark:text-neutral-400" colSpan={columns.length}>
                   {empty || '目前沒有資料'}
                 </td>
               </tr>
@@ -71,7 +71,7 @@ export default function ProfileDataTable<T>({
                     {columns.map((c) => (
                       <td
                         key={c.key}
-                        className={cn('px-3 py-2 text-[13px] text-neutral-900 dark:text-neutral-100 align-middle', c.cellClassName)}
+                        className={cn('px-3 py-2.5 text-[14px] text-neutral-900 dark:text-neutral-100 align-middle', c.cellClassName)}
                       >
                         {c.render(row)}
                       </td>

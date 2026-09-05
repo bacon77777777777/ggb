@@ -55,7 +55,7 @@ import ProfilePagination from '@/components/profile/desktop/ProfilePagination';
 import { AppShell } from '@/cardx/components/layout/AppShell';
 import { defaultSidebarItems } from '@/cardx/lib/navigation';
 import homeStyles from '@/cardx/components/home/HomeClient.module.css';
-import { PageHeader as CardxPageHeader, Button3D as CardxButton3D } from '@/cardx/components/ui/Kit';
+import { Button3D as CardxButton3D } from '@/cardx/components/ui/Kit';
 import { useMinWidth } from '@/lib/useMinWidth';
 
 import { Tabs, TabsContent, TabsContentWrapper, TabsList, TabsTrigger } from '@/components/ui/Tabs';
@@ -3827,7 +3827,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                                   )}
                                 >
                                   <div className="flex flex-col items-center justify-center w-12 flex-shrink-0">
-                                    <span className="px-1.5 py-0.5 bg-accent-red/10 text-accent-red text-[10px] font-black rounded border border-accent-red/10 uppercase tracking-wider whitespace-nowrap overflow-hidden text-ellipsis max-w-full">
+                                    <span className="px-1.5 py-0.5 bg-accent-red/10 text-accent-red text-[11px] font-black rounded border border-accent-red/10 uppercase tracking-wider whitespace-nowrap overflow-hidden text-ellipsis max-w-full">
                                       {item.grade}
                                     </span>
                                   </div>
@@ -3841,10 +3841,10 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                                     />
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <h4 className="text-[13px] font-black text-neutral-900 dark:text-white leading-snug line-clamp-2">
+                                    <h4 className="text-[14px] font-black text-neutral-900 dark:text-white leading-snug line-clamp-2">
                                       {item.name}
                                     </h4>
-                                    <p className="text-[11px] text-neutral-400 font-bold mt-0.5 truncate">
+                                    <p className="text-[12px] text-neutral-400 font-bold mt-0.5 truncate">
                                       {item.series}
                                     </p>
                                   </div>
@@ -7221,21 +7221,21 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
   const sideCardCls = cardxShell
     ? 'bg-white rounded-[18px] p-[14px]'
     : 'bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3';
-  /* 左欄選單列：cardx 版 44 高、14px／900、選中藍色淡底（同 cardx 會員中心的頁籤） */
+  /* 左欄選單列：cardx 版 46 高、15px／900、選中主題色淡底（老闆 2026-09-05：active 要接主題色，不是 cardx 原型的藍） */
   const sideNavCls = (active: boolean) => cardxShell
-    ? cn('w-full flex items-center gap-3 px-3 h-11 rounded-xl text-[14px] font-black transition-colors group text-left',
-        active ? 'text-[#1d4ed8]' : 'text-[#374151] hover:bg-[#f3f4f6]')
+    ? cn('w-full flex items-center gap-3 px-3 h-[46px] rounded-xl text-[15px] font-black transition-colors group text-left',
+        active ? 'text-primary' : 'text-[#374151] hover:bg-[#f3f4f6]')
     : cn('w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black transition-all group text-left',
         active ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white');
   const sideNavStyle = (active: boolean): React.CSSProperties | undefined =>
-    cardxShell && active ? { background: 'linear-gradient(180deg, rgba(43,124,255,0.28), rgba(43,124,255,0.12))' } : undefined;
+    cardxShell && active ? { background: 'rgb(var(--primary) / 0.12)' } : undefined;
   const sideNavIcon = (Icon: React.ComponentType<{ className?: string }>, active: boolean, idleCls: string) => cardxShell ? (
     <span
       className="w-[30px] h-[30px] rounded-[10px] grid place-items-center flex-shrink-0"
-      style={{ background: active ? 'rgba(43,124,255,0.26)' : '#f3f4f6', color: active ? '#1d4ed8' : '#374151' }}
+      style={{ background: active ? 'rgb(var(--primary) / 0.16)' : '#f3f4f6', color: active ? 'rgb(var(--primary))' : '#374151' }}
       aria-hidden="true"
     >
-      <Icon className="w-[18px] h-[18px] stroke-[2.25]" />
+      <Icon className="w-[19px] h-[19px] stroke-[2.25]" />
     </span>
   ) : (
     <Icon className={cn('w-5 h-5 stroke-[2.5]', active ? 'text-white' : idleCls)} />
@@ -7701,7 +7701,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                           </Link>
                         ) : (
                           <>
-                            <h2 className={cn('font-black text-neutral-900 dark:text-white truncate tracking-tight', cardxShell ? 'text-[14px]' : 'text-sm lg:text-base')}>
+                            <h2 className={cn('font-black text-neutral-900 dark:text-white truncate tracking-tight', cardxShell ? 'text-[15px]' : 'text-sm lg:text-base')}>
                               {user.name}
                             </h2>
                             {user.is_phone_verified && (
@@ -7723,8 +7723,8 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                               }
                             }}
                           >
-                            <span className={cn('font-black text-neutral-400 uppercase tracking-wider', cardxShell ? 'text-[12px]' : 'text-[13px]')}>邀請碼</span>
-                            <span className={cn('font-mono font-black transition-colors', cardxShell ? 'text-[12px] text-[#111827]' : 'text-[13px] text-primary group-hover/invite:text-primary/80')}>
+                            <span className={cn('font-black text-neutral-400 uppercase tracking-wider', cardxShell ? 'text-[13px]' : 'text-[13px]')}>邀請碼</span>
+                            <span className={cn('font-mono font-black transition-colors', cardxShell ? 'text-[13px] text-[#111827]' : 'text-[13px] text-primary group-hover/invite:text-primary/80')}>
                               {formatMemberNo(user.invite_code) || '-'}
                             </span>
                             <Copy className="w-3.5 h-3.5 text-neutral-300 group-hover/invite:text-primary transition-colors" />
@@ -7753,15 +7753,15 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                         </Link>
                       ) : (
                         <div className="flex flex-col">
-                          <span className={cn('font-black leading-none', cardxShell ? 'text-[20px] text-[#111827] tabular-nums tracking-tight' : 'text-lg text-accent-red font-amount tracking-tighter')}>
+                          <span className={cn('font-black leading-none', cardxShell ? 'text-[22px] text-[#111827] tabular-nums tracking-tight' : 'text-lg text-accent-red font-amount tracking-tighter')}>
                             {user.tokens?.toLocaleString() || 0}
                           </span>
                         </div>
                       )}
                     </div>
                     {cardxShell ? (
-                      /* cardx 外殼：藍色立體鈕（同 cardx 會員中心總覽的「儲值」）；`.cardx-root a { color: inherit }` 會把下面那顆的主題色吃掉 */
-                      <CardxButton3D color="blue" href={isGuest ? loginHref : '/topup'} style={{ height: 34, borderRadius: 10, width: 64 }}>
+                      /* cardx 外殼：紅色立體鈕，跟頂欄暱稱展開那張卡的「儲值」同一顆（老闆 2026-09-05）；`.cardx-root a { color: inherit }` 會把下面那顆的主題色吃掉 */
+                      <CardxButton3D color="red" href={isGuest ? loginHref : '/topup'} style={{ height: 36, borderRadius: 10, width: 68 }}>
                         儲值
                       </CardxButton3D>
                     ) : (
@@ -7795,7 +7795,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                   >
                     {sideNavIcon(item.icon, activeTab === item.id, 'text-neutral-300 group-hover:text-primary transition-colors')}
                     <span className="truncate">{item.label}</span>
-                    <ChevronRight className={cn('ml-auto w-4 h-4 transition-transform hidden sm:block', cardxShell ? (activeTab === item.id ? 'text-[#1d4ed8]/50' : 'text-[#d1d5db]') : activeTab === item.id ? 'text-white/50' : 'text-neutral-200 group-hover:text-neutral-400')} />
+                    <ChevronRight className={cn('ml-auto w-4 h-4 transition-transform hidden sm:block', cardxShell ? (activeTab === item.id ? 'text-primary/50' : 'text-[#d1d5db]') : activeTab === item.id ? 'text-white/50' : 'text-neutral-200 group-hover:text-neutral-400')} />
                   </button>
                 ))}
                 {/* 邀請好友：獨立頁面不是 tab，樣式跟上面同一家（老闆指定放優惠券下方） */}
@@ -7812,7 +7812,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                 >
                   {sideNavIcon(UserPlus, false, 'text-violet-500 group-hover:text-primary transition-colors')}
                   <span className="truncate">邀請好友</span>
-                  <span className="ml-auto inline-flex h-[19px] items-center rounded-full bg-accent-red px-2 text-[11px] font-bold leading-none text-white">
+                  <span className={cn('ml-auto inline-flex items-center rounded-full bg-accent-red px-2 font-bold leading-none text-white', cardxShell ? 'h-[21px] text-[12px]' : 'h-[19px] text-[11px]')}>
                     <span className="cjk-optical-center">無限拿積分</span>
                   </span>
                   <ChevronRight className={cn('w-4 h-4 hidden sm:block', cardxShell ? 'text-[#d1d5db]' : 'text-neutral-200 group-hover:text-neutral-400')} />
@@ -8586,7 +8586,7 @@ export default function ProfilePage() {
             <div className={homeStyles.main2}>
               <div className={homeStyles.main}>
                 <div className={homeStyles.sectionLobby}>
-                  <CardxPageHeader title="會員中心" />
+                  {/* 「會員中心」頁頭不放（老闆 2026-09-05） */}
                   <ProfileContent cardxShell />
                 </div>
               </div>
