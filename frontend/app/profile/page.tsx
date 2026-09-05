@@ -5005,11 +5005,12 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                               >
                                 <div className="p-3 space-y-3">
                                   {/* 配送進度（照商城訂單彈層那套步驟條，老闆 2026-08-24） */}
+                                  {/* 已取消的訂單不畫進度那個框（老闆 2026-09-05） */}
+                                  {order.status !== 'cancelled' && (
                                   <div className="bg-white dark:bg-neutral-900 px-3 pb-2 pt-1 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
-                                    {order.status === 'cancelled'
-                                      ? <div className="py-2 text-center text-[12px] font-bold text-neutral-400">訂單已取消{order.shippingFee > 0 ? '，運費已退回' : ''}</div>
-                                      : <DeliverySteps status={order.status} />}
+                                    <DeliverySteps status={order.status} />
                                   </div>
+                                  )}
                                   {/* Shipping Info */}
                                   <div className="bg-white dark:bg-neutral-900 p-3 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm space-y-2">
                                     <div className="flex items-center justify-between pb-2 border-b border-neutral-50 dark:border-neutral-800">
@@ -5228,19 +5229,15 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
 
                             {expanded && (
                               <div className="space-y-6 border-t border-neutral-100 px-6 py-6">
-                                {/* 一、配送進度（放大版步驟條；已取消照手機那句） */}
+                                {/* 一、配送進度（放大版步驟條）；已取消的訂單整區不畫（老闆 2026-09-05） */}
+                                {order.status !== 'cancelled' && (
                                 <section>
                                   <div className="text-[14px] font-black text-neutral-900">配送進度</div>
                                   <div className="mt-3 rounded-[14px] bg-[#f3f4f6] px-6 pb-3 pt-2">
-                                    {order.status === 'cancelled' ? (
-                                      <div className="py-3 text-center text-[14px] font-bold text-neutral-500">
-                                        訂單已取消{order.shippingFee > 0 ? '，運費已退回' : ''}
-                                      </div>
-                                    ) : (
-                                      <DeliverySteps status={order.status} size="lg" />
-                                    )}
+                                    <DeliverySteps status={order.status} size="lg" />
                                   </div>
                                 </section>
+                                )}
 
                                 {/* 二、收件資訊：第一排 配送廠商／物流方式／追蹤號碼／運費，第二排 收件人／收件人電話／收件門市或地址 */}
                                 <section>
