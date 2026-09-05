@@ -25,11 +25,13 @@ import { asset } from '@/lib/asset';
 import { GAmount } from '@/components/shop/PurchaseConfirmationModal';
 import { HoldToConfirmButton } from '@/components/ui/HoldToConfirmButton';
 import { AddressInfo } from '@/components/ui/AddressInfo';
+import { calcShippingDiscount, shippingCouponLabel, type ShippingDiscountType } from '@/lib/shippingCoupon';
 
 export type ShippingCoupon = {
   id: string;            // user_coupons.id（uuid）
   title: string;
-  discountValue: number; // 折抵 G 上限
+  discountType: ShippingDiscountType; // fixed 折抵 G 上限｜percentage 運費 N%｜free_shipping 整筆免運（migration 696）
+  discountValue: number;
   expiryDate: string | null;
 };
 
@@ -477,7 +479,10 @@ export function DeliveryCheckout({
                               {c.title}
                             </div>
                             <div className={cn('text-sm font-bold', isSelected ? 'text-accent-red/80' : 'text-neutral-500')}>
-                              折抵運費 {Math.min(c.discountValue, grossFee).toLocaleString()} G
+                              {shippingCouponLabel(c.discountType, c.discountValue)}
+                              {c.discountType !== 'fixed' && grossFee > 0
+                                ? `（這筆折 ${calcShippingDiscount(c.discountType, c.discountValue, grossFee).toLocaleString()} G）`
+                                : ''}
                             </div>
                             {c.expiryDate && (
                               <div className="text-xs text-neutral-400 mt-1">{c.expiryDate.slice(0, 10)} 到期</div>

@@ -58,6 +58,7 @@ import { defaultSidebarItems } from '@/cardx/lib/navigation';
 import homeStyles from '@/cardx/components/home/HomeClient.module.css';
 import { Button3D as CardxButton3D } from '@/cardx/components/ui/Kit';
 import { HomeProductCard } from '@/cardx/components/home/HomeClient';
+import { calcShippingDiscount, type ShippingDiscountType } from '@/lib/shippingCoupon';
 import type { HomeProduct } from '@/lib/queries/home';
 import { useMinWidth } from '@/lib/useMinWidth';
 
@@ -219,13 +220,23 @@ interface Coupon {
   id: string;
   title: string;
   description: string;
-  discountType: 'fixed' | 'percentage';
+  discountType: 'fixed' | 'percentage' | 'free_shipping';
   discountValue: number;
+  scope: 'draw' | 'shipping';
   minSpend: number;
   expiryDate: string;
   status: 'unused' | 'used' | 'expired';
   code?: string;
 }
+
+/** 優惠券票面：抽獎券 $50／10%，運費券 50G／10%，免運券印「免運」（migration 696） */
+const couponFaceValue = (c: Pick<Coupon, 'discountType' | 'discountValue' | 'scope'>): string => {
+  if (c.discountType === 'free_shipping') return '免運';
+  if (c.discountType === 'percentage') return `${c.discountValue}%`;
+  return c.scope === 'shipping' ? `${c.discountValue}G` : `$${c.discountValue}`;
+};
+const couponFaceUnit = (c: Pick<Coupon, 'discountType' | 'scope'>): string =>
+  c.discountType === 'free_shipping' ? 'FREE' : 'OFF';
 
 interface TopupHistoryItem {
   id: string;
@@ -323,10 +334,11 @@ interface DbCoupon {
     id: string;
     title: string;
     description: string;
-    discount_type: 'fixed' | 'percentage';
+    discount_type: 'fixed' | 'percentage' | 'free_shipping';
     discount_value: number;
     min_spend: number;
     code: string;
+    scope: 'draw' | 'shipping' | null;
   };
 }
 
@@ -1305,7 +1317,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
     if (!showDeliveryModal || !user) { return; }
     let dead = false;
     supabase.from('user_coupons')
-      .select('id, expiry_date, coupons(title, discount_value, scope, is_active)')
+      .select('id, expiry_date, coupons(title, discount_type, discount_value, scope, is_active)')
       .eq('user_id', user.id).eq('status', 'unused')
       .then(({ data }) => {
         if (dead) return;
@@ -1315,6 +1327,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
         setShippingCoupons(rows.map((r: any) => ({
           id: String(r.id),
           title: String(r.coupons.title || '運費折抵券'),
+          discountType: (['fixed', 'percentage', 'free_shipping'].includes(r.coupons.discount_type) ? r.coupons.discount_type : 'fixed') as ShippingDiscountType,
           discountValue: Number(r.coupons.discount_value) || 0,
           expiryDate: r.expiry_date ?? null,
         })));
@@ -1325,7 +1338,8 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
 
   const shippingDiscount = React.useMemo(() => {
     const c = shippingCoupons.find(x => x.id === deliveryCouponId);
-    return c ? Math.min(c.discountValue, currentShippingFee) : 0;
+    // 公式在 lib/shippingCoupon.ts，跟 DB 同一套（免運／百分比／固定）
+    return c ? calcShippingDiscount(c.discountType, c.discountValue, currentShippingFee) : 0;
   }, [shippingCoupons, deliveryCouponId, currentShippingFee]);
 
   /*
@@ -2486,7 +2500,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
             id,
             status,
             expiry_date,
-            coupons ( id, title, description, discount_type, discount_value, min_spend, code )
+            coupons ( id, title, description, discount_type, discount_value, min_spend, code, scope )
           `)
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
@@ -2499,6 +2513,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
           description: item.coupons.description,
           discountType: item.coupons.discount_type,
           discountValue: item.coupons.discount_value,
+          scope: (item.coupons.scope === 'shipping' ? 'shipping' : 'draw') as 'draw' | 'shipping',
           minSpend: item.coupons.min_spend,
           expiryDate: item.expiry_date,
           status: item.status,
@@ -5936,9 +5951,9 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                       <div key={coupon.id} className="flex items-center gap-3 pl-3 pr-4 py-3 active:bg-neutral-50 dark:active:bg-neutral-800/70 transition-all">
                         <div className="flex-shrink-0 w-14 h-14 bg-pink-50 dark:bg-pink-900/20 rounded-xl flex flex-col items-center justify-center border border-pink-100 dark:border-pink-900/30">
                            <span className="text-[15px] font-black text-pink-500 font-amount leading-none mb-0.5">
-                             {coupon.discountType === 'fixed' ? `$${coupon.discountValue}` : `${coupon.discountValue}%`}
+                             {couponFaceValue(coupon)}
                            </span>
-                           <span className="text-[9px] font-bold text-pink-400 uppercase leading-none">OFF</span>
+                           <span className="text-[9px] font-bold text-pink-400 uppercase leading-none">{couponFaceUnit(coupon)}</span>
                         </div>
                         
                         <div className="flex-1 min-w-0 space-y-1">
@@ -6069,9 +6084,9 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                           <div key={coupon.id} className="flex items-center gap-5 rounded-[16px] bg-white px-6 py-5 ring-1 ring-[#e5e7eb]">
                             <div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl border border-pink-100 bg-pink-50">
                               <span className="text-[18px] font-black leading-none text-pink-500">
-                                {coupon.discountType === 'fixed' ? `$${coupon.discountValue}` : `${coupon.discountValue}%`}
+                                {couponFaceValue(coupon)}
                               </span>
-                              <span className="mt-1 text-[10px] font-bold uppercase leading-none text-pink-400">OFF</span>
+                              <span className="mt-1 text-[10px] font-bold uppercase leading-none text-pink-400">{couponFaceUnit(coupon)}</span>
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="truncate text-[16px] font-black text-neutral-900">{coupon.title}</div>

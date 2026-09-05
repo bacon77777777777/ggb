@@ -13,7 +13,8 @@ import Textarea from '@/components/ui/Textarea'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import ConfirmDialog from '@/components/ConfirmDialog'
 
-type DiscountType = 'fixed' | 'percentage'
+/** fixed 固定金額｜percentage 百分比｜free_shipping 免運（只給運費券，migration 696） */
+type DiscountType = 'fixed' | 'percentage' | 'free_shipping'
 /** 券的用途：draw 抽獎折價｜shipping 運費折抵（migration 681） */
 type CouponScope = 'draw' | 'shipping'
 
@@ -162,9 +163,19 @@ export default function CouponsPage() {
       return
     }
 
-    const discountValue = Number(formData.discount_value)
-    if (!Number.isFinite(discountValue) || discountValue <= 0) {
+    // 免運券沒有「數值」可填，存 0；其他兩種照舊必須是正數
+    const isFreeShipping = formData.discount_type === 'free_shipping'
+    if (isFreeShipping && formData.scope !== 'shipping') {
+      toast('「免運」只能用在運費優惠券', 'warning')
+      return
+    }
+    const discountValue = isFreeShipping ? 0 : Number(formData.discount_value)
+    if (!isFreeShipping && (!Number.isFinite(discountValue) || discountValue <= 0)) {
       toast('請輸入有效的折扣數值', 'warning')
+      return
+    }
+    if (formData.discount_type === 'percentage' && discountValue > 100) {
+      toast('百分比不能超過 100', 'warning')
       return
     }
 
@@ -236,11 +247,13 @@ export default function CouponsPage() {
       render: c => (
         <div className="space-y-1">
           <div className="text-sm font-bold text-pink-500">
-            {c.scope === 'shipping'
-              ? `折抵運費 ${c.discount_value} G`
-              : c.discount_type === 'fixed'
-                ? `折抵 ${c.discount_value} (TWD)`
-                : `折抵 ${c.discount_value}%`}
+            {c.discount_type === 'free_shipping'
+              ? '免運費'
+              : c.scope === 'shipping'
+                ? (c.discount_type === 'percentage' ? `運費 ${c.discount_value}% 折抵` : `折抵運費 ${c.discount_value} G`)
+                : c.discount_type === 'fixed'
+                  ? `折抵 ${c.discount_value} (TWD)`
+                  : `折抵 ${c.discount_value}%`}
           </div>
           {c.scope === 'shipping' && <Badge color="blue">運費券</Badge>}
         </div>
@@ -335,9 +348,12 @@ export default function CouponsPage() {
               </label>
               <SelectField
                 value={formData.scope}
-                onChange={(e) =>
-                  setFormData({ ...formData, scope: e.target.value as CouponScope })
-                }
+                onChange={(e) => {
+                  const scope = e.target.value as CouponScope
+                  // 「免運」只有運費券有；切回抽獎券就退回固定金額
+                  const discount_type = scope !== 'shipping' && formData.discount_type === 'free_shipping' ? 'fixed' : formData.discount_type
+                  setFormData({ ...formData, scope, discount_type })
+                }}
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm bg-white"
               >
                 <option value="draw">抽獎折價券（購買抽獎時折抵）</option>
@@ -357,8 +373,9 @@ export default function CouponsPage() {
                   }
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm bg-white"
                 >
-                  <option value="fixed">固定金額(TWD)</option>
+                  <option value="fixed">{formData.scope === 'shipping' ? '固定金額 (G)' : '固定金額 (TWD)'}</option>
                   <option value="percentage">百分比</option>
+                  {formData.scope === 'shipping' && <option value="free_shipping">免運（整筆運費全免）</option>}
                 </SelectField>
               </div>
 
@@ -370,9 +387,13 @@ export default function CouponsPage() {
                   type="number"
                   min="0"
                   step="1"
-                  value={formData.discount_value}
+                  value={formData.discount_type === 'free_shipping' ? '' : formData.discount_value}
                   onChange={(e) => setFormData({ ...formData, discount_value: e.target.value })}
-                  placeholder={formData.discount_type === 'fixed' ? '例如：50' : '例如：10 代表 10%'}
+                  disabled={formData.discount_type === 'free_shipping'}
+                  placeholder={
+                    formData.discount_type === 'free_shipping' ? '免運不用填'
+                      : formData.discount_type === 'fixed' ? '例如：50' : '例如：10 代表 10%'
+                  }
                 />
               </div>
             </div>

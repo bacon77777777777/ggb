@@ -4,6 +4,7 @@ import { AdminLayout, PageCard } from '@/components'
 import { useState, useEffect } from 'react'
 import { useToast } from '@/contexts/ToastContext'
 import { CardSkeleton } from '@/components/ui/Skeleton'
+import Note from '@/components/ui/Note'
 
 export default function ShippingSettingsPage() {
   const { toast } = useToast()
@@ -13,6 +14,14 @@ export default function ShippingSettingsPage() {
   const [feeCvsHiLife, setFeeCvsHiLife] = useState('55')
   const [feeCvsOk, setFeeCvsOk] = useState('60')
   const [freeShippingThreshold, setFreeShippingThreshold] = useState('7')
+  /*
+   * 免運門檻只有一個數字，但 DB 的 calc_delivery_fee() 優先讀分物流的
+   * free_shipping_threshold_home／_cvs，讀不到才退回 free_shipping_threshold。
+   * 2026-08-04 那次 migration 把宅配塞成 15、超商 7，這頁卻只顯示／只寫舊的單一 key ——
+   * 老闆看到 7、玩家宅配 10 件照收 60，而且前台一次最多配 10 件，15 永遠到不了（老闆 2026-09-05 回報）。
+   * 現在這一格是唯一真相：儲存時三個 key 一起寫；讀到分物流值跟這裡不同就先警告。
+   */
+  const [liveThresholds, setLiveThresholds] = useState<{ home: string | null; cvs: string | null }>({ home: null, cvs: null })
   // 寄件人（綠界物流開單必填；缺郵遞區號綠界直接拒單 SenderZipCode Is Null，2026-09-02）
   const [senderName, setSenderName] = useState('')
   const [senderPhone, setSenderPhone] = useState('')
@@ -32,6 +41,7 @@ export default function ShippingSettingsPage() {
         if (d.shipping_fee_cvs_hilife) setFeeCvsHiLife(d.shipping_fee_cvs_hilife)
         if (d.shipping_fee_cvs_ok) setFeeCvsOk(d.shipping_fee_cvs_ok)
         if (d.free_shipping_threshold) setFreeShippingThreshold(d.free_shipping_threshold)
+        setLiveThresholds({ home: d.free_shipping_threshold_home ?? null, cvs: d.free_shipping_threshold_cvs ?? null })
         if (d.shipping_sender_name) setSenderName(d.shipping_sender_name)
         if (d.shipping_sender_phone) setSenderPhone(d.shipping_sender_phone)
         if (d.shipping_sender_zip) setSenderZip(d.shipping_sender_zip)
@@ -54,6 +64,8 @@ export default function ShippingSettingsPage() {
           shipping_fee_cvs_hilife: feeCvsHiLife,
           shipping_fee_cvs_ok: feeCvsOk,
           free_shipping_threshold: freeShippingThreshold,
+          free_shipping_threshold_home: freeShippingThreshold,
+          free_shipping_threshold_cvs: freeShippingThreshold,
           shipping_sender_name: senderName,
           shipping_sender_phone: senderPhone,
           shipping_sender_zip: senderZip,
@@ -62,6 +74,7 @@ export default function ShippingSettingsPage() {
       })
       if (!res.ok) throw new Error('儲存失敗')
       setSaved(true)
+      setLiveThresholds({ home: freeShippingThreshold, cvs: freeShippingThreshold })
       setTimeout(() => setSaved(false), 3000)
     } catch (e) {
       toast('儲存失敗，請重試', 'error')
@@ -158,8 +171,20 @@ export default function ShippingSettingsPage() {
               <div className="pt-4 border-t border-neutral-100">
                 <h2 className="text-base font-semibold text-neutral-900 mb-1">免運門檻</h2>
                 <p className="text-sm text-neutral-500 mb-4">
-                  用戶單次申請出貨件數達此數量（含）以上，免收運費。
+                  用戶單次申請出貨件數達此數量（含）以上，免收運費。宅配與超商共用同一個門檻；含大件的訂單一律不免運。
                 </p>
+                {(() => {
+                  const diff = (['home', 'cvs'] as const).filter(k => liveThresholds[k] != null && liveThresholds[k] !== freeShippingThreshold)
+                  if (diff.length === 0) return null
+                  const name = { home: '宅配', cvs: '超商' }
+                  return (
+                    <div className="mb-4">
+                      <Note tone="warn">
+                        目前實際計費用的門檻是{diff.map(k => `${name[k]} ${liveThresholds[k]} 件`).join('、')}，跟這裡的 {freeShippingThreshold} 件不一樣。按「儲存設定」會把所有物流方式一起改成這裡的值。
+                      </Note>
+                    </div>
+                  )
+                })()}
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
                     免運件數門檻（件）

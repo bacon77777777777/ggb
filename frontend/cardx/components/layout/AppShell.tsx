@@ -444,39 +444,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                             <use href="#icon-box" />
                           </svg>
                         </span>
-                        <span className={styles.profileMenuText}>倉庫</span>
-                      </Link>
-                      <Link className={styles.profileMenuItem} role="menuitem" href="/profile?tab=draw-history" onClick={() => setProfileOpen(false)}>
-                        <span className={styles.profileMenuIcon} aria-hidden="true">
-                          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                            <use href="#icon-docs" />
-                          </svg>
-                        </span>
-                        <span className={styles.profileMenuText}>抽獎紀錄</span>
-                      </Link>
-                      <Link className={styles.profileMenuItem} role="menuitem" href="/profile?tab=topup-history" onClick={() => setProfileOpen(false)}>
-                        <span className={styles.profileMenuIcon} aria-hidden="true">
-                          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                            <use href="#icon-recent" />
-                          </svg>
-                        </span>
-                        <span className={styles.profileMenuText}>儲值紀錄</span>
-                      </Link>
-                      <Link className={styles.profileMenuItem} role="menuitem" href="/profile?tab=follows" onClick={() => setProfileOpen(false)}>
-                        <span className={styles.profileMenuIcon} aria-hidden="true">
-                          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                            <use href="#icon-like" />
-                          </svg>
-                        </span>
-                        <span className={styles.profileMenuText}>收藏</span>
-                      </Link>
-                      <Link className={styles.profileMenuItem} role="menuitem" href="/messages" onClick={() => setProfileOpen(false)}>
-                        <span className={styles.profileMenuIcon} aria-hidden="true">
-                          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                            <use href="#icon-chat-3" />
-                          </svg>
-                        </span>
-                        <span className={styles.profileMenuText}>訊息</span>
+                        <span className={styles.profileMenuText}>我的倉庫</span>
                       </Link>
                       <Link className={styles.profileMenuItem} role="menuitem" href="/invite" onClick={() => setProfileOpen(false)}>
                         <span className={styles.profileMenuIcon} aria-hidden="true">
@@ -757,39 +725,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                           <use href="#icon-box" />
                         </svg>
                       </span>
-                      <span className={styles.profileMenuText}>倉庫</span>
-                    </Link>
-                    <Link className={styles.profileMenuItem} role="menuitem" href="/profile?tab=draw-history" onClick={() => setProfileOpen(false)}>
-                      <span className={styles.profileMenuIcon} aria-hidden="true">
-                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                          <use href="#icon-docs" />
-                        </svg>
-                      </span>
-                      <span className={styles.profileMenuText}>抽獎紀錄</span>
-                    </Link>
-                    <Link className={styles.profileMenuItem} role="menuitem" href="/profile?tab=topup-history" onClick={() => setProfileOpen(false)}>
-                      <span className={styles.profileMenuIcon} aria-hidden="true">
-                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                          <use href="#icon-recent" />
-                        </svg>
-                      </span>
-                      <span className={styles.profileMenuText}>儲值紀錄</span>
-                    </Link>
-                    <Link className={styles.profileMenuItem} role="menuitem" href="/profile?tab=follows" onClick={() => setProfileOpen(false)}>
-                      <span className={styles.profileMenuIcon} aria-hidden="true">
-                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                          <use href="#icon-like" />
-                        </svg>
-                      </span>
-                      <span className={styles.profileMenuText}>收藏</span>
-                    </Link>
-                    <Link className={styles.profileMenuItem} role="menuitem" href="/messages" onClick={() => setProfileOpen(false)}>
-                      <span className={styles.profileMenuIcon} aria-hidden="true">
-                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                          <use href="#icon-chat-3" />
-                        </svg>
-                      </span>
-                      <span className={styles.profileMenuText}>訊息</span>
+                      <span className={styles.profileMenuText}>我的倉庫</span>
                     </Link>
                     <Link className={styles.profileMenuItem} role="menuitem" href="/invite" onClick={() => setProfileOpen(false)}>
                       <span className={styles.profileMenuIcon} aria-hidden="true">
