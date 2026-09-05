@@ -13,6 +13,13 @@ import { createClient } from '@/lib/supabase/client';
 import { MissionService, type UserMission } from '@/services/mission';
 import { asset } from '@/lib/asset';
 import { formatMemberNo } from '@/lib/memberNo';
+/* 1024 以上掛進 cardx 的外殼、改成左右兩欄（老闆 2026-09-05：邀請頁電腦端也要重構、靠齊 cardx）。
+   手機版（1024 以下）的樹一字不動，只是把 hero／進度條／成就列抽成變數讓兩邊共用 */
+import { AppShell } from '@/cardx/components/layout/AppShell';
+import { defaultSidebarItems } from '@/cardx/lib/navigation';
+import homeStyles from '@/cardx/components/home/HomeClient.module.css';
+import { Button3D, SecondaryButton, SurfaceCard } from '@/cardx/components/ui/Kit';
+import { useMinWidth } from '@/lib/useMinWidth';
 
 /**
  * 邀請好友頁 —— 滿版主視覺＋循環獎進度區
@@ -74,6 +81,7 @@ export default function InvitePage() {
   const [claimingMission, setClaimingMission] = useState<string | null>(null);
 
   const code = user?.invite_code ?? null;
+  const cardxShell = useMinWidth(1024);
   const link = code && typeof window !== 'undefined'
     ? `${window.location.origin}/login?invite=${code}`
     : null;
@@ -285,41 +293,9 @@ export default function InvitePage() {
     else router.push('/profile');
   };
 
-  return (
-    /* data-ptr-strip="none"：下拉的空隙不鋪灰底，轉蛋球直接浮在 hero 圖上
-       （老闆 2026-08-21：「轉蛋圖標直接移到最上面來蓋在 hero 圖上」）*/
-    <div className="min-h-screen bg-white pb-[calc(96px+env(safe-area-inset-bottom))]" data-ptr-strip="none">
-      {/* 動態島底下的漸層毛玻璃（老闆 2026-08-22）：hero 是亮金色插圖、本來就有底色，只模糊不帶色 */}
-      <TopFadeBlur className="md:hidden" />
-      {/* 頂部操作列 —— 文章內頁同款：浮動圓鈕蓋在 hero 上（老闆指定），
-          返回＋分享（分享＝複製邀請訊息） */}
-      <div className="fixed left-0 right-0 top-0 z-20 flex items-center justify-between pt-[env(safe-area-inset-top)] pointer-events-none">
-        <button
-          type="button"
-          onClick={goBack}
-          className="pointer-events-auto m-[10px] flex h-[38px] w-[38px] items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm"
-        >
-          <ChevronLeft className="h-5 w-5 stroke-[2.5]" />
-        </button>
-        <button
-          type="button"
-          onClick={() => void copyMessage()}
-          className="pointer-events-auto m-[10px] flex h-[38px] w-[38px] items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm"
-        >
-          <Share2 className="h-4 w-4" />
-        </button>
-      </div>
-
-      {/* 主視覺滿版：手機上左右貼齊瀏覽器邊（老闆指定）；
-          桌機給寬度上限與圓角，不然 800px 的圖會被拉到糊。
-
-          出血段自動裁切（老闆 2026-08-21）：圖頂多的那 120px 是給動態島墊高用的
-          （120/800 = 15vw 渲染高）。用 env(safe-area-inset-top) 當開關——
-            · 瀏覽器分頁 env=0 → 內層上移 15vw，把出血段推出外層裁切框、收乾淨
-            · PWA/App env≈15vw → 上移量歸零，出血段保留、剛好塞進動態島下
-          圖與 QR/邀請碼都在「內層」一起移動，百分比定位完全不受影響。 */}
-      <div className="w-full overflow-hidden md:mx-auto md:mt-4 md:max-w-md md:rounded-t-3xl">
-      <div className="relative w-full [margin-top:min(0px,calc(env(safe-area-inset-top)_-_15vw))] md:!mt-0">
+  /* ── 三塊共用區塊（手機與桌機都用同一份）── */
+  const heroInner = (
+    <>
         <Image
           src={HERO_SRC}
           alt="邀請好友"
@@ -355,34 +331,10 @@ export default function InvitePage() {
             <Copy className="h-[3vw] w-[3vw] text-white/90 md:h-3.5 md:w-3.5" />
           </button>
         )}
-      </div>
-      </div>
-
-      {/* ── 進度卡（老闆設計稿：黃粉漸層底、左句右 n/5、亮綠分段條）──
-          底圖與進度條都是設計稿附的素材（card_progress / bar_track /
-          bar_fill），背景 100% 100% 拉伸；領取鈕只在有得領時出現
-         （設計稿畫的是 2/5 未達標狀態，沒有畫按鈕）*/}
-      <div className="w-full bg-white md:mx-auto md:max-w-md">
-        {/* 底圖 750 寬、卡面佔 3.1%~96.8% —— 側邊留白是圖自帶的，
-            所以容器滿版寬（老闆指定），內距用百分比對齊卡面 */}
-        <div
-          className="mt-3 w-full px-[7.5%] pb-6 pt-4"
-          style={{ backgroundImage: `url(${asset('/images/invite/card_progress.png')})`, backgroundSize: '100% 100%' }}
-        >
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[14px] font-bold text-neutral-900">被邀請的好友綁定 LINE 帳號即可 +1</p>
-            {status ? (
-              <p className="shrink-0 font-black leading-none">
-                <span className="text-[24px]" style={{ color: '#ff2b2b' }}>{filled}</span>
-                <span className="text-[16px] text-neutral-900">/{step}</span>
-              </p>
-            ) : (
-              <span className="h-5 w-10 shrink-0 animate-pulse rounded bg-white/60" />
-            )}
-          </div>
-
-          {/* 分段進度條：素材軌道＋亮綠填充，填充用寬度裁切露出 */}
-          <div className="relative mt-2.5 h-[15px]">
+    </>
+  );
+  const progressBar = (
+    <div className="relative mt-2.5 h-[15px]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={asset("/images/invite/bar_track.png")} alt="" className="absolute inset-0 h-full w-full" />
             {filled > 0 && (
@@ -398,21 +350,11 @@ export default function InvitePage() {
                 />
               </div>
             )}
-          </div>
-
-        </div>
-
-        {/* ── 成就卡（老闆設計稿：REWARD 底紋綠粉框、四階成就列）──
-            底圖只有卡片上緣（含 REWARD 底紋），下面接白底自然延伸 */}
-        <div className="mb-14 mt-2 w-full bg-white">
-          {/* 「成就」標題已畫在底圖上（新版 bg.png），內容從標題下方開始
-              —— pt 用寬度百分比對齊圖上標題的下緣（62/750） */}
-          <div
-            className="bg-top bg-no-repeat px-[6.5%] pb-2 pt-[10%]"
-            style={{ backgroundImage: `url(${asset('/images/invite/card_reward.png')})`, backgroundSize: '100% auto' }}
-          >
-            <div>
-              {missions.length === 0 && (
+    </div>
+  );
+  const missionList = (
+    <div>
+      {missions.length === 0 && (
                 <div className="space-y-4 px-1 py-3">
                   {[1, 2, 3, 4].map(i => (
                     <div key={i} className="h-12 animate-pulse rounded-xl bg-neutral-100" />
@@ -476,8 +418,156 @@ export default function InvitePage() {
                     </div>
                   </div>
                 );
-              })}
+      })}
+    </div>
+  );
+
+  // null＝還不知道視窗寬度，先不畫，兩套殼才不會疊在一起
+  if (cardxShell === null) return null;
+
+  if (cardxShell) {
+    return (
+      <div className="cardx-root" data-cardx-page="invite">
+        <AppShell sidebarItems={defaultSidebarItems}>
+          <div className={homeStyles.main2}>
+            <div className={homeStyles.main}>
+              <div className={homeStyles.sectionLobby}>
+                {/* 整頁就一張卡（老闆 2026-09-05：拆成四個橫向區塊很醜）：左邊主視覺，右邊同一張卡裡
+                    用細分隔線分三段——邀請碼與操作／循環獎進度／成就 */}
+                <SurfaceCard style={{ padding: 0, overflow: 'hidden', display: 'grid', gridTemplateColumns: '380px minmax(0, 1fr)', alignItems: 'stretch', width: '100%' }}>
+                  <div style={{ position: 'relative', background: '#f3f4f6' }}>
+                    <div className="relative w-full">{heroInner}</div>
+                  </div>
+
+                  <div style={{ padding: '24px 28px', minWidth: 0, display: 'grid', alignContent: 'start' }}>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: '#111827', letterSpacing: '-0.2px' }}>邀請好友，無限拿積分</div>
+                    <div style={{ marginTop: 6, fontSize: 13, fontWeight: 800, color: '#6b7280', lineHeight: '20px' }}>
+                      好友用你的邀請碼註冊並綁定 LINE 就算一位有效邀請；每邀滿 {step} 位可領 {(status?.pointsPerStep ?? 0).toLocaleString()} 積分，沒有上限。
+                    </div>
+                    <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderRadius: 14, background: '#f3f4f6' }}>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: '#6b7280' }}>你的邀請碼</span>
+                        <span style={{ fontSize: 22, fontWeight: 900, color: '#111827', letterSpacing: '0.04em', fontVariantNumeric: 'tabular-nums' }}>{code ? formatMemberNo(code) : '—'}</span>
+                        <button type="button" onClick={() => void copyCode()} aria-label="複製邀請碼" style={{ border: 0, background: 'transparent', padding: 4, cursor: 'pointer', color: '#6b7280', display: 'grid', placeItems: 'center' }}>
+                          <Copy className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <Button3D color="red" onClick={claimNow} style={{ height: 40, borderRadius: 12, minWidth: 116 }}>
+                        {claiming ? '領取中…' : '立即領取'}
+                      </Button3D>
+                      <SecondaryButton onClick={() => void copyMessage()} style={{ height: 40 }}>複製邀請訊息</SecondaryButton>
+                      <SecondaryButton onClick={() => void downloadHero()} style={{ height: 40 }}>下載邀請圖</SecondaryButton>
+                    </div>
+
+                    <div aria-hidden="true" style={{ height: 1, background: '#e5e7eb', margin: '20px 0 16px' }} />
+
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 900, color: '#111827' }}>循環獎進度</div>
+                        <div style={{ marginTop: 2, fontSize: 13, fontWeight: 800, color: '#6b7280' }}>被邀請的好友綁定 LINE 帳號即可 +1</div>
+                      </div>
+                      {status ? (
+                        <p className="shrink-0 font-black leading-none">
+                          <span style={{ fontSize: 24, color: '#ff2b2b' }}>{filled}</span>
+                          <span style={{ fontSize: 16, color: '#111827' }}>/{step}</span>
+                        </p>
+                      ) : (
+                        <span className="h-5 w-10 shrink-0 animate-pulse rounded bg-neutral-100" />
+                      )}
+                    </div>
+                    {progressBar}
+
+                    <div aria-hidden="true" style={{ height: 1, background: '#e5e7eb', margin: '20px 0 8px' }} />
+
+                    <div style={{ fontSize: 15, fontWeight: 900, color: '#111827' }}>成就</div>
+                    {missionList}
+                  </div>
+                </SurfaceCard>
+              </div>
             </div>
+          </div>
+        </AppShell>
+      </div>
+    );
+  }
+
+  return (
+    /* data-ptr-strip="none"：下拉的空隙不鋪灰底，轉蛋球直接浮在 hero 圖上
+       （老闆 2026-08-21：「轉蛋圖標直接移到最上面來蓋在 hero 圖上」）*/
+    <div className="min-h-screen bg-white pb-[calc(96px+env(safe-area-inset-bottom))]" data-ptr-strip="none">
+      {/* 動態島底下的漸層毛玻璃（老闆 2026-08-22）：hero 是亮金色插圖、本來就有底色，只模糊不帶色 */}
+      <TopFadeBlur className="md:hidden" />
+      {/* 頂部操作列 —— 文章內頁同款：浮動圓鈕蓋在 hero 上（老闆指定），
+          返回＋分享（分享＝複製邀請訊息） */}
+      <div className="fixed left-0 right-0 top-0 z-20 flex items-center justify-between pt-[env(safe-area-inset-top)] pointer-events-none">
+        <button
+          type="button"
+          onClick={goBack}
+          className="pointer-events-auto m-[10px] flex h-[38px] w-[38px] items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm"
+        >
+          <ChevronLeft className="h-5 w-5 stroke-[2.5]" />
+        </button>
+        <button
+          type="button"
+          onClick={() => void copyMessage()}
+          className="pointer-events-auto m-[10px] flex h-[38px] w-[38px] items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm"
+        >
+          <Share2 className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* 主視覺滿版：手機上左右貼齊瀏覽器邊（老闆指定）；
+          桌機給寬度上限與圓角，不然 800px 的圖會被拉到糊。
+
+          出血段自動裁切（老闆 2026-08-21）：圖頂多的那 120px 是給動態島墊高用的
+          （120/800 = 15vw 渲染高）。用 env(safe-area-inset-top) 當開關——
+            · 瀏覽器分頁 env=0 → 內層上移 15vw，把出血段推出外層裁切框、收乾淨
+            · PWA/App env≈15vw → 上移量歸零，出血段保留、剛好塞進動態島下
+          圖與 QR/邀請碼都在「內層」一起移動，百分比定位完全不受影響。 */}
+      <div className="w-full overflow-hidden md:mx-auto md:mt-4 md:max-w-md md:rounded-t-3xl">
+      <div className="relative w-full [margin-top:min(0px,calc(env(safe-area-inset-top)_-_15vw))] md:!mt-0">
+        {heroInner}
+      </div>
+      </div>
+
+      {/* ── 進度卡（老闆設計稿：黃粉漸層底、左句右 n/5、亮綠分段條）──
+          底圖與進度條都是設計稿附的素材（card_progress / bar_track /
+          bar_fill），背景 100% 100% 拉伸；領取鈕只在有得領時出現
+         （設計稿畫的是 2/5 未達標狀態，沒有畫按鈕）*/}
+      <div className="w-full bg-white md:mx-auto md:max-w-md">
+        {/* 底圖 750 寬、卡面佔 3.1%~96.8% —— 側邊留白是圖自帶的，
+            所以容器滿版寬（老闆指定），內距用百分比對齊卡面 */}
+        <div
+          className="mt-3 w-full px-[7.5%] pb-6 pt-4"
+          style={{ backgroundImage: `url(${asset('/images/invite/card_progress.png')})`, backgroundSize: '100% 100%' }}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[14px] font-bold text-neutral-900">被邀請的好友綁定 LINE 帳號即可 +1</p>
+            {status ? (
+              <p className="shrink-0 font-black leading-none">
+                <span className="text-[24px]" style={{ color: '#ff2b2b' }}>{filled}</span>
+                <span className="text-[16px] text-neutral-900">/{step}</span>
+              </p>
+            ) : (
+              <span className="h-5 w-10 shrink-0 animate-pulse rounded bg-white/60" />
+            )}
+          </div>
+
+          {/* 分段進度條：素材軌道＋亮綠填充，填充用寬度裁切露出 */}
+          {progressBar}
+
+        </div>
+
+        {/* ── 成就卡（老闆設計稿：REWARD 底紋綠粉框、四階成就列）──
+            底圖只有卡片上緣（含 REWARD 底紋），下面接白底自然延伸 */}
+        <div className="mb-14 mt-2 w-full bg-white">
+          {/* 「成就」標題已畫在底圖上（新版 bg.png），內容從標題下方開始
+              —— pt 用寬度百分比對齊圖上標題的下緣（62/750） */}
+          <div
+            className="bg-top bg-no-repeat px-[6.5%] pb-2 pt-[10%]"
+            style={{ backgroundImage: `url(${asset('/images/invite/card_reward.png')})`, backgroundSize: '100% auto' }}
+          >
+            {missionList}
           </div>
         </div>
       </div>

@@ -6699,7 +6699,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
         );
       case 'settings':
         return (
-          <div className="md:pb-0 bg-neutral-100 dark:bg-neutral-950">
+          <div className={cn('md:pb-0', cardxShell ? 'bg-white' : 'bg-neutral-100 dark:bg-neutral-950')}>
             {/* Mobile Header。子頁推入時本頁往左滑出 28%（iOS push），不是死板被蓋住 */}
             <div
               className="md:hidden bg-neutral-100 dark:bg-neutral-950 flex flex-col min-h-[100dvh]"
@@ -6912,15 +6912,20 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
             </div>
 
             {/* Desktop View */}
-            <div className="hidden md:block max-w-2xl mx-auto p-8">
-              <div className="space-y-3">
+            {/* 桌機（1024 起、掛在 cardx 外殼裡）：不再 max-w-2xl 置中——右邊留一大片空白（老闆 2026-09-05），
+                改成「設定」標題＋左右兩欄：個人資料｜帳號安全／其他／登出，卡片照 cardx 的 16 圓角＋1px 描邊 */}
+            <div className="hidden md:block p-6">
+              <ProfileSectionHeader title="設定" description="個人資料、帳號安全與收件地址" />
+              <div className="mt-5 grid grid-cols-2 gap-5 items-start">
+              <div className="space-y-4">
+                <div className="text-[14px] font-black text-neutral-900">個人資料</div>
                 {/* Info Group 1 */}
-                <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm overflow-hidden divide-y divide-neutral-100 dark:divide-neutral-800">
+                <div className="bg-white rounded-[16px] overflow-hidden divide-y divide-neutral-100" style={{ boxShadow: '0 0 0 1px #e5e7eb' }}>
                   <div 
-                    className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
+                    className="flex items-center justify-between px-4 py-3.5 hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={openAvatarPicker}
                   >
-                    <label className="text-[15px] text-neutral-800 dark:text-neutral-200">頭像</label>
+                    <label className="text-[14px] font-bold text-neutral-700">頭像</label>
                     <div className="flex items-center gap-2">
                        <div className="w-10 h-10 rounded-full overflow-hidden relative bg-neutral-100 border border-neutral-100 dark:border-neutral-800">
                          {isUploadingAvatar ? (
@@ -6948,10 +6953,10 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                     </div>
                   </div>
                   <div
-                    className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
+                    className="flex items-center justify-between px-4 py-3.5 hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => setShowEditNickname(true)}
                   >
-                    <label className="text-[15px] text-neutral-800 dark:text-neutral-200">暱稱</label>
+                    <label className="text-[14px] font-bold text-neutral-700">暱稱</label>
                     <div className="flex items-center gap-2">
                       <span className={cn("text-[14px]", user?.name ? "text-neutral-900 dark:text-white font-medium" : "text-primary")}>
                         {user?.name || '立即設定'}
@@ -6960,10 +6965,10 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                     </div>
                   </div>
                   <div
-                    className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
+                    className="flex items-center justify-between px-4 py-3.5 hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => { fetchUserTitles(); setShowTitlePicker(true); }}
                   >
-                    <label className="text-[15px] text-neutral-800 dark:text-neutral-200">稱號</label>
+                    <label className="text-[14px] font-bold text-neutral-700">稱號</label>
                     <div className="flex items-center gap-2">
                       {(() => {
                         const sel = userTitles.find(t => t.is_selected);
@@ -6977,14 +6982,14 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                     </div>
                   </div>
                   <div 
-                    className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
+                    className="flex items-center justify-between px-4 py-3.5 hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => {
                       if (settingsForm.gender) return;
                       setTempGender('');
                       setShowEditGender(true);
                     }}
                   >
-                    <label className="text-[15px] text-neutral-800 dark:text-neutral-200 flex items-center gap-1">
+                    <label className="text-[14px] font-bold text-neutral-700 flex items-center gap-1">
                       性別 <HelpCircle className="w-3 h-3 text-neutral-300" />
                     </label>
                     <div className="flex items-center gap-2">
@@ -6995,14 +7000,14 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                     </div>
                   </div>
                   <div 
-                    className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
+                    className="flex items-center justify-between px-4 py-3.5 hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => {
                       if (settingsForm.birthday) return;
                       if (!tempBirthday) setTempBirthday(new Date(2000, 0, 1));
                       setShowEditBirthday(true);
                     }}
                   >
-                    <label className="text-[15px] text-neutral-800 dark:text-neutral-200 flex items-center gap-1">
+                    <label className="text-[14px] font-bold text-neutral-700 flex items-center gap-1">
                       生日 <HelpCircle className="w-3 h-3 text-neutral-300" />
                     </label>
                     <div className="flex items-center gap-2">
@@ -7014,20 +7019,24 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                   </div>
                 </div>
 
+              </div>
+
+              <div className="space-y-4">
+                <div className="text-[14px] font-black text-neutral-900">帳號安全</div>
                 {/* 帳號與安全：同手機版的順序與規則 */}
-                <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm overflow-hidden divide-y divide-neutral-100 dark:divide-neutral-800">
+                <div className="bg-white rounded-[16px] overflow-hidden divide-y divide-neutral-100" style={{ boxShadow: '0 0 0 1px #e5e7eb' }}>
                   <EmailBindRow email={user?.email} />
                   <LineBindRow />
                   {/* 同上：功能關閉時整列不顯示 */}
                   {(phoneVerifyEnabled || user?.is_phone_verified) && (
                   <div 
-                    className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
+                    className="flex items-center justify-between px-4 py-3.5 hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => {
                       if (user?.is_phone_verified) return;
                       openPhoneBindModal();
                     }}
                   >
-                    <label className="text-[15px] text-neutral-800 dark:text-neutral-200">手機號碼</label>
+                    <label className="text-[14px] font-bold text-neutral-700">手機號碼</label>
                     <div className="flex items-center gap-2">
                       <span className={cn("text-[14px]", user?.is_phone_verified ? "text-neutral-900 dark:text-white font-medium" : "text-accent-red")}>
                         {user?.is_phone_verified ? maskPhoneForDisplay(user.phone_number || '') : '立即設定'}
@@ -7038,10 +7047,10 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                   )}
                   {user?.email && !isSyntheticEmail(user.email) && (
                     <div 
-                      className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
+                      className="flex items-center justify-between px-4 py-3.5 hover:bg-neutral-50 cursor-pointer transition-colors"
                       onClick={() => router.push('/update-password')}
                     >
-                      <label className="text-[15px] text-neutral-800 dark:text-neutral-200">登入密碼</label>
+                      <label className="text-[14px] font-bold text-neutral-700">登入密碼</label>
                       <div className="flex items-center gap-2">
                         {acctStatus?.password === undefined ? (
                             <span className="h-3.5 w-10 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
@@ -7056,18 +7065,19 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                   )}
                 </div>
 
+                <div className="text-[14px] font-black text-neutral-900 pt-1">其他</div>
                 {/* 邀請碼（選填，跟帳號安全分開） */}
-                <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm overflow-hidden">
+                <div className="bg-white rounded-[16px] overflow-hidden" style={{ boxShadow: '0 0 0 1px #e5e7eb' }}>
                   <InviteCodeRow />
                 </div>
 
                 {/* Address Section */}
-                <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm overflow-hidden mt-3">
+                <div className="bg-white rounded-[16px] overflow-hidden" style={{ boxShadow: '0 0 0 1px #e5e7eb' }}>
                   <div 
-                    className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
+                    className="flex items-center justify-between px-4 py-3.5 hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => setShowAddressBook(true)}
                   >
-                    <label className="text-[15px] text-neutral-800 dark:text-neutral-200">收件地址</label>
+                    <label className="text-[14px] font-bold text-neutral-700">收件地址</label>
                     <div className="flex items-center gap-2">
                       <span className="text-[14px] text-neutral-400">管理地址</span>
                       <ChevronRight className="w-4 h-4 text-neutral-300" />
@@ -7076,18 +7086,18 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                 </div>
 
                 {/* Logout Button */}
-                <div className="mt-6 px-4 md:px-0">
+                <div className="pt-2">
                   <button 
                     type="button" 
                     onClick={handleLogout}
-                    className="w-full bg-white dark:bg-neutral-800 text-neutral-500 h-11 rounded-lg border border-neutral-200 dark:border-neutral-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-[15px]"
+                    className="w-full h-11 rounded-[12px] bg-[#f3f4f6] text-neutral-700 text-[14px] font-black hover:bg-[#e5e7eb] transition-colors flex items-center justify-center gap-2"
                   >
                     登出
                   </button>
                 </div>
 
                 {/* 刪除帳號（Apple 5.1.1(v) 要求 App 內要有入口） */}
-                <div className="mt-3 mb-2 text-center px-4 md:px-0">
+                <div className="mt-1 text-center">
                   <button
                     type="button"
                     onClick={() => setShowDeleteAccount(true)}
@@ -7096,6 +7106,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                     刪除帳號
                   </button>
                 </div>
+              </div>
               </div>
             </div>
 

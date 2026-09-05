@@ -18,6 +18,7 @@ const CARDX_ROUTES: RegExp[] = [
   /^\/(?:favorites|recent|events|rewards|topics|trends|info|checkout|openings|orders)(?:\/[^/]+)?$/,
   /^\/account(?:\/[^/]+)?$/,
   /^\/profile$/,                  // 會員中心：1024 以上整頁掛進 cardx 的 AppShell（app/profile/page.tsx 自己包）
+  /^\/invite$/,                   // 邀請好友：同上（app/invite/page.tsx 自己包）
 ];
 
 export function isCardxRoute(pathname: string): boolean {
