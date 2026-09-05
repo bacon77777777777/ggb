@@ -12,6 +12,7 @@ import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNod
 import type { Database } from "@/types/database.types";
 import { asset } from "@/lib/asset";
 import { MachineLoadingOverlay } from "@/components/ui/MachineLoadingOverlay";
+import { SoundToggle } from "@/components/ui/SoundToggle";
 import { skyGradientCss, skyProgressNow } from "@/lib/oceanSky";
 
 type ProductRow = Database["public"]["Tables"]["products"]["Row"];
@@ -127,12 +128,10 @@ export function ProductStageVisual({
   const boxH = fillHeight ? size.h : width; // 滿高模式吃容器實際高度；否則是正方形
   const stageH = Math.max(0, boxH - bottomInset);
   /* 機台照高度 fit，寬度不夠時改以寬度為準（窄視窗），在舞台區裡置中。
-     抽卡例外（老闆 2026-09-05）：它是一排會轉的卡包，寬度也吃滿舞台比較好看，
-     上下超出的部分讓舞台裁掉沒關係 —— 卡包本來就是一排橫的。 */
+     抽卡不走這套（老闆 2026-09-05：寬度也要 fit）：卡包展示的 3D 畫布直接填滿整個舞台，
+     寬高都是舞台的尺寸，相機照畫布長寬比算 —— 卡包大小跟著舞台高度，側包不會在畫布邊緣被硬切一刀 */
   const fitBoth = width > 0 && stageH > 0 ? Math.min(stageH / MACHINE_H, width / MACHINE_W) : 0;
-  // 卡包吃滿寬度會太大（老闆 2026-09-05），桌機版留一點邊
-  const CARD_STAGE_FILL = fillHeight ? 0.86 : 1;
-  const scale = kind === "card" && width > 0 ? (width / MACHINE_W) * CARD_STAGE_FILL : fitBoth;
+  const scale = kind === "card" ? 0 : fitBoth;
   const machineLeft = Math.round((width - MACHINE_W * scale) / 2);
   const machineTop = Math.round((stageH - MACHINE_H * scale) / 2);
   const useCustomPack = p.pack_style === "custom";
@@ -150,8 +149,12 @@ export function ProductStageVisual({
       }}
     >
       {kind === "image" ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={image} alt={product.name} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: stageH || "100%", objectFit: "contain" }} />
+        /* 一番賞／自製賞的商品圖 fit 寬度（老闆 2026-09-05）：寬吃滿、高跟著走，在舞台可視高度裡垂直置中，
+           比舞台高的部分上下各裁一點（舞台 overflow hidden）。原本是 contain，直式圖左右會留大片空白 */
+        <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: stageH || "100%", overflow: "hidden", display: "flex", alignItems: "center" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={image} alt={product.name} style={{ width: "100%", height: "auto", display: "block", flex: "0 0 auto" }} />
+        </div>
       ) : null}
 
       {kind !== "image" && scale > 0 ? (
@@ -205,20 +208,32 @@ export function ProductStageVisual({
                 ) : null}
               </>
             ) : null}
-            {kind === "card" ? (
-              <PackShowcase3D
-                packStyles={packStyles}
-                height={MACHINE_H}
-                frontImage={useCustomPack ? p.pack_front_image_url || product.image_url || undefined : undefined}
-                backImage={useCustomPack ? p.pack_back_image_url || undefined : undefined}
-                onReady={() => setLoaded(true)}
-              />
-            ) : null}
           </div>
         </div>
       ) : null}
 
+      {kind === "card" && width > 0 && stageH > 0 ? (
+        <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: stageH }}>
+          <PackShowcase3D
+            fill
+            hideSoundToggle
+            packStyles={packStyles}
+            frontImage={useCustomPack ? p.pack_front_image_url || product.image_url || undefined : undefined}
+            backImage={useCustomPack ? p.pack_back_image_url || undefined : undefined}
+            onReady={() => setLoaded(true)}
+          />
+        </div>
+      ) : null}
+
       {kind !== "image" ? <MachineLoadingOverlay show={!loaded} /> : null}
+
+      {/* 靜音鈕固定在舞台右上角（老闆 2026-09-05：轉蛋／盒玩／抽卡都要有，從機台裡拉出來懸浮）。
+          掛在舞台層而不是機台裡：機台整台有 scale()，放進去會跟著縮；卡包展示自己那顆已用 hideSoundToggle 關掉 */}
+      {kind !== "image" ? (
+        <div style={{ position: "absolute", top: 12, right: 12, zIndex: 45 }}>
+          <SoundToggle />
+        </div>
+      ) : null}
 
 
       {/* 操作列靠下對齊、底下留 12：內容比 CONTROLS_H 高的時候（按鈕上面多一顆「N 人正在看」）

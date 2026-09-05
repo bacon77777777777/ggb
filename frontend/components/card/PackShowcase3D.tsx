@@ -46,6 +46,14 @@ type Props = {
   /** 容器高度（px）。機台區是 375 × 375×(932/750) ≒ 466 */
   height?: number;
   /**
+   * 填滿父層（寬高都 100%），不吃 `height`。桌機商品頁的舞台用：畫布就是整個舞台，
+   * 側包不會在畫布邊緣被硬切一刀（老闆 2026-09-05：抽卡舞台寬度也要 fit）。
+   * 父層尺寸變了由 ResizeObserver 重算相機與畫布，不會重建場景。
+   */
+  fill?: boolean;
+  /** 不畫右上角那顆音效開關（桌機舞台自己在舞台層放一顆固定的） */
+  hideSoundToggle?: boolean;
+  /**
    * 指定卡包正／背面圖，蓋過後台參數與內建款式。
    * 卡包樣式選「自訂」時用：玩家買的是「這一檔商品的卡包」，樣式必須固定且由商品決定，
    * 不能每次進頁面都隨機換一款（老闆 2026-08-18）。
@@ -237,7 +245,7 @@ function slotFor(d: number, aspect: number) {
 const skyBackground = (s: number) => skyGradientCss(s);
 
 const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
-  ({ packStyles, onActiveStyleChange, height = 466, frontImage, backImage, onReady }, ref) => {
+  ({ packStyles, onActiveStyleChange, height = 466, frontImage, backImage, onReady, fill = false, hideSoundToggle = false }, ref) => {
     const mountRef = useRef<HTMLDivElement | null>(null);
     const curRef = useRef(0);
     const paramsRef = useRef<Params>(DEFAULTS);
@@ -700,11 +708,16 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         syncSkySize();
       };
       window.addEventListener('resize', onResize);
+      /* 父層不是因為視窗縮放而變大小時（桌機舞台的高度是算出來的、麵包屑量完才定）
+         window resize 不會響，改觀察容器本身 */
+      const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => onResize()) : null;
+      ro?.observe(mount);
 
       return () => {
         disposed = true;
         cancelAnimationFrame(raf);
         io.disconnect();
+        ro?.disconnect();
         sky.dispose();
         window.removeEventListener('resize', onResize);
         window.removeEventListener('pointermove', move);
@@ -729,15 +742,15 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
       const style = packStyles[0] ?? '01';
       const src = frontImage || asset(`/images/card/pack/${style}01.webp`);
       return (
-        <div className="w-full flex items-center justify-center" style={{ height, background: skyBackground(skyS) }}>
+        <div className="w-full flex items-center justify-center" style={{ height: fill ? '100%' : height, background: skyBackground(skyS) }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt="" style={{ height: height * 0.82, objectFit: 'contain' }} />
+          <img src={src} alt="" style={{ height: fill ? '82%' : height * 0.82, objectFit: 'contain' }} />
         </div>
       );
     }
 
     return (
-      <div className="relative w-full overflow-hidden" style={{ height, background: skyBackground(skyS) }}>
+      <div className="relative w-full overflow-hidden" style={{ height: fill ? '100%' : height, background: skyBackground(skyS) }}>
         {/*
           這裡以前有一層 CSS 流星（四顆、慢速、往左下飄，只在夜色浮出）。
           老闆 2026-09-01 指定移除 —— 卡包本身已經有金屬反光與打光在動，
@@ -749,7 +762,7 @@ const PackShowcase3D = forwardRef<PackShowcase3DHandle, Props>(
         <div ref={mountRef} className="absolute inset-0" style={{ zIndex: 1 }} />
 
         {/* 音效開關（右上角，同原型）。站上共用 SoundToggle，靜音偏好也共用一份 */}
-        <SoundToggle className="absolute right-3 top-3 z-40" />
+        {hideSoundToggle ? null : <SoundToggle className="absolute right-3 top-3 z-40" />}
       </div>
     );
   }

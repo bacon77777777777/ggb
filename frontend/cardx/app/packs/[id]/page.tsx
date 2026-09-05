@@ -25,6 +25,7 @@ import { fetchRecommendations } from "@/lib/recommendations";
 import { fetchProductPromotion, type ProductPromotion } from "@/lib/promotions";
 import { swrLoad } from "@/lib/swr";
 import { isLastOneLevel } from "@/lib/grade";
+import { BookOpen, Share2, Heart } from "lucide-react";
 import { asset } from "@/lib/asset";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProductLoadingScreen } from "@/components/ui/ProductLoadingScreen";
@@ -624,16 +625,18 @@ export default function PackDetailPage() {
               <span className={styles.breadcrumbStrong}>{product.name}</span>
             </span>
           </Link>
-          {/* 麵包屑右邊：規則／分享／收藏（老闆 2026-09-04） */}
+          {/* 麵包屑右邊：規則／分享／收藏（老闆 2026-09-04）。
+              圖標跟手機端 Navbar 商品頁那三顆同款（老闆 2026-09-05：lucide BookOpen／Share2／Heart，20px、線寬 2）；
+              規則在桌機維持彈窗，不是像手機那樣進規則頁 */}
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, flex: "0 0 auto", position: "relative" }}>
             <button type="button" className={styles.secondaryButton} aria-label="規則" title="規則" onClick={() => setRulesOpen(true)} style={crumbIconStyle(false)}>
-              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><use href="#icon-docs" /></svg>
+              <BookOpen size={20} strokeWidth={2} aria-hidden="true" />
             </button>
             <button type="button" className={styles.secondaryButton} aria-label="分享" title="分享" onClick={() => void handleShare()} style={crumbIconStyle(false)}>
-              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z" /></svg>
+              <Share2 size={20} strokeWidth={2} aria-hidden="true" />
             </button>
             <button type="button" className={styles.secondaryButton} aria-label={followed ? "取消收藏" : "收藏"} title="收藏" aria-pressed={followed} onClick={() => void toggleFollow(Number(product.id))} style={crumbIconStyle(followed)}>
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg>
+              <Heart size={20} strokeWidth={2} fill={followed ? "currentColor" : "none"} aria-hidden="true" />
             </button>
             {shareCopied ? (
               <div role="status" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", padding: "6px 10px", borderRadius: 8, background: "#ffffff", border: "1px solid #e5e7eb", boxShadow: "0 10px 40px -10px rgba(0,0,0,0.12)", fontSize: 12, fontWeight: 800, color: "#111827", whiteSpace: "nowrap", zIndex: 20 }}>已複製連結</div>
