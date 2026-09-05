@@ -17,7 +17,9 @@ import { ORDER_STEPS, orderStepIndex, isOrderFinal } from '@/lib/orderStatus';
  */
 export { ORDER_STEPS as DELIVERY_STEPS };
 
-export function DeliverySteps({ status, className }: { status: string | undefined | null; className?: string }) {
+/** size="lg"：桌機會員中心配送明細用的放大版（字 13、圓點 14、線 3）；預設 md 是手機原本的尺寸 */
+export function DeliverySteps({ status, className, size = 'md' }: { status: string | undefined | null; className?: string; size?: 'md' | 'lg' }) {
+  const lg = size === 'lg';
   const cur = orderStepIndex(status);
   // 走到終點時最後一格是「完成」不是「進行中」—— 否則已送達的訂單
   // 會一直閃著代表還在進行的紅色光暈
@@ -32,7 +34,7 @@ export function DeliverySteps({ status, className }: { status: string | undefine
           <div
             key={label}
             className={cn(
-              'relative flex-1 pt-5 text-center text-[10px]',
+              'relative flex-1 text-center', lg ? 'pt-7 text-[13px]' : 'pt-5 text-[10px]',
               now ? 'font-bold text-accent-red' : done ? 'text-neutral-500' : 'text-neutral-400',
             )}
           >
@@ -41,7 +43,7 @@ export function DeliverySteps({ status, className }: { status: string | undefine
               <span
                 aria-hidden
                 className={cn(
-                  'absolute left-[-50%] top-2 h-0.5 w-full',
+                  'absolute left-[-50%] w-full', lg ? 'top-[9px] h-[3px]' : 'top-2 h-0.5',
                   i <= cur ? 'bg-accent-red/80' : 'bg-neutral-200 dark:bg-neutral-700',
                 )}
               />
@@ -50,7 +52,7 @@ export function DeliverySteps({ status, className }: { status: string | undefine
             <span
               aria-hidden
               className={cn(
-                'absolute left-1/2 top-1 z-[2] h-2.5 w-2.5 -translate-x-1/2 rounded-full',
+                'absolute left-1/2 z-[2] -translate-x-1/2 rounded-full', lg ? 'top-[3px] h-3.5 w-3.5' : 'top-1 h-2.5 w-2.5',
                 now
                   ? 'bg-accent-red ring-4 ring-accent-red/15'
                   : done

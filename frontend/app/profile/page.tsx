@@ -2255,17 +2255,20 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
            return {
              id: order.id,
              order_number: order.order_number,
-             itemsCount: order.draw_records?.length || 0,
-             items: (order.draw_records || []).map((dh) => {
-               const productType = (dh as any).products?.type || 'unknown';
-               const rawGrade = dh.product_prizes?.level || '?';
-               const grade = rawGrade; // 等級 DB 已統一（migration 514），一般版/特別設定照實顯示
-               return {
-                 grade,
-                 name: dh.product_prizes?.name || '未知',
-                 productName: (dh as any).products?.name || '未知商品',
-               };
-             }),
+             itemsCount: (order.draw_records?.length || (order as any).cancelled_items?.length) || 0,
+             /* 取消後獎品退回倉庫、draw_records 不再掛在這張訂單上，品項改讀取消當下存的快照 orders.cancelled_items
+                （老闆 2026-09-05：不管品項最終去向，用戶要知道當時訂單是哪些品項） */
+             items: (order.draw_records?.length
+               ? (order.draw_records || []).map((dh) => ({
+                   grade: dh.product_prizes?.level || '?', // 等級 DB 已統一（migration 514），一般版/特別設定照實顯示
+                   name: dh.product_prizes?.name || '未知',
+                   productName: (dh as any).products?.name || '未知商品',
+                 }))
+               : (((order as any).cancelled_items as { prize_level?: string; prize_name?: string; product_name?: string }[] | null) || []).map((ci) => ({
+                   grade: ci.prize_level || '?',
+                   name: ci.prize_name || '未知',
+                   productName: ci.product_name || '未知商品',
+                 }))),
              status: order.status,
              date: new Date(order.created_at).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Taipei' }).replace(/\//g, '/'),
              tracking: order.tracking_number || '-',
@@ -5151,10 +5154,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                   'h-9 px-3.5 rounded-full text-[13px] font-black whitespace-nowrap transition-colors',
                   active ? 'bg-primary text-white' : 'bg-white text-neutral-700 ring-1 ring-[#e5e7eb] hover:bg-neutral-50',
                 );
-                const statusTabs = [
-                  ['all', '全部'], ['submitted', '已提交'], ['shipping', '配送中'], ['completed', '已完成'], ['cancelled', '已取消'],
-                ] as const;
-                const copyText = (text: string) => { navigator.clipboard.writeText(text); toast.success('已複製'); };
+                const statusTabs = DELIVERY_TABS.map((t) => [t.id, t.label] as const);
                 return (
                   <>
                     <div className="flex h-10 items-center gap-2">
@@ -5171,13 +5171,13 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                     />
                     <div className="mt-3 flex flex-wrap items-center gap-1.5">
                       {statusTabs.map(([id, label]) => (
-                        <button key={id} type="button" className={pill(activeDeliveryTab === id)} onClick={() => setActiveDeliveryTab(id)}>
+                        <button key={id} type="button" className={pill(activeDeliveryTab === id)} onClick={() => setActiveDeliveryTab(id as DeliveryTabId)}>
                           {label}
                         </button>
                       ))}
                     </div>
 
-                    <div className="mt-4 space-y-2">
+                    <div className="mt-4 space-y-3">
                       {list.length === 0 ? (
                         <div className="py-20 text-center text-neutral-400">
                           <Truck className="mx-auto mb-4 h-12 w-12 opacity-20" />
@@ -5186,115 +5186,136 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                       ) : shown.map((order) => {
                         const expanded = expandedOrderId === order.id;
                         const st = getStatusConfig(order.status);
-                        const itemText = (order.items || []).map((i) => `${i.grade} ${i.name}`).join('、');
-                        // 沒有單號的訂單存的是「-」，不當單號印
                         const tracking = order.tracking && order.tracking !== '-' ? order.tracking : '';
-                        const logistics = order.logisticsType === 'CVS'
-                          ? (order.storeName ? `超商取貨 ${order.storeName}` : '超商取貨')
-                          : (order.address ? `宅配 ${order.address}` : (order.method || '宅配'));
+                        const itemText = (order.items || []).map((i) => `${i.grade} ${i.name}`).join('、');
+                        /* 狀態是重點：最右邊、大字、實色（老闆 2026-09-05：色系不要太淡） */
+                        const statusSolid = (() => {
+                          const key = String(order.status);
+                          if (key === 'delivered' || key === 'completed') return 'bg-emerald-600 text-white';
+                          if (key === 'picked_up' || key === 'shipping') return 'bg-violet-600 text-white';
+                          if (key === 'processing') return 'bg-amber-500 text-white';
+                          if (key === 'cancelled') return 'bg-neutral-500 text-white';
+                          return 'bg-primary text-white';
+                        })();
+                        /* 到貨那句照手機（已送達／待出貨／預計○○送達） */
+                        const arrival = (() => {
+                          const k = String(order.status);
+                          if (k === 'delivered' || k === 'completed') return { text: '已送達', cls: 'text-accent-emerald' };
+                          if (k === 'submitted' || k === 'processing') return { text: '待出貨', cls: 'text-neutral-400' };
+                          if (['picked_up', 'shipping'].includes(k) && order.arrivalDate && order.arrivalDate !== '-') {
+                            return { text: `預計${getArrivalText(order.arrivalDate) || `${order.arrivalDate}送達`}`, cls: 'text-accent-emerald' };
+                          }
+                          return null;
+                        })();
+                        /* 欄位文字跟手機端一致（老闆 2026-09-05） */
+                        const cells: { label: string; value: React.ReactNode; span: string }[] = [
+                          { label: '配送廠商', value: order.supplierName || '—', span: 'col-span-3' },
+                          { label: '物流方式', value: order.method || '—', span: 'col-span-3' },
+                          { label: '追蹤號碼', span: 'col-span-3', value: tracking ? (
+                            <button type="button" onClick={() => { navigator.clipboard.writeText(tracking); toast.success('已複製追蹤號碼'); }} className="inline-flex items-center gap-1.5 font-mono font-black text-neutral-900 hover:text-primary">
+                              {tracking}
+                              <Copy className="h-4 w-4 text-neutral-400" />
+                            </button>
+                          ) : '—' },
+                          { label: '運費', value: order.shippingFee > 0 ? `${order.shippingFee.toLocaleString()} G` : '免運', span: 'col-span-3' },
+                          { label: '收件人', value: order.recipientName || '—', span: 'col-span-4' },
+                          { label: '收件人電話', value: order.recipientPhone || '—', span: 'col-span-4' },
+                          { label: order.logisticsType === 'CVS' ? '收件門市' : '收件地址', value: (order.logisticsType === 'CVS' ? order.storeName : order.address) || '—', span: 'col-span-4' },
+                        ];
                         return (
-                          <div key={order.id} className={cn('rounded-[14px] bg-white ring-1 ring-[#e5e7eb] transition-shadow', expanded && 'shadow-[0_10px_40px_-10px_rgba(0,0,0,0.12)]')}>
+                          <div key={order.id} className={cn('rounded-[16px] bg-white ring-1 ring-[#e5e7eb] transition-shadow', expanded && 'shadow-[0_10px_40px_-10px_rgba(0,0,0,0.12)]')}>
                             <button
                               type="button"
                               onClick={() => setExpandedOrderId(expanded ? null : order.id)}
                               aria-expanded={expanded}
-                              className="flex w-full items-start gap-4 px-5 py-4 text-left"
+                              className="flex w-full items-center gap-6 px-6 py-5 text-left"
                             >
                               <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="font-mono text-[15px] font-black text-neutral-900">{order.order_number || `#${String(order.id).slice(0, 8)}`}</span>
-                                  <span className="text-[13px] font-bold text-neutral-500">{order.date}</span>
-                                  <ProfileStatusBadge config={st} />
+                                <div className="flex items-center gap-3">
+                                  <span className="font-mono text-[16px] font-black text-neutral-900">{order.order_number || `#${String(order.id).slice(0, 8)}`}</span>
+                                  <span className="text-[13px] font-bold text-neutral-400">{order.date}</span>
                                 </div>
-                                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] font-bold text-neutral-500">
-                                  {order.items?.length ? (
-                                    <span className="max-w-[460px] truncate text-neutral-700">{order.items.length} 件：{itemText}</span>
-                                  ) : (
-                                    <span className="text-neutral-400">獎品已退回倉庫</span>
-                                  )}
+                                <div className="mt-2 truncate text-[14px] font-black text-neutral-800">
+                                  共 {order.items?.length || 0} 項{itemText ? `：${itemText}` : ''}
+                                </div>
+                                <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] font-bold text-neutral-400">
                                   {order.supplierName ? <span>{order.supplierName}</span> : null}
-                                  <span className="truncate max-w-[320px]">{logistics}</span>
+                                  <span>{order.method}{order.logisticsType === 'CVS' && order.storeName ? ` ${order.storeName}` : ''}</span>
                                   {tracking ? <span className="font-mono">{tracking}</span> : null}
-                                  {/* arrivalDate 有時是日期、有時是「待出貨／已送達」這種字，只有日期才冠「到貨」 */}
-                                  {order.arrivalDate && order.arrivalDate !== '-' ? (
-                                    <span>{/\d/.test(order.arrivalDate) ? `到貨 ${order.arrivalDate}` : order.arrivalDate}</span>
-                                  ) : null}
                                 </div>
                               </div>
-                              <div className="flex shrink-0 items-center gap-3 pt-0.5">
-                                {order.shippingFee > 0 ? (
-                                  <span className="text-[14px] font-black text-neutral-900">運費 {order.shippingFee.toLocaleString()} G</span>
-                                ) : (
-                                  <span className="text-[13px] font-bold text-accent-emerald">免運</span>
-                                )}
-                                <ChevronDown className={cn('h-4 w-4 text-neutral-400 transition-transform', expanded && 'rotate-180')} />
+                              <div className="flex shrink-0 items-center gap-5">
+                                <div className="flex flex-col items-end gap-1.5">
+                                  <span className={cn('inline-flex h-9 items-center rounded-full px-4 text-[15px] font-black', statusSolid)}>{st.label}</span>
+                                  {arrival ? <span className={cn('text-[13px] font-black', arrival.cls)}>{arrival.text}</span> : null}
+                                </div>
+                                <ChevronDown className={cn('h-5 w-5 text-neutral-400 transition-transform', expanded && 'rotate-180')} />
                               </div>
                             </button>
 
                             {expanded && (
-                              <div className="border-t border-neutral-100 px-5 py-4">
-                                {/* 左：進度（限寬）＋品項一列一列不截字；右：收件資訊收成灰底小塊、標籤與值靠左（老闆 2026-09-05：之前左右拉得太開） */}
-                                <div className="grid gap-8" style={{ gridTemplateColumns: 'minmax(0, 1fr) 320px' }}>
-                                  <div className="min-w-0">
+                              <div className="space-y-6 border-t border-neutral-100 px-6 py-6">
+                                {/* 一、配送進度（放大版步驟條；已取消照手機那句） */}
+                                <section>
+                                  <div className="text-[14px] font-black text-neutral-900">配送進度</div>
+                                  <div className="mt-3 rounded-[14px] bg-[#f3f4f6] px-6 pb-3 pt-2">
                                     {order.status === 'cancelled' ? (
-                                      <div className="text-[14px] font-bold text-neutral-500">此訂單已取消{order.shippingFee > 0 ? `，運費 ${order.shippingFee.toLocaleString()} G 已退回` : ''}，獎品已退回倉庫</div>
-                                    ) : (
-                                      <div className="max-w-[560px]"><DeliverySteps status={order.status} /></div>
-                                    )}
-                                    {order.items?.length ? (
-                                      <div className={order.status === 'cancelled' ? 'mt-3' : 'mt-5'}>
-                                        <div className="text-[13px] font-black text-neutral-500">配送商品 {order.items.length} 件</div>
-                                        <div className="mt-1 divide-y divide-neutral-100">
-                                          {order.items.map((it, idx) => (
-                                            <div key={idx} className="flex items-center gap-3 py-2.5">
-                                              <GradeBadge grade={it.grade} size="sm" />
-                                              <div className="min-w-0 flex-1">
-                                                <div className="text-[14px] font-black text-neutral-900">{it.name}</div>
-                                                {it.productName ? <div className="text-[12px] font-bold text-neutral-500">{it.productName}</div> : null}
-                                              </div>
-                                            </div>
-                                          ))}
-                                        </div>
+                                      <div className="py-3 text-center text-[14px] font-bold text-neutral-500">
+                                        這張訂單已取消{order.shippingFee > 0 ? `，運費 ${order.shippingFee.toLocaleString()} G 已退回` : ''}
                                       </div>
-                                    ) : null}
-                                  </div>
-                                  <div className="self-start rounded-[14px] bg-[#f3f4f6] px-4 py-3">
-                                    <div className="text-[13px] font-black text-neutral-500">收件資訊</div>
-                                    <dl className="mt-2 space-y-2 text-[14px]">
-                                      {[
-                                        ['收件人', order.recipientName],
-                                        ['電話', order.recipientPhone],
-                                        [order.logisticsType === 'CVS' ? '收件門市' : '收件地址', order.logisticsType === 'CVS' ? order.storeName : order.address],
-                                        ['配送方式', order.method],
-                                      ].filter(([, v]) => !!v).map(([k, v]) => (
-                                        <div key={String(k)} className="flex gap-3">
-                                          <dt className="w-[64px] shrink-0 font-bold text-neutral-400">{k}</dt>
-                                          <dd className="min-w-0 flex-1 break-words font-black text-neutral-900">{v}</dd>
-                                        </div>
-                                      ))}
-                                      {tracking ? (
-                                        <div className="flex gap-3">
-                                          <dt className="w-[64px] shrink-0 font-bold text-neutral-400">物流單號</dt>
-                                          <dd className="min-w-0 flex-1">
-                                            <button type="button" onClick={() => copyText(tracking)} className="inline-flex items-center gap-1 font-mono font-black text-neutral-900 hover:text-primary">
-                                              {tracking}
-                                              <Copy className="h-3.5 w-3.5 text-neutral-400" />
-                                            </button>
-                                          </dd>
-                                        </div>
-                                      ) : null}
-                                    </dl>
-                                    {canCancelDelivery(order) && (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleCancelDelivery(order)}
-                                        className="mt-3 h-10 w-full rounded-xl bg-white text-[13px] font-black text-accent-red ring-1 ring-[#e5e7eb] hover:bg-neutral-50"
-                                      >
-                                        取消配送申請
-                                      </button>
+                                    ) : (
+                                      <DeliverySteps status={order.status} size="lg" />
                                     )}
                                   </div>
-                                </div>
+                                </section>
+
+                                {/* 二、收件資訊：第一排 配送廠商／物流方式／追蹤號碼／運費，第二排 收件人／收件人電話／收件門市或地址 */}
+                                <section>
+                                  <div className="text-[14px] font-black text-neutral-900">收件資訊</div>
+                                  <div className="mt-3 grid grid-cols-12 gap-x-6 gap-y-5 rounded-[14px] bg-[#f3f4f6] px-6 py-5">
+                                    {cells.map((c) => (
+                                      <div key={c.label} className={cn('min-w-0', c.span)}>
+                                        <div className="text-[12px] font-bold text-neutral-400">{c.label}</div>
+                                        <div className="mt-1 break-words text-[15px] font-black text-neutral-900">{c.value}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </section>
+
+                                {/* 三、配送商品：賞等／品項名稱／商品名稱三欄 */}
+                                <section>
+                                  <div className="text-[14px] font-black text-neutral-900">配送商品 ({order.items?.length || 0})</div>
+                                  {order.items?.length ? (
+                                    <div className="mt-3 overflow-hidden rounded-[14px] ring-1 ring-[#e5e7eb]">
+                                      <div className="grid grid-cols-[88px_minmax(0,1fr)_minmax(0,1fr)] gap-4 bg-[#f3f4f6] px-5 py-2.5 text-[12px] font-bold text-neutral-400">
+                                        <span>賞等</span><span>品項名稱</span><span>商品名稱</span>
+                                      </div>
+                                      <div className="divide-y divide-neutral-100">
+                                        {order.items.map((it, idx) => (
+                                          <div key={idx} className="grid grid-cols-[88px_minmax(0,1fr)_minmax(0,1fr)] items-center gap-4 px-5 py-3.5">
+                                            <span><GradeBadge grade={it.grade} size="sm" /></span>
+                                            <span className="min-w-0 truncate text-[15px] font-black text-neutral-900">{it.name}</span>
+                                            <span className="min-w-0 truncate text-[14px] font-bold text-neutral-600">{it.productName}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="mt-3 text-[14px] font-bold text-neutral-400">沒有品項資料</div>
+                                  )}
+                                </section>
+
+                                {canCancelDelivery(order) && (
+                                  <div className="flex justify-end">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCancelDelivery(order)}
+                                      className="h-10 rounded-xl bg-white px-5 text-[14px] font-black text-accent-red ring-1 ring-[#e5e7eb] hover:bg-neutral-50"
+                                    >
+                                      取消配送申請
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
