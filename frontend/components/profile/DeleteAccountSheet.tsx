@@ -17,6 +17,8 @@ import { AlertCircle, FileText, Info, Loader2, Receipt, UserRound, Wallet } from
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
 import { ActionBar } from '@/components/ui/ActionBar';
 import { cn } from '@/lib/utils';
+import { useMediaQuery } from '@/hooks/use-media-query';
+import { X } from 'lucide-react';
 
 type Preflight = {
   ok: boolean;
@@ -137,6 +139,9 @@ export default function DeleteAccountSheet({
     }
   };
 
+  /* 1024 起（cardx 桌機殼）改成置中彈窗，不再是滿版的手機頁（老闆 2026-09-05） */
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+
   if (!isOpen) return null;
 
   const hasTokens = !!pre && pre.tokens > 0;
@@ -144,15 +149,8 @@ export default function DeleteAccountSheet({
   const hasOrders = !!pre && pre.pending_orders > 0;
   const canSubmit = !!pre && pre.ok && agreed && !submitting;
 
-  return (
-    <div className="fixed inset-0 z-[90] bg-neutral-50 dark:bg-neutral-950 overflow-y-auto">
-      <SimplePageHeader title="刪除帳號" onBack={onClose} darkBg="page" className="z-[95]" />
-
-      {/* SimplePageHeader 是 fixed，內容要自己讓開頭部高度，
-          否則捲到頂端時第一張卡會被壓在導航列底下。
-          safe-header-offset = 頭部高度 + 安全區（見 globals.css） */}
-      <div className="safe-header-offset">
-        <div className="max-w-2xl mx-auto p-4 pb-32 space-y-3">
+  const content = (
+    <>
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-20 text-neutral-400 text-[14px]">
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -243,6 +241,57 @@ export default function DeleteAccountSheet({
             )}
           </>
         )}
+    </>
+  );
+
+  if (isDesktop) {
+    return (
+      <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+        <div role="dialog" aria-modal="true" aria-label="刪除帳號" onClick={(e) => e.stopPropagation()} className="flex max-h-[85vh] w-full max-w-[520px] flex-col overflow-hidden rounded-[18px] bg-white shadow-[0_20px_70px_-15px_rgba(0,0,0,0.25)] dark:bg-neutral-900">
+          <div className="flex h-14 shrink-0 items-center justify-between border-b border-neutral-100 px-5 dark:border-neutral-800">
+            <div className="text-[16px] font-black text-neutral-900 dark:text-white">刪除帳號</div>
+            <button type="button" aria-label="關閉" onClick={onClose} className="-mr-2 flex h-9 w-9 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-5">{content}</div>
+          {!loading && pre && (
+            <div className="flex shrink-0 gap-3 border-t border-neutral-100 bg-white px-5 py-3 dark:border-neutral-800 dark:bg-neutral-900">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 h-12 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-[15px] text-neutral-700 dark:text-neutral-200 active:scale-[0.98] transition-all"
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={!canSubmit}
+            className={cn(
+              'flex-1 h-12 rounded-xl text-[15px] font-bold text-white transition-all',
+              canSubmit ? 'bg-accent-red active:scale-[0.98]' : 'bg-accent-red/40 cursor-not-allowed'
+            )}
+          >
+            {submitting ? '刪除中…' : '刪除帳號'}
+          </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-[90] bg-neutral-50 dark:bg-neutral-950 overflow-y-auto">
+      <SimplePageHeader title="刪除帳號" onBack={onClose} darkBg="page" className="z-[95]" />
+
+      {/* SimplePageHeader 是 fixed，內容要自己讓開頭部高度，
+          否則捲到頂端時第一張卡會被壓在導航列底下。
+          safe-header-offset = 頭部高度 + 安全區（見 globals.css） */}
+      <div className="safe-header-offset">
+        <div className="max-w-2xl mx-auto p-4 pb-32 space-y-3">
+        {content}
         </div>
       </div>
 

@@ -2772,6 +2772,14 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
     setSelectedForDelivery(prev => [...prev, id]);
   };
 
+  /* 桌機版的勾選：不順手切廠商篩選。手機那條規則會讓整份清單重排、件數也變，
+     玩家在桌機上看不出自己勾的那件跑去哪（老闆 2026-09-05）。跨廠商的限制改由底部列的文字說明 */
+  const toggleDeliverySelectionDesktop = (id: string) => {
+    const item = warehouseItems.find(i => i.id === id);
+    if (item?.status === 'pending_delivery') return;
+    setSelectedForDelivery(prev => (prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]));
+  };
+
   const handleConfirmDelivery = async () => {
     if (selectedForDelivery.length === 0) return;
 
@@ -3703,93 +3711,144 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
               )}
             </div>
             
-            {/* 桌機（1024 起、掛在 cardx 外殼裡）：零套疊——標題列、工具列、商品格直接鋪在頁面底色上，
-                不用表格、不分頁，捲到底自動載入（老闆 2026-09-05 重構定案）。商品格沿用手機的 WarehouseGridCell，
-                欄數用 auto-fill 讓平板橫向（1024）約 4 欄、桌機 5 欄 */}
+            {/* 桌機（1024 起、掛在 cardx 外殼裡）——照手機端倉庫（老闆 2026-09-05：「你就不能參照手機端嗎」）：
+                標題列右邊「回收紀錄」、一個搜尋框點了展開篩選面板（WarehouseSearchPanel）、最右邊排序圖標、
+                全選固定在最下面。狀態全部跟手機共用（warehouseSearch／isWarehouseSearchOpen／warehouseSort…），
+                只有商品格的欄數與捲到底自動載入是桌機自己的 */}
             <div className="hidden md:block">
               {(() => {
-                const q = desktopWarehouseSearch.trim().toLowerCase();
-                const list = sortedWarehouseItems.filter((item) => {
-                  if (!q) return true;
-                  return `${item.grade} ${item.name} ${item.series} ${item.ticketNo}`.toLowerCase().includes(q);
-                });
-                const dq = desktopDismantledSearch.trim().toLowerCase();
-                const dlist = filteredDismantledItems.filter((item) => {
-                  if (!dq) return true;
-                  return `${item.grade} ${item.name} ${item.series}`.toLowerCase().includes(dq);
-                });
                 const isAll = activeWarehouseTab === 'all';
+                const list = sortedWarehouseItems;
+                const dlist = filteredDismantledItems;
                 const shown = list.slice(0, desktopWarehouseDisplayCount);
                 const shownDismantled = dlist.slice(0, desktopWarehouseDisplayCount);
                 const hasMore = isAll ? shown.length < list.length : shownDismantled.length < dlist.length;
-                const pill = (active: boolean) => cn(
-                  'h-8 px-3 rounded-full text-[12px] font-black whitespace-nowrap transition-colors',
-                  active ? 'bg-primary text-white' : 'bg-white text-neutral-700 ring-1 ring-[#e5e7eb] hover:bg-neutral-50',
-                );
                 /* 132 是量過的：右欄在 1024（平板橫向）約 434 寬排 3 欄、1280 排 4 欄、1440 排 5 欄 */
                 const gridStyle: React.CSSProperties = { gridTemplateColumns: 'repeat(auto-fill, minmax(132px, 1fr))' };
                 const preorderLocked = selectedForDelivery.some((id) => {
                   const itm = warehouseItems.find((i) => i.id === id);
                   return !!(itm?.isPreorder && itm?.preorderAvailableAt && new Date(itm.preorderAvailableAt).getTime() > Date.now());
                 });
-                const sentinelCls = 'py-5 text-center text-[12px] font-bold text-neutral-400';
+                const showPanel = isAll && isWarehouseSearchOpen && !warehouseSearch.trim();
                 return (
                   <>
-                    {/* 標題列 */}
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-baseline gap-2 min-w-0">
-                        <h2 className="text-[20px] font-black text-neutral-900 tracking-tight">我的倉庫</h2>
+                    {/* 標題列：左邊標題＋件數，右邊「回收紀錄」；回收紀錄那頁左邊是返回箭頭 */}
+                    <div className="flex h-10 items-center justify-between gap-4">
+                      <div className="flex min-w-0 items-center gap-2">
+                        {!isAll && (
+                          <button
+                            type="button"
+                            aria-label="回到我的倉庫"
+                            onClick={() => { setActiveWarehouseTab('all'); setActiveWarehouseCategory('all'); }}
+                            className="-ml-1 flex h-8 w-8 items-center justify-center rounded-full text-neutral-700 hover:bg-neutral-100"
+                          >
+                            <ChevronLeft className="h-5 w-5 stroke-[2.5]" />
+                          </button>
+                        )}
+                        <h2 className="text-[20px] font-black tracking-tight text-neutral-900">{isAll ? '我的倉庫' : '回收紀錄'}</h2>
                         <span className="text-[13px] font-bold text-neutral-500">{isAll ? `${list.length} 件` : `${dlist.length} 筆`}</span>
                       </div>
                       {isAll && (
                         <button
                           type="button"
-                          onClick={() => setSelectedForDelivery(selectAllTarget.ids)}
-                          disabled={selectAllTarget.ids.length === 0 || selectedForDelivery.length >= selectAllTarget.ids.length}
-                          className="h-9 px-3.5 rounded-xl bg-white ring-1 ring-[#e5e7eb] text-[13px] font-black text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => { setActiveWarehouseTab('dismantled'); setActiveWarehouseCategory('all'); }}
+                          className="text-[13px] font-bold text-neutral-500 hover:text-neutral-900"
                         >
-                          {`全選${selectAllTarget.ids.length > 0 ? ` (${selectAllTarget.ids.length})` : ''}`}
+                          回收紀錄
                         </button>
                       )}
                     </div>
 
-                    {/* 工具列固定兩行：第一行「全部獎項／已回收」＋搜尋，第二行「類型」「賞等」兩組膠囊各帶小標。
-                        不讓膠囊隨視窗寬度隨機折行（老闆 2026-09-05：有夠亂） */}
-                    <div className="mt-3 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-1.5">
-                        <button type="button" className={pill(isAll)} onClick={() => setActiveWarehouseTab('all')}>
-                          全部獎項 ({warehouseItems.length})
-                        </button>
-                        <button type="button" className={pill(!isAll)} onClick={() => { setActiveWarehouseTab('dismantled'); setActiveWarehouseCategory('all'); }}>
-                          已回收 ({dismantledItems.length})
-                        </button>
-                      </div>
-                      <input
-                        value={isAll ? desktopWarehouseSearch : desktopDismantledSearch}
-                        onChange={(e) => (isAll ? setDesktopWarehouseSearch(e.target.value) : setDesktopDismantledSearch(e.target.value))}
-                        placeholder={isAll ? '搜尋賞別 / 獎項 / 籤號' : '搜尋賞別 / 獎項'}
-                        className="h-9 w-[220px] max-w-[45%] px-3.5 rounded-xl bg-white ring-1 ring-[#e5e7eb] text-[13px] font-bold text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                      />
-                    </div>
                     {isAll && (
-                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="mr-0.5 text-[12px] font-bold text-neutral-400">類型</span>
-                          {warehouseTabs.map((t) => (
-                            <button key={t.id} type="button" className={pill(activeWarehouseCategory === t.id)} onClick={() => setActiveWarehouseCategory(t.id)}>
-                              {t.label}
-                            </button>
-                          ))}
+                      <>
+                        {/* 搜尋列（同手機）：收起時是一顆膠囊、套用中的篩選畫成小膠囊；點了展開成輸入框；最右邊排序 */}
+                        <div className="mt-3 flex items-center gap-2">
+                          {isWarehouseSearchOpen ? (
+                            <div className="flex h-10 flex-1 items-center gap-2 rounded-full bg-neutral-100 px-3">
+                              <Search className="h-4 w-4 shrink-0 text-neutral-400" />
+                              <input
+                                value={warehouseSearch}
+                                onChange={(e) => setWarehouseSearch(e.target.value)}
+                                placeholder="搜尋獎品、系列、賞等"
+                                autoFocus
+                                className="min-w-0 flex-1 bg-transparent text-[14px] font-bold text-neutral-900 placeholder:font-medium placeholder:text-neutral-400 focus:outline-none"
+                              />
+                              <button
+                                type="button"
+                                aria-label={warehouseSearch || warehouseActiveFilterLabels.length > 0 ? '清除搜尋條件' : '關閉搜尋'}
+                                onClick={() => {
+                                  if (warehouseSearch || warehouseActiveFilterLabels.length > 0) clearWarehouseFilters();
+                                  else setIsWarehouseSearchOpen(false);
+                                }}
+                                className="-mr-1 shrink-0 p-1 text-neutral-400 hover:text-neutral-700"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full bg-neutral-100 px-3">
+                              <button type="button" onClick={() => setIsWarehouseSearchOpen(true)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                                <Search className="h-4 w-4 shrink-0 text-neutral-400" />
+                                {warehouseActiveFilterLabels.length > 0 || warehouseSearch ? (
+                                  <span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+                                    {warehouseActiveFilterLabels.map((label) => (
+                                      <span key={label} className="shrink-0 rounded-full border border-neutral-200 bg-white px-2 py-[3px] text-[12px] font-black text-neutral-700">
+                                        <span className="cjk-optical-center">{label}</span>
+                                      </span>
+                                    ))}
+                                    {warehouseSearch && <span className="truncate text-[14px] font-bold text-neutral-900">{warehouseSearch}</span>}
+                                  </span>
+                                ) : (
+                                  <span className="truncate text-[14px] font-medium text-neutral-400">搜尋獎品、系列、賞等</span>
+                                )}
+                              </button>
+                              {(warehouseSearch || warehouseActiveFilterLabels.length > 0) && (
+                                <button type="button" aria-label="清除搜尋條件" onClick={clearWarehouseFilters} className="-mr-1 shrink-0 p-1 text-neutral-400 hover:text-neutral-700">
+                                  <X className="h-4 w-4" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          {!isWarehouseSearchOpen && (
+                            <div className="relative shrink-0">
+                              <button
+                                type="button"
+                                aria-label="排序"
+                                onClick={() => setIsWarehouseSortOpen((prev) => !prev)}
+                                className={cn(
+                                  'rounded-full p-2 transition-all',
+                                  warehouseSort === 'time_desc' && !isWarehouseSortOpen ? 'text-neutral-500 hover:bg-primary/5 hover:text-primary' : 'bg-primary/5 text-primary',
+                                )}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M4 4h16" /><path d="M6 12h12" /><path d="M10 20h4" />
+                                </svg>
+                              </button>
+                              {isWarehouseSortOpen && (
+                                <>
+                                  <div className="fixed inset-0 z-30" onClick={() => setIsWarehouseSortOpen(false)} />
+                                  <div className="absolute right-0 z-40 mt-2 w-44 rounded-lg border border-neutral-100 bg-white py-2 shadow-modal">
+                                    {WAREHOUSE_SORTS.map((opt) => (
+                                      <button
+                                        key={opt.id}
+                                        type="button"
+                                        onClick={() => { setWarehouseSort(opt.id); setIsWarehouseSortOpen(false); }}
+                                        className={cn('w-full px-4 py-2.5 text-left text-[13px] font-black transition-colors', warehouseSort === opt.id ? 'bg-primary/5 text-primary' : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900')}
+                                      >
+                                        {opt.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="mr-0.5 text-[12px] font-bold text-neutral-400">賞等</span>
-                          {warehouseSubTabs.map((t) => (
-                            <button key={t.id} type="button" className={pill(activeWarehouseSubCategory === t.id)} onClick={() => setActiveWarehouseSubCategory(t.id)}>
-                              {t.label}
-                            </button>
-                          ))}
+                        {/* 出貨規則提示（同手機那條） */}
+                        <div className="mt-3 rounded-xl bg-neutral-800 px-4 py-2.5 text-[12px] font-medium leading-relaxed text-white/90">
+                          訂單以廠商為單位分批出貨，每次申請限同一廠商品項。含公仔等大尺寸品項因超商包裝規格限制，一律以宅配方式出貨。
                         </div>
-                      </div>
+                      </>
                     )}
 
                     {/* 內容 */}
@@ -3799,6 +3858,15 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                           {Array.from({ length: 10 }).map((_, i) => (
                             <div key={i} className="aspect-[3/4] animate-pulse rounded-xl bg-white ring-1 ring-[#e5e7eb]" />
                           ))}
+                        </div>
+                      ) : showPanel ? (
+                        /* 搜尋展開、還沒打字 → 篩選面板（同手機） */
+                        <div className="rounded-[16px] bg-white ring-1 ring-[#e5e7eb]">
+                          <WarehouseSearchPanel
+                            groups={warehouseChipGroups}
+                            recentTerms={warehouseTopSeries}
+                            onPickTerm={(term) => setWarehouseSearch(term)}
+                          />
                         </div>
                       ) : isAll ? (
                         list.length === 0 ? (
@@ -3819,18 +3887,12 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                                   major={isMajorGrade(item.grade)}
                                   pending={item.status === 'pending_delivery'}
                                   listed={item.status === 'listing'}
-                                  onToggle={() => toggleDeliverySelection(item.id)}
-                                  meta={
-                                    <>
-                                      {item.ticketNo ? `籤號 ${item.ticketNo}` : item.series}
-                                      <span className="mx-1 text-neutral-300">·</span>
-                                      {String(item.date).split(' ')[0]}
-                                    </>
-                                  }
+                                  onToggle={() => toggleDeliverySelectionDesktop(item.id)}
+                                  checkCorner
                                 />
                               ))}
                             </div>
-                            <div ref={desktopWarehouseSentinel} className={sentinelCls}>
+                            <div ref={desktopWarehouseSentinel} className="py-5 text-center text-[12px] font-bold text-neutral-400">
                               {hasMore ? '載入中…' : `已顯示全部 ${list.length} 件`}
                             </div>
                           </>
@@ -3859,42 +3921,66 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                               </div>
                             ))}
                           </div>
-                          <div ref={desktopWarehouseSentinel} className={sentinelCls}>
+                          <div ref={desktopWarehouseSentinel} className="py-5 text-center text-[12px] font-bold text-neutral-400">
                             {hasMore ? '載入中…' : `已顯示全部 ${dlist.length} 筆`}
                           </div>
                         </>
                       )}
                     </div>
 
-                    {/* 勾了東西才浮出來的操作列，貼在視窗底部 */}
-                    {isAll && selectedForDelivery.length > 0 && (
-                      <div className="sticky bottom-4 z-30 mt-2">
-                        <div className="flex items-center justify-between gap-3 rounded-[16px] bg-white px-4 py-3 ring-1 ring-[#e5e7eb] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.18)]">
+                    {/* 固定在最下面的操作列（同手機底部列）：沒勾東西是「全選」，勾了變成 已選／取消／曬圖／回收／配送 */}
+                    {/* 固定在最下面（同手機），但不滿寬——那是手機端做法（老闆 2026-09-05）：左邊文字、右邊一排小顆按鈕 */}
+                    {isAll && !showPanel && (
+                      <div className="sticky bottom-0 z-30 -mx-1 mt-2 border-t border-neutral-100 bg-[#f9fafb]/95 px-1 pb-4 pt-3 backdrop-blur">
+                        <div className="flex items-center justify-between gap-3">
                           <div className="flex min-w-0 items-baseline gap-2">
-                            <span className="text-[14px] font-black text-neutral-900">已選 {selectedForDelivery.length} 件</span>
-                            {!canDeliverSelection ? (
-                              <span className="text-[12px] font-bold text-neutral-500">跨廠商的獎品不能一起配送，只能回收</span>
-                            ) : selectedForDelivery.length > 10 ? (
-                              <span className="text-[12px] font-bold text-neutral-500">一次最多配送 10 件</span>
-                            ) : null}
+                            {selectedForDelivery.length === 0 ? (
+                              <span className="text-[13px] font-bold text-neutral-500">勾選獎品後可申請配送或回收</span>
+                            ) : (
+                              <>
+                                <span className="text-[14px] font-black text-neutral-900">已選 {selectedForDelivery.length} 件</span>
+                                {!canDeliverSelection ? (
+                                  <span className="text-[12px] font-bold text-neutral-500">跨廠商的獎品不能一起配送，只能回收</span>
+                                ) : selectedForDelivery.length > 10 ? (
+                                  <span className="text-[12px] font-bold text-neutral-500">一次最多配送 10 件</span>
+                                ) : null}
+                              </>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <button type="button" onClick={() => setSelectedForDelivery([])} className="h-9 rounded-xl bg-[#f3f4f6] px-3.5 text-[13px] font-black text-neutral-700 hover:bg-[#e5e7eb]">
-                              重選
-                            </button>
-                            <button type="button" onClick={handleDismantleClick} className="h-9 rounded-xl bg-[#f3f4f6] px-3.5 text-[13px] font-black text-accent-red hover:bg-[#e5e7eb]">
-                              回收 ({selectedForDelivery.length})
-                            </button>
-                            {/* 上架入口不在這裡：倉庫的上架彈窗與交易所的表單強碰，老闆 2026-09-02 拍板一律走 /market */}
-                            {selectedForDelivery.length <= 10 && canDeliverSelection && (
+                          <div className="flex shrink-0 items-center gap-2">
+                            {selectedForDelivery.length === 0 ? (
                               <button
                                 type="button"
-                                onClick={() => setShowDeliveryModal(true)}
-                                disabled={preorderLocked}
-                                className="h-9 rounded-xl bg-primary px-4 text-[13px] font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                onClick={() => setSelectedForDelivery(selectAllTarget.ids)}
+                                disabled={selectAllTarget.ids.length === 0}
+                                className="h-10 rounded-xl bg-neutral-900 px-5 text-[14px] font-black text-white disabled:opacity-40"
                               >
-                                配送 ({selectedForDelivery.length})
+                                全選 ({selectAllTarget.ids.length})
                               </button>
+                            ) : (
+                              <>
+                                <button type="button" onClick={() => setSelectedForDelivery([])} className="h-10 rounded-xl bg-neutral-100 px-4 text-[14px] font-black text-neutral-600 hover:bg-neutral-200">
+                                  取消
+                                </button>
+                                {selectedForDelivery.length === 1 && (
+                                  <button type="button" onClick={handleShareClick} disabled={isLoadingShare} className="h-10 rounded-xl bg-[#6d3bd6] px-4 text-[14px] font-black text-white disabled:opacity-60">
+                                    {isLoadingShare ? '處理中' : '曬圖'}
+                                  </button>
+                                )}
+                                <button type="button" onClick={handleDismantleClick} className="h-10 rounded-xl bg-accent-red px-4 text-[14px] font-black text-white">
+                                  回收 ({selectedForDelivery.length})
+                                </button>
+                                {selectedForDelivery.length <= 10 && canDeliverSelection && (
+                                  <button
+                                    type="button"
+                                    onClick={() => { trackEvent('delivery_modal_open', { path: '/profile', meta: { count: selectedForDelivery.length } }); setShowDeliveryModal(true); }}
+                                    disabled={preorderLocked}
+                                    className="h-10 rounded-xl bg-primary px-5 text-[14px] font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    配送 ({selectedForDelivery.length})
+                                  </button>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
@@ -6735,8 +6821,8 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                 <div className="text-[14px] font-black text-neutral-900">帳號</div>
                 {/* 帳號與安全：同手機版的順序與規則 */}
                 <div className="space-y-2">
-                  <div className="bg-white rounded-[14px] ring-1 ring-[#e5e7eb] overflow-hidden"><EmailBindRow email={user?.email} /></div>
-                  <div className="bg-white rounded-[14px] ring-1 ring-[#e5e7eb] overflow-hidden"><LineBindRow /></div>
+                  <div className="flex h-14 items-center overflow-hidden rounded-[14px] bg-white ring-1 ring-[#e5e7eb] [&>*]:w-full [&>*]:!py-0"><EmailBindRow email={user?.email} /></div>
+                  <div className="flex h-14 items-center overflow-hidden rounded-[14px] bg-white ring-1 ring-[#e5e7eb] [&>*]:w-full [&>*]:!py-0"><LineBindRow /></div>
                   {/* 同上：功能關閉時整列不顯示 */}
                   {(phoneVerifyEnabled || user?.is_phone_verified) && (
                   <div 
@@ -6773,15 +6859,12 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                       </div>
                     </div>
                   )}
-                </div>
 
-                {/* 邀請碼（選填）與收件地址併在帳號這一組，左右各五列才對稱 */}
-                <div className="space-y-2">
-                  <div className="bg-white rounded-[14px] ring-1 ring-[#e5e7eb] overflow-hidden"><InviteCodeRow /></div>
-                </div>
+                {/* 邀請碼（選填）與收件地址併在帳號這一組，左右各五列才對稱。
+                    ⚠️ 要跟上面三列同一個 space-y-2 容器：分成三個區塊會吃到欄的 space-y-4，位置就比左欄低（老闆 2026-09-05） */}
+                  <div className="flex h-14 items-center overflow-hidden rounded-[14px] bg-white ring-1 ring-[#e5e7eb] [&>*]:w-full [&>*]:!py-0"><InviteCodeRow /></div>
 
                 {/* Address Section */}
-                <div className="space-y-2">
                   <div 
                     className="flex items-center justify-between px-4 h-14 bg-white rounded-[14px] ring-1 ring-[#e5e7eb] hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => setShowAddressBook(true)}
@@ -7816,7 +7899,60 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
 
       {/* Address Book Modal (Slide-in) */}
       <AnimatePresence>
-        {showAddressBook && (
+        {showAddressBook && cardxShell && (
+          /* 電腦端改彈窗（老闆 2026-09-05：「電腦端有些就是要改成彈窗啊」）；手機維持滿版滑入 */
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={() => setShowAddressBook(false)}>
+            <div role="dialog" aria-modal="true" aria-label="我的地址" onClick={(e) => e.stopPropagation()} className="flex max-h-[85vh] w-full max-w-[560px] flex-col overflow-hidden rounded-[18px] bg-white shadow-[0_20px_70px_-15px_rgba(0,0,0,0.25)]">
+              <div className="flex h-14 shrink-0 items-center justify-between border-b border-neutral-100 px-5">
+                <div className="text-[16px] font-black text-neutral-900">我的地址</div>
+                <button type="button" aria-label="關閉" onClick={() => setShowAddressBook(false)} className="-mr-2 flex h-9 w-9 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-neutral-50">
+            {/* Address List */}
+            <div className="flex-1 overflow-y-auto overscroll-y-none px-4 pb-4 pt-3">
+              
+              {/* 地址簿：最多三筆（migration 683），列尾動作收進點點點 */}
+                {addresses.length > 0 ? addresses.map(a => (
+                  <div key={a.id} className="bg-white dark:bg-neutral-900 mb-3">
+                    <div className="p-4 flex gap-3">
+                      <AddressInfo className="flex-1" name={a.name} phone={a.phone} address={a.address} isDefault={a.isDefault} />
+                      <button
+                        onClick={() => setAddressMenuId(a.id)}
+                        className="self-start shrink-0 ml-2 p-1 -mr-1 text-neutral-400 active:text-neutral-600"
+                      >
+                        <MoreHorizontal className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="h-[1px] bg-neutral-100 dark:bg-neutral-800 mx-4" />
+                  </div>
+                )) : (
+                  <div className="p-8 text-center text-neutral-400 text-sm">
+                    尚未設定收件地址
+                  </div>
+                )}
+
+              {/* 新增地址：跟在最後一筆下面、灰色；滿三筆隱藏 */}
+              {addresses.length < 3 && (
+                <div className="px-4">
+                  <button
+                    onClick={openNewAddress}
+                    className="w-full h-[44px] border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400 rounded-[4px] flex items-center justify-center gap-2 text-[15px] font-medium active:bg-neutral-50 dark:active:bg-neutral-800 transition-colors"
+                  >
+                    <div className="w-4 h-4 rounded-full border border-neutral-400 flex items-center justify-center">
+                      <span className="text-sm leading-none -mt-0.5">+</span>
+                    </div>
+                    新增地址
+                  </button>
+                </div>
+              )}
+            </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {showAddressBook && !cardxShell && (
           <motion.div 
             initial={{ x: '100%' }}
             animate={{ x: showEditRecipient ? '-28%' : 0 }}
@@ -8049,7 +8185,29 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
       {/* Edit Recipient Modal —— 兩種殼共用同一份表單：
           我的地址進來＝全頁 push；結帳裡開＝底部彈窗（老闆 2026-09-02） */}
       <AnimatePresence>
-        {showEditRecipient && !editRecipientSheet && (
+        {showEditRecipient && !editRecipientSheet && cardxShell && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4" onClick={() => setShowEditRecipient(false)}>
+            <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="flex max-h-[85vh] w-full max-w-[560px] flex-col overflow-hidden rounded-[18px] bg-white shadow-[0_20px_70px_-15px_rgba(0,0,0,0.25)]">
+              <div className="flex h-14 shrink-0 items-center justify-between border-b border-neutral-100 px-5">
+                <div className="text-[16px] font-black text-neutral-900">{editingAddressId ? '編輯地址' : '新增地址'}</div>
+                <button type="button" aria-label="關閉" onClick={() => setShowEditRecipient(false)} className="-mr-2 flex h-9 w-9 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto bg-neutral-50">{renderAddressForm(false)}</div>
+              <div className="shrink-0 border-t border-neutral-100 bg-white px-5 py-3">
+                <button
+                  onClick={() => void saveAddress()}
+                  disabled={addressSaveDisabled}
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-accent-red text-[15px] font-black text-white transition-all disabled:opacity-50"
+                >
+                  {isUpdatingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : '儲存'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {showEditRecipient && !editRecipientSheet && !cardxShell && (
           <motion.div 
             initial={{ x: '100%' }}
             animate={{ x: 0 }}

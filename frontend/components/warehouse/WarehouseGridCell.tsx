@@ -30,8 +30,10 @@ export interface WarehouseGridCellProps {
   listed?: boolean;
   /** 廠商鎖：一張訂單只能有一家廠商的貨，非鎖定廠商的整格淡掉 */
   disabled?: boolean;
-  /** 品名底下再一行小字（桌機倉庫放籤號與日期）；沒傳就不畫，手機版不受影響 */
+  /** 品名底下再一行小字；沒傳就不畫，手機版不受影響 */
   meta?: React.ReactNode;
+  /** 勾選圈貼到卡片右上角（老闆 2026-09-05：桌機要再右上一點）；手機維持在圖框內 */
+  checkCorner?: boolean;
   onToggle: () => void;
 }
 
@@ -44,6 +46,7 @@ export default function WarehouseGridCell({
   listed = false,
   disabled = false,
   meta,
+  checkCorner = false,
   onToggle,
 }: WarehouseGridCellProps) {
   const locked = pending || listed || disabled;
@@ -132,7 +135,7 @@ export default function WarehouseGridCell({
           </span>
         )}
 
-        {!locked && (
+        {!locked && !checkCorner && (
           <span
             className={cn(
               'absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border-[1.5px] transition-all',
@@ -145,6 +148,16 @@ export default function WarehouseGridCell({
           </span>
         )}
       </div>
+      {!locked && checkCorner && (
+        <span
+          className={cn(
+            'absolute -right-1.5 -top-1.5 z-20 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white shadow-sm transition-all',
+            selected ? 'bg-accent-emerald text-white' : 'bg-neutral-200',
+          )}
+        >
+          {selected && <CheckCircle2 className="h-4 w-4" />}
+        </span>
+      )}
 
       {/*
         品名固定兩行高（老闆 2026-08-24）：一行的與兩行的名稱都佔一樣的高度，
