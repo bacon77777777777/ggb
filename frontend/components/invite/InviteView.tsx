@@ -360,18 +360,20 @@ export default function InviteView({ embedded = false }: { embedded?: boolean } 
             )}
     </div>
   );
-  /* 桌機用的進度條：0 的時候左邊露 8px 綠色（老闆：4px 再寬一點），讓人看得出這是條進度（老闆 2026-09-05）。
-     手機那條（progressBar）不動。填充圖只裁左邊 4px，露出的是它的圓頭 */
+  /* 桌機用的進度條：0 的時候左邊露一小段綠（老闆 2026-09-05），手機那條（progressBar）不動。
+     做法跟有進度時一模一樣（同一張填充圖從左端畫出來），只是把 0 當成 4% ——
+     之前用 clip 裁填充圖左邊 8px，露出來的是圓頭的一角、看起來像個楔子（老闆：「這什麼情況」） */
+  const ZERO_HINT = 0.04;
   const progressBarDesktop = filled > 0 ? progressBar : (
     <div className="relative mt-2.5 h-[15px]">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={asset("/images/invite/bar_track.png")} alt="" className="absolute inset-0 h-full w-full" />
-      <div className="absolute inset-0" style={{ clipPath: 'inset(0 calc(100% - 8px) 0 0)' }}>
+      <div className="absolute inset-0 overflow-hidden" style={{ width: `${ZERO_HINT * 100}%` }}>
         <div
           className="h-full"
           style={{
             backgroundImage: `url(${asset('/images/invite/bar_fill.png')})`,
-            backgroundSize: '100% 100%',
+            backgroundSize: `${(1 / ZERO_HINT) * 100}% 100%`,
             backgroundPosition: 'left center',
             backgroundRepeat: 'no-repeat',
           }}
