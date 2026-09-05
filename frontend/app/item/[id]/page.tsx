@@ -721,7 +721,7 @@ function ProductDetailPageMobile() {
   useEffect(() => {
     const updateIsMobile = () => {
       if (typeof window === 'undefined') return;
-      setIsMobile(window.innerWidth < 1024);
+      setIsMobile(window.innerWidth < 768);
     };
     updateIsMobile();
     window.addEventListener('resize', updateIsMobile);
@@ -2922,7 +2922,7 @@ function ProductDetailPageMobile() {
  * 這頁不用 CSS 藏：機台（物理模擬＋圖片）藏著也在跑，量到寬度才決定掛哪一棵。
  */
 export default function ProductDetailPage() {
-  const isMd = useMinWidth(1024);
+  const isMd = useMinWidth(768);
   if (isMd === null) return null;
   return isMd ? <CardxPage page="packDetail" /> : <ProductDetailPageMobile />;
 }

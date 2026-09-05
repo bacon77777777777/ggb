@@ -47,7 +47,7 @@ export function PurchaseConfirmationModal({
   const initialQtyRef = useRef(initialQuantity);
   initialQtyRef.current = initialQuantity;
   const { showAlert } = useAlert();
-  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const router = useRouter();
   const { user } = useAuth();
   

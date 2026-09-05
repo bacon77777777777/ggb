@@ -663,15 +663,8 @@ export default function PackDetailPage() {
           </div>
         )}
 
-        {/* 1023 以下的底部固定操作列。桌機殼本來就 1024 起跳，這頁在桌機永遠用不到它，
-            所以不渲染而不是只靠 CSS 藏：老闆 2026-09-05 回報「有時候打開商品頁多一排全寬的重複按鈕」，
-            就是這個 div 在樣式還沒套上時裸露出來（沒 display:none、沒 fixed，變成一排滿版的鈕） */}
-        {isMobile ? (
-          <div className={styles.mobileActionBar} aria-label="行動操作">
-            <div className={styles.mobileActionGrid}>{actionButtons}</div>
-          </div>
-        ) : null}
-
+        {/* 底部固定操作列已移除：舞台自己有操作列，平板（768～1023）舞台在上、面板在下也一樣用舞台那排；
+            768 以下是手機版商品頁，不會畫到這裡（老闆 2026-09-05 平板改版） */}
         {fairnessInfoOpen ? (
           <div role="presentation" onClick={() => setFairnessInfoOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.62)", display: "grid", placeItems: "center", padding: 16 }}>
             <div

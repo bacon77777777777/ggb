@@ -465,7 +465,7 @@ async function fetchAllRows<T>(
   }
 }
 
-function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
+function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShell?: boolean; tabletShell?: boolean } = {}) {
   const { user, logout, refreshProfile, isLoading: isAuthLoading } = useAuth();
   const { showAlert } = useAlert();
   const { showToast } = useToast();
@@ -479,7 +479,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [supabase] = useState(() => createClient());
-  const isDesktop = useMediaQuery('(min-width: 1024px)'); // 桌機版型從 1024 起（老闆 2026-09-05：768～1023 跟手機一樣）
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const { flags, states: featureStates } = useFeatureFlags();
   /*
    * App 裡不可出現 C2C 入口（商城管理／交易所管理／交換管理）：
@@ -6716,7 +6716,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
                 改成「設定」標題＋左右兩欄：個人資料｜帳號安全／其他／登出，卡片照 cardx 的 16 圓角＋1px 描邊 */}
             <div className="hidden md:block">
               <ProfileSectionHeader title="設定" description="個人資料、帳號安全與收件地址" />
-              <div className="mt-5 grid grid-cols-2 gap-5 items-start">
+              <div className="mt-5 grid grid-cols-1 gap-5 items-start lg:grid-cols-2">
               <div className="space-y-4">
                 <div className="text-[14px] font-black text-neutral-900">個人資料</div>
                 {/* Info Group 1 */}
@@ -7117,6 +7117,62 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
     </div>
   );
 
+  /* 平板（768～1023）：頂部一條橫條＋一排橫捲的分頁膠囊，取代左欄那張直的卡 */
+  const tabletTabs: { id: TabType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    ...navItems.filter(item => item.id !== 'settings' && item.id !== 'market').map(item => ({ id: item.id as TabType, label: item.label, icon: item.icon })),
+    { id: 'invite', label: '邀請好友', icon: UserPlus },
+    { id: 'settings', label: '設定', icon: Settings },
+  ];
+  const tabletProfileBar = tabletShell ? (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3 rounded-[16px] bg-white px-4 py-3" style={cardxCardStyle}>
+        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-neutral-50 bg-white p-0.5">
+          {isGuest ? (
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-neutral-200"><User className="h-5 w-5 text-neutral-500" /></div>
+          ) : (
+            <Image src={user.avatar_url || 'https://github.com/shadcn.png'} alt={user.name || 'User'} fill className="rounded-full object-cover" unoptimized />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          {isGuest ? (
+            <Link href={loginHref} className="text-[15px] font-black text-primary underline decoration-dotted underline-offset-2">登入後顯示</Link>
+          ) : (
+            <>
+              <div className="truncate text-[16px] font-black text-neutral-900">{user.name}</div>
+              <div className="mt-0.5 flex items-center gap-1.5 text-[13px] font-black text-neutral-400">
+                <span>邀請碼</span>
+                <span className="font-mono text-[#111827]">{formatMemberNo(user.invite_code) || '-'}</span>
+              </div>
+            </>
+          )}
+        </div>
+        {!isGuest && (
+          <div className="flex items-center gap-2">
+            <Image src={asset("/images/gcoin.webp")} alt="G" width={20} height={20} className="object-contain" />
+            <span className="text-[20px] font-black tabular-nums tracking-tight text-[#111827]">{user.tokens?.toLocaleString() || 0}</span>
+          </div>
+        )}
+        <CardxButton3D color="red" href={isGuest ? loginHref : '/topup'} style={{ height: 36, borderRadius: 10, width: 68 }}>儲值</CardxButton3D>
+      </div>
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide">
+        {tabletTabs.map(t => {
+          const active = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => { if (isGuest) { router.push(loginHref); return; } handleTabChange(t.id); }}
+              className={cn('flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-black whitespace-nowrap transition-colors', active ? 'bg-primary text-white' : 'bg-white text-neutral-700 ring-1 ring-[#e5e7eb] hover:bg-neutral-50')}
+            >
+              <t.icon className="h-4 w-4 stroke-[2.25]" />
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className={cn(
       cardxShell ? 'w-full' : 'min-h-screen bg-neutral-50 dark:bg-neutral-950 transition-colors',
@@ -7127,7 +7183,8 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
         cardxShell ? 'w-full p-0' : 'max-w-7xl mx-auto w-full',
         !cardxShell && (activeTab === 'settings' ? "p-0" : "px-0 sm:px-6 lg:px-8 pt-0 sm:pt-6")
       )}>
-        <div className={cardxShell ? 'grid grid-cols-1 items-start relative' : 'grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-8 items-start relative'}>
+        <div className={cardxShell ? 'grid grid-cols-1 items-start relative gap-4' : 'grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-8 items-start relative'}>
+          {tabletProfileBar}
           
           {/* 1. Mobile Menu View (Only shown on mobile when no tab is active) */}
           <div className={cn("md:hidden col-span-1", isMobileDetailOpen && "hidden")}>
@@ -7544,8 +7601,10 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
           {/* cardx 殼：左欄固定 260、右欄彈性（平板橫向 1024 也放得下）；用 inline style 不靠 Tailwind 任意值 */}
           <div
             className={cardxShell ? 'hidden md:grid gap-6 w-full items-start' : 'hidden md:grid md:col-span-12 grid-cols-12 gap-4 lg:gap-6 w-full items-start'}
-            style={cardxShell ? { gridTemplateColumns: '288px minmax(0, 1fr)' } : undefined}
+            style={cardxShell ? { gridTemplateColumns: tabletShell ? 'minmax(0, 1fr)' : '288px minmax(0, 1fr)' } : undefined}
           >
+            {/* 平板：左欄那張卡不畫（上面的橫條取代） */}
+            {tabletShell ? null : (
             <div className={cardxShell ? 'space-y-3 sticky' : 'md:col-span-3 lg:col-span-3 space-y-3 sticky top-24'} style={cardxShell ? { top: 'calc(var(--header-height) + 24px)' } : undefined}>
             {/* cardx 殼：左欄那張卡滿高（視窗 − 頂欄 − 上下各 24 留白），跟側欄一樣貼到底（老闆 2026-09-05） */}
             <div className={sideCardCls} style={cardxShell ? { ...cardxCardStyle, minHeight: 'calc(100dvh - var(--header-height) - 48px)' } : cardxCardStyle}>
@@ -7701,6 +7760,7 @@ function ProfileContent({ cardxShell = false }: { cardxShell?: boolean } = {}) {
               </div>
               )}
           </div>
+          )}
           <div className={cardxShell ? 'min-w-0' : 'md:col-span-9 lg:col-span-9 w-full'}>
               {flatTab ? (
                 <div className="min-w-0">{renderTabContent()}</div>
@@ -8509,8 +8569,10 @@ const drawView = makeListViewMemory('ggb:profile:draws');
 export default function ProfilePage() {
   /* 1024 以上整頁掛進 cardx 的 AppShell（頂欄＋側欄＋頁尾），跟其他桌機頁同一個殼；
      null＝還不知道視窗寬度，先不畫，兩套殼才不會疊在一起（老闆 2026-09-05） */
-  const cardxShell = useMinWidth(1024);
-  if (cardxShell === null) return null;
+  const cardxShell = useMinWidth(768);
+  /* 768～1023（平板）：殼一樣是 cardx，但會員中心不左右分欄——頂部橫條＋橫捲分頁膠囊、內容滿寬（老闆 2026-09-05） */
+  const wideShell = useMinWidth(1024);
+  if (cardxShell === null || wideShell === null) return null;
   return (
     <Suspense fallback={null}>
       {cardxShell ? (
@@ -8520,7 +8582,7 @@ export default function ProfilePage() {
               <div className={homeStyles.main}>
                 <div className={homeStyles.sectionLobby}>
                   {/* 「會員中心」頁頭不放（老闆 2026-09-05） */}
-                  <ProfileContent cardxShell />
+                  <ProfileContent cardxShell tabletShell={!wideShell} />
                 </div>
               </div>
             </div>

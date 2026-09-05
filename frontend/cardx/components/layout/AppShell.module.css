@@ -407,7 +407,7 @@
 .shellCollapsed .collapseIcon {
   transform: rotate(90deg) scaleX(-1);
 }
-@media (max-width: 1023px) {
+@media (max-width: 767px) {
   .header {
     padding: 13px 24px;
   }
@@ -1141,7 +1141,7 @@
   min-height: 100dvh;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 767px) {
   .shell {
     --app-gutter: 16px;
   }
@@ -1503,7 +1503,7 @@
   margin: 8px 0;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 767px) {
   .sidebar {
     display: none;
   }
@@ -1520,7 +1520,7 @@
   box-sizing: border-box;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 767px) {
   .mainInner {
     padding: 0 var(--app-gutter);
   }
@@ -1615,7 +1615,7 @@
   filter: brightness(1.03);
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 767px) {
   .bannerCard {
     width: 280px;
     height: 160px;
@@ -1708,7 +1708,7 @@
   z-index: 60;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 767px) {
   .bottomNav {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -2003,9 +2003,24 @@
   transform: translateX(0);
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1279px) {
   .mobileDrawer {
     display: flex;
+  }
+}
+
+/* 平板（768～1279）：側欄是窄欄，漢堡展開成抽屜蓋在內容上、黑遮罩（老闆 2026-09-05）。
+   抽屜與遮罩從頂欄下緣開始，頂欄的漢堡還按得到 */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .mobileDrawer {
+    top: var(--header-height);
+    z-index: 48;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .backdrop {
+    top: var(--header-height);
+    z-index: 47;
   }
 }
 

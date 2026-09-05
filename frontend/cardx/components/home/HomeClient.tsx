@@ -200,7 +200,8 @@ export function HomeClient() {
   const [visibleRows, setVisibleRows] = useState(4);
   useEffect(() => {
     function computeColumns() {
-      if (window.innerWidth <= 1023) { setColumns(2); return; }
+      // 平板（768～1023）一排 3 張（老闆 2026-09-05）；768 以下是手機版，不會走到這裡
+      if (window.innerWidth <= 1023) { setColumns(window.innerWidth >= 768 ? 3 : 2); return; }
       const el = listRef.current;
       if (!el) return;
       const w = el.clientWidth;

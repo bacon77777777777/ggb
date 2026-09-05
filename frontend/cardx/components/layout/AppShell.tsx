@@ -320,7 +320,8 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
             aria-label="開啟選單"
             aria-expanded={mobileMenuOpen}
             onClick={() => {
-              if (window.innerWidth <= 768) {
+              /* 1280 以下側欄是窄欄，漢堡改開抽屜（蓋在內容上、黑遮罩）；1280 以上才是收合固定側欄 */
+              if (window.innerWidth < 1280) {
                 setMobileMenuOpen((v) => !v);
                 return;
               }

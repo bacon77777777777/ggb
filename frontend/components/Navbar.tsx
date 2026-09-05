@@ -734,7 +734,7 @@ function NavbarInner() {
         innerClassName={isAnnouncementInnerPage ? "max-w-[960px] !px-4" : isProductDetailPage ? "max-w-[960px] !px-4 lg:max-w-none lg:px-6" : "lg:max-w-none lg:px-6"}
         className={cn(
           /* 768 以上換 cardx 的頁面時，導覽列由它的 AppShell 接手（lib/cardxRoutes） */
-          isCardxRoute(pathname) && "lg:!hidden",
+          isCardxRoute(pathname) && "md:!hidden",
           desktopOnlyNav && "hidden md:block",
           /* 商品頁 ≥1024 跟首頁同一條導覽列（老闆 2026-09-04）：sticky、橫跨整個視窗；1024 以下維持手機那套 fixed */
           isProductDetailPage && "fixed left-0 right-0 lg:sticky lg:top-0",

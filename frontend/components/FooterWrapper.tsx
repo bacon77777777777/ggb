@@ -11,7 +11,7 @@ export default function FooterWrapper() {
      769～1023 走的是手機端版型，頁尾要由這裡畫 —— 所以 cardx 路由只在 md～lg 這一段顯示。 */
   const cardx = isCardxRoute(pathname);
   return (
-    <div className={cardx ? 'hidden md:block lg:hidden' : 'hidden md:block'}>
+    <div className={cardx ? 'hidden' : 'hidden md:block'}>
       <Footer />
     </div>
   );

@@ -95,7 +95,7 @@ export function DeliveryCheckout({
   onSubmit: () => void;
   onAbort: () => void;
 }) {
-  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const [view, setView] = useState<'confirm' | 'method' | 'address' | 'coupon'>('confirm');
   const [itemsOpen, setItemsOpen] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);

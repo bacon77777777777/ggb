@@ -95,7 +95,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [supabase] = useState(() => createClient());
-  const isMd = useMinWidth(1024);
+  const isMd = useMinWidth(768);
   const queryClient = useQueryClient();
   const { flags, states: flagStates, isLoading: isFlagsLoading } = useFeatureFlags();
   const { user } = useAuth();

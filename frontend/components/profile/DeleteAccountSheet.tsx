@@ -140,7 +140,7 @@ export default function DeleteAccountSheet({
   };
 
   /* 1024 起（cardx 桌機殼）改成置中彈窗，不再是滿版的手機頁（老闆 2026-09-05） */
-  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
   if (!isOpen) return null;
 

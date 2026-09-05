@@ -86,7 +86,9 @@ export default function InviteView({ embedded = false }: { embedded?: boolean } 
   const [claimingMission, setClaimingMission] = useState<string | null>(null);
 
   const code = user?.invite_code ?? null;
-  const cardxShell = useMinWidth(1024);
+  const cardxShell = useMinWidth(768);
+  /* 1024 以下（平板）那張卡改上下堆疊：主視覺在上、內容在下 */
+  const wideShell = useMinWidth(1024);
   useEffect(() => {
     if (cardxShell && !embedded) router.replace('/profile?tab=invite');
   }, [cardxShell, embedded, router]);
@@ -450,8 +452,8 @@ export default function InviteView({ embedded = false }: { embedded?: boolean } 
   /* 桌機那張卡：左邊主視覺、右邊三段（邀請碼與操作／循環獎進度／成就） */
   const desktopCard = (
     <>
-                <SurfaceCard style={{ padding: 0, overflow: 'hidden', display: 'grid', gridTemplateColumns: '380px minmax(0, 1fr)', alignItems: 'stretch', width: '100%' }}>
-                  <div style={{ position: 'relative', background: '#f3f4f6' }}>
+                <SurfaceCard style={{ padding: 0, overflow: 'hidden', display: 'grid', gridTemplateColumns: wideShell ? '380px minmax(0, 1fr)' : '1fr', alignItems: 'stretch', width: '100%' }}>
+                  <div style={{ position: 'relative', background: '#f3f4f6', ...(wideShell ? null : { maxWidth: 420, margin: '0 auto', width: '100%' }) }}>
                     <div className="relative w-full">{heroInner}</div>
                   </div>
 
