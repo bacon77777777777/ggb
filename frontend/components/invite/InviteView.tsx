@@ -72,8 +72,8 @@ interface ReferralStatus {
 
 /**
  * 邀請好友頁的本體。從 app/invite/page.tsx 搬出來：Next 的 page 元件不能收自訂 props，
- * 而會員中心要用 `embedded` 把它塞進右欄當一個分頁（老闆 2026-09-05：邀請頁電腦端不獨立一頁）。
- * `embedded` 只畫那張卡、不包 AppShell；桌機直接開 /invite 會轉到 /profile?tab=invite。手機版不受影響。
+ * 桌機（768 起）是掛在 cardx 殼裡的獨立頁（老闆 2026-09-05 晚上定案：不放在會員中心底下）。
+ * `embedded` 只畫那張卡、不包 AppShell，留給日後要塞進別的頁面用；目前沒有人傳。手機版不受影響。
  */
 export default function InviteView({ embedded = false }: { embedded?: boolean } = {}) {
   const router = useRouter();
@@ -89,9 +89,6 @@ export default function InviteView({ embedded = false }: { embedded?: boolean } 
   const cardxShell = useMinWidth(768);
   /* 1024 以下（平板）那張卡改上下堆疊：主視覺在上、內容在下 */
   const wideShell = useMinWidth(1024);
-  useEffect(() => {
-    if (cardxShell && !embedded) router.replace('/profile?tab=invite');
-  }, [cardxShell, embedded, router]);
   const link = code && typeof window !== 'undefined'
     ? `${window.location.origin}/login?invite=${code}`
     : null;
@@ -505,11 +502,6 @@ export default function InviteView({ embedded = false }: { embedded?: boolean } 
   if (cardxShell === null) return null;
 
   if (cardxShell) {
-    // 轉去會員中心的邀請分頁（上面的 effect），這裡先不畫
-    return null;
-  }
-
-  if (false) {
     return (
       <div className="cardx-root" data-cardx-page="invite">
         <AppShell sidebarItems={defaultSidebarItems}>

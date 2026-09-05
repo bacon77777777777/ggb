@@ -58,7 +58,6 @@ import { defaultSidebarItems } from '@/cardx/lib/navigation';
 import homeStyles from '@/cardx/components/home/HomeClient.module.css';
 import { Button3D as CardxButton3D } from '@/cardx/components/ui/Kit';
 import { useMinWidth } from '@/lib/useMinWidth';
-import InviteView from '@/components/invite/InviteView';
 
 import { Tabs, TabsContent, TabsContentWrapper, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { normalizePhone, PHONE_PLACEHOLDER, PHONE_ERROR, isValidPhone } from '@/lib/phone';
@@ -244,9 +243,7 @@ type TabType =
   | 'topup-history'
   | 'follows'
   | 'coupons'
-  | 'settings'
-  /** 邀請好友：只有桌機（cardx 殼）才是會員中心的分頁，手機仍是 /invite 獨立頁 */
-  | 'invite';
+  | 'settings';
 
 interface DbListing {
   id: number;
@@ -1487,7 +1484,6 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
         'follows',
         'coupons',
         'settings',
-        ...(cardxShell ? (['invite'] as const) : []),
       ].includes(tab as any)
     ) {
       setActiveTab(tab as TabType);
@@ -7015,9 +7011,6 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
             )}
           </div>
         );
-      case 'invite':
-        /* 桌機：邀請好友是會員中心的分頁，右欄放邀請頁那張卡（老闆 2026-09-05） */
-        return cardxShell ? <InviteView embedded /> : null;
       default:
         return (
           <div className="p-8 text-center text-neutral-400 font-black uppercase tracking-widest">
@@ -7032,7 +7025,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
     ? { boxShadow: '0 0 0 1px #e5e7eb, 0 10px 40px -10px rgba(0,0,0,0.08)' }
     : undefined;
   /* 已重構成「零套疊」的分頁：右欄不再包外層白卡，內容直接鋪在頁面底色上（老闆 2026-09-05） */
-  const flatTab = cardxShell && (activeTab === 'warehouse' || activeTab === 'settings' || activeTab === 'invite');
+  const flatTab = cardxShell && (activeTab === 'warehouse' || activeTab === 'settings');
   const sideCardCls = cardxShell
     ? 'bg-white rounded-[18px] p-[14px]'
     : 'bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3';
@@ -7085,13 +7078,11 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                       router.push(loginHref);
                       return;
                     }
-                    if (cardxShell) handleTabChange('invite');
-                    else router.push('/invite');
+                    router.push('/invite');
                   }}
-                  className={sideNavCls(cardxShell && activeTab === 'invite')}
-                  style={sideNavStyle(cardxShell && activeTab === 'invite')}
+                  className={sideNavCls(false)}
                 >
-                  {sideNavIcon(UserPlus, cardxShell && activeTab === 'invite', 'text-violet-500 group-hover:text-primary transition-colors')}
+                  {sideNavIcon(UserPlus, false, 'text-violet-500 group-hover:text-primary transition-colors')}
                   <span className="truncate">邀請好友</span>
                   <span className={cn('ml-auto inline-flex items-center rounded-full bg-accent-red px-2 font-bold leading-none text-white', cardxShell ? 'h-[21px] text-[12px]' : 'h-[19px] text-[11px]')}>
                     <span className="cjk-optical-center">無限拿積分</span>
@@ -7118,9 +7109,9 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
   );
 
   /* 平板（768～1023）：頂部一條橫條＋一排橫捲的分頁膠囊，取代左欄那張直的卡 */
-  const tabletTabs: { id: TabType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  const tabletTabs: { id: TabType | 'invite'; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     ...navItems.filter(item => item.id !== 'settings' && item.id !== 'market').map(item => ({ id: item.id as TabType, label: item.label, icon: item.icon })),
-    { id: 'invite', label: '邀請好友', icon: UserPlus },
+    { id: 'invite', label: '邀請好友', icon: UserPlus }, // 獨立頁，不是 tab（老闆 2026-09-05）
     { id: 'settings', label: '設定', icon: Settings },
   ];
   const tabletProfileBar = tabletShell ? (
@@ -7156,12 +7147,12 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
       </div>
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide">
         {tabletTabs.map(t => {
-          const active = activeTab === t.id;
+          const active = t.id !== 'invite' && activeTab === t.id;
           return (
             <button
               key={t.id}
               type="button"
-              onClick={() => { if (isGuest) { router.push(loginHref); return; } handleTabChange(t.id); }}
+              onClick={() => { if (isGuest) { router.push(loginHref); return; } if (t.id === 'invite') { router.push('/invite'); return; } handleTabChange(t.id); }}
               className={cn('flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-black whitespace-nowrap transition-colors', active ? 'bg-primary text-white' : 'bg-white text-neutral-700 ring-1 ring-[#e5e7eb] hover:bg-neutral-50')}
             >
               <t.icon className="h-4 w-4 stroke-[2.25]" />
