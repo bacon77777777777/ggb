@@ -57,9 +57,7 @@ import { AppShell } from '@/cardx/components/layout/AppShell';
 import { defaultSidebarItems } from '@/cardx/lib/navigation';
 import homeStyles from '@/cardx/components/home/HomeClient.module.css';
 import { Button3D as CardxButton3D } from '@/cardx/components/ui/Kit';
-import { HomeProductCard } from '@/cardx/components/home/HomeClient';
 import { calcShippingDiscount, type ShippingDiscountType } from '@/lib/shippingCoupon';
-import type { HomeProduct } from '@/lib/queries/home';
 import { useMinWidth } from '@/lib/useMinWidth';
 
 import { Tabs, TabsContent, TabsContentWrapper, TabsList, TabsTrigger } from '@/components/ui/Tabs';
@@ -734,37 +732,6 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
   const warehouseSubTabsRef = useRef<HTMLDivElement>(null);
   const [mobileWarehouseDisplayCount, setMobileWarehouseDisplayCount] = useState(WAREHOUSE_PAGE);
   const mobileWarehouseSentinelRef = useRef<HTMLDivElement>(null);
-  /* 桌機「我的關注」：商品格預設三排、捲到底再加三排（老闆 2026-09-05）。欄數照容器寬度算（卡至少 200 寬） */
-  const [desktopFollowsCols, setDesktopFollowsCols] = useState(4);
-  const desktopFollowsColsRef = useRef(4);
-  const [desktopFollowsCount, setDesktopFollowsCount] = useState(12);
-  const desktopFollowsRoRef = useRef<ResizeObserver | null>(null);
-  const desktopFollowsGridRef = React.useCallback((node: HTMLDivElement | null) => {
-    desktopFollowsRoRef.current?.disconnect();
-    desktopFollowsRoRef.current = null;
-    if (!node || typeof ResizeObserver === 'undefined') return;
-    const apply = (w: number) => {
-      const cols = Math.min(6, Math.max(2, Math.floor((w + 16) / (200 + 16))));
-      desktopFollowsColsRef.current = cols;
-      setDesktopFollowsCols(cols);
-      setDesktopFollowsCount((prev) => Math.max(prev, cols * 3));
-    };
-    apply(node.clientWidth);
-    const ro = new ResizeObserver((entries) => { for (const e of entries) apply(e.contentRect.width); });
-    ro.observe(node);
-    desktopFollowsRoRef.current = ro;
-  }, []);
-  const desktopFollowsIoRef = useRef<IntersectionObserver | null>(null);
-  const desktopFollowsSentinel = React.useCallback((node: HTMLDivElement | null) => {
-    desktopFollowsIoRef.current?.disconnect();
-    desktopFollowsIoRef.current = null;
-    if (!node) return;
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) setDesktopFollowsCount((prev) => prev + desktopFollowsColsRef.current * 3);
-    }, { rootMargin: '400px 0px' });
-    io.observe(node);
-    desktopFollowsIoRef.current = io;
-  }, []);
   /* 桌機倉庫：捲到底自動載入（老闆 2026-09-05：不要分頁）。用 callback ref 掛 IntersectionObserver，
      哨兵是條件渲染的，用一般 ref＋effect 會抓不到它出現的時機 */
   const [desktopWarehouseDisplayCount, setDesktopWarehouseDisplayCount] = useState(DESKTOP_WAREHOUSE_PAGE);
@@ -2802,9 +2769,11 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
     warehouseSort, warehouseSearch, desktopWarehouseSearch, desktopDismantledSearch, warehouseSupplier, warehouseFilter,
     activeDeliveryTab, desktopDeliverySearch, desktopDrawSearch, desktopTopupSearch, activeTopupTimeTab, desktopCouponsStatus,
   ]);
+  /* 768 以上「我的關注」不在會員中心（老闆 2026-09-05：左側欄已有「關注」頁）；舊連結 ?tab=follows 直接帶過去。
+     hook 放在這區（所有條件式 return 之前），不能塞到 render 段落裡 */
   useEffect(() => {
-    setDesktopFollowsCount(desktopFollowsColsRef.current * 3);
-  }, [activeTab]);
+    if (cardxShell && activeTab === 'follows') router.replace('/favorites');
+  }, [cardxShell, activeTab, router]);
 
   // Mobile delivery lazy load reset
   useEffect(() => {
@@ -5866,55 +5835,6 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
               </div>
             </div>
 
-            {/* 桌機（cardx 殼）：商品小卡就是首頁那顆 HomeProductCard，顯示全部不分類、預設三排、捲到底再加三排（老闆 2026-09-05） */}
-            <div className="hidden md:block">
-              {(() => {
-                const toHomeProduct = (p: FollowedProduct): HomeProduct => ({
-                  id: Number(p.id), name: p.name, image_url: p.image, price: p.price, status: p.status,
-                  remaining: p.remaining ?? null, total_count: p.total ?? null, is_hot: !!p.is_hot, type: p.type ?? null,
-                } as unknown as HomeProduct);
-                const unfollowDesktop = async (productId: string | number) => {
-                  if (!user) return;
-                  const { error } = await createClient().from('product_follows').delete().eq('user_id', user.id).eq('product_id', Number(productId));
-                  if (error) { toast.error('取消關注失敗，請再試一次'); return; }
-                  setFollowedProducts((prev) => prev.filter((p) => String(p.id) !== String(productId)));
-                  toast.success('已取消關注');
-                };
-                const shown = followedProducts.slice(0, desktopFollowsCount);
-                const hasMore = shown.length < followedProducts.length;
-                return (
-                  <>
-                    <div className="flex h-10 items-center gap-2">
-                      <h2 className="text-[20px] font-black tracking-tight text-neutral-900">我的關注</h2>
-                      <span className="text-[13px] font-bold text-neutral-500">{followedProducts.length} 件</span>
-                    </div>
-                    {isLoadingData ? (
-                      <div className="mt-4 grid gap-4" style={{ gridTemplateColumns: `repeat(${desktopFollowsCols}, minmax(0, 1fr))` }}>
-                        {Array.from({ length: desktopFollowsCols * 2 }).map((_, i) => (
-                          <div key={i} className="aspect-[3/4] animate-pulse rounded-2xl bg-white ring-1 ring-[#e5e7eb]" />
-                        ))}
-                      </div>
-                    ) : followedProducts.length === 0 ? (
-                      <div className="py-20 text-center text-neutral-400">
-                        <Heart className="mx-auto mb-4 h-12 w-12 opacity-20" />
-                        <p className="text-sm font-black">尚無關注商品</p>
-                      </div>
-                    ) : (
-                      <>
-                        <div ref={desktopFollowsGridRef} className="mt-4 grid gap-4" style={{ gridTemplateColumns: `repeat(${desktopFollowsCols}, minmax(0, 1fr))` }}>
-                          {shown.map((p) => (
-                            <HomeProductCard key={p.id} product={toHomeProduct(p)} followed onToggleFollow={() => void unfollowDesktop(p.id)} />
-                          ))}
-                        </div>
-                        <div ref={desktopFollowsSentinel} className="py-5 text-center text-[13px] font-bold text-neutral-400">
-                          {hasMore ? '載入中…' : `已顯示全部 ${followedProducts.length} 件`}
-                        </div>
-                      </>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
           </>
         );
       }
@@ -6695,7 +6615,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
     ? { boxShadow: '0 0 0 1px #e5e7eb, 0 10px 40px -10px rgba(0,0,0,0.08)' }
     : undefined;
   /* 已重構成「零套疊」的分頁：右欄不再包外層白卡，內容直接鋪在頁面底色上（老闆 2026-09-05） */
-  const flatTab = cardxShell && ['warehouse', 'settings', 'delivery', 'draw-history', 'topup-history', 'follows', 'coupons'].includes(activeTab);
+  const flatTab = cardxShell && ['warehouse', 'settings', 'delivery', 'draw-history', 'topup-history', 'coupons'].includes(activeTab);
   const sideCardCls = cardxShell
     ? 'bg-white rounded-[18px] p-[14px]'
     : 'bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3';
@@ -6722,7 +6642,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
   /* 左欄選單（cardx 殼裡併進個人卡；舊殼維持獨立一張卡） */
   const sideNavList = (
     <div className="space-y-1">
-                {navItems.filter(item => item.id !== 'settings' && item.id !== 'market').map((item) => (
+                {navItems.filter(item => item.id !== 'settings' && item.id !== 'market' && item.id !== 'follows').map((item) => (
                   <button 
                     key={item.id} 
                     onClick={() => {
@@ -6782,7 +6702,7 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
 
   /* 平板（768～1023）：頂部一條橫條＋一排橫捲的分頁膠囊，取代左欄那張直的卡 */
   const tabletTabs: { id: TabType | 'invite'; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    ...navItems.filter(item => item.id !== 'settings' && item.id !== 'market').map(item => ({ id: item.id as TabType, label: item.label, icon: item.icon })),
+    ...navItems.filter(item => item.id !== 'settings' && item.id !== 'market' && item.id !== 'follows').map(item => ({ id: item.id as TabType, label: item.label, icon: item.icon })),
     { id: 'settings', label: '設定', icon: Settings },
   ];
   const tabletProfileBar = tabletShell ? (

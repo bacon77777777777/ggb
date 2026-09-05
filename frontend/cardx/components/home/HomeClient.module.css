@@ -13,6 +13,8 @@
   height: auto;
   overflow-x: hidden;
   padding-inline: 0;
+  /* 跟著 AppShell 的 .mainInner 一路撐滿，空狀態才能在內容區置中、footer 貼底（老闆 2026-09-05） */
+  flex: 1 0 auto;
 }
 .main2 :global(img) {
   max-width: 100%;
@@ -611,7 +613,7 @@
 .main2 .main {
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
+  flex: 1 0 auto;
   align-items: flex-start;
   align-self: stretch;
   margin-right: 0;
@@ -628,7 +630,7 @@
 .main2 .main .sectionLobby {
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
+  flex: 1 0 auto;
   align-items: flex-start;
   align-self: stretch;
   row-gap: 6px;
@@ -1958,6 +1960,11 @@
   width: 100%;
   /* 輪播圖不要貼著頂欄（老闆 2026-09-05）；沒有輪播時類別籤也吃這個間距 */
   padding-top: 16px;
+}
+
+/* 輪播圓點到類別籤之間原本吃 .main 的 40px 上內距，老闆 2026-09-05：「點點點下面太留空了」 */
+.homeRoot .main {
+  padding-top: 8px;
 }
 
 .homeRoot .banner,

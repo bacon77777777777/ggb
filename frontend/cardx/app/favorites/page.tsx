@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * 桌機收藏（/favorites）—— 真資料版（老闆 2026-09-04）。
+ * 桌機關注（/favorites）—— 真資料版（老闆 2026-09-04；2026-09-05 由「收藏」改名「關注」，跟手機端「我的關注」同一個詞）。
  *
- * 收藏只有一種：商品收藏，存在 `product_follows`（跟導覽列那顆愛心、首頁卡片上那顆
+ * 關注只有一種：商品關注，存在 `product_follows`（跟導覽列那顆愛心、首頁卡片上那顆
  * 是同一張表）。商品內容從 `/api/public/home` 撈，卡片沿用首頁的 `HomeProductCard`。
  *
  * 拿掉的假東西：「收藏的交易所商品」「收藏的交換」兩個分頁 —— DB 沒有對應的表，
@@ -154,14 +154,14 @@ export default function FavoritesPage() {
                   fontSize: 18, fontWeight: 600,
                 }}
               >
-                收藏
+                關注
               </h1>
               {!loading && items.length > 0 ? (
                 <span style={{ fontSize: 12, fontWeight: 700, color: "#9ca3af" }}>{items.length.toLocaleString()} 件</span>
               ) : null}
             </div>
 
-            <section className={homeStyles.section} aria-label="收藏的商品" style={{ marginTop: 14, width: "100%" }}>
+            <section className={homeStyles.section} aria-label="關注的商品" style={{ marginTop: 14, width: "100%", flex: "1 0 auto" }}>
               {loading ? (
                 <div
                   className={homeStyles.frame12}
@@ -170,15 +170,15 @@ export default function FavoritesPage() {
                   {Array.from({ length: columns }).map((_, i) => <CardSkeleton key={`sk_${i}`} />)}
                 </div>
               ) : !user ? (
-                <div style={{ padding: "56px 0", display: "grid", justifyItems: "center", gap: 10 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#6b7280" }}>登入之後，收藏的商品會跟著帳號走</div>
+                <div style={{ flex: "1 0 auto", alignSelf: "stretch", display: "grid", placeContent: "center", justifyItems: "center", gap: 10, padding: "40px 0" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#6b7280" }}>登入之後，關注的商品會跟著帳號走</div>
                   <Link href="/login" style={{ fontSize: 13, fontWeight: 800, color: "#111827", textDecoration: "underline" }}>
                     去登入
                   </Link>
                 </div>
               ) : items.length === 0 ? (
-                <div style={{ padding: "56px 0", display: "grid", justifyItems: "center", gap: 10 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#6b7280" }}>還沒有收藏任何商品，看到喜歡的按一下愛心就會收在這裡</div>
+                <div style={{ flex: "1 0 auto", alignSelf: "stretch", display: "grid", placeContent: "center", justifyItems: "center", gap: 10, padding: "40px 0" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#6b7280" }}>還沒有關注任何商品，到商品頁按一下愛心就會收在這裡</div>
                   <Link href="/" style={{ fontSize: 13, fontWeight: 800, color: "#111827", textDecoration: "underline" }}>
                     去逛逛
                   </Link>

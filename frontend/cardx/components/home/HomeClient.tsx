@@ -12,6 +12,7 @@ import { recordImpression, recordClick } from "@/lib/feed/events";
 import type { FeedBucket } from "@/lib/feed/assemble";
 import { asset } from "@/lib/asset";
 import ProductBadge, { type ProductType } from "@/components/ui/ProductBadge";
+import { useProductPromotion } from "@/contexts/PromotionsContext";
 import { filterBannersBySchedule } from "@/lib/schedule";
 import { isInternalUrl, toInternalPath } from "@/lib/internalUrl";
 
@@ -26,28 +27,24 @@ function stableSeedFromString(input: string) {
   return h >>> 0;
 }
 
-function HeartIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
-      <path
-        fill="currentColor"
-        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-      />
-    </svg>
-  );
-}
 
 /**
  * 商品小卡：外觀照 cardx /packs 的小卡，內容是我們的商品。
  * 推薦籤的卡帶 meta（桶別／位置）：看到一半記曝光、點了記點擊（跟手機版 ProductCard 同一套 lib/feed/events）。
  */
-export function HomeProductCard({ product, meta, followed, onToggleFollow }: {
+/**
+ * 桌機商品小卡。愛心已拿掉（老闆 2026-09-05：關注在商品頁按，小卡不放）；
+ * `followed`／`onToggleFollow` 留著只是不逼呼叫端改，不會畫出來。
+ * 熱門／促銷標籤照手機端 ProductCard：促銷貼左上角紅底、熱門貼右上角主題色，各佔一角不會疊。
+ */
+export function HomeProductCard({ product, meta }: {
   product: HomeProduct;
   meta?: { bucket: FeedBucket; position: number };
-  followed: boolean;
-  onToggleFollow: () => void;
+  followed?: boolean;
+  onToggleFollow?: () => void;
 }) {
   const router = useRouter();
+  const promo = useProductPromotion(product.id);
   const ref = useRef<HTMLDivElement | null>(null);
   const id = Number(product.id);
   useEffect(() => {
@@ -87,19 +84,20 @@ export function HomeProductCard({ product, meta, followed, onToggleFollow }: {
           width: "100%", height: "auto", aspectRatio: "1 / 1", backgroundSize: "contain", backgroundRepeat: "no-repeat", backgroundPosition: "center",
         }}
       >
-        <button
-          type="button"
-          className={styles.favoriteButton}
-          aria-pressed={followed}
-          aria-label={followed ? "取消收藏" : "收藏"}
-          onClick={(e) => { e.stopPropagation(); onToggleFollow(); }}
-          style={followed ? { color: "#ff4d4f" } : undefined}
-        >
-          <HeartIcon />
-        </button>
-        {product.is_hot ? (
-          <div className={styles.backgroundBorderShad}><p className={styles.a18} style={{ color: "#dc2626" }}>熱門</p></div>
-        ) : null}
+        <div className="absolute top-0 left-0 z-10 flex flex-col pointer-events-none">
+          {promo ? (
+            <div className="h-6 px-2 inline-flex items-center rounded-tl-[16px] rounded-br-lg bg-accent-red text-white text-[11px] font-black border border-white/10 leading-none">
+              {promo.badgeText}
+            </div>
+          ) : null}
+        </div>
+        <div className="absolute top-0 right-0 z-10 flex flex-col items-end pointer-events-none">
+          {product.is_hot ? (
+            <div className="h-6 px-2 inline-flex items-center rounded-tr-[16px] rounded-bl-lg bg-primary text-white text-[11px] font-black border border-white/10 leading-none">
+              熱門
+            </div>
+          ) : null}
+        </div>
         {soldOut ? (
           <div
             aria-label="已完抽"

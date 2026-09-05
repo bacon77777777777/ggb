@@ -5,11 +5,14 @@ import type { SidebarItem } from "@/cardx/lib/types";
  * 圖示對照在 AppShell 的 iconForLabel。
  */
 export const defaultSidebarItems: SidebarItem[] = [
-  { kind: "link", label: "收藏", href: "/favorites" },
+  // 老闆 2026-09-05：「收藏」改名「關注」——跟手機端「我的關注」同一個詞（同一張 product_follows）
+  { kind: "link", label: "關注", href: "/favorites" },
   { kind: "link", label: "近期", href: "/recent" },
-  // 老闆 2026-09-04 晚上：五個抽獎類別（一番賞／盒玩／轉蛋／抽卡／自製賞）從側欄移除——首頁的類別 tab 已經有了；
-  // 挑戰機台先隱藏（cardx 沒對應頁），要開回來時放回這裡：{ kind: "link", label: "挑戰機台", href: "#", disabled: true }
+  // 老闆 2026-09-04 晚上：五個抽獎類別（一番賞／盒玩／轉蛋／抽卡／自製賞）從側欄移除——首頁的類別 tab 已經有了
   { kind: "divider" },
+  // 老闆 2026-09-05：挑戰機台放交易所上面；連到站上原本的 /challenge（外框換成主站導覽列）。
+  // 顯示與否照後台功能開關 feature_flags.slot（AppShell 的 FLAG_BY_HREF）：關閉就不出現、維護中點了跳提示
+  { kind: "link", label: "挑戰機台", href: "/challenge" },
   { kind: "link", label: "交易所", href: "/market" },
   // 商城與通知 cardx 沒有自己的頁，連到站上原本那兩頁（外框會換成主站的導覽列）
   { kind: "link", label: "商城", href: "/sell" },

@@ -635,7 +635,7 @@ export default function PackDetailPage() {
             <button type="button" className={styles.secondaryButton} aria-label="分享" title="分享" onClick={() => void handleShare()} style={crumbIconStyle(false)}>
               <Share2 size={20} strokeWidth={2} aria-hidden="true" />
             </button>
-            <button type="button" className={styles.secondaryButton} aria-label={followed ? "取消收藏" : "收藏"} title="收藏" aria-pressed={followed} onClick={() => void toggleFollow(Number(product.id))} style={crumbIconStyle(followed)}>
+            <button type="button" className={styles.secondaryButton} aria-label={followed ? "取消關注" : "關注"} title="關注" aria-pressed={followed} onClick={() => void toggleFollow(Number(product.id))} style={crumbIconStyle(followed)}>
               <Heart size={20} strokeWidth={2} fill={followed ? "currentColor" : "none"} aria-hidden="true" />
             </button>
             {shareCopied ? (

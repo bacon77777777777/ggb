@@ -198,11 +198,7 @@ export default function RecentPage() {
               ) : null}
             </div>
 
-            <div style={{ marginTop: 4, fontSize: 12, fontWeight: 650, color: "#9ca3af" }}>
-              只記在這台裝置上，換裝置或清瀏覽資料就會不見
-            </div>
-
-            <section className={homeStyles.section} aria-label="近期瀏覽的商品" style={{ marginTop: 14, width: "100%" }}>
+            <section className={homeStyles.section} aria-label="近期瀏覽的商品" style={{ marginTop: 14, width: "100%", flex: "1 0 auto" }}>
               {loading ? (
                 <div
                   className={homeStyles.frame12}
@@ -211,7 +207,7 @@ export default function RecentPage() {
                   {Array.from({ length: columns }).map((_, i) => <CardSkeleton key={`sk_${i}`} />)}
                 </div>
               ) : items.length === 0 ? (
-                <div style={{ padding: "56px 0", display: "grid", justifyItems: "center", gap: 10 }}>
+                <div style={{ flex: "1 0 auto", alignSelf: "stretch", display: "grid", placeContent: "center", justifyItems: "center", gap: 10, padding: "40px 0" }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: "#6b7280" }}>還沒有瀏覽紀錄，看過的商品會留在這裡方便你找回來</div>
                   <Link href="/" style={{ fontSize: 13, fontWeight: 800, color: "#111827", textDecoration: "underline" }}>
                     去逛逛

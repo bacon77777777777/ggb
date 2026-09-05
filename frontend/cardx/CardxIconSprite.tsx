@@ -140,6 +140,11 @@ export default function CardxIconSprite() {
               <symbol id="icon-chart">
                 <path fill="currentColor" d="M4.5 12h2a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1 -1.5 1.5h-2a1.5 1.5 0 0 1 -1.5 -1.5v-7a1.5 1.5 0 0 1 1.5 -1.5ZM11 7h2a1.5 1.5 0 0 1 1.5 1.5v12a1.5 1.5 0 0 1 -1.5 1.5h-2a1.5 1.5 0 0 1 -1.5 -1.5v-12a1.5 1.5 0 0 1 1.5 -1.5ZM17.5 2.5h2a1.5 1.5 0 0 1 1.5 1.5v16.5a1.5 1.5 0 0 1 -1.5 1.5h-2a1.5 1.5 0 0 1 -1.5 -1.5v-16.5a1.5 1.5 0 0 1 1.5 -1.5Z" />
               </symbol>
+              <symbol id="icon-slot">
+                <path fill="currentColor" fillRule="evenodd" clipRule="evenodd" d="M3 6.5A2.5 2.5 0 0 1 5.5 4h9A2.5 2.5 0 0 1 17 6.5V19a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 3 19V6.5ZM6.5 7.5h7a1 1 0 0 1 1 1v3a1 1 0 0 1 -1 1h-7a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1ZM9.2 15h1.6a1.2 1.2 0 0 1 1.2 1.2v0a1.2 1.2 0 0 1 -1.2 1.2h-1.6a1.2 1.2 0 0 1 -1.2 -1.2v-0a1.2 1.2 0 0 1 1.2 -1.2Z" />
+                <path fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" d="M20 6.5v6" />
+                <path fill="currentColor" d="M20 2.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4ZM18.7 12.5h2.6a1.2 1.2 0 0 1 1.2 1.2v0.6a1.2 1.2 0 0 1 -1.2 1.2h-2.6a1.2 1.2 0 0 1 -1.2 -1.2v-0.6a1.2 1.2 0 0 1 1.2 -1.2Z" />
+              </symbol>
               <symbol id="icon-store">
                 <path fill="currentColor" d="M5 8h14a2 2 0 0 1 2 2v9a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-9a2 2 0 0 1 2-2Z" />
                 <path fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" d="M8.5 9V7a3.5 3.5 0 0 1 7 0v2" />

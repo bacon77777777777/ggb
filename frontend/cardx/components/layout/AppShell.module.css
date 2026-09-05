@@ -1511,6 +1511,11 @@
 
 .main {
   padding: 0;
+  /* 內容區至少撐到視窗底（扣掉頂欄），內容少的頁 footer 也貼在底部、空狀態才有得置中（老闆 2026-09-05） */
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - var(--header-height));
+  min-height: calc(100dvh - var(--header-height));
 }
 
 .mainInner {
@@ -1518,6 +1523,9 @@
   margin-inline: 0;
   padding: 0 var(--app-gutter);
   box-sizing: border-box;
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 767px) {
@@ -2144,4 +2152,17 @@
 .profileDepositBtn :global(.button-3d__outer) {
   padding-left: 15px;
   padding-right: 15px;
+}
+
+/* 側欄項目「維護中」小標（老闆 2026-09-05：功能開關照後台走） */
+.leftMenuMaint {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #b45309;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 16px;
+  white-space: nowrap;
 }

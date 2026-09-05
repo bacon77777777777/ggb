@@ -14,6 +14,22 @@ import { createClient } from "@/lib/supabase/client";
 import { countUnread } from "@/lib/announcementRead";
 import { setSoundMuted } from "@/lib/soundPrefs";
 import { useSoundMuted } from "@/hooks/useSoundMuted";
+import { useFeatureFlags, type FeatureKey, type FlagState } from "@/contexts/FeatureFlagsContext";
+import { useToast } from "@/components/ui/Toast";
+
+/**
+ * 側欄項目對應的後台功能開關（老闆 2026-09-05：開啟／關閉／維護都照後台設定走）。
+ * 沒列在這裡的項目沒有開關，一律顯示。
+ * 關閉：整項不出現（跟手機端「只有關閉才整個消失」一致）；
+ * 維護中：照常列出、點下去跳提示不換頁（跟手機端儲值鈕的做法一致）。
+ */
+const FLAG_BY_HREF: Record<string, FeatureKey> = {
+  "/challenge": "slot",
+  "/market": "market",
+  "/trends": "market", // 成交行情是交易所的成交資料，跟著交易所開關
+  "/sell": "sell",
+  "/trades": "exchange",
+};
 
 type Props = {
   sidebarItems: SidebarItem[];
@@ -128,9 +144,23 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
     [pathname, search]
   );
 
+  const { states: flagStates } = useFeatureFlags();
+  const { showToast } = useToast();
+  const menuState = useCallback((href: string): FlagState => {
+    const key = FLAG_BY_HREF[href];
+    return key ? (flagStates[key] ?? "on") : "on";
+  }, [flagStates]);
+  /* 頂欄私訊是買賣雙方聊天用的，交易所／商城／卡牌交換三個全關就沒有對象可聊，整顆不顯示
+     （老闆 2026-09-05：「有開任一個才顯示」）；維護中算暫停不算關，私訊留著讓人看舊對話 */
+  const c2cOpen = (["market", "sell", "exchange"] as FeatureKey[]).some((k) => (flagStates[k] ?? "on") !== "off");
+  const notifyMaintenance = useCallback((label: string) => {
+    showToast(`${label}維護中，敬請見諒`, "info");
+  }, [showToast]);
+
+  type MenuLink = Extract<SidebarItem, { kind: "link" }> & { maintenance?: boolean };
   const leftMenuGroups = useMemo(() => {
-    const groups: Array<Array<Extract<SidebarItem, { kind: "link" }>>> = [];
-    let current: Array<Extract<SidebarItem, { kind: "link" }>> = [];
+    const groups: Array<Array<MenuLink>> = [];
+    let current: Array<MenuLink> = [];
 
     for (const item of sidebarItems) {
       if (item.kind === "divider") {
@@ -138,12 +168,15 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
         current = [];
         continue;
       }
-      if (item.kind === "link") current.push(item);
+      if (item.kind !== "link") continue;
+      const st = menuState(item.href);
+      if (st === "off") continue;
+      current.push(st === "maintenance" ? { ...item, maintenance: true } : item);
     }
     if (current.length) groups.push(current);
 
     return groups;
-  }, [sidebarItems]);
+  }, [sidebarItems, menuState]);
 
   const iconForLabel = useCallback((label: string) => {
     // 側欄圖示全部走實心胖圓款（老闆 2026-09-05：跟頂欄鈴鐺／私訊同一種風格）。
@@ -151,7 +184,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
     // 商城改購物袋（原本跟交易所共用錢袋，兩個一模一樣）
     const extra: Record<string, string> = {
       "一番賞": "#icon-gift", "盒玩": "#icon-box", "轉蛋": "#icon-casino", "抽卡": "#icon-docs", "自製賞": "#icon-missions",
-      "挑戰機台": "#icon-sport", "交易所": "#icon-bag-dollar", "商城": "#icon-store", "卡牌交換": "#icon-swap",
+      "挑戰機台": "#icon-slot", "關注": "#icon-like", "交易所": "#icon-bag-dollar", "商城": "#icon-store", "卡牌交換": "#icon-swap",
       "情報": "#icon-docs", "通知": "#icon-notifications",
       "成交行情": "#icon-chart", "任務": "#icon-missions", "簽到任務": "#icon-missions", "獎勵": "#icon-gift",
     };
@@ -487,11 +520,13 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                       <span aria-hidden="true" style={{ position: "absolute", top: 0, right: 0, width: 10, height: 10, borderRadius: "50%", background: "#FACC15", boxShadow: "0 0 0 2px rgba(255,255,255,0.2)" }} />
                     ) : null}
                   </Link>
-                  <Link href="/messages" aria-label="訊息" className={styles.iconGroupBtn}>
-                    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
-                      <use href="#icon-chat-3" />
-                    </svg>
-                  </Link>
+                  {c2cOpen ? (
+                    <Link href="/messages" aria-label="訊息" className={styles.iconGroupBtn}>
+                      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+                        <use href="#icon-chat-3" />
+                      </svg>
+                    </Link>
+                  ) : null}
                 </div>
                 {settingsOpen ? (
                   <div className={styles.settingsMenu} role="dialog" aria-label="設定">
@@ -763,9 +798,10 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                           className={`${styles.leftMenuItem} ${isActive(item.href) ? styles.leftMenuItemActive : ""} ${
                             idx === group.length - 1 ? styles.leftMenuItemLast : ""
                           }`}
-                          href={item.disabled ? "#" : item.href}
-                          onClick={item.disabled ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+                          href={item.disabled || item.maintenance ? "#" : item.href}
+                          onClick={item.disabled ? (e: React.MouseEvent) => e.preventDefault() : item.maintenance ? (e: React.MouseEvent) => { e.preventDefault(); notifyMaintenance(item.label); } : undefined}
                           aria-disabled={item.disabled || undefined}
+                          title={item.maintenance ? `${item.label}維護中` : undefined}
                         >
                           <span className={styles.leftMenuItemIcon} aria-hidden="true">
                             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
@@ -773,6 +809,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                             </svg>
                           </span>
                           <span className={styles.leftMenuItemLabel}>{item.label}</span>
+                          {item.maintenance ? <span className={styles.leftMenuMaint}>維護中</span> : null}
                         </Link>
                       );
                     })}
@@ -793,10 +830,10 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                         <Link
                           key={`c_${item.href}_${item.label}_${groupIdx}_${idx}`}
                           className={`${styles.collapsedItem} ${isActive(item.href) ? styles.collapsedItemActive : ""}`}
-                          href={item.disabled ? "#" : item.href}
-                          onClick={item.disabled ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+                          href={item.disabled || item.maintenance ? "#" : item.href}
+                          onClick={item.disabled ? (e: React.MouseEvent) => e.preventDefault() : item.maintenance ? (e: React.MouseEvent) => { e.preventDefault(); notifyMaintenance(item.label); } : undefined}
                           aria-disabled={item.disabled || undefined}
-                          title={item.label}
+                          title={item.maintenance ? `${item.label}維護中` : item.label}
                           aria-label={item.label}
                         >
                           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
@@ -849,8 +886,8 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                   className={`${styles.leftMenuItem} ${isActive(item.href) ? styles.leftMenuItemActive : ""} ${
                     idx === group.length - 1 ? styles.leftMenuItemLast : ""
                   }`}
-                  href={item.disabled ? "#" : item.href}
-                          onClick={item.disabled ? (e: React.MouseEvent) => e.preventDefault() : closeMobileMenu}
+                  href={item.disabled || item.maintenance ? "#" : item.href}
+                  onClick={item.disabled ? (e: React.MouseEvent) => e.preventDefault() : item.maintenance ? (e: React.MouseEvent) => { e.preventDefault(); notifyMaintenance(item.label); } : closeMobileMenu}
                   aria-disabled={item.disabled || undefined}
                 >
                   <span className={styles.leftMenuItemIcon} aria-hidden="true">
@@ -859,6 +896,7 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
                     </svg>
                   </span>
                   <span className={styles.leftMenuItemLabel}>{item.label}</span>
+                          {item.maintenance ? <span className={styles.leftMenuMaint}>維護中</span> : null}
                 </Link>
               ))}
               {groupIdx !== leftMenuGroups.length - 1 ? <div className={styles.leftMenuDivider} aria-hidden="true" /> : null}
@@ -885,24 +923,30 @@ export function AppShell({ sidebarItems, hideBottomNavOnMobile, containerMaxWidt
           </svg>
           <span>菜單</span>
         </button>
+        {menuState("/market") !== "off" ? (
         <Link
           className={`${styles.bottomNavItem} ${isActive("/market") ? styles.bottomNavItemActive : ""}`}
-          href="/market"
+          href={menuState("/market") === "maintenance" ? "#" : "/market"}
+          onClick={menuState("/market") === "maintenance" ? (e: React.MouseEvent) => { e.preventDefault(); notifyMaintenance("交易所"); } : undefined}
         >
           <svg className={styles.bottomNavIcon} viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
             <use href="#icon-bag-dollar" />
           </svg>
           <span>市集</span>
         </Link>
+        ) : null}
+        {menuState("/trades") !== "off" ? (
         <Link
           className={`${styles.bottomNavItem} ${isActive("/trades") ? styles.bottomNavItemActive : ""}`}
-          href="/trades"
+          href={menuState("/trades") === "maintenance" ? "#" : "/trades"}
+          onClick={menuState("/trades") === "maintenance" ? (e: React.MouseEvent) => { e.preventDefault(); notifyMaintenance("卡牌交換"); } : undefined}
         >
           <svg className={styles.bottomNavIcon} viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
             <use href="#icon-swap" />
           </svg>
           <span>交換</span>
         </Link>
+        ) : null}
         <Link
           className={`${styles.bottomNavItem} ${isActive("/packs") ? styles.bottomNavItemActive : ""}`}
           href="/packs"
