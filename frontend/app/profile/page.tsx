@@ -2336,6 +2336,8 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
               products ( name, price, status, remaining, type )
             `)
             .eq('user_id', user.id)
+            // 挑戰機台退幣那種 spin 也寫進 draw_records（status=coin_return、沒有商品），不是抽獎，抽獎紀錄不列（老闆 2026-09-05：「coin_return 什麼鬼」）
+            .neq('status', 'coin_return')
             .order('created_at', { ascending: false })
             .order('id', { ascending: false })
             .range(from, to),
@@ -5502,11 +5504,13 @@ function ProfileContent({ cardxShell = false, tabletShell = false }: { cardxShel
                               className="flex w-full items-center gap-6 px-6 py-5 text-left"
                             >
                               <div className="min-w-0 flex-1">
+                                {/* 編號照手機端同一個 formatDrawId（老闆 2026-09-05） */}
                                 <div className="flex items-center gap-3">
-                                  <span className="truncate text-[16px] font-black text-neutral-900">{item.product}</span>
+                                  <span className="rounded bg-neutral-100 px-2 py-0.5 font-mono text-[13px] font-black text-neutral-500">{formatDrawId(item.id, item.rawDate)}</span>
                                   <span className="shrink-0 text-[13px] font-bold text-neutral-400">{item.date.replace(/-/g, '/')}</span>
                                 </div>
-                                <div className="mt-2 text-[14px] font-black text-neutral-800">共 {item.tickets.length} 項</div>
+                                <div className="mt-2 truncate text-[16px] font-black text-neutral-900">{item.product}</div>
+                                <div className="mt-1.5 text-[14px] font-black text-neutral-800">共 {item.tickets.length} 項</div>
                                 {major > 0 ? <div className="mt-1.5 text-[13px] font-bold text-neutral-400">大賞 {major} 件</div> : null}
                               </div>
                               <div className="flex shrink-0 items-center gap-5">
